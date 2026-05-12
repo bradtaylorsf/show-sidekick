@@ -1,0 +1,33 @@
+{
+  "name": "predit",
+  "version": "0.0.0",
+  "description": "AI pre-production for video — build the rough cut, finish in your NLE.",
+  "type": "module",
+  "bin": {
+    "predit": "./dist/cli/index.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/cli/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "yaml": "^2.5.0",
+    "zod": "^3.23.0",
+    "picocolors": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "license": "Apache-2.0"
+}

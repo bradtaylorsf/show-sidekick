@@ -1,0 +1,44 @@
+# predit — harness contributor contract
+
+This file is the operating contract for agents (Claude Code, Codex, others) working **inside the predit harness repo** — adding features, fixing bugs, authoring new pipelines or skills, evolving the architecture.
+
+**If you are an agent running production inside a user project** — making videos, building episodes, calling generation tools — you want the user-project AGENTS.md scaffolded into that project by `predit init`. The template lives at `bundled/templates/user-project/AGENTS.md` in this repo. Do not use the file you are currently reading for production work.
+
+## What predit is
+
+A show-first AI pre-production harness for video. Each show owns its pipeline, look, characters, brand. Episodes are the unit of work — one episode equals one rendered output. The harness ships as a CLI; users run it inside their own folder. Audio is the master clock for music-led content; voiceover is the master clock for narration-led content. The harness assembles a rough cut and an editor handoff (EDL / Premiere XML / CapCut draft) so a human can finish in a real NLE.
+
+## Read order on first contact
+
+1. [`specs/README.md`](specs/README.md) — the spec index.
+2. [`specs/00-overview.md`](specs/00-overview.md) and [`specs/10-installation-and-user-projects.md`](specs/10-installation-and-user-projects.md) — the architectural foundation.
+3. [`specs/11-agent-driven-production.md`](specs/11-agent-driven-production.md) — the philosophy that makes the rest of the system make sense.
+4. The spec(s) covering whatever you are touching today.
+5. If `.migration/` exists locally and the task touches an area covered there, read [`.migration/concepts.md`](.migration/concepts.md) before designing or implementing.
+
+`.migration/` is a private, gitignored bridge used during the initial build phase to consult a separate reference codebase for inspiration. It is never committed and is removed before the repo is ever made public. Treat its contents as study material, not as a source of code to copy.
+
+## Operating principles (for contributors to the harness)
+
+- **Specs are the contract.** When a spec disagrees with code, one of them is wrong — never silently reconcile. Surface the discrepancy. If a decision changes, edit the spec in the same commit as the code change.
+- **Don't break tests, don't break consumer contracts.** The harness is consumed as a CLI + library by user projects. Breaking changes to `show.yaml`, `episode.yaml`, the tool registry shape, pipeline manifests, or checkpoint schemas need a major version bump and a migration note.
+- **Pipelines stay declarative.** Workflow lives in `pipelines/*.yaml`. How-to lives in stage director skills (Markdown). Concrete tools live in `src/tools/`. Do not blend layers.
+- **Authoring a pipeline is a manifest + a handful of director skills.** It is not a TypeScript refactor. If you find yourself writing new orchestration logic to support a new pipeline, you're probably solving the wrong problem.
+- **No ad-hoc shell scripts to call tools.** The harness invokes tools through the registry; tests do the same; nobody shells out around it.
+
+## Build, test, run
+
+```bash
+pnpm install
+pnpm test                       # vitest
+pnpm typecheck                  # tsc --noEmit
+pnpm build                      # tsc → dist/
+pnpm dev <args>                 # tsx watch src/cli/index.ts
+```
+
+## What not to do
+
+- Do not create or edit anything inside `.migration/` unless the user explicitly asks. It is reference material, not part of the product.
+- Do not reference `.migration/` content, file paths, or upstream sibling-repo names in code, public specs, README, or any committed file.
+- Do not commit credentials. `predit` does not store credentials; CLI tools own their own auth.
+- Do not add a feature without first checking whether an existing pipeline + skill could express it. New code is the last resort, not the first.

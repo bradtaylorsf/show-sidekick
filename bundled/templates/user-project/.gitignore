@@ -1,0 +1,22 @@
+# predit user project — default gitignore
+# Edit freely; the patterns below are recommended starting points.
+
+# Bundled-content cache, refreshed by `predit update`. Never check this in;
+# every collaborator's cache reflects their locally installed predit version.
+.predit/
+
+# Runtime workspace — generated assets, intermediate artifacts, renders.
+# Everything in here is regenerable. Do not commit.
+projects/
+
+# Drop zone for input media (audio, source video). Often large binary files;
+# commit them separately if you want them in version control.
+music_library/
+
+# Editor / OS detritus
+.DS_Store
+*.log
+.env
+.env.local
+.env.*.local
+node_modules/

@@ -1,0 +1,98 @@
+# Agent operating contract — predit user project
+
+This is a `predit` user project. The CLI is installed globally (or runnable via `npx predit`). The folder you are in owns the shows, episodes, brand assets, characters, and runtime workspace. The harness — pipelines, playbooks, skills, schemas, starter shows — is bundled with the installed CLI and mirrored locally in `.predit/` for you to read.
+
+You are the production intelligence. The CLI is the orchestration shell. Skills (Markdown) tell you how to do the creative work. Tools (called via the CLI / registry) carry out concrete actions. This file is your operating contract.
+
+## Rule zero: every production goes through a pipeline
+
+When the user asks to make, create, produce, or generate any video content — a trailer, explainer, clip, music video, episode of any series — go through the pipeline system. Identify the pipeline (or ask the user), read the pipeline manifest, run preflight, then execute stage by stage.
+
+Do NOT:
+- Write ad-hoc scripts to call tools directly.
+- Skip the pipeline and go straight to API calls.
+- Generate assets without reading the stage director skill first.
+- Use a tool without checking its Layer 3 vendor skill for prompting guidance.
+
+The intelligence is in the skills, not in improvised code. An agent that reads the director skills and Layer 3 vendor knowledge will produce significantly better output than one that calls tools directly with generic prompts.
+
+## Read order on first contact
+
+1. This file in full.
+2. The user's request. If it is vague or exploratory, run the onboarding flow described in `.predit/skills/meta/onboarding.md`. If it is specific and actionable, go straight to pipeline selection.
+3. The pipeline's manifest (`.predit/pipelines/<pipeline>.yaml` or `./pipelines/<pipeline>.yaml` if overridden locally).
+4. The director skill for the stage you are about to run (`.predit/skills/pipelines/<pipeline>/<stage>-director.md`, or the local / show-level override if one exists).
+5. The Layer 3 vendor skill for every generation tool you are about to call (`.predit/skills/agents/<vendor>.md`).
+
+## Where things live
+
+```
+<this project>/
+├── shows/<show>/                  # user content — shows, characters, brand, episodes
+│   ├── show.yaml
+│   ├── episodes/<slug>.yaml
+│   ├── brand/
+│   ├── characters/<name>/
+│   └── skills/                    # optional: show-specific skill overrides
+├── playbooks/                     # optional: project-local playbook overrides
+├── pipelines/                     # optional: project-local pipeline overrides
+├── skills/                        # optional: project-local skill overrides
+├── music_library/                 # gitignored — drop audio here
+├── projects/<show>/<episode>/     # gitignored — runtime workspace, generated assets, renders
+└── .predit/                       # gitignored — bundled cache (read-only)
+    ├── pipelines/
+    ├── playbooks/
+    ├── skills/
+    └── schemas/
+```
+
+When resolving any resource (pipeline, playbook, skill, schema), check the project-local path first, then `.predit/`. Project-local always wins. For director skills, also check `shows/<show>/skills/` before either.
+
+## Operating principles
+
+- **Announce before paid execution.** Before any paid generation call, state the tool, provider, model, reason, and whether it is sample or batch. The user is never surprised by a charge.
+- **Sample-first for any production over $0.50 or 15 minutes.** Render a 15–20 second sample end-to-end before committing to the full run.
+- **Master clock is sacred.** For audio-led pipelines, scenes snap to musical structure (sections, beats, climax). For VO-led pipelines, scenes snap to voiceover structure. Visual cadence never overrides the master clock.
+- **Present both composition runtimes** when both Remotion and HyperFrames are available. Recommend one with rationale; never silently default.
+- **Self-review every stage.** Before checkpointing, run the reviewer pass against the stage's `review_focus` and `success_criteria`. Findings must be accurate, complete, and constructive. Critical findings must carry a proposed fix.
+- **Log every material decision.** Provider, model, runtime, playbook, music, voice — every meaningful choice goes in the decision log with rejected alternatives and a real reason.
+- **No unilateral substitutions.** If the approved path is blocked, prepare alternatives and surface them; do not execute substitutes without user approval.
+- **Stop before publishing on failure.** A failing final self-review halts the pipeline. The user sees the issues before the file does.
+
+## Meta skills you must internalize
+
+The bundled cache contains the meta skills that govern these protocols. Read them when relevant:
+
+- `.predit/skills/meta/onboarding.md` — first-contact discovery and capability presentation.
+- `.predit/skills/meta/reviewer.md` — the self-review protocol with the CHAI rules.
+- `.predit/skills/meta/checkpoint-protocol.md` — when and how to checkpoint, resume, approve.
+- `.predit/skills/meta/decision-log.md` — the audit trail of material choices.
+- `.predit/skills/meta/announce-and-escalate.md` — what to say before acting and what to say when blocked.
+- `.predit/skills/meta/self-review-of-output.md` — the final pass on the rendered file before presenting to the user.
+
+These skills are not optional — they encode the contract that makes `predit` produce coherent, honest output instead of a black-box rendering pipeline.
+
+## Common commands
+
+```bash
+predit doctor                              # capability menu — run before any creative work
+predit new show <slug> --from <starter>    # scaffold a new show
+predit new episode <show> [<slug>]         # scaffold a new episode
+predit build <show>/<episode>              # run the pipeline interactively
+predit build <show>/<episode> --sample     # 15–20s end-to-end sample run
+predit resume <show>/<episode>             # pick up at next checkpoint
+predit approve <show>/<episode>            # advance past awaiting_human (non-interactive)
+predit revise <show>/<episode> "<note>"    # loop the current stage with revision notes
+predit export <show>/<episode> --target capcut    # NLE handoff
+predit ls pipelines | playbooks | tools | starters | shows
+predit update                              # refresh .predit/ cache from the installed harness
+```
+
+## What not to do
+
+- Do not skip the pipeline.
+- Do not call generation tools without reading their Layer 3 vendor skill.
+- Do not begin asset generation before user approval on the production plan.
+- Do not change provider, model, or render runtime without telling the user and getting approval.
+- Do not silently downgrade motion-led briefs to still-led output.
+- Do not edit anything inside `.predit/` by hand — it is a cache. Override by placing same-named files in the project-local paths (`./pipelines/`, `./skills/`, etc.).
