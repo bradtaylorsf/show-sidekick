@@ -25,6 +25,15 @@ export type KnownCapability =
   | "transcript_fetch"
   | "clip_embedding"
   | "corpus_index"
+  | "video_analysis"
+  | "video_understanding"
+  | "video_download"
+  | "source_media_review"
+  | "visual_qa"
+  | "composition_validation"
+  | "lip_sync"
+  | "talking_head"
+  | "avatar_video"
   | "stock_image";
 
 export type Capability = KnownCapability | (string & {});

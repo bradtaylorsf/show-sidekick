@@ -11,6 +11,7 @@ export const SourceMediaReviewSchema = z
             .record(z.string(), z.unknown())
             .refine((probe) => Object.keys(probe).length > 0, "technical_probe must not be empty"),
           content_summary: z.string(),
+          planning_implications: z.array(z.string()).default([]),
         }),
       )
       .min(1),
