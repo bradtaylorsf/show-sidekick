@@ -7,6 +7,8 @@ export * from "./pattern-match.js";
 export * from "./playbook-check.js";
 export * from "./reference-alignment.js";
 export * from "./runner.js";
+export * from "./runtime-swap.js";
+export * from "./sample-first.js";
 export * from "./scene-pacing.js";
 export * from "./scene-variation.js";
 export * from "./schema-validate.js";

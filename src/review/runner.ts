@@ -30,6 +30,8 @@ import { enforceCHAI, type CHAIEnforcementEvent } from "./specificity.js";
 import { checkSkillCompliance } from "./skill-compliance.js";
 import { checkSourceMediaEnforcement, type UserSuppliedMedia } from "./source-media-enforcement.js";
 import { evaluateSuccessCriteria } from "./success-criteria.js";
+import { checkRuntimeSwap } from "./runtime-swap.js";
+import { checkSampleFirstProtocol } from "./sample-first.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -68,6 +70,11 @@ export type ReviewContext = {
   expectedResolution?: { width: number; height: number };
   availableRuntimes?: RenderRuntime[];
   motionRequired?: boolean;
+  pipelineSlug?: string;
+  estimatedCostUsd?: number;
+  estimatedTimeMinutes?: number;
+  referenceDriven?: boolean;
+  heroScenePresent?: boolean;
   checkpoint?: Checkpoint;
   getAgentSkills?: (toolName: string) => readonly string[] | undefined;
 };
@@ -154,6 +161,17 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
     }),
   );
   rawFindings.push(
+    ...checkSampleFirstProtocol(stageSlug, artifact, {
+      pipelineSlug: ctx.pipelineSlug,
+      estimatedCostUsd: ctx.estimatedCostUsd,
+      estimatedTimeMinutes: ctx.estimatedTimeMinutes,
+      referenceDriven: ctx.referenceDriven,
+      motionRequired: ctx.motionRequired,
+      heroScenePresent: ctx.heroScenePresent,
+      decisionLog: ctx.decisionLog,
+    }),
+  );
+  rawFindings.push(
     ...checkFinalReview(stageSlug, artifact, {
       deliveryPromise: ctx.deliveryPromise,
       proposalPacket: ctx.proposalPacket,
@@ -164,6 +182,13 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
       decisionLog: ctx.decisionLog,
       narrationRequired: ctx.narrationRequired,
       expectedResolution: ctx.expectedResolution,
+    }),
+  );
+  rawFindings.push(
+    ...checkRuntimeSwap(stageSlug, artifact, {
+      proposalPacket: ctx.proposalPacket,
+      renderReport: ctx.renderReport,
+      decisionLog: ctx.decisionLog,
     }),
   );
   if (ctx.checkpoint !== undefined && ctx.getAgentSkills !== undefined) {
