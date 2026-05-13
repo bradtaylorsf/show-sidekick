@@ -8,6 +8,19 @@ This file is the operating contract for agents (Claude Code, Codex, others) work
 
 A show-first AI pre-production harness for video. Each show owns its pipeline, look, characters, brand. Episodes are the unit of work — one episode equals one rendered output. The harness ships as a CLI; users run it inside their own folder. Audio is the master clock for music-led content; voiceover is the master clock for narration-led content. The harness assembles a rough cut and an editor handoff (EDL / Premiere XML / CapCut draft) so a human can finish in a real NLE.
 
+## Alpha Loop orchestration
+
+This repo is initialized for Alpha Loop. `.alpha-loop.yaml` is the loop config, and `IMPLEMENTATION.md` is structured for `alpha-loop run --epic <N>`.
+
+Default loop roles:
+
+- Claude plans.
+- Codex implements and fixes tests.
+- Claude reviews.
+- Codex validates when live verification is needed.
+
+Alpha Loop source-of-truth agent assets live in `.alpha-loop/templates/` and sync to `.claude/`, `.codex/`, and `.agents/`. Edit `.alpha-loop/templates/` for loop agent/skill changes; do not hand-edit synced copies unless you are intentionally debugging sync output.
+
 ## Read order on first contact
 
 1. [`specs/README.md`](specs/README.md) — the spec index.

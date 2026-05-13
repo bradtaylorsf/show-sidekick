@@ -16,6 +16,7 @@ music_library/
 # Contains references to a separate reference codebase used during the initial
 # clean-room build. Removed before flipping this repo public.
 .migration/
+
 # Alpha-loop ephemeral data (not shared)
 .alpha-loop/sessions/
 .alpha-loop/auth/
