@@ -5,10 +5,12 @@ import { defineTool } from "../registry/index.js";
 
 const DEFAULT_AUBIO_TIMEOUT_MS = 30_000;
 const DEFAULT_AUBIO_MAX_BUFFER = 4 * 1024 * 1024;
+const AUBIO_INSTALL = "brew install aubio (macOS) or apt install aubio-tools (Linux)";
 
 const inputSchema = z.object({
   audio_path: z.string(),
   expect_bpm: z.tuple([z.number(), z.number()]).optional(),
+  time_signature: z.tuple([z.number().int().positive(), z.number().int().positive()]).optional(),
 });
 
 const beatSchema = z.object({
@@ -30,7 +32,7 @@ export default defineTool({
   integration: {
     kind: "binary",
     binary: "aubio",
-    install: "brew install aubio (macOS) or apt install aubio-tools (Linux)",
+    install: AUBIO_INSTALL,
   },
   best_for: "beat and tempo detection through aubio beat / aubio tempo",
   input: inputSchema,
@@ -41,7 +43,7 @@ export default defineTool({
       runAubio(["beat", params.audio_path], params.audio_path),
     ]);
     const beatTimes = parseAubioBeatOutput(beatOutput.stdout);
-    const beats = buildAubioBeatGrid(beatTimes);
+    const beats = buildAubioBeatGrid(beatTimes, params.time_signature?.[0]);
     const bpm = selectAubioBpm(parseAubioTempoOutput(tempoOutput.stdout), params.expect_bpm) ?? inferBpm(beats);
 
     if (bpm === undefined) {
@@ -80,6 +82,11 @@ function runAubio(args: string[], audioPath: string): Promise<{ stdout: string; 
       { encoding: "utf8", maxBuffer: DEFAULT_AUBIO_MAX_BUFFER, timeout: DEFAULT_AUBIO_TIMEOUT_MS },
       (error, stdout, stderr) => {
         if (error) {
+          if (isMissingBinary(error)) {
+            reject(new Error(`aubio binary not on PATH. Install: ${AUBIO_INSTALL}`));
+            return;
+          }
+
           reject(new Error(`aubio ${args[0]} failed for ${audioPath}: ${error.message}${stderr ? `\n${stderr}` : ""}`));
           return;
         }
@@ -110,13 +117,14 @@ export function selectAubioBpm(candidates: number[], expectBpm: [number, number]
   return inRange.sort((left, right) => Math.abs(left - midpoint) - Math.abs(right - midpoint))[0];
 }
 
-export function buildAubioBeatGrid(times: number[]): Beat[] {
+export function buildAubioBeatGrid(times: number[], downbeatEvery = 4): Beat[] {
   const medianInterval = median(intervals(times));
+  const modulo = requirePositiveInteger(downbeatEvery, "downbeatEvery");
 
   return times.map((time_s, index) => ({
     time_s: roundSeconds(time_s),
     strength: beatStrength(times, index, medianInterval),
-    is_downbeat: index % 4 === 0,
+    is_downbeat: index % modulo === 0,
   }));
 }
 
@@ -191,4 +199,16 @@ function roundSeconds(value: number): number {
 
 function roundStrength(value: number): number {
   return Math.round(Math.max(0, Math.min(1, value)) * 1000) / 1000;
+}
+
+function isMissingBinary(error: Error): error is NodeJS.ErrnoException {
+  return "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT";
+}
+
+function requirePositiveInteger(value: number, field: string): number {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${field} must be a positive integer`);
+  }
+
+  return value;
 }

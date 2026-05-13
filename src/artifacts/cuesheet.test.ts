@@ -37,6 +37,11 @@ describe("CuesheetSchema", () => {
 
     await expect(readCuesheet(root, "show", "episode")).rejects.toThrow("Config error");
   });
+
+  it("rejects unsafe show or episode path segments", () => {
+    expect(() => cuesheetPath("/project", "../show", "episode")).toThrow("invalid show path segment");
+    expect(() => cuesheetPath("/project", "show", "../episode")).toThrow("invalid episode path segment");
+  });
 });
 
 async function scratchProject(): Promise<string> {
@@ -56,6 +61,7 @@ function cuesheet(): Cuesheet {
     },
     master_clock: "audio",
     bpm: 120,
+    transcription_confidence: { average: 0.99, low_confidence: false },
     segments: [
       {
         start_s: 0,

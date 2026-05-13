@@ -7,6 +7,7 @@ import type { AudioTrack, Beat } from "./types.js";
 type BeatToolInput = {
   audio_path: string;
   expect_bpm?: [number, number];
+  time_signature?: [number, number];
 };
 
 type BeatToolOutput = {
@@ -17,6 +18,7 @@ type BeatToolOutput = {
 const beatInput = z.object({
   audio_path: z.string(),
   expect_bpm: z.tuple([z.number(), z.number()]).optional(),
+  time_signature: z.tuple([z.number(), z.number()]).optional(),
 });
 
 const beatOutput = z.object({
@@ -53,6 +55,18 @@ describe("detectBeats", () => {
 
     expect(result.beats.map((beat) => beat.is_downbeat)).toEqual([true, false, false, false, true, false, false, false, true]);
   });
+
+  it("forwards known time signatures so backends can override the downbeat cadence", async () => {
+    const calls: BeatToolInput[] = [];
+    const registry = new Registry({
+      tools: [beatTool(calls, { bpm: 90, beats: beats(7, 3) })],
+    });
+
+    const result = await detectBeats(track(), { registry, time_signature: [3, 4] });
+
+    expect(calls).toEqual([{ audio_path: "/tmp/audio.wav", time_signature: [3, 4] }]);
+    expect(result.beats.map((beat) => beat.is_downbeat)).toEqual([true, false, false, true, false, false, true]);
+  });
 });
 
 function track(): AudioTrack {
@@ -64,11 +78,11 @@ function track(): AudioTrack {
   };
 }
 
-function beats(count: number): Beat[] {
+function beats(count: number, downbeatEvery = 4): Beat[] {
   return Array.from({ length: count }, (_value, index) => ({
     time_s: index * 0.5,
     strength: 1,
-    is_downbeat: index % 4 === 0,
+    is_downbeat: index % downbeatEvery === 0,
   }));
 }
 

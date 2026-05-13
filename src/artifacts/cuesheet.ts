@@ -1,6 +1,7 @@
-import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import { atomicWrite } from "../checkpoints/io.js";
+import { projectDir } from "../checkpoints/paths.js";
 import { loadJson } from "../config/loader.js";
 
 export const WordSchema = z.object({
@@ -62,6 +63,12 @@ export const CuesheetSchema = z.object({
   audio: AudioTrackSchema,
   master_clock: z.enum(["audio", "voiceover"]),
   bpm: z.number().positive().optional(),
+  transcription_confidence: z
+    .object({
+      average: z.number().min(0).max(1),
+      low_confidence: z.boolean(),
+    })
+    .optional(),
   segments: z.array(SegmentSchema),
   sections: z.array(SectionSchema),
   beats: z.array(BeatSchema),
@@ -72,7 +79,7 @@ export const CuesheetSchema = z.object({
 export type Cuesheet = z.infer<typeof CuesheetSchema>;
 
 export function cuesheetPath(projectRoot: string, show: string, episode: string): string {
-  return path.join(projectRoot, "projects", show, episode, "cuesheet.json");
+  return path.join(projectDir(projectRoot, show, episode), "cuesheet.json");
 }
 
 export async function writeCuesheet(
@@ -83,12 +90,8 @@ export async function writeCuesheet(
 ): Promise<string> {
   const parsed = CuesheetSchema.parse(cuesheet);
   const filePath = cuesheetPath(projectRoot, show, episode);
-  const dir = path.dirname(filePath);
-  const tempPath = path.join(dir, `.cuesheet.${process.pid}.${Date.now()}.tmp`);
 
-  await mkdir(dir, { recursive: true });
-  await writeFile(tempPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
-  await rename(tempPath, filePath);
+  await atomicWrite(filePath, `${JSON.stringify(parsed, null, 2)}\n`);
 
   return filePath;
 }

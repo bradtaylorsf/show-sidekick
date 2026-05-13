@@ -67,6 +67,20 @@ describe("aubio tool", () => {
     expect(beats.every((beat) => beat.strength >= 0 && beat.strength <= 1)).toBe(true);
   });
 
+  it("marks every third beat as downbeat when 3/4 time is supplied", () => {
+    const beats = buildAubioBeatGrid(parseAubioBeatOutput("0.000\n0.500\n1.000\n1.500\n2.000\n2.500\n"), 3);
+
+    expect(beats.map((beat) => beat.is_downbeat)).toEqual([true, false, false, true, false, false]);
+  });
+
+  it("surfaces install guidance when execute cannot spawn aubio", async () => {
+    stubMissingBinaryPath();
+
+    await expect(tool.execute({ audio_path: "/tmp/missing.wav" }, logger())).rejects.toThrow(
+      "aubio binary not on PATH. Install: brew install aubio",
+    );
+  });
+
   it.skipIf(!hasAubio || !hasFfmpeg)("detects a 120 BPM click fixture within tolerance", async () => {
     const dir = mkdtempSync(join(tmpdir(), "predit-aubio-fixture-"));
     scratchDirs.push(dir);

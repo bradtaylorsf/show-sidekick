@@ -19,6 +19,12 @@ Produce a trustworthy `projects/<show>/<episode>/cuesheet.json` so scene plannin
 3. Revise labels or climax points when the algorithm is plausible but not perceptually right.
 4. Leave the final cuesheet readable for the next stage.
 
+## Transcript Review
+
+- If `transcription_confidence.low_confidence` is true, treat the transcript as suspect and flag it for script-stage review.
+- Correct obvious word errors before downstream script or caption work depends on them.
+- Keep confidence metadata intact when manually revising transcript text.
+
 ## Section Review
 
 - Confirm section starts line up with audible changes, not just minor loudness movement.

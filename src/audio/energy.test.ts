@@ -1,13 +1,31 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { findInstrumentalDips, findSectionBoundaries, probeEnergy } from "./energy.js";
+import { createPcmEnergyAccumulator, findInstrumentalDips, findSectionBoundaries, probeEnergy } from "./energy.js";
 import { load } from "./load.js";
 import type { Word } from "./types.js";
 
 const hasAudioBins = hasBinary("ffmpeg") && hasBinary("ffprobe");
 
 describe("probeEnergy", () => {
+  it("computes window energy incrementally from chunked PCM without buffering the full track", () => {
+    const accumulator = createPcmEnergyAccumulator(
+      { path: "/tmp/long.wav", duration_s: 8 * 60, sample_rate: 10, channels: 1 },
+      { window_s: 60 },
+    );
+    const oneMinute = pcmSamples(Array.from({ length: 600 }, () => 0.5));
+
+    for (let index = 0; index < 8; index += 1) {
+      accumulator.push(oneMinute.subarray(0, 401));
+      accumulator.push(oneMinute.subarray(401));
+    }
+
+    const windows = accumulator.finish();
+
+    expect(windows).toHaveLength(8);
+    expect(windows.every((window) => window.rms > 0.49 && window.rms < 0.51)).toBe(true);
+  });
+
   it.skipIf(!hasAudioBins)("finds a clear section break when loudness drops by at least 5 LUFS", async () => {
     const track = await load(fixture("clear-break.mp3"));
     const windows = await probeEnergy(track, { window_s: 0.5 });
@@ -51,4 +69,15 @@ function hasBinary(binary: string): boolean {
   } catch {
     return false;
   }
+}
+
+function pcmSamples(samples: number[]): Buffer {
+  const buffer = Buffer.alloc(samples.length * 2);
+
+  samples.forEach((sample, index) => {
+    const clamped = Math.max(-1, Math.min(1, sample));
+    buffer.writeInt16LE(Math.round(clamped * 32767), index * 2);
+  });
+
+  return buffer;
 }

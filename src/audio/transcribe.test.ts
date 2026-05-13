@@ -62,6 +62,7 @@ describe("transcribe", () => {
   it("retries with large-v3 when music symbols exceed 20 percent of tokens", async () => {
     const calls: ToolCall[] = [];
     const events: Array<{ name: string; payload?: unknown }> = [];
+    const decisions: unknown[] = [];
     const registry = new Registry({
       tools: [
         transcriptionTool("whisper-cpp", "whisper", calls, [
@@ -74,6 +75,10 @@ describe("transcribe", () => {
     const result = await transcribe(track(), {
       registry,
       logger: captureLogger(events),
+      recordDecision: async (entry) => {
+        decisions.push(entry);
+      },
+      decisionTimestamp: "2026-05-13T12:00:00.000Z",
     });
 
     expect(calls.map((call) => call.model)).toEqual(["medium.en", "large-v3"]);
@@ -82,6 +87,20 @@ describe("transcribe", () => {
       name: "provider_selection",
       payload: { picked: "large-v3", reason: "music_symbol_ratio>0.20", initial: "medium.en" },
     });
+    expect(decisions).toContainEqual(
+      expect.objectContaining({
+        id: "transcription_retry-2026-05-13T12-00-00-000Z",
+        stage: "cuesheet",
+        category: "provider_selection",
+        scope: { capability: "transcribe", provider: "whisper-cpp" },
+        picked: "whisper-cpp:large-v3",
+        options_considered: expect.arrayContaining([
+          expect.objectContaining({ label: "whisper-cpp:medium.en", rejected_because: expect.stringContaining("retry required") }),
+          expect.objectContaining({ label: "whisper-cpp:large-v3", rejected_because: null }),
+        ]),
+        user_visible: true,
+      }),
+    );
     expect(result.segments[0]?.text).toBe("clean final words");
   });
 

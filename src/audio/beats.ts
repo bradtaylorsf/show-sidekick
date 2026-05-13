@@ -5,6 +5,7 @@ import type { AudioTrack, Beat } from "./types.js";
 
 export interface DetectBeatsOptions {
   expect_bpm?: [number, number];
+  time_signature?: [number, number];
   prefer?: string[];
   registry?: Registry;
   logger?: ToolLogger;
@@ -19,6 +20,7 @@ export interface BeatDetection {
 type DetectBeatsToolInput = {
   audio_path: string;
   expect_bpm?: [number, number];
+  time_signature?: [number, number];
 };
 
 type DetectBeatsToolOutput = BeatDetection;
@@ -34,6 +36,7 @@ export async function detectBeats(track: AudioTrack, options: DetectBeatsOptions
     {
       audio_path: track.path,
       ...(options.expect_bpm === undefined ? {} : { expect_bpm: options.expect_bpm }),
+      ...(options.time_signature === undefined ? {} : { time_signature: options.time_signature }),
     },
     ctx,
   );

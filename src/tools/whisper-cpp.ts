@@ -6,6 +6,9 @@ import { z } from "zod";
 import type { Segment, Word } from "../audio/types.js";
 import { defineTool } from "../registry/index.js";
 
+const WHISPER_CPP_INSTALL =
+  "brew install whisper-cpp (macOS) or build from https://github.com/ggerganov/whisper.cpp; ensure whisper-cli is on PATH and provide a model via WHISPER_MODEL or ~/.cache/whisper";
+
 const wordSchema = z.object({
   text: z.string(),
   start_s: z.number(),
@@ -21,8 +24,7 @@ export default defineTool({
   integration: {
     kind: "binary",
     binary: "whisper-cli",
-    install:
-      "brew install whisper-cpp (macOS) or build from https://github.com/ggerganov/whisper.cpp; ensure whisper-cli is on PATH and provide a model via WHISPER_MODEL or ~/.cache/whisper",
+    install: WHISPER_CPP_INSTALL,
   },
   best_for:
     "local word-level ASR; default medium.en for English, medium for other languages, large-v3 retry for music-heavy audio",
@@ -99,6 +101,11 @@ function runWhisperCli(args: string[], sourceAudioPath: string): Promise<void> {
       { encoding: "utf8", maxBuffer: WHISPER_MAX_BUFFER, timeout: WHISPER_TIMEOUT_MS },
       (error, _stdout, stderr) => {
         if (error) {
+          if (isMissingBinary(error)) {
+            reject(new Error(`whisper-cli binary not on PATH. Install: ${WHISPER_CPP_INSTALL}`));
+            return;
+          }
+
           reject(new Error(`whisper-cli failed for ${sourceAudioPath}: ${error.message}${stderr ? `\n${stderr}` : ""}`));
           return;
         }
@@ -264,4 +271,8 @@ function readConfidence(record: Record<string, unknown>): number {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isMissingBinary(error: Error): error is NodeJS.ErrnoException {
+  return "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT";
 }

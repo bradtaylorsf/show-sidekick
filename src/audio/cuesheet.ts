@@ -1,5 +1,7 @@
+import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { Registry, ToolLogger } from "../registry/index.js";
 import { CuesheetSchema, type Cuesheet } from "../artifacts/cuesheet.js";
+import { probeEnergy } from "./energy.js";
 import { load } from "./load.js";
 import { transcribe, type TranscribeOptions } from "./transcribe.js";
 import { detectSections, type DetectSectionsOptions } from "./sections.js";
@@ -17,6 +19,8 @@ export interface BuildCuesheetOptions {
   registry?: Registry;
   logger?: ToolLogger;
   projectRoot?: string;
+  recordDecision?: (entry: DecisionEntry) => Promise<void> | void;
+  decisionTimestamp?: string;
 }
 
 export async function buildCuesheet(
@@ -32,14 +36,32 @@ export async function buildCuesheet(
 
   const transcriptOptions = enabledOptions(options.transcribe, true);
   const transcription = transcriptOptions
-    ? await transcribe(track, { ...common, ...transcriptOptions })
-    : { segments: options.existing?.segments ?? [] };
+    ? await transcribe(track, {
+        ...common,
+        recordDecision: options.recordDecision,
+        decisionTimestamp: options.decisionTimestamp,
+        decisionStage: "cuesheet",
+        ...transcriptOptions,
+      })
+    : undefined;
 
   const sectionOptions = enabledOptions(options.detect_sections, true);
+  const climaxOptions = enabledOptions(options.detect_climax, true);
+  const providedWindows = sectionOptions?.windows ?? climaxOptions?.windows;
+  const sharedWindows =
+    sectionOptions || climaxOptions
+      ? providedWindows ??
+        (await probeEnergy(track, {
+          window_s: sectionOptions?.window_s ?? climaxOptions?.window_s,
+          timeoutMs: sectionOptions?.timeoutMs ?? climaxOptions?.timeoutMs,
+        }))
+      : undefined;
+  const segments = transcription?.segments ?? options.existing?.segments ?? [];
   const sections = sectionOptions
     ? await detectSections(track, {
         ...sectionOptions,
-        transcript_hint: sectionOptions.transcript_hint ?? transcription.segments,
+        transcript_hint: sectionOptions.transcript_hint ?? segments,
+        windows: sharedWindows,
       })
     : options.existing?.sections ?? [];
 
@@ -47,20 +69,28 @@ export async function buildCuesheet(
   const beatDetection = beatOptions ? await detectBeats(track, { ...common, ...beatOptions }) : undefined;
 
   const preservedClimax = preserveNonAlgorithmicClimax(options.existing?.climax ?? []);
-  const climaxOptions = enabledOptions(options.detect_climax, true);
   const climax = climaxOptions
     ? await detectClimax(track, {
         ...climaxOptions,
         sections,
         manual: preservedClimax,
+        windows: sharedWindows,
       })
     : options.existing?.climax ?? preservedClimax;
+  const transcriptionConfidence =
+    transcription === undefined
+      ? options.existing?.transcription_confidence
+      : {
+          average: transcription.average_confidence,
+          low_confidence: transcription.low_confidence,
+        };
 
   return CuesheetSchema.parse({
     audio: track,
     master_clock: options.master_clock ?? options.existing?.master_clock ?? "audio",
     bpm: beatDetection?.bpm ?? options.existing?.bpm,
-    segments: transcription.segments,
+    ...(transcriptionConfidence === undefined ? {} : { transcription_confidence: transcriptionConfidence }),
+    segments,
     sections,
     beats: beatDetection?.beats ?? options.existing?.beats ?? [],
     climax,

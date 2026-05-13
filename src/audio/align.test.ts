@@ -50,6 +50,49 @@ describe("alignScenes", () => {
 
     expect(anchors[1]).toMatchObject({ start_s: 7.9, snapped_to: "manual", source: {} });
   });
+
+  it("uses voiceover defaults and rejects audio-only snap targets under a voiceover master", () => {
+    const anchors = alignScenes(scenePlan(), cuesheet(), {
+      master: "voiceover",
+      snap_to: [],
+      max_scene_duration_s: 5,
+    });
+
+    expect(anchors[0]).toMatchObject({ start_s: 0.2, snapped_to: "word", source: { word_id: "0:0" } });
+    expect(() =>
+      alignScenes(scenePlan(), cuesheet(), {
+        master: "voiceover",
+        snap_to: ["downbeat"],
+        max_scene_duration_s: 5,
+      }),
+    ).toThrow("voiceover master can only snap scenes to word or manual anchors");
+  });
+
+  it("keeps anchors ordered and non-overlapping when snapping pushes an earlier scene forward", () => {
+    const anchors = alignScenes(closeScenePlan(), cuesheet(), {
+      master: "audio",
+      snap_to: ["section_start"],
+      max_scene_duration_s: 5,
+    });
+
+    expect(anchors[0]?.start_s).toBe(8);
+    expect(anchors[0]?.end_s).toBe(8.5);
+    expect(anchors[1]?.start_s).toBeGreaterThanOrEqual(anchors[0]?.end_s ?? 0);
+    expect(anchors[1]).toMatchObject({ snapped_to: "manual", source: {} });
+  });
+
+  it("does not yank a hero scene to a far-away climax", () => {
+    const anchors = alignScenes(scenePlan(), { ...cuesheet(), climax: [{ time_s: 0.5, type: "peak", intensity: 1, source: "algorithm" }] }, {
+      master: "audio",
+      snap_to: ["section_start", "downbeat"],
+      align_climax_scene_to: "hero",
+      max_scene_duration_s: 5,
+    });
+    const hero = anchors.find((anchor) => anchor.scene_id === "hero");
+
+    expect(hero?.snapped_to).not.toBe("climax");
+    expect(hero?.start_s).toBeGreaterThan(7);
+  });
 });
 
 function cuesheet(): Cuesheet {
@@ -93,6 +136,15 @@ function scenePlan(): ScenePlan {
       scene("intro", 0, 0, 6, "hook"),
       scene("hero", 1, 7.9, 14, "climax"),
       scene("outro", 2, 14.2, 16, "resolution"),
+    ],
+  };
+}
+
+function closeScenePlan(): ScenePlan {
+  return {
+    scenes: [
+      scene("first", 0, 7.8, 8.3, "hook"),
+      scene("second", 1, 8.1, 9, "rising_action"),
     ],
   };
 }

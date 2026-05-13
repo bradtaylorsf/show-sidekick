@@ -7,6 +7,7 @@ export interface DetectSectionsOptions {
   silence_threshold_db?: number;
   silence_min_duration_s?: number;
   transcript_hint?: Segment[];
+  windows?: EnergyWindow[];
   window_s?: number;
   timeoutMs?: number;
 }
@@ -39,7 +40,7 @@ export async function detectSections(track: AudioTrack, options: DetectSectionsO
       min_duration_s: normalized.silence_min_duration_s,
       timeoutMs: normalized.timeoutMs,
     }),
-    probeEnergy(track, { window_s: normalized.window_s, timeoutMs: normalized.timeoutMs }),
+    normalized.windows ?? probeEnergy(track, { window_s: normalized.window_s, timeoutMs: normalized.timeoutMs }),
   ]);
 
   return detectSectionsFromWindows(track, windows, {
@@ -79,14 +80,16 @@ export function detectSectionsFromWindows(
   });
 }
 
-function normalizeOptions(options: DetectSectionsOptions): Required<Omit<DetectSectionsOptions, "transcript_hint">> & {
+function normalizeOptions(options: DetectSectionsOptions): Required<Omit<DetectSectionsOptions, "transcript_hint" | "windows">> & {
   transcript_hint?: Segment[];
+  windows?: EnergyWindow[];
 } {
   const normalized = {
     min_section_s: options.min_section_s ?? DEFAULT_MIN_SECTION_S,
     silence_threshold_db: options.silence_threshold_db ?? DEFAULT_SILENCE_THRESHOLD_DB,
     silence_min_duration_s: options.silence_min_duration_s ?? DEFAULT_SILENCE_MIN_DURATION_S,
     transcript_hint: options.transcript_hint,
+    windows: options.windows,
     window_s: options.window_s ?? DEFAULT_WINDOW_S,
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
   };

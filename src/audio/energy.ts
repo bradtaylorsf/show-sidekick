@@ -1,9 +1,8 @@
-import { execFile } from "node:child_process";
+import { spawn } from "node:child_process";
 import type { AudioTrack, EnergyWindow, InstrumentalDip, SectionBoundary, Word } from "./types.js";
 
 const DEFAULT_WINDOW_S = 0.5;
 const DEFAULT_FFMPEG_TIMEOUT_MS = 30_000;
-const DEFAULT_FFMPEG_MAX_BUFFER = 64 * 1024 * 1024;
 const SILENCE_LUFS = -120;
 
 export async function probeEnergy(
@@ -16,28 +15,13 @@ export async function probeEnergy(
     throw new Error("window_s must be a positive number");
   }
 
-  const sampleRate = requirePositiveInteger(track.sample_rate, "track.sample_rate");
-  const channels = requirePositiveInteger(track.channels, "track.channels");
-  const pcm = await decodePcm(track, { timeoutMs: options.timeoutMs ?? DEFAULT_FFMPEG_TIMEOUT_MS });
-  const windowFrames = Math.max(1, Math.round(window_s * sampleRate));
-  const totalFrames = Math.floor(pcm.length / 2 / channels);
-  const windows: EnergyWindow[] = [];
+  const accumulator = createPcmEnergyAccumulator(track, { window_s });
 
-  for (let startFrame = 0; startFrame / sampleRate < track.duration_s; startFrame += windowFrames) {
-    const endFrame = Math.min(startFrame + windowFrames, Math.ceil(track.duration_s * sampleRate));
-    const start_s = startFrame / sampleRate;
-    const end_s = Math.min(track.duration_s, endFrame / sampleRate);
-    const rms = calculateRms(pcm, startFrame, Math.min(endFrame, totalFrames), channels);
+  await streamPcm(track, { timeoutMs: options.timeoutMs ?? DEFAULT_FFMPEG_TIMEOUT_MS }, (chunk) => {
+    accumulator.push(chunk);
+  });
 
-    windows.push({
-      start_s,
-      end_s,
-      rms,
-      lufs: rmsToLufs(rms),
-    });
-  }
-
-  return windows;
+  return accumulator.finish();
 }
 
 export function findSectionBoundaries(
@@ -93,7 +77,63 @@ export function findInstrumentalDips(
   return dips;
 }
 
-function decodePcm(track: AudioTrack, options: { timeoutMs: number }): Promise<Buffer> {
+export function createPcmEnergyAccumulator(
+  track: AudioTrack,
+  options: { window_s?: number } = {},
+): { push(chunk: Buffer): void; finish(): EnergyWindow[] } {
+  const window_s = options.window_s ?? DEFAULT_WINDOW_S;
+  const sampleRate = requirePositiveInteger(track.sample_rate, "track.sample_rate");
+  const channels = requirePositiveInteger(track.channels, "track.channels");
+  const windowFrames = Math.max(1, Math.round(window_s * sampleRate));
+  const totalFrames = Math.max(1, Math.ceil(track.duration_s * sampleRate));
+  const windowCount = Math.max(1, Math.ceil(totalFrames / windowFrames));
+  const sums = Array.from({ length: windowCount }, () => ({ sumSquares: 0, sampleCount: 0 }));
+  let sampleIndex = 0;
+  let carry = Buffer.alloc(0);
+
+  return {
+    push(chunk: Buffer) {
+      const data = carry.length === 0 ? chunk : Buffer.concat([carry, chunk]);
+      const usableLength = data.length - (data.length % 2);
+
+      for (let offset = 0; offset < usableLength; offset += 2) {
+        const frameIndex = Math.floor(sampleIndex / channels);
+        sampleIndex += 1;
+
+        if (frameIndex >= totalFrames) {
+          continue;
+        }
+
+        const windowIndex = Math.min(Math.floor(frameIndex / windowFrames), windowCount - 1);
+        const sample = data.readInt16LE(offset) / 32768;
+        const bucket = sums[windowIndex] as { sumSquares: number; sampleCount: number };
+
+        bucket.sumSquares += sample * sample;
+        bucket.sampleCount += 1;
+      }
+
+      carry = usableLength === data.length ? Buffer.alloc(0) : Buffer.from(data.subarray(usableLength));
+    },
+    finish() {
+      return sums.map((bucket, index) => {
+        const startFrame = index * windowFrames;
+        const endFrame = Math.min(startFrame + windowFrames, totalFrames);
+        const start_s = startFrame / sampleRate;
+        const end_s = Math.min(track.duration_s, endFrame / sampleRate);
+        const rms = bucket.sampleCount === 0 ? 0 : Math.sqrt(bucket.sumSquares / bucket.sampleCount);
+
+        return {
+          start_s,
+          end_s,
+          rms,
+          lufs: rmsToLufs(rms),
+        };
+      });
+    },
+  };
+}
+
+function streamPcm(track: AudioTrack, options: { timeoutMs: number }, onChunk: (chunk: Buffer) => void): Promise<void> {
   const args = [
     "-hide_banner",
     "-nostats",
@@ -113,41 +153,60 @@ function decodePcm(track: AudioTrack, options: { timeoutMs: number }): Promise<B
   ];
 
   return new Promise((resolve, reject) => {
-    execFile(
+    const child = spawn(
       "ffmpeg",
       args,
-      { encoding: "buffer", maxBuffer: DEFAULT_FFMPEG_MAX_BUFFER, timeout: options.timeoutMs },
-      (error, stdout, stderr) => {
-        if (error) {
-          const stderrText = Buffer.isBuffer(stderr) ? stderr.toString("utf8") : stderr;
-          reject(new Error(`ffmpeg audio decode failed for ${track.path}: ${error.message}${stderrText ? `\n${stderrText}` : ""}`));
-          return;
-        }
-
-        resolve(Buffer.isBuffer(stdout) ? stdout : Buffer.from(stdout));
+      {
+        stdio: ["ignore", "pipe", "pipe"],
       },
     );
+    let stderr = "";
+    let processingError: unknown;
+    let timedOut = false;
+
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGKILL");
+    }, options.timeoutMs);
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      try {
+        onChunk(chunk);
+      } catch (error) {
+        processingError = error;
+        child.kill("SIGKILL");
+      }
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      if (stderr.length < 16_384) {
+        stderr += chunk.toString("utf8");
+      }
+    });
+    child.once("error", (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.once("close", (code) => {
+      clearTimeout(timeout);
+
+      if (processingError !== undefined) {
+        reject(processingError);
+        return;
+      }
+
+      if (timedOut) {
+        reject(new Error(`ffmpeg audio decode timed out after ${options.timeoutMs}ms for ${track.path}`));
+        return;
+      }
+
+      if (code !== 0) {
+        reject(new Error(`ffmpeg audio decode failed for ${track.path}: exited with code ${code}${stderr ? `\n${stderr}` : ""}`));
+        return;
+      }
+
+      resolve();
+    });
   });
-}
-
-function calculateRms(pcm: Buffer, startFrame: number, endFrame: number, channels: number): number {
-  const startSample = startFrame * channels;
-  const endSample = endFrame * channels;
-  let sumSquares = 0;
-  let sampleCount = 0;
-
-  for (let sample = startSample; sample < endSample; sample += 1) {
-    const byteOffset = sample * 2;
-    if (byteOffset + 1 >= pcm.length) {
-      break;
-    }
-
-    const value = pcm.readInt16LE(byteOffset) / 32768;
-    sumSquares += value * value;
-    sampleCount += 1;
-  }
-
-  return sampleCount === 0 ? 0 : Math.sqrt(sumSquares / sampleCount);
 }
 
 function rmsToLufs(rms: number): number {

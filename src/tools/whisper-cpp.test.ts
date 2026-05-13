@@ -42,6 +42,17 @@ describe("whisper-cpp tool", () => {
     }
   });
 
+  it("surfaces install guidance when execute cannot spawn whisper-cli", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "predit-whisper-missing-"));
+    const audioPath = join(dir, "audio.wav");
+    writeFileSync(audioPath, "fake audio");
+    stubMissingBinaryPath();
+
+    await expect(
+      tool.execute({ audio_path: audioPath, model: "medium.en" }, { projectRoot: dir, logger: captureLogger() }),
+    ).rejects.toThrow("whisper-cli binary not on PATH. Install: brew install whisper-cpp");
+  });
+
   it("executes whisper-cli with JSON word-timing output and parses segments", async () => {
     const dir = mkdtempSync(join(tmpdir(), "predit-whisper-test-"));
     const argsPath = join(dir, "args.txt");

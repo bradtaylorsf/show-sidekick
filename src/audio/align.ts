@@ -21,32 +21,56 @@ const DEFAULT_MAX_SCENE_DURATION_S = 5;
 
 export function alignScenes(scenePlan: ScenePlan, cuesheet: Cuesheet, options: AlignScenesOptions): SceneAnchor[] {
   const maxSceneDuration = options.max_scene_duration_s ?? DEFAULT_MAX_SCENE_DURATION_S;
+  const snapTo = options.snap_to.length === 0 ? defaultSnapTargets(options.master) : options.snap_to;
 
   if (!Number.isFinite(maxSceneDuration) || maxSceneDuration <= 0) {
     throw new Error("max_scene_duration_s must be a positive number");
   }
 
-  return [...scenePlan.scenes]
-    .sort((left, right) => left.order - right.order)
-    .map((scene) => {
-      const forcedClimax =
-        options.align_climax_scene_to && options.align_climax_scene_to === scene.slug
-          ? nearestClimaxCandidate(scene.start_s, cuesheet)
-          : undefined;
-      const candidate = forcedClimax ?? chooseCandidate(scene.start_s, cuesheet, options.snap_to);
-      const start_s = roundSeconds(candidate?.time_s ?? scene.start_s);
-      const originalDuration = Math.max(0, scene.end_s - scene.start_s);
-      const duration = Math.min(originalDuration, maxSceneDuration);
-      const end_s = roundSeconds(Math.min(cuesheet.audio.duration_s, start_s + duration));
+  validateMasterSnapTargets(options.master, snapTo);
 
-      return {
-        scene_id: scene.slug,
-        start_s,
-        end_s,
-        snapped_to: candidate?.snapped_to ?? "manual",
-        source: candidate?.source ?? {},
-      };
+  const anchors: SceneAnchor[] = [];
+  let previousEnd = 0;
+
+  for (const scene of [...scenePlan.scenes].sort((left, right) => left.order - right.order)) {
+    const forcedClimax =
+      options.align_climax_scene_to && options.align_climax_scene_to === scene.slug
+        ? nearestClimaxCandidate(scene.start_s, cuesheet, maxSceneDuration)
+        : undefined;
+    const candidate = forcedClimax ?? chooseCandidate(scene.start_s, cuesheet, snapTo);
+    const candidateStart = candidate?.time_s ?? scene.start_s;
+    const start_s = roundSeconds(Math.min(cuesheet.audio.duration_s, Math.max(candidateStart, previousEnd)));
+    const shiftedForOrder = start_s > roundSeconds(candidateStart);
+    const originalDuration = Math.max(0, scene.end_s - scene.start_s);
+    const duration = Math.min(originalDuration, maxSceneDuration);
+    const end_s = roundSeconds(Math.min(cuesheet.audio.duration_s, start_s + duration));
+
+    anchors.push({
+      scene_id: scene.slug,
+      start_s,
+      end_s,
+      snapped_to: shiftedForOrder ? "manual" : candidate?.snapped_to ?? "manual",
+      source: shiftedForOrder ? {} : candidate?.source ?? {},
     });
+    previousEnd = end_s;
+  }
+
+  return anchors;
+}
+
+function defaultSnapTargets(master: AlignScenesOptions["master"]): SnapTarget[] {
+  return master === "voiceover" ? ["word", "manual"] : ["section_start", "downbeat", "manual"];
+}
+
+function validateMasterSnapTargets(master: AlignScenesOptions["master"], snapTo: SnapTarget[]): void {
+  if (master !== "voiceover") {
+    return;
+  }
+
+  const invalid = snapTo.filter((snap) => snap !== "word" && snap !== "manual");
+  if (invalid.length > 0) {
+    throw new Error(`voiceover master can only snap scenes to word or manual anchors; got ${invalid.join(", ")}`);
+  }
 }
 
 function chooseCandidate(start_s: number, cuesheet: Cuesheet, snapTo: SnapTarget[]): Candidate | undefined {
@@ -108,7 +132,7 @@ function candidatesFor(snap: SnapTarget, cuesheet: Cuesheet): Candidate[] {
   return [];
 }
 
-function nearestClimaxCandidate(start_s: number, cuesheet: Cuesheet): Candidate | undefined {
+function nearestClimaxCandidate(start_s: number, cuesheet: Cuesheet, maxDistanceS: number): Candidate | undefined {
   const candidate = cuesheet.climax
     .map((climax, index) => ({
       time_s: climax.time_s,
@@ -118,7 +142,7 @@ function nearestClimaxCandidate(start_s: number, cuesheet: Cuesheet): Candidate 
     }))
     .sort((left, right) => left.distance - right.distance)[0];
 
-  if (!candidate) {
+  if (!candidate || candidate.distance > maxDistanceS) {
     return undefined;
   }
 

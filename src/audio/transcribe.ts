@@ -1,3 +1,4 @@
+import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { Registry, Tool, ToolContext, ToolLogger } from "../registry/index.js";
 import { NoToolAvailable } from "../registry/index.js";
 import * as defaultLogger from "../log/logger.js";
@@ -11,6 +12,9 @@ export interface TranscribeOptions {
   registry?: Registry;
   logger?: ToolLogger;
   projectRoot?: string;
+  recordDecision?: (entry: DecisionEntry) => Promise<void> | void;
+  decisionStage?: string;
+  decisionTimestamp?: string;
 }
 
 export interface Transcription {
@@ -45,6 +49,8 @@ export async function transcribe(track: AudioTrack, options: TranscribeOptions =
   const retry = shouldRetryWithLarge(initial.segments);
 
   if (retry.shouldRetry && initialModel !== LARGE_RETRY_MODEL) {
+    const decision = buildRetryDecision(tool, initialModel, retry, options);
+
     logger.event("provider_selection", {
       picked: LARGE_RETRY_MODEL,
       reason: retry.reason,
@@ -53,6 +59,7 @@ export async function transcribe(track: AudioTrack, options: TranscribeOptions =
       music_symbol_ratio: retry.musicSymbolRatio,
       garbled_ratio: retry.garbledRatio,
     });
+    await options.recordDecision?.(decision);
 
     return summarize(await runTool(tool, track, options, LARGE_RETRY_MODEL, ctx));
   }
@@ -190,4 +197,51 @@ function isGarbledToken(token: string): boolean {
 function hasLongConsonantRun(token: string): boolean {
   const normalized = token.toLowerCase().replace(/[^a-z]/gu, "");
   return /[bcdfghjklmnpqrstvwxyz]{8,}/u.test(normalized);
+}
+
+function buildRetryDecision(
+  tool: Tool<TranscribeToolInput, TranscribeToolOutput>,
+  initialModel: string,
+  retry: ReturnType<typeof shouldRetryWithLarge>,
+  options: TranscribeOptions,
+): DecisionEntry {
+  const timestamp = options.decisionTimestamp ?? new Date().toISOString();
+  const picked = `${tool.name}:${LARGE_RETRY_MODEL}`;
+
+  return {
+    id: `transcription_retry-${safeTimestamp(timestamp)}`,
+    stage: options.decisionStage ?? "cuesheet",
+    timestamp,
+    category: "provider_selection",
+    scope: {
+      capability: "transcribe",
+      provider: tool.provider,
+    },
+    options_considered: [
+      {
+        label: `${tool.name}:${initialModel}`,
+        rejected_because: `retry required: ${retry.reason}; music_symbol_ratio=${retry.musicSymbolRatio.toFixed(
+          3,
+        )}; garbled_ratio=${retry.garbledRatio.toFixed(3)}`,
+      },
+      {
+        label: picked,
+        rejected_because: null,
+        notes: "larger local whisper model selected after the initial transcript looked music-heavy or garbled",
+      },
+    ],
+    picked,
+    reason: `Initial ${initialModel} transcript exceeded the retry threshold (${retry.reason}); reran ASR with ${LARGE_RETRY_MODEL}.`,
+    confidence: confidenceFromRetryRatio(retry.ratio),
+    user_visible: true,
+    supersedes: null,
+  };
+}
+
+function confidenceFromRetryRatio(ratio: number): number {
+  return Math.round(Math.max(0.5, Math.min(0.95, 1 - ratio / 2)) * 1000) / 1000;
+}
+
+function safeTimestamp(timestamp: string): string {
+  return timestamp.replace(/[^a-z0-9]+/giu, "-").replace(/^-|-$/gu, "");
 }
