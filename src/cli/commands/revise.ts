@@ -6,6 +6,7 @@ import {
   readState,
   sampleCheckpointFile,
   stateFile,
+  updateState,
   writeSampleCheckpoint,
 } from "../../checkpoints/index.js";
 import { findProjectRoot, parseShowEpisode } from "../../paths/project.js";
@@ -22,6 +23,16 @@ type ReviseEvent = {
   checkpoint_path: string;
 };
 
+type StageRevisionEvent = {
+  event: "stage_revision_queued";
+  command: "revise";
+  target: string;
+  show: string;
+  episode: string;
+  stage: string;
+  revision_note: string;
+};
+
 export function createReviseHandler(io: CliIo) {
   return async (target: string, note: string, ...actionArgs: unknown[]): Promise<void> => {
     const command = actionArgs.at(-1) as Command;
@@ -32,6 +43,31 @@ export function createReviseHandler(io: CliIo) {
 
     if (!state) {
       throw new CheckpointMissingError(stateFile(projectRoot, show, episode));
+    }
+
+    if (state.current_stage) {
+      const revisionNotes = {
+        ...(state.revision_notes ?? {}),
+        [state.current_stage]: [...(state.revision_notes?.[state.current_stage] ?? []), note],
+      };
+      await updateState(projectRoot, show, episode, { revision_notes: revisionNotes });
+
+      if (options.json) {
+        const event: StageRevisionEvent = {
+          event: "stage_revision_queued",
+          command: "revise",
+          target,
+          show,
+          episode,
+          stage: state.current_stage,
+          revision_note: note,
+        };
+        io.stdout.write(`${JSON.stringify(event)}\n`);
+        return;
+      }
+
+      io.stdout.write(`revise: appended note to ${state.current_stage}\n`);
+      return;
     }
 
     const previousVersion = latestSampleVersion(state);

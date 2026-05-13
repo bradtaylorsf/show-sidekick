@@ -37,19 +37,18 @@ describe("createProgram", () => {
     expect(flags).toEqual(expect.arrayContaining(["--json", "--dry-run", "--verbose", "--no-color", "--config"]));
   });
 
-  it("emits parseable NDJSON for stub commands in json mode", async () => {
+  it("emits parseable NDJSON for remaining stub commands in json mode", async () => {
     const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "--json", "build", "show/episode"], { from: "node" });
+    await program.parseAsync(["node", "predit", "--json", "doctor"], { from: "node" });
 
-    const line = output().stdout.trim();
-    const event = JSON.parse(line) as { event: string; command: string; args: { target: string } };
+    const event = JSON.parse(output().stdout.trim()) as { event: string; command: string; args: Record<string, unknown> };
 
     expect(event).toEqual(
       expect.objectContaining({
         event: "stub",
-        command: "build",
-        args: { target: "show/episode" },
+        command: "doctor",
+        args: {},
       }),
     );
   });

@@ -64,6 +64,7 @@ The agent-facing setup menu reads naturally because of this — "logged in as X"
 export class Registry {
   async discover(): Promise<void>;       // glob src/tools/*.ts, register exports
   get(name: string): Tool | undefined;
+  all(): Tool[];
   byCapability(cap: Capability): Tool[];
   byProvider(provider: string): Tool[];
 
