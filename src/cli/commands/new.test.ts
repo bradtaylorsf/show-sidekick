@@ -56,6 +56,44 @@ describe("new command", () => {
     expect(show.defaults.pipeline).toBe("news-song");
   });
 
+  it("creates a show from a starter without clobbering starter show.yaml", async () => {
+    const root = await scratchProject();
+    await writeStarter(root, "example");
+    process.chdir(root);
+
+    const { program, output } = captureProgram();
+    await program.parseAsync(["node", "predit", "--json", "new", "show", "from-starter", "--from", "example"], {
+      from: "node",
+    });
+
+    const event = JSON.parse(output().stdout.trim()) as { event: string; pipelines: string[] };
+    expect(event).toEqual(expect.objectContaining({ event: "show_created", pipelines: ["cinematic"] }));
+    const show = await loadShow(root, "from-starter");
+    expect(show).toMatchObject({
+      slug: "from-starter",
+      defaults: { pipeline: "cinematic" },
+      pipelines: {
+        cinematic: {
+          playbook: "moody-cinematic",
+          runtime: "remotion",
+          aspect: "16:9",
+        },
+      },
+    });
+    expect(show.pipelines).not.toHaveProperty("default");
+  });
+
+  it("throws when a requested starter is missing", async () => {
+    const root = await scratchProject();
+    process.chdir(root);
+
+    const { program } = captureProgram();
+
+    await expect(
+      program.parseAsync(["node", "predit", "new", "show", "missing", "--from", "nope"], { from: "node" }),
+    ).rejects.toThrow(path.join(root, ".predit", "starters", "nope"));
+  });
+
   it("refuses to clobber an existing show directory", async () => {
     const root = await scratchProject();
     await mkdir(path.join(root, "shows", "existing"), { recursive: true });
@@ -137,4 +175,27 @@ function captureProgram() {
     program,
     output: () => ({ stdout, stderr }),
   };
+}
+
+async function writeStarter(root: string, name: string): Promise<void> {
+  const starterDir = path.join(root, ".predit", "starters", name);
+  await mkdir(path.join(starterDir, "brand"), { recursive: true });
+  await writeFile(
+    path.join(starterDir, "show.yaml"),
+    [
+      "slug: starter-template",
+      'display_name: "Starter Template"',
+      "created: 2026-05-12",
+      "brand: ./brand/",
+      "pipelines:",
+      "  cinematic:",
+      "    playbook: moody-cinematic",
+      "    runtime: remotion",
+      '    aspect: "16:9"',
+      "defaults:",
+      "  pipeline: cinematic",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
 }

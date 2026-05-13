@@ -45,7 +45,41 @@ export function createReviseHandler(io: CliIo) {
       throw new CheckpointMissingError(stateFile(projectRoot, show, episode));
     }
 
-    if (state.current_stage) {
+    const previousVersion = latestSampleVersion(state);
+
+    if (previousVersion > 0) {
+      const nextVersion = previousVersion + 1;
+      const previous = await readSampleCheckpoint(projectRoot, show, episode, previousVersion);
+      const checkpoint = await writeSampleCheckpoint(projectRoot, show, episode, nextVersion, {
+        cost_for_this_sample: previous.cost_for_this_sample,
+        cumulative_sample_cost: previous.cumulative_sample_cost,
+        projected_full_cost: previous.projected_full_cost,
+        sample_video_path: previous.sample_video_path,
+        revision_note: note,
+      });
+      const checkpointPath = sampleCheckpointFile(projectRoot, show, episode, checkpoint.version);
+
+      if (options.json) {
+        const event: ReviseEvent = {
+          event: "sample_revised",
+          command: "revise",
+          target,
+          show,
+          episode,
+          version: checkpoint.version,
+          revision_note: note,
+          checkpoint_path: checkpointPath,
+        };
+        io.stdout.write(`${JSON.stringify(event)}\n`);
+        return;
+      }
+
+      io.stdout.write(`revise: wrote sample_v${checkpoint.version} for ${show}/${episode}\n`);
+      return;
+    }
+
+    // current_stage is historical after approve; only queue a stage revision while the stage is actually blocked.
+    if (state.current_stage && isRevisableStageStatus(state.last_status)) {
       const revisionNotes = {
         ...(state.revision_notes ?? {}),
         [state.current_stage]: [...(state.revision_notes?.[state.current_stage] ?? []), note],
@@ -70,45 +104,10 @@ export function createReviseHandler(io: CliIo) {
       return;
     }
 
-    const previousVersion = latestSampleVersion(state);
-    const nextVersion = previousVersion + 1;
-    const previous = previousVersion > 0 ? await readPreviousSample(projectRoot, show, episode, previousVersion) : undefined;
-    const checkpoint = await writeSampleCheckpoint(projectRoot, show, episode, nextVersion, {
-      cost_for_this_sample: previous?.cost_for_this_sample ?? 0,
-      cumulative_sample_cost: previous?.cumulative_sample_cost ?? 0,
-      projected_full_cost: previous?.projected_full_cost ?? 0,
-      sample_video_path: previous?.sample_video_path ?? "",
-      revision_note: note,
-    });
-    const checkpointPath = sampleCheckpointFile(projectRoot, show, episode, checkpoint.version);
-
-    if (options.json) {
-      const event: ReviseEvent = {
-        event: "sample_revised",
-        command: "revise",
-        target,
-        show,
-        episode,
-        version: checkpoint.version,
-        revision_note: note,
-        checkpoint_path: checkpointPath,
-      };
-      io.stdout.write(`${JSON.stringify(event)}\n`);
-      return;
-    }
-
-    io.stdout.write(`revise: wrote sample_v${checkpoint.version} for ${show}/${episode}\n`);
+    throw new Error(`no awaiting sample or stage revision to revise for ${target}`);
   };
 }
 
-async function readPreviousSample(projectRoot: string, show: string, episode: string, version: number) {
-  try {
-    return await readSampleCheckpoint(projectRoot, show, episode, version);
-  } catch (error) {
-    if (error instanceof CheckpointMissingError) {
-      return undefined;
-    }
-
-    throw error;
-  }
+function isRevisableStageStatus(status: string | undefined): boolean {
+  return status === "awaiting_human" || status === "failed";
 }

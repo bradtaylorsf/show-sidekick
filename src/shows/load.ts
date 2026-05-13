@@ -87,15 +87,70 @@ function looksLikeFilePath(value: string): boolean {
     return false;
   }
 
+  if (looksLikeUrl(value)) {
+    return false;
+  }
+
   return (
     path.isAbsolute(value) ||
     value.startsWith("./") ||
     value.startsWith("../") ||
-    value.includes("/") ||
-    value.includes("\\") ||
-    path.extname(value) !== ""
+    looksLikeWindowsAbsolutePath(value) ||
+    looksLikeProjectRelativePath(value) ||
+    hasKnownFileExtension(value)
   );
 }
+
+function looksLikeUrl(value: string): boolean {
+  if (/^[a-z][a-z0-9+.-]*:\/\//iu.test(value)) {
+    return true;
+  }
+
+  if (hasKnownFileExtension(value) && !value.includes("/") && !value.includes("\\")) {
+    return false;
+  }
+
+  const [firstSegment] = value.split(/[/?#]/u, 1);
+  return /^[a-z0-9.-]+\.[a-z]{2,}$/iu.test(firstSegment ?? "");
+}
+
+function looksLikeWindowsAbsolutePath(value: string): boolean {
+  return /^[a-z]:[\\/]/iu.test(value);
+}
+
+function looksLikeProjectRelativePath(value: string): boolean {
+  return value.includes("/") || value.includes("\\");
+}
+
+function hasKnownFileExtension(value: string): boolean {
+  const extension = path.extname(value).toLowerCase();
+  return FILE_INPUT_EXTENSIONS.has(extension);
+}
+
+const FILE_INPUT_EXTENSIONS = new Set([
+  ".aac",
+  ".aiff",
+  ".csv",
+  ".gif",
+  ".jpeg",
+  ".jpg",
+  ".json",
+  ".m4a",
+  ".md",
+  ".mov",
+  ".mp3",
+  ".mp4",
+  ".mpeg",
+  ".pdf",
+  ".png",
+  ".srt",
+  ".tsv",
+  ".txt",
+  ".wav",
+  ".webm",
+  ".yaml",
+  ".yml",
+]);
 
 function ensureInside(candidate: string, parent: string, name: string): void {
   const relative = path.relative(parent, candidate);

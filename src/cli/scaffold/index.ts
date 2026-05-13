@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { cp, mkdir, readdir, stat } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import YAML from "yaml";
 import { atomicWrite } from "../../checkpoints/io.js";
@@ -33,14 +33,20 @@ export async function scaffoldShow(projectRoot: string, options: ShowScaffoldOpt
   const pipelines = normalizePipelines(options.pipelines);
   const paths = projectPaths(projectRoot);
   const showDir = path.join(paths.shows, slug);
+  const starter = options.fromStarter ? safeSlug(options.fromStarter, "starter") : undefined;
   await assertMissing(showDir, "show");
   await mkdir(path.dirname(showDir), { recursive: true });
 
-  if (options.fromStarter) {
-    const starterDir = path.join(paths.predit, "starters", safeSlug(options.fromStarter, "starter"));
-    if (await exists(starterDir)) {
-      await cp(starterDir, showDir, { recursive: true });
+  if (starter) {
+    const starterDir = path.join(paths.predit, "starters", starter);
+    const starterShowPath = path.join(starterDir, "show.yaml");
+    if (!(await exists(starterDir))) {
+      throw new Error(`starter '${starter}' not found at ${starterDir}`);
     }
+    if (!(await exists(starterShowPath))) {
+      throw new Error(`starter '${starter}' is missing show.yaml at ${starterShowPath}`);
+    }
+    await cp(starterDir, showDir, { recursive: true });
   }
 
   await mkdir(path.join(showDir, "brand"), { recursive: true });
@@ -50,6 +56,11 @@ export async function scaffoldShow(projectRoot: string, options: ShowScaffoldOpt
   await mkdir(path.join(showDir, "episodes"), { recursive: true });
 
   const filePath = path.join(showDir, "show.yaml");
+  if (starter) {
+    await normalizeStarterShow(filePath, slug);
+    return { slug, filePath };
+  }
+
   const show = ShowSchema.parse({
     slug,
     display_name: titleize(slug),
@@ -182,6 +193,24 @@ export function safeSlug(value: string, label: string): string {
   return value;
 }
 
+async function normalizeStarterShow(filePath: string, slug: string): Promise<void> {
+  const starterShow = YAML.parse(await readFile(filePath, "utf8")) as unknown;
+
+  if (!isRecord(starterShow)) {
+    throw new Error(`starter show.yaml must be an object at ${filePath}`);
+  }
+
+  const show = {
+    ...starterShow,
+    slug,
+    display_name: typeof starterShow.display_name === "string" ? starterShow.display_name : titleize(slug),
+    created: starterShow.created ?? today(),
+  };
+
+  ShowSchema.parse(show);
+  await atomicWrite(filePath, YAML.stringify(show));
+}
+
 async function assertMissing(targetPath: string, label: string): Promise<void> {
   if (await exists(targetPath)) {
     throw new Error(`refuses to clobber existing ${label} at ${targetPath}`);
@@ -204,6 +233,10 @@ async function exists(targetPath: string): Promise<boolean> {
 function normalizePipelines(values: string[] | undefined): string[] {
   const pipelines = (values && values.length > 0 ? values : ["default"]).map((value) => safeSlug(value, "pipeline"));
   return [...new Set(pipelines)];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function today(): string {

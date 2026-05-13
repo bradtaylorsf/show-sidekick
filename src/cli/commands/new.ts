@@ -41,9 +41,9 @@ export function createNewHandlers(io: CliIo) {
         pipelines,
         fromStarter: options.from,
       });
-      await loadShow(projectRoot, result.slug);
+      const show = await loadShow(projectRoot, result.slug);
 
-      emitCreated(io, options, "show_created", result, { pipelines: pipelines ?? ["default"] });
+      emitCreated(io, options, "show_created", result, { pipelines: Object.keys(show.pipelines) });
     },
 
     episode: async (showSlug: string, slug: string | undefined, ...actionArgs: unknown[]): Promise<void> => {

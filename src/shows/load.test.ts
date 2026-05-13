@@ -71,6 +71,27 @@ describe("show and episode loaders", () => {
     });
   });
 
+  it("preserves URL and prose inputs instead of resolving them as files", async () => {
+    const root = await scratchProject();
+    await writeShow(root, "music-videos");
+    await writeEpisode(root, "music-videos", "reference", {
+      reference: "https://youtube.com/watch?v=x",
+      source: "docs.google.com/document/d/example",
+      handle: "twitter.com",
+      brief: "Hook lands at 0:18.",
+    });
+
+    const show = await loadShow(root, "music-videos");
+    const episode = await loadEpisode(show, "reference");
+
+    expect(episode.inputs).toEqual({
+      reference: "https://youtube.com/watch?v=x",
+      source: "docs.google.com/document/d/example",
+      handle: "twitter.com",
+      brief: "Hook lands at 0:18.",
+    });
+  });
+
   it("throws with the expected episode.yaml path when an episode is missing", async () => {
     const root = await scratchProject();
     await writeShow(root, "music-videos");

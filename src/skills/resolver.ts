@@ -23,6 +23,7 @@ type SkillCandidate = {
   tier: SkillTier;
 };
 
+// Process-lifetime cache; long-running runners need explicit invalidation before supporting live skill edits.
 const contentCache = new Map<string, string>();
 
 export class SkillNotFoundError extends Error {
