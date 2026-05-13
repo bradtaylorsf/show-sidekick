@@ -15,5 +15,14 @@ describe("tool discovery", () => {
     expect(registry.get("transcript_fetcher")?.capability).toBe("transcript_fetch");
     expect(registry.get("clip_embedder")?.capability).toBe("clip_embedding");
     expect(registry.get("corpus_builder")?.capability).toBe("corpus_index");
+    expect(registry.get("video_analyzer")?.capability).toBe("video_analysis");
+    expect(registry.get("video_understand")?.capability).toBe("video_understanding");
+    expect(registry.get("video_downloader")?.capability).toBe("video_download");
+    expect(registry.get("source_media_review")?.capability).toBe("source_media_review");
+    expect(registry.get("visual_qa")?.capability).toBe("visual_qa");
+    expect(registry.get("composition_validator")?.capability).toBe("composition_validation");
+    expect(registry.get("lip_sync")?.capability).toBe("lip_sync");
+    expect(registry.get("talking_head")?.capability).toBe("talking_head");
+    expect(registry.get("heygen_video")?.capability).toBe("avatar_video");
   });
 });
