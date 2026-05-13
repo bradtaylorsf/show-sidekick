@@ -48,9 +48,21 @@ export interface ToolLogger {
   event(name: string, payload?: unknown): void;
 }
 
+export type ToolCommandRunner = (
+  command: string,
+  args: string[],
+  options?: { cwd?: string; env?: NodeJS.ProcessEnv; input?: string },
+) => Promise<{ stdout: string; stderr: string }>;
+
+export interface ToolSelector {
+  select(capability: Capability, prefs?: { prefer?: string[]; runtime?: Integration["kind"] }): Promise<Tool>;
+}
+
 export interface ToolContext {
   projectRoot: string;
   logger: ToolLogger;
+  registry?: ToolSelector;
+  runCli?: ToolCommandRunner;
 }
 
 export interface Tool<I = unknown, O = unknown> {
