@@ -33,7 +33,8 @@ const validScenePlan = {
       end_s: 4,
       narrative_role: "hook",
       scene_anchor: "opening beat",
-      texture_keywords: [],
+      texture_keywords: ["practical texture"],
+      shot_intent: "establish the opening beat with a distinct close frame",
       character_actions: [],
       shot_language: {
         shot_size: "CU",
@@ -167,5 +168,49 @@ describe("runReview", () => {
         title: "Motion-led delivery silently downgraded to still-led",
       }),
     );
+  });
+
+  it("runs Layer 3 skill compliance from checkpoint tool invocations", () => {
+    const review = runReview(
+      "assets",
+      { assets: [] },
+      {
+        pipeline: {
+          stages: [
+            {
+              slug: "assets",
+              skill: "skills/pipelines/test/assets-director.md",
+              produces: "asset_manifest",
+              review_focus: [],
+              success_criteria: [],
+              tools_available: [],
+              human_approval: "optional",
+            },
+          ],
+        },
+        checkpoint: {
+          stage: "assets",
+          status: "completed",
+          timestamp: "2026-05-12T15:42:00Z",
+          artifact: { assets: [] },
+          tool_invocations: [{ tool: "flux" }],
+          skills_read: [],
+        },
+        getAgentSkills: (toolName) => (toolName === "flux" ? ["flux-best-practices", "bfl-api"] : undefined),
+      },
+    );
+
+    expect(review.decision).toBe("pass");
+    expect(review.summary.suggestions).toBe(2);
+    expect(review.findings).toEqual([
+      expect.objectContaining({
+        severity: "suggestion",
+        description: expect.stringContaining("flux-best-practices"),
+      }),
+      expect.objectContaining({
+        severity: "suggestion",
+        description: expect.stringContaining("bfl-api"),
+      }),
+    ]);
   });
 });
