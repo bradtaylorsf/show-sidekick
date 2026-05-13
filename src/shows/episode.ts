@@ -18,10 +18,43 @@ export const EpisodeSchema = z.object({
 
 export type Episode = z.infer<typeof EpisodeSchema>;
 
-export function validateEpisodeAgainstShow(episode: Episode, show: Show): void {
+export type EpisodeValidationError = {
+  path: string;
+  message: string;
+};
+
+export type EpisodeValidationResult =
+  | {
+      ok: true;
+      errors: [];
+    }
+  | {
+      ok: false;
+      errors: EpisodeValidationError[];
+    };
+
+export function validateEpisodeAgainstShow(episode: Episode, show: Show): EpisodeValidationResult {
   const pipeline = episode.pipeline ?? show.defaults.pipeline;
 
   if (!(pipeline in show.pipelines)) {
-    throw new Error(`episode.pipeline '${pipeline}' is not a key in show.pipelines`);
+    return {
+      ok: false,
+      errors: [
+        {
+          path: "pipeline",
+          message: `episode.pipeline '${pipeline}' is not a key in show.pipelines`,
+        },
+      ],
+    };
+  }
+
+  return { ok: true, errors: [] };
+}
+
+export function assertEpisodeAgainstShow(episode: Episode, show: Show): void {
+  const result = validateEpisodeAgainstShow(episode, show);
+
+  if (!result.ok) {
+    throw new Error(result.errors.map((error) => `${error.path}: ${error.message}`).join("\n"));
   }
 }
