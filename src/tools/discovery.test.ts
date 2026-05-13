@@ -24,5 +24,12 @@ describe("tool discovery", () => {
     expect(registry.get("lip_sync")?.capability).toBe("lip_sync");
     expect(registry.get("talking_head")?.capability).toBe("talking_head");
     expect(registry.get("heygen_video")?.capability).toBe("avatar_video");
+    expect(registry.get("bg_remove")?.capability).toBe("bg_remove");
+    expect(registry.get("color_grade")?.capability).toBe("color_grade");
+    expect(registry.get("eye_enhance")?.capability).toBe("eye_enhance");
+    expect(registry.get("face_enhance")?.capability).toBe("face_enhance");
+    expect(registry.get("face_restore")?.capability).toBe("face_restore");
+    expect(registry.get("upscale")?.capability).toBe("upscale");
+    expect(registry.get("character_animation")?.capability).toBe("character_animation");
   });
 });

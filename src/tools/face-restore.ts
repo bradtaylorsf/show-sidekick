@@ -1,0 +1,37 @@
+import { z } from "zod";
+import { defineTool } from "../registry/index.js";
+
+const inputSchema = z.object({
+  source_path: z.string().min(1),
+  output_path: z.string().min(1),
+  strength: z.number().optional(),
+});
+
+const outputSchema = z.object({
+  output_path: z.string().min(1),
+  provider_metadata: z.record(z.string(), z.unknown()).default({}),
+});
+
+const faceRestore = defineTool({
+  name: "face_restore",
+  capability: "face_restore",
+  provider: "predit",
+  status: "beta",
+  integration: {
+    kind: "library",
+    package: "predit",
+    install: "pnpm add predit",
+  },
+  best_for: "capability discovery for restoring degraded or low-quality face imagery",
+  supports: ["face-restoration", "portrait-repair", "provider-selection"],
+  input: inputSchema,
+  output: outputSchema,
+  isAvailable: async () => ({ available: true }),
+  async execute(): Promise<z.infer<typeof outputSchema>> {
+    throw new Error(
+      "face_restore is a capability marker; choose a concrete provider with registry.select('face_restore') before executing face restoration",
+    );
+  },
+});
+
+export default faceRestore;
