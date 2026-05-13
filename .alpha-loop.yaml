@@ -111,8 +111,8 @@ pipeline:
 # === Batch mode (advanced) ==================================================
 # Process multiple issues in a single agent call. Faster + fewer tokens, but
 # less isolation between issues — best for small, mechanical tasks.
-# batch: false
-# batch_size: 5
+batch: true
+batch_size: 5
 
 # === Evaluation =============================================================
 # Settings for the eval harness used by `alpha-loop review` and CI eval runs.
