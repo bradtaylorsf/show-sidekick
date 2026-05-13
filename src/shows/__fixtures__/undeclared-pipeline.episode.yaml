@@ -1,0 +1,9 @@
+slug: 2026-05-12-documentary-cut
+title: "Undeclared Documentary Cut"
+created: 2026-05-12
+pipeline: documentary
+inputs:
+  notes: This fixture intentionally points at a pipeline the show does not declare.
+cast: []
+tags:
+  - invalid-fixture

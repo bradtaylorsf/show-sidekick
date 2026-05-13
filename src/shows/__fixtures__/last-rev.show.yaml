@@ -1,0 +1,23 @@
+slug: last-rev
+display_name: "Last Rev"
+description: "Consulting demos and practical spokesperson videos"
+created: 2026-05-12
+brand: ./brand/
+characters: ./characters/
+pipelines:
+  screen-demo:
+    playbook: clean-professional
+    runtime: remotion
+    aspect: "16:9"
+    budget_usd: 4
+  talking-head:
+    playbook: clean-professional
+    runtime: remotion
+    aspect: "16:9"
+    budget_usd: 3
+defaults:
+  pipeline: screen-demo
+  language: en
+export:
+  default_target: premiere
+  asset_link_mode: reference
