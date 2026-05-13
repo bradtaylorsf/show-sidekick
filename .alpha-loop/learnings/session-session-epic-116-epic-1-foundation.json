@@ -1,0 +1,113 @@
+{
+  "name": "session/epic-116-epic-1-foundation",
+  "branch": "session/epic-116-epic-1-foundation",
+  "completed": "2026-05-13T02:52:41.407Z",
+  "results": [
+    {
+      "issueNum": 6,
+      "title": "F-6 — Show + Episode schemas + deep-merge",
+      "status": "success",
+      "prUrl": "https://github.com/bradtaylorsf/predit/pull/127",
+      "testsPassing": true,
+      "verifyPassing": true,
+      "duration": 604,
+      "filesChanged": 9
+    },
+    {
+      "issueNum": 7,
+      "title": "F-7 — Pipeline manifest Zod schema",
+      "status": "success",
+      "prUrl": "https://github.com/bradtaylorsf/predit/pull/128",
+      "testsPassing": true,
+      "verifyPassing": true,
+      "duration": 617,
+      "filesChanged": 6
+    }
+  ],
+  "stages": [
+    {
+      "stage": "batch-plan",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 17,
+      "tokens_out": 6338,
+      "cost_usd": 0.60537,
+      "wall_time_s": 85.578,
+      "tool_calls": 11,
+      "tool_errors": 0,
+      "stage_success": true,
+      "started_at": "2026-05-13T02:30:53.714Z",
+      "issue_num": 6
+    },
+    {
+      "stage": "batch-implement",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 197128,
+      "tokens_out": 151637,
+      "cost_usd": 0,
+      "wall_time_s": 396.589,
+      "tool_calls": 0,
+      "tool_errors": 0,
+      "stage_success": true,
+      "started_at": "2026-05-13T02:32:19.295Z",
+      "issue_num": 6
+    },
+    {
+      "stage": "batch-review",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 21,
+      "tokens_out": 8500,
+      "cost_usd": 0.798295,
+      "wall_time_s": 110.635,
+      "tool_calls": 15,
+      "tool_errors": 0,
+      "stage_success": true,
+      "started_at": "2026-05-13T02:38:57.149Z",
+      "issue_num": 6
+    },
+    {
+      "stage": "batch-plan",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 25,
+      "tokens_out": 6156,
+      "cost_usd": 0.788685,
+      "wall_time_s": 123.233,
+      "tool_calls": 19,
+      "tool_errors": 0,
+      "stage_success": true,
+      "started_at": "2026-05-13T02:41:26.562Z",
+      "issue_num": 7
+    },
+    {
+      "stage": "batch-implement",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 217204,
+      "tokens_out": 167080,
+      "cost_usd": 0,
+      "wall_time_s": 364.91,
+      "tool_calls": 0,
+      "tool_errors": 0,
+      "stage_success": true,
+      "started_at": "2026-05-13T02:43:29.798Z",
+      "issue_num": 7
+    },
+    {
+      "stage": "batch-review",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 16,
+      "tokens_out": 10342,
+      "cost_usd": 0.787619,
+      "wall_time_s": 116.838,
+      "tool_calls": 22,
+      "tool_errors": 0,
+      "stage_success": true,
+      "started_at": "2026-05-13T02:49:36.039Z",
+      "issue_num": 7
+    }
+  ]
+}
