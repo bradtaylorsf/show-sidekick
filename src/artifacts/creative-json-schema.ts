@@ -119,6 +119,7 @@ export const ProposalPacketJsonSchema = objectJson(
         render_runtime: { type: "string", enum: RENDER_RUNTIME },
         renderer_family: { type: "string", enum: RENDERER_FAMILY },
         audio_architecture: { type: "string", enum: AUDIO_ARCHITECTURE },
+        sample_required: booleanJson,
       },
       ["render_runtime", "renderer_family", "audio_architecture"],
     ),

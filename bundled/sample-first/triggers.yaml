@@ -1,0 +1,37 @@
+music-video:
+  mode: threshold
+  cost_usd: 0.50
+  time_minutes: 15
+news-song:
+  mode: threshold
+  cost_usd: 1.00
+  time_minutes: 15
+cinematic:
+  mode: conditional
+  conditions:
+    - reference_driven
+    - motion_required
+character-animation:
+  mode: always
+documentary-montage:
+  mode: conditional
+  conditions:
+    - hero_scene_present
+animated-explainer:
+  mode: threshold
+  cost_usd: 1.00
+  time_minutes: 20
+animation:
+  mode: threshold
+  cost_usd: 1.00
+  time_minutes: 20
+hybrid:
+  mode: threshold
+  cost_usd: 1.00
+  time_minutes: 20
+avatar-spokesperson:
+  mode: threshold
+  cost_usd: 0.50
+talking-head:
+  mode: threshold
+  cost_usd: 0.50

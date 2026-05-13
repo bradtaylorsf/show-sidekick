@@ -4,6 +4,15 @@ import { runReview, type ReviewContext } from "./runner.js";
 const basePipeline: ReviewContext["pipeline"] = {
   stages: [
     {
+      slug: "proposal",
+      skill: "skills/pipelines/test/proposal-director.md",
+      produces: "proposal_packet",
+      review_focus: [],
+      success_criteria: [],
+      tools_available: [],
+      human_approval: "optional",
+    },
+    {
       slug: "scene_plan",
       skill: "skills/pipelines/test/scene-plan-director.md",
       produces: "scene_plan",
@@ -16,6 +25,15 @@ const basePipeline: ReviewContext["pipeline"] = {
       slug: "edit",
       skill: "skills/pipelines/test/edit-director.md",
       produces: "edit_decisions",
+      review_focus: [],
+      success_criteria: [],
+      tools_available: [],
+      human_approval: "optional",
+    },
+    {
+      slug: "compose",
+      skill: "skills/pipelines/test/compose-director.md",
+      produces: "render_report",
       review_focus: [],
       success_criteria: [],
       tools_available: [],
@@ -47,6 +65,25 @@ const validScenePlan = {
       required_assets: [],
     },
   ],
+};
+
+const validProposal = {
+  concept_options: [
+    { slug: "one", hook: "One", treatment: "Treatment one" },
+    { slug: "two", hook: "Two", treatment: "Treatment two" },
+    { slug: "three", hook: "Three", treatment: "Treatment three" },
+  ],
+  production_plan: {
+    render_runtime: "hyperframes",
+    renderer_family: "cinematic-trailer",
+    audio_architecture: "single_narrator",
+  },
+  delivery_promise: {
+    motion_led: true,
+    narration_present: true,
+    music_present: true,
+  },
+  decision_log_ref: "projects/show/episode/decisions.json",
 };
 
 describe("runReview", () => {
@@ -134,6 +171,38 @@ describe("runReview", () => {
     );
   });
 
+  it("runs sample-first validation only at proposal when the pipeline slug is supplied", () => {
+    const missingSample = runReview("proposal", validProposal, {
+      pipeline: basePipeline,
+      pipelineSlug: "music-video",
+      estimatedCostUsd: 0.75,
+    });
+    expect(missingSample.decision).toBe("revise");
+    expect(missingSample.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Sample-first protocol triggered but sample_required not set",
+      }),
+    );
+
+    const noPipelineSlug = runReview("proposal", validProposal, {
+      pipeline: basePipeline,
+      estimatedCostUsd: 0.75,
+    });
+    expect(noPipelineSlug.findings).not.toContainEqual(
+      expect.objectContaining({ title: "Sample-first protocol triggered but sample_required not set" }),
+    );
+
+    const notProposal = runReview("scene_plan", validScenePlan, {
+      pipeline: basePipeline,
+      pipelineSlug: "music-video",
+      estimatedCostUsd: 0.75,
+    });
+    expect(notProposal.findings).not.toContainEqual(
+      expect.objectContaining({ title: "Sample-first protocol triggered but sample_required not set" }),
+    );
+  });
+
   it("runs delivery promise validation for edit decisions", () => {
     const review = runReview(
       "edit",
@@ -166,6 +235,53 @@ describe("runReview", () => {
       expect.objectContaining({
         severity: "critical",
         title: "Motion-led delivery silently downgraded to still-led",
+      }),
+    );
+  });
+
+  it("halts compose review on a silent runtime swap", () => {
+    const review = runReview(
+      "compose",
+      {
+        output_path: "renders/final.mp4",
+        encoding_profile: "h264",
+        duration_s: 30,
+        resolution: { width: 1920, height: 1080 },
+        framerate: 24,
+        runtime_used: "remotion",
+        asset_count: 8,
+        warnings: [],
+        validation_steps: [],
+      },
+      {
+        pipeline: basePipeline,
+        proposalPacket: {
+          concept_options: [
+            { slug: "one", hook: "One", treatment: "Treatment one" },
+            { slug: "two", hook: "Two", treatment: "Treatment two" },
+            { slug: "three", hook: "Three", treatment: "Treatment three" },
+          ],
+          production_plan: {
+            render_runtime: "hyperframes",
+            renderer_family: "cinematic-trailer",
+            audio_architecture: "single_narrator",
+          },
+          delivery_promise: {
+            motion_led: true,
+            narration_present: true,
+            music_present: true,
+          },
+          decision_log_ref: "projects/show/episode/decisions.json",
+        },
+      },
+    );
+
+    expect(review.decision).toBe("revise");
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Silent runtime swap between proposal and compose",
+        location: "render_report.runtime_used",
       }),
     );
   });

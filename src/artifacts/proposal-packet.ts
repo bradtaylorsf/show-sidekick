@@ -15,6 +15,7 @@ export const ProposalPacketSchema = z.object({
     render_runtime: RenderRuntimeSchema,
     renderer_family: RendererFamilySchema,
     audio_architecture: AudioArchitectureSchema,
+    sample_required: z.boolean().optional(),
   }),
   delivery_promise: z.object({
     motion_led: z.boolean(),

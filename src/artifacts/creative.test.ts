@@ -111,6 +111,23 @@ describe("creative artifact schemas", () => {
     expect(ProposalPacketSchema.parse(proposal).production_plan.renderer_family).toBe("explainer-data");
   });
 
+  it("accepts proposal packets with sample_required true, false, or absent", () => {
+    expect(
+      ProposalPacketSchema.parse({
+        ...proposal,
+        production_plan: { ...proposal.production_plan, sample_required: true },
+      }).production_plan.sample_required,
+    ).toBe(true);
+    expect(
+      ProposalPacketSchema.parse({
+        ...proposal,
+        production_plan: { ...proposal.production_plan, sample_required: false },
+      }).production_plan.sample_required,
+    ).toBe(false);
+    expect(ProposalPacketSchema.parse(proposal).production_plan.sample_required).toBeUndefined();
+    expect(JSON.stringify(ProposalPacketJsonSchema)).toContain("sample_required");
+  });
+
   it("rejects proposal packets with fewer than three concepts", () => {
     expect(() =>
       ProposalPacketSchema.parse({
