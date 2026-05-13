@@ -4,7 +4,8 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
 import { probe } from "../registry/availability.js";
 import { defineTool } from "../registry/define-tool.js";
-import type { Availability, ToolCommandRunner } from "../registry/tool.js";
+import type { Availability } from "../registry/tool.js";
+import { defaultRunCli } from "../tool-support/cli-runner.js";
 import { videoProviderOutputSchema } from "../tool-support/video-provider.js";
 
 const integration = {
@@ -104,32 +105,6 @@ function hasLocalGpu(): Promise<boolean> {
     child.once("exit", () => clearTimeout(timeout));
   });
 }
-
-const defaultRunCli: ToolCommandRunner = (command, args, options = {}) => {
-  return new Promise((resolvePromise, reject) => {
-    const child = execFile(
-      command,
-      args,
-      {
-        cwd: options.cwd,
-        env: options.env,
-        encoding: "utf8",
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error(`${command} failed: ${stderr || error.message}`));
-          return;
-        }
-
-        resolvePromise({ stdout, stderr });
-      },
-    );
-
-    if (options.input !== undefined) {
-      child.stdin?.end(options.input);
-    }
-  });
-};
 
 function readVideoPath(stdout: string): string {
   const parsed = parseJsonObject(stdout);

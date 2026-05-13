@@ -1,38 +1,11 @@
-import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 import { DuckingSchema } from "../artifacts/edit-decisions.js";
 import type { Ducking } from "../artifacts/edit-decisions.js";
-import type { ToolCommandRunner } from "../registry/tool.js";
+import { defaultRunCli } from "./cli-runner.js";
 
-export { DuckingSchema };
+export { DuckingSchema, defaultRunCli };
 export type { Ducking };
-
-export const defaultRunCli: ToolCommandRunner = (command, args, options = {}) => {
-  return new Promise((resolvePromise, reject) => {
-    const child = execFile(
-      command,
-      args,
-      {
-        cwd: options.cwd,
-        env: options.env,
-        encoding: "utf8",
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error(`${command} failed: ${stderr || error.message}`));
-          return;
-        }
-
-        resolvePromise({ stdout, stderr });
-      },
-    );
-
-    if (options.input !== undefined) {
-      child.stdin?.end(options.input);
-    }
-  });
-};
 
 export function resolveProjectPath(path: string, projectRoot: string): string {
   return isAbsolute(path) ? path : resolve(projectRoot, path);

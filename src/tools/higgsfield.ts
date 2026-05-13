@@ -1,8 +1,8 @@
-import { execFile } from "node:child_process";
 import { isAbsolute, resolve } from "node:path";
 import { z } from "zod";
 import { defineTool } from "../registry/define-tool.js";
-import type { ToolCommandRunner, ToolContext } from "../registry/tool.js";
+import type { ToolContext } from "../registry/tool.js";
+import { defaultRunCli } from "../tool-support/cli-runner.js";
 
 const HIGGSFIELD_COST_USD = 0.3;
 const KLING_IMAGE_TO_VIDEO_URL = "https://api.higgsfield.ai/kling-video/v2.1/pro/image-to-video";
@@ -158,32 +158,6 @@ async function runHiggsfield(
     },
   );
 }
-
-const defaultRunCli: ToolCommandRunner = (command, args, options = {}) => {
-  return new Promise((resolvePromise, reject) => {
-    const child = execFile(
-      command,
-      args,
-      {
-        cwd: options.cwd,
-        env: options.env,
-        encoding: "utf8",
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error(`${command} failed: ${stderr || error.message}`));
-          return;
-        }
-
-        resolvePromise({ stdout, stderr });
-      },
-    );
-
-    if (options.input !== undefined) {
-      child.stdin?.end(options.input);
-    }
-  });
-};
 
 function readVideoPath(stdout: string): string {
   const parsed = parseJsonObject(stdout);

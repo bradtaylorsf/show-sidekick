@@ -1,9 +1,9 @@
-import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
 import { defineTool } from "../registry/define-tool.js";
-import type { ToolCommandRunner, ToolContext } from "../registry/tool.js";
+import type { ToolContext } from "../registry/tool.js";
+import { defaultRunCli } from "../tool-support/cli-runner.js";
 
 type BBox = {
   x: number;
@@ -184,32 +184,6 @@ function resolveOutputPath(outputPath: string | undefined, inputPath: string, ta
   const safeAspect = targetAspect.replace(/[^a-zA-Z0-9]+/g, "x");
   return join(projectRoot, "projects", "_tool_runs", "auto_reframe", `${base}-${safeAspect}${extension}`);
 }
-
-const defaultRunCli: ToolCommandRunner = (command, args, options = {}) => {
-  return new Promise((resolvePromise, reject) => {
-    const child = execFile(
-      command,
-      args,
-      {
-        cwd: options.cwd,
-        env: options.env,
-        encoding: "utf8",
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error(`${command} failed: ${stderr || error.message}`));
-          return;
-        }
-
-        resolvePromise({ stdout, stderr });
-      },
-    );
-
-    if (options.input !== undefined) {
-      child.stdin?.end(options.input);
-    }
-  });
-};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
