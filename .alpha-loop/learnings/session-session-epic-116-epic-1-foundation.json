@@ -1,0 +1,101 @@
+{
+  "name": "session/epic-116-epic-1-foundation",
+  "branch": "session/epic-116-epic-1-foundation",
+  "completed": "2026-05-13T03:33:24.615Z",
+  "results": [
+    {
+      "issueNum": 1,
+      "title": "F-1 — Project scaffolding + Vitest setup",
+      "status": "success",
+      "prUrl": "https://github.com/bradtaylorsf/predit/pull/130",
+      "testsPassing": true,
+      "verifyPassing": true,
+      "duration": 279,
+      "filesChanged": 9
+    },
+    {
+      "issueNum": 2,
+      "title": "F-2 — CLI skeleton with Commander",
+      "status": "success",
+      "prUrl": "https://github.com/bradtaylorsf/predit/pull/130",
+      "testsPassing": true,
+      "verifyPassing": true,
+      "duration": 279,
+      "filesChanged": 9
+    },
+    {
+      "issueNum": 3,
+      "title": "F-3 — YAML + Zod config loader",
+      "status": "success",
+      "prUrl": "https://github.com/bradtaylorsf/predit/pull/130",
+      "testsPassing": true,
+      "verifyPassing": true,
+      "duration": 279,
+      "filesChanged": 9
+    },
+    {
+      "issueNum": 4,
+      "title": "F-4 — Logger primitives + global flag wiring",
+      "status": "success",
+      "prUrl": "https://github.com/bradtaylorsf/predit/pull/130",
+      "testsPassing": true,
+      "verifyPassing": true,
+      "duration": 279,
+      "filesChanged": 9
+    },
+    {
+      "issueNum": 5,
+      "title": "F-5 — Path resolution + project root detection + env loader",
+      "status": "success",
+      "prUrl": "https://github.com/bradtaylorsf/predit/pull/130",
+      "testsPassing": true,
+      "verifyPassing": true,
+      "duration": 279,
+      "filesChanged": 9
+    }
+  ],
+  "stages": [
+    {
+      "stage": "batch-plan",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 22,
+      "tokens_out": 9799,
+      "cost_usd": 0.764705,
+      "wall_time_s": 129.889,
+      "tool_calls": 16,
+      "tool_errors": 1,
+      "stage_success": true,
+      "started_at": "2026-05-13T03:07:20.234Z",
+      "issue_num": 1
+    },
+    {
+      "stage": "batch-implement",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 640965,
+      "tokens_out": 493050,
+      "cost_usd": 0,
+      "wall_time_s": 1033.007,
+      "tool_calls": 0,
+      "tool_errors": 0,
+      "stage_success": true,
+      "started_at": "2026-05-13T03:09:30.129Z",
+      "issue_num": 1
+    },
+    {
+      "stage": "batch-review",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 57,
+      "tokens_out": 12778,
+      "cost_usd": 2.148475,
+      "wall_time_s": 200.748,
+      "tool_calls": 46,
+      "tool_errors": 0,
+      "stage_success": true,
+      "started_at": "2026-05-13T03:26:44.443Z",
+      "issue_num": 1
+    }
+  ]
+}
