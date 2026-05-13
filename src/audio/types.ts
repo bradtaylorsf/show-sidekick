@@ -28,3 +28,18 @@ export interface Word {
   end_s: number;
   confidence: number;
 }
+
+export interface Segment {
+  start_s: number;
+  end_s: number;
+  text: string;
+  words: Word[];
+}
+
+export interface Section {
+  label: string;
+  start_s: number;
+  end_s: number;
+  kind: "vocal" | "instrumental" | "silence";
+  energy: number;
+}
