@@ -41,7 +41,7 @@ stages:
     human_approval: required
 
   - slug: cuesheet
-    skill: pipelines/music-video/cuesheet-director.md
+    skill: pipelines/_shared/cuesheet-director.md
     produces: cuesheet
     audio_sync: build                    # build | required | none
     tools_available: [whisper, aubio]

@@ -26,6 +26,7 @@ export interface Cuesheet {
   audio: AudioTrack;
   master_clock: 'audio' | 'voiceover';
   bpm?: number;
+  transcription_confidence?: { average: number; low_confidence: boolean };
   segments: Segment[];     // word-level transcript
   sections: Section[];     // structural sections (verse/chorus/bridge/...)
   beats: Beat[];           // rhythmic grid

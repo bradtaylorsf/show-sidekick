@@ -59,9 +59,12 @@ describe("ls command", () => {
 
   it("sorts tools by capability, provider, then name", async () => {
     const root = await scratchProject();
+    const toolsDir = path.join(root, "empty-tools");
+    await mkdir(toolsDir);
     process.chdir(root);
     const { io, output } = captureIo();
     const registry = new Registry({
+      toolsDir,
       tools: [
         tool("beta", "tts", "z-provider"),
         tool("alpha", "image_generation", "z-provider"),

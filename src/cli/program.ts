@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { createApproveHandler } from "./commands/approve.js";
 import { createBuildHandler } from "./commands/build.js";
+import { createCuesheetHandler } from "./commands/cuesheet.js";
 import { lsDecisions } from "./commands/ls-decisions.js";
 import { createLsHandler } from "./commands/ls.js";
 import { createNewHandlers } from "./commands/new.js";
@@ -19,6 +20,7 @@ const COMMAND_NAMES = [
   "doctor",
   "new",
   "build",
+  "cuesheet",
   "resume",
   "status",
   "approve",
@@ -129,6 +131,11 @@ function registerCommands(program: Command, io: CliIo): void {
     .option("--budget <usd>", "set a budget in USD")
     .option("--non-interactive", "pause at required approvals and exit")
     .action(createBuildHandler(io));
+
+  program
+    .command("cuesheet <target>")
+    .description("build and cache the audio cuesheet")
+    .action(createCuesheetHandler(io));
 
   program
     .command("resume <target>")

@@ -1,5 +1,6 @@
 import type { CostLog } from "../artifacts/cost-log.js";
 import type { Checkpoint } from "../checkpoints/checkpoint.js";
+import type { Cuesheet } from "../artifacts/cuesheet.js";
 import type { DecisionLog } from "../artifacts/decision-log.js";
 import type { EditDecisions } from "../artifacts/edit-decisions.js";
 import type { FinalReview } from "../artifacts/final-review.js";
@@ -80,6 +81,7 @@ export type ReviewContext = {
   estimatedTimeMinutes?: number;
   referenceDriven?: boolean;
   heroScenePresent?: boolean;
+  cuesheet?: Cuesheet | unknown;
   show?: string;
   episode?: string;
   projectRoot?: string;
@@ -180,6 +182,7 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
       decisionLog: ctx.decisionLog,
     }),
   );
+  rawFindings.push(...checkTranscriptConfidence(stageSlug, ctx.cuesheet));
   rawFindings.push(
     ...checkFinalReview(stageSlug, artifact, {
       deliveryPromise: ctx.deliveryPromise,
@@ -242,6 +245,28 @@ function appendSameClassFindings(findings: Finding[], artifact: unknown): Findin
     .flatMap((finding) => findSameClassInstances(finding, artifact));
 
   return [...findings, ...sameClassFindings];
+}
+
+function checkTranscriptConfidence(stageSlug: string, cuesheet: unknown): Finding[] {
+  if (stageSlug !== "script" || !isRecord(cuesheet) || !isRecord(cuesheet.transcription_confidence)) {
+    return [];
+  }
+
+  const average = numberValue(cuesheet.transcription_confidence.average);
+  if (cuesheet.transcription_confidence.low_confidence !== true || average === undefined) {
+    return [];
+  }
+
+  return [
+    {
+      severity: "suggestion",
+      title: "Low-confidence transcript",
+      location: "cuesheet.transcription_confidence",
+      description: `Average word confidence is ${average.toFixed(2)}, below the 0.80 script-stage review threshold.`,
+      proposed_change: "Review the transcript manually, correct low-confidence words, then rebuild the script from the corrected cuesheet.",
+      status: "pending",
+    },
+  ];
 }
 
 function summarizeFindings(findings: Finding[], successCriteriaMet: number, successCriteriaTotal: number): Review["summary"] {
@@ -380,6 +405,10 @@ function normalizeStage(stageSlug: string): string {
 
 function hasCuts(value: unknown): value is { cuts: never[] } {
   return isRecord(value) && Array.isArray(value.cuts);
+}
+
+function numberValue(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function isRecord(value: unknown): value is UnknownRecord {

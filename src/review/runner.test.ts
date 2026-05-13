@@ -22,6 +22,15 @@ const basePipeline: ReviewContext["pipeline"] = {
       human_approval: "optional",
     },
     {
+      slug: "script",
+      skill: "skills/pipelines/test/script-director.md",
+      produces: "script",
+      review_focus: [],
+      success_criteria: [],
+      tools_available: [],
+      human_approval: "optional",
+    },
+    {
       slug: "edit",
       skill: "skills/pipelines/test/edit-director.md",
       produces: "edit_decisions",
@@ -138,6 +147,23 @@ describe("runReview", () => {
         severity: "suggestion",
         title: "Scene pacing is outside playbook range",
         location: "scene_plan.scenes[0]",
+      }),
+    );
+  });
+
+  it("surfaces low transcript confidence as a script-stage suggestion", () => {
+    const review = runReview("script", { script: "draft" }, {
+      pipeline: basePipeline,
+      cuesheet: {
+        transcription_confidence: { average: 0.72, low_confidence: true },
+      },
+    });
+
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "suggestion",
+        title: "Low-confidence transcript",
+        location: "cuesheet.transcription_confidence",
       }),
     );
   });
