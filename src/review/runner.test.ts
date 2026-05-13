@@ -66,6 +66,13 @@ describe("runReview", () => {
     expect(review.summary.critical).toBeGreaterThan(0);
   });
 
+  it("returns pass at round 2 when no criticals remain", () => {
+    const review = runReview("scene_plan", validScenePlan, { pipeline: basePipeline, round: 2 });
+
+    expect(review.decision).toBe("pass");
+    expect(review.summary.critical).toBe(0);
+  });
+
   it("adds playbook cross-check suggestions when a playbook is active", () => {
     const review = runReview("scene_plan", validScenePlan, {
       pipeline: basePipeline,

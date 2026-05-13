@@ -57,7 +57,7 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
   const findingsWithPatternMatches = appendSameClassFindings(chaiResult.findings, artifact);
   const findings = dedupeFindings(findingsWithPatternMatches).map((finding) => ensureFindingDefaults(finding, stageSlug));
   const summary = summarizeFindings(findings, successCriteria.met, successCriteria.total);
-  const decision = round >= 2 ? "pass_with_warnings" : summary.critical === 0 ? "pass" : "revise";
+  const decision = summary.critical === 0 ? "pass" : round >= 2 ? "pass_with_warnings" : "revise";
 
   return ReviewSchema.parse({
     stage: stageSlug,
