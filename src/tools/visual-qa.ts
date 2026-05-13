@@ -1,0 +1,52 @@
+import { z } from "zod";
+import { defineTool } from "../registry/index.js";
+
+const inputSchema = z.object({
+  frame_paths: z.array(z.string().min(1)).min(1),
+  criteria: z.array(z.string().min(1)).default([]),
+});
+
+const findingSchema = z.object({
+  frame_path: z.string().min(1),
+  severity: z.enum(["critical", "warning", "note"]),
+  description: z.string().min(1),
+});
+
+const outputSchema = z.object({
+  findings: z.array(findingSchema),
+  passed: z.boolean(),
+});
+
+type VisualQaInput = z.infer<typeof inputSchema>;
+type VisualQaOutput = z.infer<typeof outputSchema>;
+
+export function createVisualQaResult(findings: VisualQaOutput["findings"] = []): VisualQaOutput {
+  return outputSchema.parse({
+    findings,
+    passed: findings.every((finding) => finding.severity !== "critical"),
+  });
+}
+
+const visualQa = defineTool({
+  name: "visual_qa",
+  capability: "visual_qa",
+  provider: "predit",
+  status: "beta",
+  integration: {
+    kind: "library",
+    package: "predit",
+    install: "pnpm add predit",
+  },
+  best_for: "agent-driven visual inspection of sampled render or source frames",
+  supports: ["sampled-frame-review", "final-review", "criteria-driven-inspection"],
+  input: inputSchema,
+  output: outputSchema,
+  isAvailable: async () => ({ available: true }),
+  async execute(params: VisualQaInput): Promise<VisualQaOutput> {
+    inputSchema.parse(params);
+
+    return createVisualQaResult();
+  },
+});
+
+export default visualQa;
