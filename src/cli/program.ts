@@ -2,8 +2,8 @@ import { Command } from "commander";
 import { type CliIo, createStubHandler, defaultIo } from "./commands/stub.js";
 import { suggest } from "./fuzzy.js";
 import { configure } from "../log/mode.js";
+import { VERSION } from "../version.js";
 
-const CLI_VERSION = "0.0.0";
 const CLI_DESCRIPTION = "AI pre-production for video - build the rough cut, finish in your NLE.";
 
 const COMMAND_NAMES = [
@@ -35,7 +35,7 @@ export function createProgram(io: CliIo = defaultIo): Command {
   program
     .name("predit")
     .description(CLI_DESCRIPTION)
-    .version(CLI_VERSION)
+    .version(VERSION)
     .option("--json", "emit machine-readable NDJSON")
     .option("--dry-run", "plan without spending")
     .option("-v, --verbose", "enable debug logging")

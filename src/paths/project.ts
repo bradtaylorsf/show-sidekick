@@ -1,6 +1,6 @@
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
-import { InvalidShowEpisodeError, ProjectRootNotFoundError } from "./errors.js";
+import { InvalidResourceNameError, InvalidShowEpisodeError, ProjectRootNotFoundError } from "./errors.js";
 
 export type ResourceKind =
   | "shows"
@@ -60,8 +60,14 @@ export function projectPaths(root: string): ProjectPaths {
 
 export function resolve(kind: ResourceKind, name: string, root: string = findProjectRoot()): string {
   const absoluteRoot = path.resolve(root);
-  const localBase = path.join(absoluteRoot, resourceDirectory(kind), name);
-  const cacheBase = path.join(absoluteRoot, ".predit", resourceDirectory(kind), name);
+  const localParent = path.join(absoluteRoot, resourceDirectory(kind));
+  const cacheParent = path.join(absoluteRoot, ".predit", resourceDirectory(kind));
+  const localBase = path.join(localParent, name);
+  const cacheBase = path.join(cacheParent, name);
+
+  if (!isInside(localBase, localParent) || !isInside(cacheBase, cacheParent)) {
+    throw new InvalidResourceNameError(name);
+  }
 
   // User-owned resources override the bundled .predit cache.
   for (const candidate of [...pathVariants(localBase), ...pathVariants(cacheBase)]) {
@@ -81,7 +87,13 @@ export function parseShowEpisode(spec: string, root: string = findProjectRoot())
   }
 
   const [show, episode] = parts as [string, string];
-  const showDir = path.join(path.resolve(root), "shows", show);
+  if (!isSafeSegment(show) || !isSafeSegment(episode)) {
+    throw new InvalidShowEpisodeError(spec);
+  }
+
+  const absoluteRoot = path.resolve(root);
+  const showsRoot = path.join(absoluteRoot, "shows");
+  const showDir = path.join(showsRoot, show);
 
   return {
     show,
@@ -116,4 +128,20 @@ function pathVariants(base: string): string[] {
   }
 
   return [base, `${base}.yaml`, `${base}.md`];
+}
+
+function isInside(child: string, parent: string): boolean {
+  const relative = path.relative(parent, child);
+  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+function isSafeSegment(segment: string): boolean {
+  return (
+    segment !== "" &&
+    segment !== "." &&
+    segment !== ".." &&
+    !segment.includes("/") &&
+    !segment.includes("\\") &&
+    !segment.includes("\0")
+  );
 }

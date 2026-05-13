@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 import { CommanderError } from "commander";
+import { VERSION } from "../version.js";
 import { createProgram } from "./program.js";
 
 try {
   if (process.argv.length <= 2) {
-    process.stdout.write("predit v0.0.0\n");
+    process.stdout.write(`predit v${VERSION}\n`);
   } else {
     await createProgram().parseAsync(process.argv);
   }

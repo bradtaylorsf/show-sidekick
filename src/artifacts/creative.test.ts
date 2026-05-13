@@ -186,6 +186,14 @@ describe("creative artifact schemas", () => {
     ).toThrow("Invalid input");
   });
 
+  it("rejects negative scene order", () => {
+    expect(() =>
+      ScenePlanSchema.parse({
+        scenes: [{ ...scenePlan.scenes[0], order: -1 }],
+      }),
+    ).toThrow("Number must be greater than or equal to 0");
+  });
+
   it("rejects unknown required asset sources", () => {
     expect(() =>
       ScenePlanSchema.parse({

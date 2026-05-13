@@ -1,4 +1,9 @@
-export { MissingEnvError, ProjectRootNotFoundError, InvalidShowEpisodeError } from "./errors.js";
+export {
+  InvalidResourceNameError,
+  InvalidShowEpisodeError,
+  MissingEnvError,
+  ProjectRootNotFoundError,
+} from "./errors.js";
 export { loadEnv, optionalEnv, requireEnv } from "./env.js";
 export {
   findProjectRoot,

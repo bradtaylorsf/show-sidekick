@@ -147,6 +147,11 @@ function runFile(command: string, args: string[], timeoutMs: number): Promise<Co
   });
 }
 
+// Trust boundary: `command` is the literal `auth.check` string a tool author
+// puts into defineTool({...}) and runs through the system shell so authors can
+// pipe / use flags. Tools live inside src/tools/ and must never interpolate
+// runtime data into this string. If auth.check ever becomes user-overridable,
+// switch to execFile + argv.
 function runShell(command: string, timeoutMs: number): Promise<CommandResult> {
   return new Promise((resolve) => {
     let timedOut = false;

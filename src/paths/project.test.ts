@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { InvalidShowEpisodeError, ProjectRootNotFoundError } from "./errors.js";
+import { InvalidResourceNameError, InvalidShowEpisodeError, ProjectRootNotFoundError } from "./errors.js";
 import { findProjectRoot, parseShowEpisode, projectPaths, resolve } from "./project.js";
 
 let scratchDirs: string[] = [];
@@ -98,5 +98,20 @@ describe("project paths", () => {
 
     expect(() => parseShowEpisode("bad", root)).toThrow(InvalidShowEpisodeError);
     expect(() => parseShowEpisode("bad/", root)).toThrow(InvalidShowEpisodeError);
+  });
+
+  it("rejects show or episode segments that try to escape the project", async () => {
+    const root = await scratchProject();
+
+    expect(() => parseShowEpisode("../etc/passwd", root)).toThrow(InvalidShowEpisodeError);
+    expect(() => parseShowEpisode("show/..", root)).toThrow(InvalidShowEpisodeError);
+    expect(() => parseShowEpisode("show/.", root)).toThrow(InvalidShowEpisodeError);
+  });
+
+  it("rejects resource names that escape their resource directory", async () => {
+    const root = await scratchProject();
+
+    expect(() => resolve("shows", "../../etc/passwd", root)).toThrow(InvalidResourceNameError);
+    expect(() => resolve("pipelines", "..", root)).toThrow(InvalidResourceNameError);
   });
 });

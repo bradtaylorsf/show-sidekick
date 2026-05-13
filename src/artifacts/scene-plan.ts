@@ -24,7 +24,7 @@ export const ScenePlanSchema = z.object({
     .array(
       z.object({
         slug: z.string(),
-        order: z.number().int(),
+        order: z.number().int().nonnegative(),
         start_s: z.number().nonnegative(),
         end_s: z.number().nonnegative(),
         narrative_role: NarrativeRoleSchema,

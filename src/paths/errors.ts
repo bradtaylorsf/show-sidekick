@@ -27,3 +27,13 @@ export class InvalidShowEpisodeError extends Error {
     this.spec = spec;
   }
 }
+
+export class InvalidResourceNameError extends Error {
+  readonly resourceName: string;
+
+  constructor(name: string) {
+    super(`Invalid resource name (must stay inside the project): ${name}`);
+    this.name = "InvalidResourceNameError";
+    this.resourceName = name;
+  }
+}
