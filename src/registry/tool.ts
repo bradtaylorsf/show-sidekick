@@ -34,6 +34,13 @@ export type KnownCapability =
   | "lip_sync"
   | "talking_head"
   | "avatar_video"
+  | "bg_remove"
+  | "color_grade"
+  | "eye_enhance"
+  | "face_enhance"
+  | "face_restore"
+  | "upscale"
+  | "character_animation"
   | "stock_image";
 
 export type Capability = KnownCapability | (string & {});
