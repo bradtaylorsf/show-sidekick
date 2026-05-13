@@ -101,7 +101,9 @@ The agent's job is to make the presentation **honest**: include the findings the
 For productions running in `--sample` mode, the harness writes a sample checkpoint after compose but before the user is asked to commit to the full run:
 
 ```
-projects/<show>/<episode>/checkpoints/sample.json
+projects/<show>/<episode>/checkpoints/sample_v1.json
+projects/<show>/<episode>/checkpoints/sample_v2.json
+...
 ```
 
 The sample checkpoint:
@@ -109,6 +111,19 @@ The sample checkpoint:
 - References the rendered sample clip path.
 - Records sample cost and projected full cost.
 - Status is always `awaiting_human` — the user must approve before the full run begins.
+- Is versioned so `predit revise <show>/<episode> "<note>"` can preserve each human revision request as its own sub-checkpoint.
+
+The latest sample version is tracked in `projects/<show>/<episode>/state.json`:
+
+```json
+{
+  "sample": {
+    "latest_version": 2
+  }
+}
+```
+
+The runner uses `sample.latest_version` instead of scanning the checkpoint directory to find the newest sample.
 
 ## Key principles
 

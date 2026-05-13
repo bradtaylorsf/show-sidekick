@@ -11,7 +11,7 @@ export const StateSchema = z
   .object({
     show: z.string(),
     episode: z.string(),
-    pipeline: z.string(),
+    pipeline: z.string().optional(),
     current_stage: z.string().optional(),
     last_status: CheckpointStatusSchema.optional(),
     last_checkpoint_at: z.string().optional(),

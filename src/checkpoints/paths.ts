@@ -12,6 +12,10 @@ export function checkpointFile(projectRoot: string, show: string, episode: strin
   return path.join(checkpointDir(projectRoot, show, episode), `${safeSegment(stage, "stage")}.json`);
 }
 
+export function sampleCheckpointFile(projectRoot: string, show: string, episode: string, version: number): string {
+  return path.join(checkpointDir(projectRoot, show, episode), `sample_v${safeVersion(version)}.json`);
+}
+
 export function stateFile(projectRoot: string, show: string, episode: string): string {
   return path.join(projectDir(projectRoot, show, episode), "state.json");
 }
@@ -29,4 +33,12 @@ function safeSegment(segment: string, label: string): string {
   }
 
   return segment;
+}
+
+function safeVersion(version: number): number {
+  if (!Number.isInteger(version) || version < 0) {
+    throw new Error(`invalid sample checkpoint version '${version}'`);
+  }
+
+  return version;
 }
