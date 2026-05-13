@@ -1,0 +1,1780 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`remotion scene library > renders anime_scene against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "anime_scene",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "setting": "a rain-lit station platform",
+        "style": {
+          "background": "#0f1d32",
+          "parallax": 0,
+        },
+      },
+      "type": "anime-background",
+    },
+    {
+      "children": [],
+      "props": {
+        "action": "leans into a neon wind",
+        "character": "Mika",
+        "mood": "hopeful tension",
+        "style": {
+          "borderColor": "#2dd4bf",
+        },
+      },
+      "type": "anime-character-card",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "label",
+        "style": {
+          "color": "#93a4ba",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "letterSpacing": 0,
+          "textTransform": "uppercase",
+        },
+        "text": "hopeful tension",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "title",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter Tight",
+          "fontSize": 88,
+          "fontWeight": 800,
+          "letterSpacing": 0,
+          "lineHeight": 0.95,
+        },
+        "text": "Character beat",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "body",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter",
+          "fontSize": 34,
+          "lineHeight": 1.25,
+        },
+        "text": "Mika leans into a neon wind in a rain-lit station platform.",
+      },
+      "type": "text",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders bar_chart against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "bar_chart",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "title",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter Tight",
+          "fontSize": 88,
+          "fontWeight": 800,
+          "letterSpacing": 0,
+          "lineHeight": 0.95,
+        },
+        "text": "Asset mix",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "label",
+        "style": {
+          "color": "#93a4ba",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "letterSpacing": 0,
+          "textTransform": "uppercase",
+        },
+        "text": "Final scene plan",
+      },
+      "type": "text",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "color": "#2dd4bf",
+            "label": "Video",
+            "ratio": 0.7273,
+            "value": "8 clips",
+          },
+          "type": "bar",
+        },
+        {
+          "children": [],
+          "props": {
+            "color": "#f59e0b",
+            "label": "Image",
+            "ratio": 0.4545,
+            "value": "5 clips",
+          },
+          "type": "bar",
+        },
+        {
+          "children": [],
+          "props": {
+            "color": "#2dd4bf",
+            "label": "Overlay",
+            "ratio": 1,
+            "value": "11 clips",
+          },
+          "type": "bar",
+        },
+      ],
+      "props": {
+        "max": 11,
+      },
+      "type": "bar-chart",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders callout against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "callout",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "style": {
+              "background": "#f59e0b",
+              "borderRadius": 8,
+              "height": 96,
+              "width": 16,
+            },
+            "tone": "warning",
+          },
+          "type": "callout-mark",
+        },
+        {
+          "children": [],
+          "props": {
+            "role": "label",
+            "style": {
+              "color": "#f59e0b",
+              "fontSize": 24,
+            },
+            "text": "Production note",
+          },
+          "type": "text",
+        },
+        {
+          "children": [],
+          "props": {
+            "role": "body",
+            "style": {
+              "color": "#f8fafc",
+              "fontFamily": "Inter",
+              "fontSize": 34,
+              "lineHeight": 1.25,
+            },
+            "text": "Lock the runtime before compose and log any approved switch.",
+          },
+          "type": "text",
+        },
+      ],
+      "props": {
+        "style": {
+          "background": "#0f1d32",
+          "borderColor": "rgba(147, 164, 186, 0.25)",
+          "borderRadius": 8,
+          "borderWidth": 2,
+          "padding": 64,
+        },
+      },
+      "type": "panel",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders comparison against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "comparison",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "title",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter Tight",
+          "fontSize": 88,
+          "fontWeight": 800,
+          "letterSpacing": 0,
+          "lineHeight": 0.95,
+        },
+        "text": "Runtime fit",
+      },
+      "type": "text",
+    },
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "props": {
+                "role": "label",
+                "style": {
+                  "color": "#93a4ba",
+                  "fontFamily": "Inter",
+                  "fontSize": 24,
+                  "letterSpacing": 0,
+                  "textTransform": "uppercase",
+                },
+                "text": "Remotion",
+              },
+              "type": "text",
+            },
+            {
+              "children": [],
+              "props": {
+                "role": "side-headline",
+                "style": {
+                  "color": "#f8fafc",
+                  "fontFamily": "Inter",
+                  "fontSize": 34,
+                  "lineHeight": 1.25,
+                },
+                "text": "React-native composition control",
+              },
+              "type": "text",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "props": {
+                    "index": 0,
+                    "text": "Reusable scenes",
+                  },
+                  "type": "list-item",
+                },
+                {
+                  "children": [],
+                  "props": {
+                    "index": 1,
+                    "text": "Deterministic props",
+                  },
+                  "type": "list-item",
+                },
+                {
+                  "children": [],
+                  "props": {
+                    "index": 2,
+                    "text": "Great for product explainers",
+                  },
+                  "type": "list-item",
+                },
+              ],
+              "props": {
+                "side": "left",
+              },
+              "type": "list",
+            },
+          ],
+          "props": {
+            "side": "left",
+            "style": {
+              "background": "#0f1d32",
+              "borderColor": "rgba(147, 164, 186, 0.25)",
+              "borderRadius": 8,
+              "borderWidth": 2,
+              "padding": 64,
+            },
+          },
+          "type": "panel",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "props": {
+                "role": "label",
+                "style": {
+                  "color": "#93a4ba",
+                  "fontFamily": "Inter",
+                  "fontSize": 24,
+                  "letterSpacing": 0,
+                  "textTransform": "uppercase",
+                },
+                "text": "HyperFrames",
+              },
+              "type": "text",
+            },
+            {
+              "children": [],
+              "props": {
+                "role": "side-headline",
+                "style": {
+                  "color": "#f8fafc",
+                  "fontFamily": "Inter",
+                  "fontSize": 34,
+                  "lineHeight": 1.25,
+                },
+                "text": "CSS and motion-first animation",
+              },
+              "type": "text",
+            },
+            {
+              "children": [
+                {
+                  "children": [],
+                  "props": {
+                    "index": 0,
+                    "text": "Audio-reactive typography",
+                  },
+                  "type": "list-item",
+                },
+                {
+                  "children": [],
+                  "props": {
+                    "index": 1,
+                    "text": "GSAP-friendly",
+                  },
+                  "type": "list-item",
+                },
+                {
+                  "children": [],
+                  "props": {
+                    "index": 2,
+                    "text": "Good for kinetic openings",
+                  },
+                  "type": "list-item",
+                },
+              ],
+              "props": {
+                "side": "right",
+              },
+              "type": "list",
+            },
+          ],
+          "props": {
+            "side": "right",
+            "style": {
+              "background": "#0f1d32",
+              "borderColor": "rgba(147, 164, 186, 0.25)",
+              "borderRadius": 8,
+              "borderWidth": 2,
+              "padding": 64,
+            },
+          },
+          "type": "panel",
+        },
+      ],
+      "props": {
+        "columns": 2,
+        "gap": 32,
+      },
+      "type": "comparison-grid",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders hero_title against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "hero_title",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "label": "deep editorial field",
+        "style": {
+          "background": "#07111f -> #0f1d32",
+        },
+      },
+      "type": "background-field",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "label",
+        "style": {
+          "color": "#93a4ba",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "letterSpacing": 0,
+          "textTransform": "uppercase",
+        },
+        "text": "Epic 5",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "maxLines": 2,
+        "role": "title",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter Tight",
+          "fontSize": 88,
+          "fontWeight": 800,
+          "letterSpacing": 0,
+          "lineHeight": 0.95,
+        },
+        "text": "Composition tools come online",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "subtitle",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter",
+          "fontSize": 34,
+          "lineHeight": 1.25,
+        },
+        "text": "Scene systems, overlays, captions, and runtime adapters.",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "progress": 0,
+        "style": {
+          "background": "#2dd4bf",
+          "height": 8,
+          "transformOrigin": "left center",
+          "width": "0%",
+        },
+      },
+      "type": "accent-rule",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders kpi_grid against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "kpi_grid",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "title",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter Tight",
+          "fontSize": 88,
+          "fontWeight": 800,
+          "letterSpacing": 0,
+          "lineHeight": 0.95,
+        },
+        "text": "Episode readiness",
+      },
+      "type": "text",
+    },
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "props": {
+                "role": "label",
+                "style": {
+                  "color": "#93a4ba",
+                  "fontFamily": "Inter",
+                  "fontSize": 24,
+                  "letterSpacing": 0,
+                  "textTransform": "uppercase",
+                },
+                "text": "Scenes",
+              },
+              "type": "text",
+            },
+            {
+              "children": [],
+              "props": {
+                "role": "kpi-value",
+                "style": {
+                  "color": "#f8fafc",
+                  "fontFamily": "Inter Tight",
+                  "fontSize": 58,
+                  "fontWeight": 900,
+                },
+                "text": "12",
+              },
+              "type": "text",
+            },
+            {
+              "children": [],
+              "props": {
+                "role": "kpi-delta",
+                "text": "locked",
+              },
+              "type": "text",
+            },
+          ],
+          "props": {
+            "index": 0,
+            "style": {
+              "background": "#0f1d32",
+              "borderColor": "rgba(147, 164, 186, 0.25)",
+              "borderRadius": 8,
+              "borderWidth": 2,
+              "padding": 64,
+            },
+          },
+          "type": "panel",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "props": {
+                "role": "label",
+                "style": {
+                  "color": "#93a4ba",
+                  "fontFamily": "Inter",
+                  "fontSize": 24,
+                  "letterSpacing": 0,
+                  "textTransform": "uppercase",
+                },
+                "text": "Assets",
+              },
+              "type": "text",
+            },
+            {
+              "children": [],
+              "props": {
+                "role": "kpi-value",
+                "style": {
+                  "color": "#f8fafc",
+                  "fontFamily": "Inter Tight",
+                  "fontSize": 58,
+                  "fontWeight": 900,
+                },
+                "text": "18",
+              },
+              "type": "text",
+            },
+            {
+              "children": [],
+              "props": {
+                "role": "kpi-delta",
+                "text": "ready",
+              },
+              "type": "text",
+            },
+          ],
+          "props": {
+            "index": 1,
+            "style": {
+              "background": "#0f1d32",
+              "borderColor": "rgba(147, 164, 186, 0.25)",
+              "borderRadius": 8,
+              "borderWidth": 2,
+              "padding": 64,
+            },
+          },
+          "type": "panel",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "props": {
+                "role": "label",
+                "style": {
+                  "color": "#93a4ba",
+                  "fontFamily": "Inter",
+                  "fontSize": 24,
+                  "letterSpacing": 0,
+                  "textTransform": "uppercase",
+                },
+                "text": "Warnings",
+              },
+              "type": "text",
+            },
+            {
+              "children": [],
+              "props": {
+                "role": "kpi-value",
+                "style": {
+                  "color": "#f8fafc",
+                  "fontFamily": "Inter Tight",
+                  "fontSize": 58,
+                  "fontWeight": 900,
+                },
+                "text": "0",
+              },
+              "type": "text",
+            },
+            {
+              "children": [],
+              "props": {
+                "role": "kpi-delta",
+                "text": "clean",
+              },
+              "type": "text",
+            },
+          ],
+          "props": {
+            "index": 2,
+            "style": {
+              "background": "#0f1d32",
+              "borderColor": "rgba(147, 164, 186, 0.25)",
+              "borderRadius": 8,
+              "borderWidth": 2,
+              "padding": 64,
+            },
+          },
+          "type": "panel",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "props": {
+                "role": "label",
+                "style": {
+                  "color": "#93a4ba",
+                  "fontFamily": "Inter",
+                  "fontSize": 24,
+                  "letterSpacing": 0,
+                  "textTransform": "uppercase",
+                },
+                "text": "Runtime",
+              },
+              "type": "text",
+            },
+            {
+              "children": [],
+              "props": {
+                "role": "kpi-value",
+                "style": {
+                  "color": "#f8fafc",
+                  "fontFamily": "Inter Tight",
+                  "fontSize": 58,
+                  "fontWeight": 900,
+                },
+                "text": "remotion",
+              },
+              "type": "text",
+            },
+            {
+              "children": [],
+              "props": {
+                "role": "kpi-delta",
+                "text": "approved",
+              },
+              "type": "text",
+            },
+          ],
+          "props": {
+            "index": 3,
+            "style": {
+              "background": "#0f1d32",
+              "borderColor": "rgba(147, 164, 186, 0.25)",
+              "borderRadius": 8,
+              "borderWidth": 2,
+              "padding": 64,
+            },
+          },
+          "type": "panel",
+        },
+      ],
+      "props": {
+        "columns": 4,
+      },
+      "type": "kpi-grid",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders line_chart against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "line_chart",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "title",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter Tight",
+          "fontSize": 88,
+          "fontWeight": 800,
+          "letterSpacing": 0,
+          "lineHeight": 0.95,
+        },
+        "text": "Pacing curve",
+      },
+      "type": "text",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "color": "#2dd4bf",
+            "label": "energy",
+            "points": [
+              {
+                "x": 0,
+                "y": 0.125,
+              },
+              {
+                "x": 1,
+                "y": 0.5,
+              },
+              {
+                "x": 2,
+                "y": 1,
+              },
+              {
+                "x": 3,
+                "y": 0.75,
+              },
+            ],
+          },
+          "type": "line-series",
+        },
+        {
+          "children": [],
+          "props": {
+            "color": "#f59e0b",
+            "label": "density",
+            "points": [
+              {
+                "x": 0,
+                "y": 0,
+              },
+              {
+                "x": 1,
+                "y": 0.375,
+              },
+              {
+                "x": 2,
+                "y": 0.625,
+              },
+              {
+                "x": 3,
+                "y": 0.875,
+              },
+            ],
+          },
+          "type": "line-series",
+        },
+      ],
+      "props": {
+        "max": 0.9,
+        "min": 0.1,
+        "x_labels": [
+          "0s",
+          "15s",
+          "30s",
+          "45s",
+        ],
+      },
+      "type": "line-chart",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "label",
+        "style": {
+          "color": "#93a4ba",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "letterSpacing": 0,
+          "textTransform": "uppercase",
+        },
+        "text": "2 series",
+      },
+      "type": "text",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders overlay hero_title against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "overlay_hero_title",
+        "overlay": true,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "style": {
+          "background": "#2dd4bf",
+          "color": "#07111f",
+        },
+        "text": "Live",
+      },
+      "type": "badge",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "title",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter Tight",
+          "fontSize": 88,
+          "fontWeight": 800,
+          "letterSpacing": 0,
+          "lineHeight": 0.95,
+        },
+        "text": "Runtime locked",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "subtitle",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter",
+          "fontSize": 34,
+          "lineHeight": 1.25,
+        },
+        "text": "No silent swaps after proposal approval.",
+      },
+      "type": "text",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "transparent",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders overlay provider_chip against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "provider_chip",
+        "overlay": true,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "model": "scene-library",
+        "provider": "remotion",
+        "status": "approved",
+        "style": {
+          "background": "#0f1d32",
+          "borderColor": "#a3e635",
+          "color": "#f8fafc",
+        },
+      },
+      "type": "provider-chip",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "transparent",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders overlay section_title against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "section_title",
+        "overlay": true,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "label",
+        "style": {
+          "color": "#93a4ba",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "letterSpacing": 0,
+          "textTransform": "uppercase",
+        },
+        "text": "03",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "title",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter Tight",
+          "fontSize": 88,
+          "fontWeight": 800,
+          "letterSpacing": 0,
+          "lineHeight": 0.95,
+        },
+        "text": "Validation Gate",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "label",
+        "style": {
+          "color": "#93a4ba",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "letterSpacing": 0,
+          "textTransform": "uppercase",
+        },
+        "text": "Lint, validate, render",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "progress": 0,
+        "style": {
+          "background": "#2dd4bf",
+          "height": 8,
+          "transformOrigin": "left center",
+          "width": "0%",
+        },
+      },
+      "type": "accent-rule",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "transparent",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders overlay stat_reveal against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "stat_reveal",
+        "overlay": true,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "label",
+        "style": {
+          "color": "#93a4ba",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "letterSpacing": 0,
+          "textTransform": "uppercase",
+        },
+        "text": "Caption sync",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "overlay-stat",
+        "style": {
+          "color": "#2dd4bf",
+          "fontFamily": "Inter Tight",
+          "fontSize": 96,
+          "fontWeight": 900,
+        },
+        "text": "±33ms",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "body",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter",
+          "fontSize": 34,
+          "lineHeight": 1.25,
+        },
+        "text": "Within the word-timestamp tolerance.",
+      },
+      "type": "text",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "transparent",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders pie_chart against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "pie_chart",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "title",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter Tight",
+          "fontSize": 88,
+          "fontWeight": 800,
+          "letterSpacing": 0,
+          "lineHeight": 0.95,
+        },
+        "text": "Attention budget",
+      },
+      "type": "text",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "color": "#2dd4bf",
+            "end": 0.2,
+            "label": "Hook",
+            "percent": 0.2,
+            "start": 0,
+            "value": 12,
+          },
+          "type": "pie-slice",
+        },
+        {
+          "children": [],
+          "props": {
+            "color": "#f59e0b",
+            "end": 0.7333,
+            "label": "Proof",
+            "percent": 0.5333,
+            "start": 0.2,
+            "value": 32,
+          },
+          "type": "pie-slice",
+        },
+        {
+          "children": [],
+          "props": {
+            "color": "#a3e635",
+            "end": 1,
+            "label": "Close",
+            "percent": 0.2667,
+            "start": 0.7333000000000001,
+            "value": 16,
+          },
+          "type": "pie-slice",
+        },
+      ],
+      "props": {
+        "center_label": "60 sec",
+      },
+      "type": "pie-chart",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders progress_bar against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "progress_bar",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "label",
+        "style": {
+          "color": "#93a4ba",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "letterSpacing": 0,
+          "textTransform": "uppercase",
+        },
+        "text": "Render readiness",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "title",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter Tight",
+          "fontSize": 88,
+          "fontWeight": 800,
+          "letterSpacing": 0,
+          "lineHeight": 0.95,
+        },
+        "text": "76%",
+      },
+      "type": "text",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "value": 0,
+          },
+          "type": "progress-fill",
+        },
+      ],
+      "props": {
+        "target_label": "validation gate",
+      },
+      "type": "progress-track",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "body",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter",
+          "fontSize": 34,
+          "lineHeight": 1.25,
+        },
+        "text": "Pre-compose checks passed; waiting on final runtime.",
+      },
+      "type": "text",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders stat_card against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "stat_card",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "role": "label",
+            "style": {
+              "color": "#93a4ba",
+              "fontFamily": "Inter",
+              "fontSize": 24,
+              "letterSpacing": 0,
+              "textTransform": "uppercase",
+            },
+            "text": "Weekly output",
+          },
+          "type": "text",
+        },
+        {
+          "children": [],
+          "props": {
+            "role": "stat-value",
+            "style": {
+              "color": "#f8fafc",
+              "fontFamily": "Inter Tight",
+              "fontSize": 132,
+              "fontWeight": 900,
+              "letterSpacing": 0,
+            },
+            "text": "3.4x",
+          },
+          "type": "text",
+        },
+        {
+          "children": [],
+          "props": {
+            "role": "stat-delta",
+            "style": {
+              "color": "#a3e635",
+              "fontSize": 34,
+              "fontWeight": 800,
+            },
+            "text": "+28% vs baseline",
+            "trend": "up",
+          },
+          "type": "text",
+        },
+        {
+          "children": [],
+          "props": {
+            "role": "body",
+            "style": {
+              "color": "#f8fafc",
+              "fontFamily": "Inter",
+              "fontSize": 34,
+              "lineHeight": 1.25,
+            },
+            "text": "Measured across scripted episodes.",
+          },
+          "type": "text",
+        },
+        {
+          "children": [],
+          "props": {
+            "progress": 0,
+            "style": {
+              "background": "#2dd4bf",
+              "height": 8,
+              "transformOrigin": "left center",
+              "width": "0%",
+            },
+          },
+          "type": "accent-rule",
+        },
+      ],
+      "props": {
+        "style": {
+          "background": "#0f1d32",
+          "borderColor": "rgba(147, 164, 186, 0.25)",
+          "borderRadius": 8,
+          "borderWidth": 2,
+          "padding": 64,
+        },
+      },
+      "type": "panel",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders terminal_scene against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "terminal_scene",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "role": "label",
+            "style": {
+              "color": "#93a4ba",
+              "fontFamily": "Inter",
+              "fontSize": 24,
+              "letterSpacing": 0,
+              "textTransform": "uppercase",
+            },
+            "text": "Compose diagnostics",
+          },
+          "type": "text",
+        },
+        {
+          "children": [
+            {
+              "children": [],
+              "props": {
+                "index": 0,
+                "text": "load edit_decisions.json",
+              },
+              "type": "terminal-line",
+            },
+          ],
+          "props": {
+            "cursor": true,
+            "prompt": "predit$",
+            "style": {
+              "background": "#050816",
+              "color": "#a3e635",
+              "fontFamily": "JetBrains Mono",
+              "fontSize": 30,
+            },
+          },
+          "type": "terminal",
+        },
+      ],
+      "props": {
+        "style": {
+          "background": "#0f1d32",
+          "borderColor": "rgba(147, 164, 186, 0.25)",
+          "borderRadius": 8,
+          "borderWidth": 2,
+          "padding": 64,
+        },
+      },
+      "type": "panel",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders text_card against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "text_card",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "role": "label",
+            "style": {
+              "color": "#93a4ba",
+              "fontFamily": "Inter",
+              "fontSize": 24,
+              "letterSpacing": 0,
+              "textTransform": "uppercase",
+            },
+            "text": "Market pulse",
+          },
+          "type": "text",
+        },
+        {
+          "children": [],
+          "props": {
+            "align": "left",
+            "role": "title",
+            "style": {
+              "color": "#f8fafc",
+              "fontFamily": "Inter Tight",
+              "fontSize": 88,
+              "fontWeight": 800,
+              "letterSpacing": 0,
+              "lineHeight": 0.95,
+            },
+            "text": "AI editing moves from novelty to workflow",
+          },
+          "type": "text",
+        },
+        {
+          "children": [],
+          "props": {
+            "role": "subtitle",
+            "style": {
+              "color": "#f8fafc",
+              "fontFamily": "Inter",
+              "fontSize": 34,
+              "lineHeight": 1.25,
+            },
+            "text": "Teams are standardizing around repeatable scene systems.",
+          },
+          "type": "text",
+        },
+        {
+          "children": [],
+          "props": {
+            "role": "body",
+            "style": {
+              "color": "#f8fafc",
+              "fontFamily": "Inter",
+              "fontSize": 34,
+              "lineHeight": 1.25,
+            },
+            "text": "This fixture proves rich text cards render without runtime data.",
+          },
+          "type": "text",
+        },
+        {
+          "children": [],
+          "props": {
+            "progress": 0,
+            "style": {
+              "background": "#2dd4bf",
+              "height": 8,
+              "transformOrigin": "left center",
+              "width": "0%",
+            },
+          },
+          "type": "accent-rule",
+        },
+      ],
+      "props": {
+        "style": {
+          "background": "#0f1d32",
+          "borderColor": "rgba(147, 164, 186, 0.25)",
+          "borderRadius": 8,
+          "borderWidth": 2,
+          "padding": 64,
+        },
+      },
+      "type": "panel",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;

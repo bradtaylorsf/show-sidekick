@@ -1,0 +1,96 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`caption burn > renders active word state deterministically 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 12,
+        "height": 1080,
+        "name": "caption_burn",
+        "overlay": true,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "props": {
+                "active": false,
+                "color": "#cbd5e1",
+                "end_s": 0.4,
+                "index": 0,
+                "start_s": 0,
+                "text": "Ship",
+              },
+              "type": "caption-word",
+            },
+            {
+              "children": [],
+              "props": {
+                "active": true,
+                "color": "#2dd4bf",
+                "end_s": 0.7,
+                "index": 1,
+                "start_s": 0.4,
+                "text": "the",
+              },
+              "type": "caption-word",
+            },
+            {
+              "children": [],
+              "props": {
+                "active": false,
+                "color": "#cbd5e1",
+                "end_s": 1.2,
+                "index": 2,
+                "start_s": 0.7,
+                "text": "draft",
+              },
+              "type": "caption-word",
+            },
+          ],
+          "props": {
+            "index": 0,
+          },
+          "type": "caption-line",
+        },
+      ],
+      "props": {
+        "active_index": 1,
+        "position": "bottom",
+        "style": {
+          "background": "rgba(2, 6, 23, 0.72)",
+          "color": "#ffffff",
+          "fontFamily": "Inter Tight",
+          "fontSize": 60,
+          "fontWeight": 800,
+          "stroke": "#020617",
+          "strokeWidth": 4,
+        },
+        "time_s": 0.4,
+      },
+      "type": "caption-box",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "transparent",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.67,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
