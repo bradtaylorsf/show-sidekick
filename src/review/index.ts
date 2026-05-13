@@ -1,4 +1,5 @@
 export * from "./composition-validator.js";
+export * from "./creative-differentiation.js";
 export * from "./delivery-promise.js";
 export * from "./focus-evaluator.js";
 export * from "./pattern-match.js";
@@ -9,6 +10,7 @@ export * from "./scene-pacing.js";
 export * from "./scene-variation.js";
 export * from "./schema-validate.js";
 export * from "./scoring.js";
+export * from "./skill-compliance.js";
 export * from "./slideshow-risk.js";
 export * from "./specificity.js";
 export * from "./source-media-enforcement.js";
