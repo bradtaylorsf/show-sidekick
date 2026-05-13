@@ -18,7 +18,7 @@ function noopLogger(): ToolContext["logger"] {
 }
 
 function context(): ToolContext {
-  return { projectRoot: "/project", logger: noopLogger() };
+  return { projectRoot: "/project", logger: noopLogger(), execution: { mode: "non_interactive" } };
 }
 
 type FetchCall = [string, { method?: string; headers?: Record<string, string>; body?: string }];

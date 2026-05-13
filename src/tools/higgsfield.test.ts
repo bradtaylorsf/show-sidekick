@@ -16,6 +16,7 @@ function context(overrides: Partial<ToolContext> = {}): ToolContext {
   return {
     projectRoot: "/project",
     logger: noopLogger(),
+    execution: { mode: "non_interactive" },
     runCli: vi.fn(async () => ({
       stdout: JSON.stringify({ video_path: "projects/show/episode/clips/higgsfield.mp4" }),
       stderr: "",

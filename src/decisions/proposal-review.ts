@@ -29,7 +29,7 @@ export function reviewProposalForMusicSource({
         "The proposal is for a pipeline whose master_clock is not 'none', but the active decision log does not include a music_source entry.",
       proposed_fix:
         "Use bundled/skills/meta/music-plan.md during proposal, compare at least two music source options, and record the picked source as a music_source decision before scene planning.",
-      status: "open",
+      status: "pending",
     },
   ];
 }
