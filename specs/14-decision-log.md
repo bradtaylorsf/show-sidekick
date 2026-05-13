@@ -47,19 +47,25 @@ Validated against `schemas/artifacts/decision_log.schema.json`. The cumulative l
 
 ## Categories
 
-Standard categories the harness expects to see entries for, across stages:
+The full enum, used as the `category` field on every decision entry. Naming is normative — reviewer audits and meta skills reference these strings verbatim.
 
 | Category | When | Example |
 |---|---|---|
-| `runtime` | Proposal (or earlier if the brief constrains it) | `hyperframes` vs `remotion` vs `ffmpeg` |
-| `provider` | Asset stage (per capability) | `imagen-4` vs `flux-pro` vs `recraft-v3` |
-| `model` | Asset stage (within a provider) | `kling-v2.1-pro` vs `kling-v1.6-standard` |
-| `playbook` | Proposal | which style playbook the show/episode runs under |
-| `music` | Proposal | track from `music_library/` vs generated vs no music |
-| `voice` | Script or asset stage | which ElevenLabs voice (and why this voice for this character) |
-| `pipeline` | Onboarding / show creation | which pipeline this episode runs |
-| `fallback` | Any stage | when the primary path is blocked and a substitute is approved |
-| `downgrade` | Any stage | when the deliverable is intentionally reduced in scope or quality |
+| `pipeline_selection` | Show creation / episode authoring | which pipeline this episode runs (from `show.pipelines`) |
+| `provider_selection` | Asset stage (per capability) | `flux-pro` vs `imagen-4` vs `recraft-v3` |
+| `renderer_family_selection` | Proposal | creative grammar: `explainer-teacher`, `cinematic-trailer`, `documentary-montage`, `product-reveal`, `screen-demo`, `presenter`, `animation-first`, `explainer-data` |
+| `render_runtime_selection` | Proposal (technical engine; **must list all available runtimes** in `options_considered`) | `remotion` vs `hyperframes` vs `ffmpeg` |
+| `playbook_selection` | Proposal | which style playbook the show/episode runs under |
+| `playbook_override` | Any stage | a show-level or episode-level override of a playbook field |
+| `music_source` | Proposal (mandatory for audio-led pipelines) | track from `music_library/` vs generated vs royalty-free vs none |
+| `motion_commitment` | Proposal | whether the deliverable is motion-led (locks downstream guardrails) |
+| `voice_selection` | Script or asset stage | which voice (and why this voice for this character) |
+| `concept_selection` | Proposal | which of the proposed concepts the user picked |
+| `fallback_decision` | Any stage | when the primary path is blocked and a substitute is approved |
+| `downgrade_approval` | Any stage | when the deliverable is intentionally reduced in scope or quality |
+| `budget_tradeoff` | Any stage | choosing between cost-tier options (premium model vs faster cheap model) |
+| `capability_extension` | Any stage | the agent created a project-scoped tool / script / playbook / skill via `MET-11` |
+| `visual_accuracy_check` | Asset stage | when a generated asset's visual fidelity was checked against a reference or character sheet |
 
 ## Rules
 
@@ -67,9 +73,9 @@ Standard categories the harness expects to see entries for, across stages:
 
 The reviewer audits the decision log on every stage from proposal onward. Missing entries for material choices are `suggestion` (first time) or `critical` (if still missing by edit stage).
 
-### Minimum 2 `options_considered`
+### Minimum 2 `options_considered` (schema-enforced)
 
-Even when the agent is confident, log the rejected alternatives. A decision with one option considered hides the tradeoffs from the user.
+`options_considered` is `z.array().min(2)`. A single-option entry **fails Zod validation** — the harness rejects the write. To represent "only one option was available," include the unavailable alternative in the array with `rejected_because: "not configured on this machine"` (or equivalent). This preserves the audit trail showing the choice was constrained, not discretionary.
 
 ### Real reasons
 
@@ -101,9 +107,13 @@ When a decision is changed mid-run (e.g. the user revises the proposal and a dif
 
 ## Runtime selection rule
 
-When both Remotion and HyperFrames are available on the machine, the `runtime` decision **must** list both in `options_considered` — even if the picked option seems obvious. The reviewer flags a `runtime` decision with only one option considered (when both were available) as `critical`. This prevents silent defaulting.
+The `render_runtime_selection` decision **must list every runtime available on the machine** in `options_considered`. Concretely:
 
-If a runtime was unavailable, list it anyway with `rejected_because: "runtime not available on this machine"`. The audit trail records that the choice was constrained, not discretionary.
+- When both Remotion and HyperFrames are available, both appear in `options_considered`.
+- When ffmpeg is a realistic option for the brief (still-led content, no motion-required guardrail), it appears too. For motion-led briefs, ffmpeg may appear with `rejected_because: "still-image-only; brief requires motion-led delivery."`
+- When a runtime is unavailable, it still appears with `rejected_because: "runtime not available on this machine"`.
+
+The reviewer flags a `render_runtime_selection` decision with fewer options considered than the registry shows as available (filtered for brief applicability) as `critical`. This prevents silent defaulting.
 
 ## What the decision log enables
 

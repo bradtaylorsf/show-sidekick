@@ -12,8 +12,10 @@ Each episode runs with exactly one master clock:
 
 - `audio` — music is the time grid. Scenes snap to sections, beats, climax.
 - `voiceover` — narration is the time grid. Scenes snap to VO segments and word groups.
+- `action_timeline` — for the character-animation pipeline, the per-character action timeline is the time grid. Scenes snap to action milestones (pose holds, beat-aligned action peaks). The audio subsystem still runs (transcription for any narration, beat detection on the music bed) but does not own scene timing.
+- `none` — no time grid; the pipeline is not audio-led (e.g. documentary-montage in "tone poem" mode).
 
-The pipeline declares the master clock (`master_clock: audio | voiceover | none`). Single master clock per episode in v1. Hybrid content (music underscore + narration) uses VO as master and treats music as accompaniment that adapts to VO structure.
+The pipeline declares the master clock (`master_clock: audio | voiceover | action_timeline | none`). Single master clock per episode in v1. Hybrid content (music underscore + narration) uses VO as master and treats music as accompaniment that adapts to VO structure.
 
 ## The Cuesheet
 
@@ -132,6 +134,8 @@ For audio-led pipelines, building the cuesheet is its own stage (`cuesheet` in t
 - Inspectable and reviewable independently of scene planning.
 - Reusable artifact — re-running scene planning doesn't re-transcribe or re-detect beats.
 - Cacheable — `projects/<show>/<episode>/cuesheet.json` persists across runs.
+
+**`cuesheet` stage vs `audio_sync: build` attribute.** The `cuesheet` stage is one *implementation* of `audio_sync: build`. A pipeline may instead build the cuesheet inside its `script` or `scene_plan` stage by setting that stage's `audio_sync: build`. Only one stage per pipeline may declare `audio_sync: build` (see `specs/05-pipelines.md` → validation rules). The canonical `cuesheet` stage is the recommended pattern; embedding the build into another stage is a workflow optimization that some pipelines may choose.
 
 ## Constraints
 

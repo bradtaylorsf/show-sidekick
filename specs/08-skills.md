@@ -45,22 +45,26 @@ Produce a scene plan that anchors every scene to musical structure...
 
 Frontmatter is optional — short skills can omit it. When present, the harness uses it to validate context completeness before invoking the agent for a stage.
 
-## Scoping — bundled, project-local, and show-specific
+## Scoping — bundled, project-local, show-specific, and shared
 
-Three resolution tiers, checked in order (first match wins):
+Four resolution tiers, checked in order (first match wins):
 
 ```
-shows/<show>/skills/<stage>-director.md   # show-specific override (highest priority)
-skills/pipelines/<pipeline>/<stage>-director.md   # project-local override
-.predit/skills/pipelines/<pipeline>/<stage>-director.md   # bundled default (lowest)
+shows/<show>/skills/<stage>-director.md                          # show-specific override (highest priority)
+skills/pipelines/<pipeline>/<stage>-director.md                  # project-local override
+.predit/skills/pipelines/<pipeline>/<stage>-director.md          # bundled per-pipeline default
+.predit/skills/pipelines/_shared/<stage>-director.md             # bundled shared default (lowest)
 ```
 
 The harness reads at most one director skill per stage.
 
 ```
 .predit/skills/                       # bundled, refreshed by `predit update`
-├── pipelines/<pipeline>/<stage>-director.md
+├── pipelines/
+│   ├── <pipeline>/<stage>-director.md
+│   └── _shared/<stage>-director.md   # reusable across pipelines (cuesheet, etc.)
 ├── meta/<name>.md
+├── core/<name>.md                    # cross-cutting craft skills (ffmpeg, remotion, ...)
 └── agents/<vendor>.md
 
 skills/                               # optional project-local overrides
@@ -68,7 +72,7 @@ skills/                               # optional project-local overrides
 ├── meta/<name>.md
 └── agents/<vendor>.md
 
-shows/<show>/skills/                  # show-specific overrides
+shows/<show>/skills/                  # show-specific overrides (apply to any pipeline this show runs)
 └── <stage>-director.md
 ```
 
@@ -76,7 +80,10 @@ When resolving a director skill for a given stage:
 
 1. Look for `shows/<show>/skills/<stage>-director.md`. If present, use it.
 2. Otherwise, look for `skills/pipelines/<pipeline>/<stage>-director.md` (project-local override).
-3. Otherwise, use `.predit/skills/pipelines/<pipeline>/<stage>-director.md` (bundled default).
+3. Otherwise, look for `.predit/skills/pipelines/<pipeline>/<stage>-director.md` (bundled per-pipeline default).
+4. Otherwise, use `.predit/skills/pipelines/_shared/<stage>-director.md` (bundled shared default).
+
+The `_shared/` tier lets reusable director skills — like the cuesheet stage's director, which is identical across music-video, news-song, trailer, etc. — live in one place. A pipeline-specific override at tier 3 wins when present.
 
 Shows don't fork pipelines to tweak a single stage — they shadow the specific skill they want to change. See [`10-installation-and-user-projects.md`](10-installation-and-user-projects.md) for cache layout.
 

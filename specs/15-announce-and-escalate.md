@@ -46,6 +46,8 @@ The full shortlist — both runtimes plus ffmpeg when applicable — must be rec
 
 **Exception:** if only one runtime is available, proceed with it but say so explicitly. Record the unavailable option in `options_considered` with `rejected_because: "runtime not available on this machine"` — the audit trail preserves the fact that the choice was constrained, not discretionary.
 
+**ffmpeg as a third option.** When the brief permits still-led delivery (no motion-required guardrail), `ffmpeg` is a real runtime option and must appear in `options_considered` alongside Remotion and HyperFrames. For motion-led briefs, `ffmpeg` still appears in the decision log with `rejected_because: "still-image-only; brief requires motion-led delivery."` This preserves the audit trail showing the agent considered the simpler path and rejected it for a stated reason.
+
 ## Escalate blockers explicitly
 
 When the approved path is blocked, the agent uses this structure:

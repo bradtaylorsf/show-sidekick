@@ -75,6 +75,9 @@ findings:
     location: "scene_plan.scenes[10]"
     description: "Scene 11 ('AGENT INTERVENES') ends at 2:06.5 — climax is at 2:08.04."
     proposed_fix: "Move scene 11 to start at 2:08.04 (downbeat at section 2 start). Extend prior scene 10 by 1.54s."
+    patch:                       # optional structured patch — see "Proposed fix specificity" below
+      artifact_path: "scene_plan.scenes[10].start_s"
+      new_value: 128.04
     status: pending | fixed | accepted | deferred
 summary:
   critical: 0
@@ -85,6 +88,18 @@ summary:
 ```
 
 The review record is attached to the checkpoint.
+
+### Proposed-fix specificity (CHAI enforcement)
+
+A `proposed_fix` on a `critical` finding must be **specific enough that a fresh agent can apply it without further interpretation**. The harness applies this heuristic at validation time:
+
+A `proposed_fix` is *specific* if **at least one** of the following holds:
+- A `patch` object is present with `artifact_path` and `new_value`.
+- The text is ≥ 40 characters AND contains at least one specific token (a number, an `ALLCAPS_IDENTIFIER`, a `"quoted string"`, or a file path).
+
+A `critical` finding whose `proposed_fix` fails this heuristic is **automatically downgraded to `investigation`**, with the original critical wording preserved in `description`. The downgrade emits a structured warning so reviewers can see when their fixes weren't specific enough.
+
+This heuristic is the *minimum bar*, not the target. Aim for `patch` objects on every critical finding when the fix is mechanically applicable.
 
 ## Specialty review passes
 
@@ -111,7 +126,16 @@ See [`14-decision-log.md`](14-decision-log.md).
 
 ### Creative differentiation
 
-Runs at `scene_plan` and `edit`. Checks scene variety, shot language completeness, playbook fit. Variation scoring catches "every scene looks the same" failures.
+Runs at `scene_plan` and `edit`. Six checks distinct from the variation checker (which contributes one of them):
+
+1. **Variation score** (from REV-10's variation checker) — `score ≤ 2` is critical, `≤ 3` is suggestion.
+2. **Playbook alignment** — does the active playbook fit this content? (e.g. cinematic trailer against `clean-professional` is a mismatch.)
+3. **Shot language completeness** — every scene has `shot_size` and `shot_intent`; hero moments have full shot_language across all 6 fields.
+4. **`renderer_family` match at edit** — `edit_decisions.renderer_family` matches the proposal's choice. Unlogged change → critical.
+5. **`render_runtime` match at edit and compose** — `render_runtime` in edit_decisions and compose's `render_report` matches proposal's locked runtime. Unlogged change → critical.
+6. **Runtime-selection-presented-both-options at proposal** — when both Remotion and HyperFrames are available, the `render_runtime_selection` decision lists both in `options_considered`. Single option considered when both were available → critical.
+
+Implemented as `REV-12` in the implementation guide.
 
 ### Delivery promise
 

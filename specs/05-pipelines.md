@@ -4,6 +4,8 @@
 
 Pipelines are bundled with the harness and cached locally inside the user project at `.predit/pipelines/`. Users may override any pipeline by placing a same-named file at `<project>/pipelines/<slug>.yaml` — the resolver checks the local path first, then falls back to the cache. See [`10-installation-and-user-projects.md`](10-installation-and-user-projects.md).
 
+A pipeline is *referenced* from a show via the `show.pipelines: { <name>: { ... } }` map (see [`04-shows-and-episodes.md`](04-shows-and-episodes.md) → "Pipeline binding"). A show may reference multiple pipelines. The harness rejects an episode that names a pipeline the show doesn't declare in its `pipelines` map.
+
 ## Manifest schema
 
 Pipelines are declarative YAML manifests at `pipelines/<slug>.yaml` (or the bundled equivalent in `.predit/pipelines/<slug>.yaml`). They describe the workflow; how-to lives in stage director skills (Markdown).
@@ -94,6 +96,7 @@ export:
 | Field | Meaning |
 |---|---|
 | `slug` | Stage identifier (used in CLI `--from`, `--to`, `--only`) |
+| `description` | Optional one-line documentation of the stage's intent |
 | `skill` | Path to the Markdown director skill the agent reads before executing the stage |
 | `produces` | Canonical artifact this stage outputs (validated against `schemas/artifacts/<name>.schema.json`) |
 | `tools_available` | Capability names the stage may use; resolved via the registry |
@@ -107,13 +110,62 @@ export:
 
 ## Stage list
 
-Canonical stage order. Pipelines may include any subset, but the order is fixed:
+Canonical stages and their relative order:
 
 ```
-idea → script → cuesheet → scene_plan → assets → edit → compose
+research → idea → proposal → script → capture → cuesheet → character_design → rig_plan → scene_plan → assets → edit → compose → publish
 ```
 
-`cuesheet` is omitted for non-audio pipelines (`master_clock: none`).
+Pipelines declare any subset of canonical stages; the relative order of canonical stages they include is fixed. A pipeline may also declare additional stages by listing them in the manifest at the desired position. Examples:
+
+- `music-video`: `idea → proposal → script → cuesheet → scene_plan → assets → edit → compose`
+- `documentary-montage`: `idea → scene_plan → assets → edit → compose` (skips proposal, script, cuesheet)
+- `daily-news`: `research → idea → capture → script → scene_plan → assets → edit → compose`
+- `character-animation`: `research → proposal → script → character_design → rig_plan → scene_plan → assets → edit → compose → publish`
+- `framework-smoke`: `research → script` (test pipeline; minimal)
+
+`cuesheet` is included only by pipelines with `master_clock: audio | voiceover`.
+
+## Validation rules
+
+The manifest schema enforces these structural rules:
+
+- **At most one stage may declare `audio_sync: build`** per manifest. Multiple `build` stages are undefined behavior and are rejected at load time.
+- **`audio_sync: required` may not precede any `audio_sync: build` stage** in the declared order.
+- **`requires_runtime` is valid only on the `compose` stage.**
+- **Stage slugs are unique** within a manifest.
+- **Canonical stages declared by the manifest must follow the canonical relative order.** Additional (non-canonical) stages may sit between any two canonical stages.
+
+## `metadata` block (open passthrough)
+
+The manifest may include a top-level `metadata: { ... }` map with arbitrary keys. The harness does not interpret `metadata` — it is consumed by the pipeline's director skills and by show-level overlays (e.g. brand-specific defaults from a show). Use cases: brand identity (logo path, BRAND_GUIDE reference), content-mode enums (e.g. sourced vs source-free for news-song), pipeline-specific defaults that don't fit standard fields.
+
+`metadata` is `z.record(z.string(), z.unknown())` with passthrough semantics — extra keys do not trip strict-mode rejection.
+
+## `orchestration` block (per-pipeline limits)
+
+Each pipeline may declare per-pipeline orchestration limits:
+
+```yaml
+orchestration:
+  budget_default_usd: 6.00            # used when episode does not override
+  max_revisions_per_stage: 3          # reviewer rounds before pass_with_warnings
+  max_send_backs: 3                   # total stage send-backs per run
+  max_wall_time_minutes: 60           # hard ceiling
+```
+
+Defaults (when omitted): `budget_default_usd: 3.00, max_revisions_per_stage: 2, max_send_backs: 3, max_wall_time_minutes: 30`. Daily-news, for example, runs with `max_revisions_per_stage: 2` and `max_send_backs: 1` to keep cadence tight.
+
+## `sample` block (per-pipeline sample scope)
+
+```yaml
+sample:
+  duration_s_min: 10                  # shortest acceptable sample
+  duration_s_max: 18                  # longest acceptable sample
+  hint: "Intro + first verse, or hook + climax-adjacent beat"
+```
+
+Sample scope varies by pipeline: music-video samples are 10-18s (intro + first 4 verse lines); news-song samples 15-20s (no-caption PS2 preview); cinematic samples 10-15s (hook + one motion beat).
 
 ## The harness runtime
 

@@ -6,6 +6,17 @@ On the **first interaction** of a session in a user project, when the user's req
 
 The purpose of onboarding is to turn a passive executor into a creative partner. Most users don't know what's possible. The agent's job is to show them — fast, with copy-paste prompts.
 
+### Classification rule (vague vs specific)
+
+Treat the request as **specific** if the user's message includes any **two** of:
+
+- a duration (e.g. "60-second", "30 sec", "two-minute")
+- a deliverable type (trailer, explainer, music video, news song, demo, talking head, clip)
+- a platform (YouTube, Shorts, TikTok, Instagram Reels, LinkedIn)
+- a topic, subject, or domain (any concrete noun phrase the agent can build around)
+
+Otherwise treat as **vague** and onboard. When the classification is genuinely uncertain, ask one clarifying question rather than running the full onboarding flow.
+
 ## Protocol
 
 ### 1. Preflight discovery
@@ -55,12 +66,30 @@ Welcome to predit. With your current setup I can:
 Ready to go:
   - <2–4 capabilities in plain language>
 
+Composition runtimes:
+  - Remotion: <available | unavailable>
+  - HyperFrames: <available | unavailable>
+  - FFmpeg: <available | unavailable>
+
 Available pipelines:
   - <pipelines that work with this setup, one-line each>
 
-Quick upgrades (optional):
-  - <best 1–2 unlocks, with the actual env var or login command from the registry>
+Quick upgrades — 1-minute fix (env var):
+  - <best 1–2 env-var unlocks>
+
+Quick upgrades — 1-minute fix (CLI login):
+  - <best 1–2 cli-login unlocks>
+
+5-minute installs:
+  - <best 1–2 install unlocks>
+
+Complex (GPU, model download):
+  - <relevant local unlocks if interesting>
 ```
+
+Composition runtimes appear as their own block, not folded into "capabilities" — because their per-runtime availability drives the present-both-runtimes rule downstream (see [`15-announce-and-escalate.md`](15-announce-and-escalate.md)).
+
+Setup offers are grouped by **effort tier** (env var / CLI login / install / complex), not by capability, so the user can scan for "what's cheapest to fix right now."
 
 ### 4. Composition runtime reporting
 

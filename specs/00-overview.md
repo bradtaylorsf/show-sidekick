@@ -8,11 +8,13 @@ A show-first AI pre-production harness for video. The agent reads instructions (
 
 | Layer | Owns | Lives in | Reused across |
 |---|---|---|---|
-| **Show** | A recurring series with a brand, cast, default workflow | `shows/<show>/` | Episodes |
-| **Pipeline** | A workflow: stages, tools per stage, approval gates, audio-sync policy | `pipelines/<pipeline>.yaml` + `skills/pipelines/<pipeline>/` | Shows |
-| **Playbook** | A look: palette, typography, motion, audio mood | `playbooks/<playbook>.yaml` | Shows / episodes |
+| **Show** | A brand / channel / identity: brand assets, recurring cast, the set of pipelines this show uses, per-pipeline defaults, ingest rules, publish destination | `shows/<show>/` | Episodes within the show |
+| **Pipeline** | A workflow: stages, tools per stage, approval gates, audio-sync policy | `pipelines/<pipeline>.yaml` + `skills/pipelines/<pipeline>/` | Many shows |
+| **Playbook** | A look: palette, typography, motion, audio mood | `playbooks/<playbook>.yaml` | Many shows / pipelines |
 
-The harness loads a show, resolves its pipeline and playbook, then runs episodes through the pipeline. The agent reads the resolved context and director skills to do the creative work at each stage.
+A show may declare and run **multiple pipelines**. A YouTube channel that publishes news raps and evergreen songs, or a consulting brand that publishes product demos and spokesperson videos, is one show with two pipelines — not two shows. The show owns the durable identity (brand, characters, voice); the pipelines are the workflows that identity runs.
+
+The harness loads a show, resolves the episode's pipeline (a key in `show.pipelines`), merges per-pipeline defaults and the playbook, then runs the episode. The agent reads the resolved context and director skills to do the creative work at each stage.
 
 ## Episode is the unit of work
 
