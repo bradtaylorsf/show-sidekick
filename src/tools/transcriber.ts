@@ -35,7 +35,7 @@ const transcriber = defineTool({
     install: "pnpm add predit",
   },
   best_for: "capability discovery for concrete transcription providers",
-  supports: ["whisper-cpp", "elevenlabs-scribe"],
+  supports: ["whisper-cpp", "elevenlabs-scribe", "provider-selection"],
   input: inputSchema,
   output: outputSchema,
   isAvailable: async () => ({ available: true }),
