@@ -1,11 +1,17 @@
 import type { CostLog } from "../artifacts/cost-log.js";
+import type { Checkpoint } from "../checkpoints/checkpoint.js";
 import type { DecisionLog } from "../artifacts/decision-log.js";
+import type { EditDecisions } from "../artifacts/edit-decisions.js";
+import type { RenderRuntime } from "../artifacts/enums.js";
+import type { ProposalPacket } from "../artifacts/proposal-packet.js";
+import type { RenderReport } from "../artifacts/render-report.js";
 import { ReviewSchema, type Finding, type Review } from "../artifacts/review.js";
 import type { SourceMediaReview } from "../artifacts/source-media-review.js";
 import type { VideoAnalysisBrief } from "../artifacts/video-analysis-brief.js";
 import type { PipelineManifest } from "../pipelines/manifest.js";
 import type { Playbook } from "../shows/playbook.js";
 import { validateComposition } from "./composition-validator.js";
+import { checkCreativeDifferentiation } from "./creative-differentiation.js";
 import {
   checkDeliveryPromise,
   type ClassifyBriefInput,
@@ -18,6 +24,7 @@ import { crossCheckAgainstPlaybook } from "./playbook-check.js";
 import { checkReferenceAlignment } from "./reference-alignment.js";
 import { validateArtifactAgainstSchema } from "./schema-validate.js";
 import { enforceCHAI, type CHAIEnforcementEvent } from "./specificity.js";
+import { checkSkillCompliance } from "./skill-compliance.js";
 import { checkSourceMediaEnforcement, type UserSuppliedMedia } from "./source-media-enforcement.js";
 import { evaluateSuccessCriteria } from "./success-criteria.js";
 
@@ -43,6 +50,14 @@ export type ReviewContext = {
   narrationRequired?: boolean;
   narrationPresent?: boolean;
   approvedFallback?: string;
+  scenes?: UnknownRecord[];
+  proposalPacket?: ProposalPacket;
+  editDecisions?: EditDecisions;
+  renderReport?: RenderReport;
+  availableRuntimes?: RenderRuntime[];
+  motionRequired?: boolean;
+  checkpoint?: Checkpoint;
+  getAgentSkills?: (toolName: string) => readonly string[] | undefined;
 };
 
 export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewContext): Review {
@@ -84,6 +99,18 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
     }),
   );
   rawFindings.push(
+    ...checkCreativeDifferentiation(stageSlug, artifact, {
+      scenes: ctx.scenes,
+      proposal: ctx.proposalPacket,
+      editDecisions: ctx.editDecisions,
+      renderReport: ctx.renderReport,
+      playbook: ctx.playbook,
+      decisionLog: ctx.decisionLog,
+      availableRuntimes: ctx.availableRuntimes,
+      motionRequired: ctx.motionRequired,
+    }),
+  );
+  rawFindings.push(
     ...checkSourceMediaEnforcement(stageSlug, artifact, {
       sourceMediaReview: ctx.sourceMediaReview,
       userSuppliedMedia: ctx.userSuppliedMedia,
@@ -99,6 +126,13 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
       approvedFallback: ctx.approvedFallback,
     }),
   );
+  if (ctx.checkpoint !== undefined && ctx.getAgentSkills !== undefined) {
+    rawFindings.push(
+      ...checkSkillCompliance(stageSlug, ctx.checkpoint, {
+        getAgentSkills: ctx.getAgentSkills,
+      }),
+    );
+  }
   if (ctx.plannedDurationS !== undefined && isCompositionStage(stageSlug) && hasCuts(artifact)) {
     rawFindings.push(...validateComposition(artifact, ctx.plannedDurationS));
   }
@@ -155,7 +189,7 @@ function dedupeFindings(findings: Finding[]): Finding[] {
   const seen = new Set<string>();
 
   return findings.filter((finding) => {
-    const key = `${finding.severity}:${finding.title}:${finding.location}`;
+    const key = `${finding.severity}:${finding.title}:${finding.location}:${finding.description}`;
     if (seen.has(key)) {
       return false;
     }
