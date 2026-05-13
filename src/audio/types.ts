@@ -43,3 +43,24 @@ export interface Section {
   kind: "vocal" | "instrumental" | "silence";
   energy: number;
 }
+
+export interface Beat {
+  time_s: number;
+  strength: number;
+  is_downbeat: boolean;
+}
+
+export interface ClimaxPoint {
+  time_s: number;
+  type: "peak" | "drop" | "arrival" | "release";
+  intensity: number;
+  source: "algorithm" | "agent" | "manual";
+}
+
+export interface SceneAnchor {
+  scene_id: string;
+  start_s: number;
+  end_s: number;
+  snapped_to: "section_start" | "beat" | "downbeat" | "word" | "climax" | "manual";
+  source: { section?: string; beat_index?: number; word_id?: string; climax_index?: number };
+}

@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { createCuesheetHandler } from "./commands/cuesheet.js";
 import { type CliIo, createStubHandler, defaultIo } from "./commands/stub.js";
 import { suggest } from "./fuzzy.js";
 import { configure } from "../log/mode.js";
@@ -11,6 +12,7 @@ const COMMAND_NAMES = [
   "doctor",
   "new",
   "build",
+  "cuesheet",
   "resume",
   "status",
   "approve",
@@ -116,6 +118,11 @@ function registerCommands(program: Command, io: CliIo): void {
     .option("--to <stage>", "stop after a stage")
     .option("--budget <usd>", "set a budget in USD")
     .action(createStubHandler("build", ["target"], io));
+
+  program
+    .command("cuesheet <target>")
+    .description("build and cache the audio cuesheet")
+    .action(createCuesheetHandler(io));
 
   program
     .command("resume <target>")

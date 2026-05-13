@@ -21,7 +21,7 @@ AI pre-production for video. Builds the rough cut and an EDL/XML you finish in P
 |---|---|
 | Project lifecycle | `init`, `doctor`, `update` |
 | Create | `new show`, `new episode`, `new pipeline`, `new playbook` |
-| Build / run | `build`, `resume`, `status`, `approve`, `revise` |
+| Build / run | `build`, `cuesheet`, `resume`, `status`, `approve`, `revise` |
 | Inspect | `ls`, `show` |
 | Export / ingest | `export`, `import`, `watch` |
 | Tooling | `setup`, `tools` |
