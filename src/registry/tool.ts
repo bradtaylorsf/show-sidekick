@@ -19,7 +19,9 @@ export type KnownCapability =
   | "aubio"
   | "audio_energy"
   | "transcriber"
-  | "stock_image";
+  | "stock_image"
+  | "stock_video"
+  | "stock_cross_search";
 
 export type Capability = KnownCapability | (string & {});
 
@@ -56,6 +58,7 @@ export type ToolCommandRunner = (
 
 export interface ToolSelector {
   select(capability: Capability, prefs?: { prefer?: string[]; runtime?: Integration["kind"] }): Promise<Tool>;
+  listByCapability?(capability: Capability): Promise<Tool[]>;
 }
 
 export interface ToolContext {
