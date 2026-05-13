@@ -12,6 +12,15 @@ const basePipeline: ReviewContext["pipeline"] = {
       tools_available: [],
       human_approval: "optional",
     },
+    {
+      slug: "edit",
+      skill: "skills/pipelines/test/edit-director.md",
+      produces: "edit_decisions",
+      review_focus: [],
+      success_criteria: [],
+      tools_available: [],
+      human_approval: "optional",
+    },
   ],
 };
 
@@ -91,6 +100,71 @@ describe("runReview", () => {
         severity: "suggestion",
         title: "Scene pacing is outside playbook range",
         location: "scene_plan.scenes[0]",
+      }),
+    );
+  });
+
+  it("runs composition validation for edit decisions when planned duration is available", () => {
+    const review = runReview(
+      "edit",
+      {
+        cuts: [
+          { start_s: 0, end_s: 3, asset_id: "a" },
+          { start_s: 4, end_s: 6, asset_id: "b" },
+        ],
+        render_runtime: "ffmpeg",
+        renderer_family: "explainer-data",
+      },
+      { pipeline: basePipeline, plannedDurationS: 8 },
+    );
+
+    expect(review.decision).toBe("revise");
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Composition has a gap between cuts",
+      }),
+    );
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Composition does not cover full planned duration",
+      }),
+    );
+  });
+
+  it("runs delivery promise validation for edit decisions", () => {
+    const review = runReview(
+      "edit",
+      {
+        cuts: [
+          { start_s: 0, end_s: 3, asset_id: "title-card" },
+          { start_s: 3, end_s: 6, asset_id: "still-frame" },
+        ],
+        render_runtime: "ffmpeg",
+        renderer_family: "explainer-data",
+      },
+      {
+        pipeline: basePipeline,
+        deliveryPromise: "motion_led",
+        assets: [
+          { id: "title-card", cut_type: "hero_title" },
+          { id: "still-frame", path: "renders/frame.png" },
+        ],
+      },
+    );
+
+    expect(review.decision).toBe("revise");
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Delivery promise motion ratio is below threshold",
+      }),
+    );
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Motion-led delivery silently downgraded to still-led",
       }),
     );
   });
