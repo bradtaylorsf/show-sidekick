@@ -14,11 +14,28 @@ describe("remotion tool", () => {
           renderer_family: "explainer-data",
         },
         cuesheet: {
+          audio: {
+            path: "/tmp/voiceover.wav",
+            duration_s: 2,
+            sample_rate: 48_000,
+            channels: 1,
+          },
           master_clock: "voiceover",
-          words: [
-            { text: "Hello", start_s: 0, end_s: 0.5 },
-            { text: "world", start_s: 0.5, end_s: 1.0 },
+          segments: [
+            {
+              start_s: 0,
+              end_s: 1,
+              text: "Hello world",
+              words: [
+                { text: "Hello", start_s: 0, end_s: 0.5, confidence: 0.99 },
+                { text: "world", start_s: 0.5, end_s: 1.0, confidence: 0.99 },
+              ],
+            },
           ],
+          sections: [{ label: "voiceover", start_s: 0, end_s: 2, kind: "vocal", energy: 0.8 }],
+          beats: [],
+          climax: [],
+          scene_anchors: [],
         },
         playbook: {
           palette: { primary: "#2dd4bf" },

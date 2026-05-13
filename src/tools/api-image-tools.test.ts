@@ -276,6 +276,10 @@ function serviceAccount(): Record<string, string> {
 function testContext(root: string) {
   return {
     projectRoot: root,
+    execution: {
+      mode: "non_interactive" as const,
+      io: { event: () => undefined },
+    },
     logger: {
       info: () => undefined,
       warn: () => undefined,

@@ -9,7 +9,7 @@ export const CuesheetWordSchema = z
     text: z.string(),
     start_s: z.number().nonnegative(),
     end_s: z.number().nonnegative(),
-    confidence: z.number().min(0).max(1).optional(),
+    confidence: z.number().min(0).max(1),
   })
   .refine((word) => word.end_s >= word.start_s, {
     message: "word end_s must be greater than or equal to start_s",
@@ -22,8 +22,8 @@ export const CuesheetSegmentSchema = z
   .object({
     start_s: z.number().nonnegative(),
     end_s: z.number().nonnegative(),
-    text: z.string().optional(),
-    words: z.array(CuesheetWordSchema).default([]),
+    text: z.string(),
+    words: z.array(CuesheetWordSchema),
   })
   .refine((segment) => segment.end_s >= segment.start_s, {
     message: "segment end_s must be greater than or equal to start_s",

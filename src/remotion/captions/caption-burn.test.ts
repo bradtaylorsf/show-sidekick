@@ -17,9 +17,9 @@ const cuesheet = CuesheetSchema.parse({
       end_s: 1.2,
       text: "Ship the draft",
       words: [
-        { text: "Ship", start_s: 0, end_s: 0.4 },
-        { text: "the", start_s: 0.4, end_s: 0.7 },
-        { text: "draft", start_s: 0.7, end_s: 1.2 },
+        { text: "Ship", start_s: 0, end_s: 0.4, confidence: 0.99 },
+        { text: "the", start_s: 0.4, end_s: 0.7, confidence: 0.99 },
+        { text: "draft", start_s: 0.7, end_s: 1.2, confidence: 0.99 },
       ],
     },
   ],
