@@ -1,0 +1,44 @@
+slug: documentary-montage
+display_name: Documentary Montage
+description: Narration-light archival montage workflow.
+status: beta
+master_clock: none
+defaults:
+  aspect: "16:9"
+  duration_strategy: brief
+  max_scene_duration_s: 8
+stages:
+  - slug: idea
+    skill: pipelines/documentary-montage/idea-director.md
+    produces: brief
+    tools_available: [research, web_search]
+    human_approval: required
+  - slug: scene_plan
+    skill: pipelines/documentary-montage/scene-plan-director.md
+    produces: scene_plan
+    tools_available: [image_generation]
+    human_approval: required
+  - slug: assets
+    skill: pipelines/documentary-montage/assets-director.md
+    produces: asset_manifest
+    tools_available: [image_generation, stock]
+    sample_mode_supported: true
+    estimated_cost:
+      sample: { usd: 0.5 }
+      full: { usd: 3 }
+    human_approval: optional
+  - slug: edit
+    skill: pipelines/documentary-montage/edit-director.md
+    produces: edit_decisions
+    tools_available: []
+    human_approval: optional
+  - slug: compose
+    skill: pipelines/documentary-montage/compose-director.md
+    produces: render_report
+    tools_available: [video_compose]
+    requires_runtime: any
+    human_approval: optional
+sample:
+  duration_s_min: 10
+  duration_s_max: 15
+  hint: Hook plus one motion beat.

@@ -1,0 +1,67 @@
+slug: character-animation
+display_name: Character Animation
+description: Animation-first workflow for recurring characters.
+status: beta
+master_clock: action_timeline
+defaults:
+  aspect: "16:9"
+  duration_strategy: custom
+  render_runtime: remotion
+stages:
+  - slug: research
+    skill: pipelines/character-animation/research-director.md
+    produces: research_brief
+    tools_available: [research]
+    human_approval: optional
+  - slug: proposal
+    skill: pipelines/character-animation/proposal-director.md
+    produces: proposal_packet
+    tools_available: []
+    human_approval: required
+  - slug: script
+    skill: pipelines/character-animation/script-director.md
+    produces: script
+    tools_available: []
+    human_approval: required
+  - slug: character_design
+    skill: pipelines/character-animation/character-design-director.md
+    produces: character_design
+    tools_available: [image_generation]
+    review_focus: [silhouette, brand_fit, reuse_potential]
+    human_approval: required
+  - slug: rig_plan
+    skill: pipelines/character-animation/rig-plan-director.md
+    produces: rig_plan
+    tools_available: []
+    review_focus: [animation_feasibility]
+    human_approval: optional
+  - slug: scene_plan
+    skill: pipelines/character-animation/scene-plan-director.md
+    produces: scene_plan
+    tools_available: []
+    human_approval: required
+  - slug: assets
+    skill: pipelines/character-animation/assets-director.md
+    produces: asset_manifest
+    tools_available: [image_generation, image_to_video]
+    sample_mode_supported: true
+    estimated_cost:
+      sample: { usd: 2, comment: "One character beat plus background tests" }
+      full: { usd: 8, comment: "Full character and scene asset pass" }
+    human_approval: optional
+  - slug: edit
+    skill: pipelines/character-animation/edit-director.md
+    produces: edit_decisions
+    tools_available: []
+    human_approval: optional
+  - slug: compose
+    skill: pipelines/character-animation/compose-director.md
+    produces: render_report
+    tools_available: [video_compose]
+    requires_runtime: remotion
+    human_approval: optional
+  - slug: publish
+    skill: pipelines/character-animation/publish-director.md
+    produces: publish_packet
+    tools_available: []
+    human_approval: optional

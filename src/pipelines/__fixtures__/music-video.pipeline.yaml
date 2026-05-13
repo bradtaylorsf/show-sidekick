@@ -1,0 +1,83 @@
+slug: music-video
+display_name: Music Video
+description: Vertical music videos for AI-generated music tracks.
+status: production
+master_clock: audio
+defaults:
+  aspect: "9:16"
+  duration_strategy: track_length
+  max_scene_duration_s: 5
+  render_runtime: hyperframes
+stages:
+  - slug: idea
+    description: Develop a track-aware visual concept.
+    skill: pipelines/music-video/idea-director.md
+    produces: brief
+    tools_available: [research, web_search]
+    review_focus: [hook_strength, concept_clarity, track_understanding]
+    success_criteria:
+      - concept_count: ">= 4"
+      - track_analyzed: true
+    human_approval: required
+    audio_sync: none
+  - slug: proposal
+    skill: pipelines/music-video/proposal-director.md
+    produces: proposal_packet
+    tools_available: []
+    review_focus: [cost_clarity, delivery_promise]
+    success_criteria:
+      - options_presented: ">= 3"
+    human_approval: required
+  - slug: script
+    skill: pipelines/music-video/script-director.md
+    produces: lyric_treatment
+    tools_available: []
+    human_approval: required
+  - slug: cuesheet
+    skill: pipelines/music-video/cuesheet-director.md
+    produces: cuesheet
+    audio_sync: build
+    tools_available: [whisper, aubio]
+    success_criteria:
+      - sections_detected: ">= 3"
+      - beats_detected: true
+    human_approval: optional
+  - slug: scene_plan
+    skill: pipelines/music-video/scene-director.md
+    produces: scene_plan
+    audio_sync: required
+    tools_available: [image_generation]
+    review_focus: [audio_alignment, visual_cadence]
+    success_criteria:
+      - all_scenes_anchored: true
+      - max_scene_duration_s: "<= 5"
+    human_approval: required
+  - slug: assets
+    skill: pipelines/music-video/asset-director.md
+    produces: asset_manifest
+    tools_available: [image_generation, image_to_video]
+    sample_mode_supported: true
+    estimated_cost:
+      sample: { usd: 1, comment: "1-2 hero clips plus 4-6 images" }
+      full: { usd: 5, comment: "8-12 hero clips plus 30-40 images" }
+    human_approval: optional
+  - slug: edit
+    skill: pipelines/music-video/edit-director.md
+    produces: edit_decisions
+    tools_available: []
+    human_approval: optional
+  - slug: compose
+    skill: pipelines/music-video/compose-director.md
+    produces: render_report
+    tools_available: [video_compose]
+    requires_runtime: hyperframes
+    human_approval: optional
+export:
+  supported_targets: [capcut, premiere, davinci, edl]
+  default_target: capcut
+  notes: |
+    edit_decisions and cuesheet contain the NLE handoff.
+sample:
+  duration_s_min: 10
+  duration_s_max: 18
+  hint: Intro plus first verse, or hook plus a climax-adjacent beat.

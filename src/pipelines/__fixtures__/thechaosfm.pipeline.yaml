@@ -1,0 +1,74 @@
+slug: thechaosfm
+display_name: TheChaosFM
+description: Source-backed news-song workflow with brand-specific modes.
+status: experimental
+master_clock: audio
+defaults:
+  aspect: "9:16"
+  duration_strategy: track_length
+  render_runtime: hyperframes
+metadata:
+  brand:
+    logo: shows/thechaosfm/brand/logo.svg
+    style_playbook: shows/thechaosfm/brand/style-playbook.md
+    project_root: shows/thechaosfm
+    slogans:
+      primary: Procedural panic, explained on beat.
+  content_modes:
+    sourced:
+      requires_sources_yaml: true
+      citation_style: lower_third
+    source_free:
+      requires_sources_yaml: false
+      citation_style: none
+stages:
+  - slug: research
+    skill: pipelines/thechaosfm/research-director.md
+    produces: research_brief
+    tools_available: [web_search]
+    review_focus: [source_quality, timeline_accuracy]
+    human_approval: never
+  - slug: idea
+    skill: pipelines/thechaosfm/idea-director.md
+    produces: brief
+    tools_available: []
+    human_approval: optional
+  - slug: proposal
+    skill: pipelines/thechaosfm/proposal-director.md
+    produces: proposal_packet
+    tools_available: []
+    human_approval: required
+  - slug: script
+    skill: pipelines/thechaosfm/script-director.md
+    produces: script
+    tools_available: []
+    human_approval: required
+  - slug: cuesheet
+    skill: pipelines/thechaosfm/cuesheet-director.md
+    produces: cuesheet
+    tools_available: [whisper, aubio]
+    audio_sync: build
+    human_approval: optional
+  - slug: scene_plan
+    skill: pipelines/thechaosfm/scene-plan-director.md
+    produces: scene_plan
+    tools_available: [image_generation]
+    audio_sync: required
+    human_approval: required
+  - slug: assets
+    skill: pipelines/thechaosfm/assets-director.md
+    produces: asset_manifest
+    tools_available: [image_generation, image_to_video]
+    sample_mode_supported: true
+    human_approval: optional
+  - slug: edit
+    skill: pipelines/thechaosfm/edit-director.md
+    produces: edit_decisions
+    tools_available: []
+    human_approval: optional
+  - slug: compose
+    skill: pipelines/thechaosfm/compose-director.md
+    produces: render_report
+    tools_available: [video_compose]
+    requires_runtime: hyperframes
+    human_approval: optional

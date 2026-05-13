@@ -1,0 +1,62 @@
+slug: daily-news
+display_name: Daily News
+description: Fast-turnaround sourced news recap.
+status: experimental
+master_clock: none
+defaults:
+  aspect: "9:16"
+  duration_strategy: brief
+stages:
+  - slug: research
+    skill: pipelines/daily-news/research-director.md
+    produces: research_brief
+    tools_available: [web_search]
+    review_focus: [source_quality, factual_accuracy]
+    success_criteria:
+      - source_count: ">= 3"
+    human_approval: never
+  - slug: idea
+    skill: pipelines/daily-news/idea-director.md
+    produces: brief
+    tools_available: []
+    human_approval: optional
+  - slug: script
+    skill: pipelines/daily-news/script-director.md
+    produces: script
+    tools_available: []
+    human_approval: required
+  - slug: capture
+    skill: pipelines/daily-news/capture-director.md
+    produces: asset_manifest
+    tools_available: [browser_capture]
+    sample_mode_supported: true
+    human_approval: optional
+  - slug: scene_plan
+    skill: pipelines/daily-news/scene-plan-director.md
+    produces: scene_plan
+    tools_available: [image_generation]
+    human_approval: optional
+  - slug: assets
+    skill: pipelines/daily-news/assets-director.md
+    produces: asset_manifest
+    tools_available: [image_generation]
+    sample_mode_supported: true
+    human_approval: optional
+  - slug: edit
+    skill: pipelines/daily-news/edit-director.md
+    produces: edit_decisions
+    tools_available: []
+    human_approval: optional
+  - slug: compose
+    skill: pipelines/daily-news/compose-director.md
+    produces: render_report
+    tools_available: [video_compose]
+    requires_runtime: remotion
+    human_approval: optional
+orchestration:
+  max_revisions_per_stage: 2
+  max_send_backs: 1
+sample:
+  duration_s_min: 15
+  duration_s_max: 20
+  hint: No-caption preview with source-backed visuals.
