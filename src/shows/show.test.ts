@@ -200,10 +200,10 @@ describe("EpisodeSchema", () => {
       created: "2026-05-12",
     });
 
-    expect(() => validateEpisodeAgainstShow(episode, show)).not.toThrow();
+    expect(validateEpisodeAgainstShow(episode, show)).toEqual({ ok: true, errors: [] });
   });
 
-  it("rejects an episode pipeline that is not declared by the parent show", () => {
+  it("returns structured errors for an episode pipeline that is not declared by the parent show", () => {
     const show = ShowSchema.parse({
       slug: "last-rev",
       display_name: "Last Rev",
@@ -222,9 +222,15 @@ describe("EpisodeSchema", () => {
       pipeline: "talking-head",
     });
 
-    expect(() => validateEpisodeAgainstShow(episode, show)).toThrow(
-      "episode.pipeline 'talking-head' is not a key in show.pipelines",
-    );
+    expect(validateEpisodeAgainstShow(episode, show)).toEqual({
+      ok: false,
+      errors: [
+        {
+          path: "pipeline",
+          message: "episode.pipeline 'talking-head' is not a key in show.pipelines",
+        },
+      ],
+    });
   });
 });
 

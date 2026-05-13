@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://predit.dev/schemas/artifacts/cost_log.schema.json",
+  "title": "Cost Log",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["tool", "provider", "model", "units", "usd", "mode"],
+    "properties": {
+      "tool": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "model": {
+        "type": "string"
+      },
+      "units": {
+        "type": "number",
+        "minimum": 0
+      },
+      "usd": {
+        "type": "number",
+        "minimum": 0
+      },
+      "mode": {
+        "type": "string",
+        "enum": ["sample", "full"]
+      }
+    }
+  }
+}

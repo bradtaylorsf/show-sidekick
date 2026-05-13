@@ -109,3 +109,4 @@ export const PipelineManifestSchema = z
 export type PipelineStatus = z.infer<typeof PipelineStatusSchema>;
 export type MasterClock = z.infer<typeof MasterClockSchema>;
 export type PipelineManifest = z.infer<typeof PipelineManifestSchema>;
+export type Pipeline = PipelineManifest;
