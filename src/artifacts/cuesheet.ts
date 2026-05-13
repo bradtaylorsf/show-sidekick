@@ -4,19 +4,33 @@ import { atomicWrite } from "../checkpoints/io.js";
 import { projectDir } from "../checkpoints/paths.js";
 import { loadJson } from "../config/loader.js";
 
-export const WordSchema = z.object({
-  text: z.string(),
-  start_s: z.number().nonnegative(),
-  end_s: z.number().nonnegative(),
-  confidence: z.number().min(0).max(1),
-});
+export const CuesheetWordSchema = z
+  .object({
+    text: z.string(),
+    start_s: z.number().nonnegative(),
+    end_s: z.number().nonnegative(),
+    confidence: z.number().min(0).max(1).optional(),
+  })
+  .refine((word) => word.end_s >= word.start_s, {
+    message: "word end_s must be greater than or equal to start_s",
+    path: ["end_s"],
+  });
 
-export const SegmentSchema = z.object({
-  start_s: z.number().nonnegative(),
-  end_s: z.number().nonnegative(),
-  text: z.string(),
-  words: z.array(WordSchema),
-});
+export const WordSchema = CuesheetWordSchema;
+
+export const CuesheetSegmentSchema = z
+  .object({
+    start_s: z.number().nonnegative(),
+    end_s: z.number().nonnegative(),
+    text: z.string().optional(),
+    words: z.array(CuesheetWordSchema).default([]),
+  })
+  .refine((segment) => segment.end_s >= segment.start_s, {
+    message: "segment end_s must be greater than or equal to start_s",
+    path: ["end_s"],
+  });
+
+export const SegmentSchema = CuesheetSegmentSchema;
 
 export const SectionSchema = z.object({
   label: z.string(),
@@ -59,23 +73,28 @@ export const AudioTrackSchema = z.object({
   channels: z.number().int().positive(),
 });
 
-export const CuesheetSchema = z.object({
-  audio: AudioTrackSchema,
-  master_clock: z.enum(["audio", "voiceover"]),
-  bpm: z.number().positive().optional(),
-  transcription_confidence: z
-    .object({
-      average: z.number().min(0).max(1),
-      low_confidence: z.boolean(),
-    })
-    .optional(),
-  segments: z.array(SegmentSchema),
-  sections: z.array(SectionSchema),
-  beats: z.array(BeatSchema),
-  climax: z.array(ClimaxPointSchema),
-  scene_anchors: z.array(SceneAnchorSchema),
-});
+export const CuesheetSchema = z
+  .object({
+    audio: AudioTrackSchema,
+    master_clock: z.enum(["audio", "voiceover"]),
+    bpm: z.number().positive().optional(),
+    transcription_confidence: z
+      .object({
+        average: z.number().min(0).max(1),
+        low_confidence: z.boolean(),
+      })
+      .optional(),
+    words: z.array(CuesheetWordSchema).optional(),
+    segments: z.array(CuesheetSegmentSchema),
+    sections: z.array(SectionSchema),
+    beats: z.array(BeatSchema),
+    climax: z.array(ClimaxPointSchema),
+    scene_anchors: z.array(SceneAnchorSchema),
+  })
+  .passthrough();
 
+export type CuesheetWord = z.infer<typeof CuesheetWordSchema>;
+export type CuesheetSegment = z.infer<typeof CuesheetSegmentSchema>;
 export type Cuesheet = z.infer<typeof CuesheetSchema>;
 
 export function cuesheetPath(projectRoot: string, show: string, episode: string): string {

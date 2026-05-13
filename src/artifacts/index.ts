@@ -12,6 +12,7 @@ export * from "./end-tag-plan.js";
 export * from "./enums.js";
 export * from "./final-review.js";
 export * from "./pose-library.js";
+export * from "./playbook.js";
 export * from "./proposal-packet.js";
 export * from "./research-brief.js";
 export * from "./render-report.js";
