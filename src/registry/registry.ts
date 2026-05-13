@@ -3,7 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { DEFAULT_AVAILABILITY_CONCURRENCY, DEFAULT_PROBE_TIMEOUT_MS, withConcurrency, withTimeout } from "./availability.js";
 import { NoToolAvailable, RegistryError } from "./errors.js";
-import type { Availability, Capability, CliAuth, Integration, Tool } from "./tool.js";
+import type { Availability, Capability, CliAuth, Integration, Tool, ToolAvailabilityContext } from "./tool.js";
 
 export type RegistryOptions = {
   toolsDir?: string;
@@ -63,13 +63,15 @@ export class Registry {
     return this.availabilityCache.get(name);
   }
 
-  async refreshAvailability(options: { concurrency?: number; timeoutMs?: number } = {}): Promise<void> {
+  async refreshAvailability(
+    options: { concurrency?: number; timeoutMs?: number; context?: ToolAvailabilityContext } = {},
+  ): Promise<void> {
     const concurrency = options.concurrency ?? DEFAULT_AVAILABILITY_CONCURRENCY;
     const timeoutMs = options.timeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS;
 
     await withConcurrency(this.discoveryOrder, concurrency, async (tool) => {
       try {
-        const availability = await withTimeout(tool.isAvailable(), timeoutMs);
+        const availability = await withTimeout(tool.isAvailable(options.context), timeoutMs);
         this.availabilityCache.set(tool.name, availability);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -78,13 +80,16 @@ export class Registry {
     });
   }
 
-  async select(capability: Capability, prefs: { prefer?: string[]; runtime?: Integration["kind"] } = {}): Promise<Tool> {
+  async select(
+    capability: Capability,
+    prefs: { prefer?: string[]; runtime?: Integration["kind"]; context?: ToolAvailabilityContext } = {},
+  ): Promise<Tool> {
     const candidates = this.byCapability(capability).filter((tool) => {
       return prefs.runtime === undefined || tool.integration.kind === prefs.runtime;
     });
 
-    if (candidates.some((tool) => !this.availabilityCache.has(tool.name))) {
-      await this.refreshAvailability();
+    if (prefs.context !== undefined || candidates.some((tool) => !this.availabilityCache.has(tool.name))) {
+      await this.refreshAvailability({ context: prefs.context });
     }
 
     const discoveryIndex = new Map(this.discoveryOrder.map((tool, index) => [tool.name, index]));

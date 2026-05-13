@@ -1,0 +1,129 @@
+import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { ffprobe } from "../audio/ffprobe.js";
+import ffmpeg from "./ffmpeg.js";
+
+const hasFfmpeg = hasBinary("ffmpeg") && hasBinary("ffprobe");
+let tempDirs: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(tempDirs.map((dir) => rm(dir, { force: true, recursive: true })));
+  tempDirs = [];
+});
+
+describe("ffmpeg tool", () => {
+  it.skipIf(!hasFfmpeg)("trims a fixture and leaves a probeable output", async () => {
+    const dir = await tempDir();
+    const input = join(dir, "input.mp4");
+    const output = join(dir, "trimmed.mp4");
+    synthesizeVideo(input, 2);
+
+    const result = await ffmpeg.execute(
+      {
+        operation: "trim",
+        input,
+        output,
+        start_s: 0.2,
+        end_s: 1.2,
+      },
+      testContext(),
+    );
+
+    expect(result.output_path).toBe(output);
+    expect(existsSync(output)).toBe(true);
+
+    const probe = await ffprobe(output);
+    expect(probe.format.duration_s).toBeGreaterThanOrEqual(0.8);
+    expect(probe.format.duration_s).toBeLessThanOrEqual(1.4);
+  });
+
+  it.skipIf(!hasFfmpeg)("concatenates smoke fixtures and leaves a probeable output", async () => {
+    const dir = await tempDir();
+    const first = join(dir, "first.mp4");
+    const second = join(dir, "second.mp4");
+    const output = join(dir, "concat.mp4");
+    synthesizeVideo(first, 1);
+    synthesizeVideo(second, 1);
+
+    const result = await ffmpeg.execute(
+      {
+        operation: "concat",
+        inputs: [first, second],
+        output,
+      },
+      testContext(),
+    );
+
+    expect(result.output_path).toBe(output);
+    expect(existsSync(output)).toBe(true);
+
+    const probe = await ffprobe(output);
+    expect(probe.format.duration_s).toBeGreaterThanOrEqual(1.8);
+    expect(probe.format.duration_s).toBeLessThanOrEqual(2.3);
+  });
+});
+
+async function tempDir(): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "predit-ffmpeg-test-"));
+  tempDirs.push(dir);
+  return dir;
+}
+
+function synthesizeVideo(output: string, durationS: number): void {
+  execFileSync(
+    "ffmpeg",
+    [
+      "-y",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      `testsrc2=size=160x90:rate=15:duration=${durationS}`,
+      "-f",
+      "lavfi",
+      "-i",
+      `sine=frequency=440:duration=${durationS}`,
+      "-shortest",
+      "-c:v",
+      "mpeg4",
+      "-g",
+      "1",
+      "-q:v",
+      "5",
+      "-c:a",
+      "aac",
+      output,
+    ],
+    { stdio: "pipe" },
+  );
+
+  expect(existsSync(output)).toBe(true);
+}
+
+function hasBinary(binary: string): boolean {
+  try {
+    execFileSync("which", [binary], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function testContext() {
+  return {
+    projectRoot: tmpdir(),
+    logger: {
+      info: () => undefined,
+      warn: () => undefined,
+      error: () => undefined,
+      debug: () => undefined,
+      event: () => undefined,
+    },
+  };
+}

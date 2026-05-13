@@ -7,6 +7,7 @@ import type { FinalReview } from "../artifacts/final-review.js";
 import type { RenderRuntime } from "../artifacts/enums.js";
 import type { ProposalPacket } from "../artifacts/proposal-packet.js";
 import type { RenderReport } from "../artifacts/render-report.js";
+import { reviewHyperframesValidationSteps } from "../compose/render-report-validation.js";
 import { ReviewSchema, type Finding, type Review } from "../artifacts/review.js";
 import type { SourceMediaReview } from "../artifacts/source-media-review.js";
 import type { VideoAnalysisBrief } from "../artifacts/video-analysis-brief.js";
@@ -183,6 +184,7 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
     }),
   );
   rawFindings.push(...checkTranscriptConfidence(stageSlug, ctx.cuesheet));
+  rawFindings.push(...checkRenderReportValidation(stageSlug, ctx.renderReport));
   rawFindings.push(
     ...checkFinalReview(stageSlug, artifact, {
       deliveryPromise: ctx.deliveryPromise,
@@ -267,6 +269,21 @@ function checkTranscriptConfidence(stageSlug: string, cuesheet: unknown): Findin
       status: "pending",
     },
   ];
+}
+
+function checkRenderReportValidation(stageSlug: string, renderReport: RenderReport | undefined): Finding[] {
+  if (stageSlug !== "compose" || renderReport === undefined) {
+    return [];
+  }
+
+  return reviewHyperframesValidationSteps(renderReport).map((finding) => ({
+    severity: finding.severity,
+    title: "HyperFrames validation gate missing",
+    location: "render_report.validation_steps",
+    description: finding.message,
+    proposed_fix: "Run HyperFrames lint and validate before render, and include passing lint/validate entries in render_report.validation_steps[].",
+    status: "pending",
+  }));
 }
 
 function summarizeFindings(findings: Finding[], successCriteriaMet: number, successCriteriaTotal: number): Review["summary"] {

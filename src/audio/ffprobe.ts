@@ -1,66 +1,150 @@
 import { execFile } from "node:child_process";
+import { z } from "zod";
 
 const DEFAULT_FFPROBE_TIMEOUT_MS = 10_000;
 const DEFAULT_FFPROBE_MAX_BUFFER = 10 * 1024 * 1024;
 
-export type FfprobeStream = {
-  codec_type?: string;
-  duration?: string;
-  sample_rate?: string;
-  channels?: number;
-  [key: string]: unknown;
-};
+export const FfprobeStreamSchema = z.object({
+  codec_type: z.string(),
+  codec_name: z.string().optional(),
+  sample_rate: z.number().int().positive().optional(),
+  channels: z.number().int().positive().optional(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+});
 
-export type FfprobeFormat = {
-  duration?: string;
-  [key: string]: unknown;
-};
+export const FfprobeResultSchema = z.object({
+  format: z.object({
+    duration_s: z.number().nonnegative(),
+    bit_rate: z.number().int().nonnegative().optional(),
+    format_name: z.string().optional(),
+  }),
+  streams: z.array(FfprobeStreamSchema),
+});
 
-export interface FfprobeJson {
-  streams?: FfprobeStream[];
-  format?: FfprobeFormat;
-  [key: string]: unknown;
-}
+export type FfprobeStream = z.infer<typeof FfprobeStreamSchema>;
+export type FfprobeResult = z.infer<typeof FfprobeResultSchema>;
 
 export class FfprobeError extends Error {
   readonly path: string;
+  readonly command: string[];
   readonly stderr: string;
 
-  constructor(message: string, options: { path: string; stderr?: string; cause?: unknown }) {
+  constructor(message: string, options: { command: string[]; path?: string; stderr?: string; cause?: unknown }) {
     super(message, { cause: options.cause });
     this.name = "FfprobeError";
-    this.path = options.path;
+    this.path = options.path ?? options.command.at(-1) ?? "";
+    this.command = options.command;
     this.stderr = options.stderr ?? "";
   }
 }
 
-export async function ffprobe(path: string, options: { timeoutMs?: number } = {}): Promise<FfprobeJson> {
-  const timeoutMs = options.timeoutMs ?? DEFAULT_FFPROBE_TIMEOUT_MS;
-  const args = ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", path];
-  const { stdout, stderr } = await runFfprobe(path, args, timeoutMs);
+type RawFfprobeOutput = {
+  format?: {
+    duration?: string;
+    bit_rate?: string;
+    format_name?: string;
+  };
+  streams?: Array<{
+    codec_type?: string;
+    codec_name?: string;
+    sample_rate?: string;
+    channels?: number;
+    width?: number;
+    height?: number;
+    duration?: string;
+  }>;
+};
+
+export async function ffprobe(path: string, options: { timeoutMs?: number } = {}): Promise<FfprobeResult> {
+  const command = [
+    "ffprobe",
+    "-v",
+    "error",
+    "-print_format",
+    "json",
+    "-show_format",
+    "-show_streams",
+    path,
+  ];
+  const { stdout, stderr } = await runFfprobe(command, options.timeoutMs ?? DEFAULT_FFPROBE_TIMEOUT_MS);
+  let raw: RawFfprobeOutput;
 
   try {
-    return JSON.parse(stdout) as FfprobeJson;
+    raw = JSON.parse(stdout) as RawFfprobeOutput;
   } catch (error) {
     throw new FfprobeError(`ffprobe returned invalid JSON for ${path}`, {
+      command,
       path,
-      stderr,
+      stderr: stderr || (error instanceof Error ? error.message : String(error)),
       cause: error,
     });
   }
+
+  return FfprobeResultSchema.parse(normalizeFfprobeOutput(raw));
 }
 
-function runFfprobe(path: string, args: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
+function normalizeFfprobeOutput(raw: RawFfprobeOutput): FfprobeResult {
+  const streams = (raw.streams ?? [])
+    .filter((stream) => typeof stream.codec_type === "string")
+    .map((stream) => ({
+      codec_type: stream.codec_type as string,
+      codec_name: stream.codec_name,
+      sample_rate: numberFromString(stream.sample_rate),
+      channels: stream.channels,
+      width: stream.width,
+      height: stream.height,
+    }));
+
+  const duration = numberFromString(raw.format?.duration) ?? maxStreamDuration(raw.streams ?? []) ?? 0;
+
+  return {
+    format: {
+      duration_s: duration,
+      bit_rate: integerFromString(raw.format?.bit_rate),
+      format_name: raw.format?.format_name,
+    },
+    streams,
+  };
+}
+
+function maxStreamDuration(streams: NonNullable<RawFfprobeOutput["streams"]>): number | undefined {
+  const durations = streams
+    .map((stream) => numberFromString(stream.duration))
+    .filter((duration): duration is number => duration !== undefined);
+
+  if (durations.length === 0) {
+    return undefined;
+  }
+
+  return Math.max(...durations);
+}
+
+function numberFromString(value: string | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+function integerFromString(value: string | undefined): number | undefined {
+  const parsed = numberFromString(value);
+  return parsed === undefined ? undefined : Math.trunc(parsed);
+}
+
+function runFfprobe(command: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     execFile(
-      "ffprobe",
-      args,
+      command[0] as string,
+      command.slice(1),
       { encoding: "utf8", maxBuffer: DEFAULT_FFPROBE_MAX_BUFFER, timeout: timeoutMs },
       (error, stdout, stderr) => {
         if (error) {
           reject(
-            new FfprobeError(`ffprobe failed for ${path}: ${error.message}`, {
-              path,
+            new FfprobeError(`ffprobe failed for ${command.at(-1) ?? "input"}: ${error.message}`, {
+              command,
               stderr,
               cause: error,
             }),
