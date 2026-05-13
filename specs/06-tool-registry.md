@@ -118,9 +118,11 @@ export default defineTool({
 });
 ```
 
-## Selectors are methods, not tools
+## Provider selection
 
-Routing across providers for a capability (TTS, image, video, music) is `registry.select(cap, prefs?)`. There is no `tts_selector` "tool" — the agent introspects providers via `registry.byCapability('tts')` and picks via `select()` or its own logic.
+Routing across providers for a capability (TTS, image, video, music, capture) is `registry.select(cap, prefs?)`. The agent introspects providers via `registry.byCapability('<capability>')` and picks via `select()` or its own logic.
+
+Some capabilities also expose a `predit` provider-selection marker tool for discovery when no concrete provider is bundled yet, or when a manifest needs a stable capability entry. Marker tools use `supports: ['provider-selection']` and throw a clear error if executed directly. When concrete providers exist for the same capability, `registry.select()` ignores the marker and ranks only executable providers.
 
 ## Setup UX
 

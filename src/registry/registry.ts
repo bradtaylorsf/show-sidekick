@@ -75,9 +75,11 @@ export class Registry {
   }
 
   async select(capability: Capability, prefs: { prefer?: string[]; runtime?: Integration["kind"] } = {}): Promise<Tool> {
-    const candidates = this.byCapability(capability).filter((tool) => {
+    const matchingTools = this.byCapability(capability).filter((tool) => {
       return prefs.runtime === undefined || tool.integration.kind === prefs.runtime;
     });
+    const concreteTools = matchingTools.filter((tool) => !isProviderSelectionMarker(tool));
+    const candidates = concreteTools.length > 0 ? concreteTools : matchingTools;
 
     if (candidates.some((tool) => !this.availabilityCache.has(tool.name))) {
       await this.refreshAvailability();
@@ -141,6 +143,10 @@ function unavailableReason(availability: Availability | undefined): string {
   }
 
   return availability.available ? "available" : availability.reason;
+}
+
+function isProviderSelectionMarker(tool: Tool): boolean {
+  return tool.provider === "predit" && (tool.supports ?? []).includes("provider-selection");
 }
 
 function defaultToolsDir(): string {

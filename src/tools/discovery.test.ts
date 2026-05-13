@@ -31,5 +31,9 @@ describe("tool discovery", () => {
     expect(registry.get("face_restore")?.capability).toBe("face_restore");
     expect(registry.get("upscale")?.capability).toBe("upscale");
     expect(registry.get("character_animation")?.capability).toBe("character_animation");
+    expect(registry.get("cap_recorder")?.capability).toBe("screen_capture");
+    expect(registry.get("screen_recorder")?.capability).toBe("screen_capture");
+    expect(registry.get("screen_capture_selector")?.capability).toBe("screen_capture");
+    expect(registry.get("playwright_recording")?.capability).toBe("screen_capture");
   });
 });

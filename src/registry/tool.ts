@@ -41,6 +41,7 @@ export type KnownCapability =
   | "face_restore"
   | "upscale"
   | "character_animation"
+  | "screen_capture"
   | "stock_image";
 
 export type Capability = KnownCapability | (string & {});
