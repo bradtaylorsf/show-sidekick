@@ -4,6 +4,7 @@ export * from "./brief.js";
 export * from "./character-design.js";
 export * from "./character-qa-report.js";
 export * from "./cost-log.js";
+export * from "./creative-json-schema.js";
 export * from "./decision-log.js";
 export * from "./edit-decisions.js";
 export * from "./end-tag-plan.js";

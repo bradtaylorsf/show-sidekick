@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 describe("logger", () => {
-  it("emits parseable NDJSON to stdout in json mode", () => {
+  it("keeps stdout as parseable NDJSON events in json mode", () => {
     const stdout = captureWrites(process.stdout);
     const stderr = captureWrites(process.stderr);
     configure({ json: true, verbose: true });
@@ -32,8 +32,11 @@ describe("logger", () => {
     for (const line of stdout.writes) {
       expect(() => JSON.parse(line)).not.toThrow();
     }
-    expect(stdout.writes).toHaveLength(3);
-    expect(stderr.writes).toHaveLength(0);
+    expect(stdout.writes).toHaveLength(1);
+    expect(JSON.parse(stdout.writes[0] ?? "{}")).toMatchObject({ level: "event", name: "checkpoint" });
+    expect(stderr.writes).toHaveLength(2);
+    expect(stderr.writes.join("")).toContain("ready");
+    expect(stderr.writes.join("")).toContain("careful");
   });
 
   it("emits error and verbose debug NDJSON to stderr in json mode", () => {

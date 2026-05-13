@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { AssetManifestSchema } from "./asset-manifest.js";
 import { BriefSchema } from "./brief.js";
+import { CreativeArtifactJsonSchemas, ProposalPacketJsonSchema, ScenePlanJsonSchema } from "./creative-json-schema.js";
+import { ASSET_SOURCE, RENDERER_FAMILY } from "./enums.js";
 import { EndTagPlanSchema } from "./end-tag-plan.js";
 import { ProposalPacketSchema } from "./proposal-packet.js";
 import { ResearchBriefSchema } from "./research-brief.js";
@@ -52,6 +54,34 @@ const scenePlan = {
 };
 
 describe("creative artifact schemas", () => {
+  it("exports JSON schemas for every creative artifact", () => {
+    expect(Object.keys(CreativeArtifactJsonSchemas)).toEqual([
+      "brief",
+      "research_brief",
+      "proposal_packet",
+      "script",
+      "scene_plan",
+      "asset_manifest",
+      "end_tag_plan",
+    ]);
+
+    for (const schema of Object.values(CreativeArtifactJsonSchemas)) {
+      expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
+      expect(schema.type).toBe("object");
+    }
+  });
+
+  it("keeps creative JSON schema enum and cardinality surfaces explicit", () => {
+    expect(JSON.stringify(ProposalPacketJsonSchema)).toContain("concept_options");
+    expect(JSON.stringify(ProposalPacketJsonSchema)).toContain("\"minItems\":3");
+    for (const family of RENDERER_FAMILY) {
+      expect(JSON.stringify(ProposalPacketJsonSchema)).toContain(family);
+    }
+    for (const source of ASSET_SOURCE) {
+      expect(JSON.stringify(ScenePlanJsonSchema)).toContain(source);
+    }
+  });
+
   it("accepts a brief fixture", () => {
     const brief = BriefSchema.parse({
       title: "Demo",

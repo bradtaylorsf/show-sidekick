@@ -39,9 +39,13 @@ function writeMessage(level: LogLevel, msg: string, meta?: unknown): void {
   const mode = current();
 
   if (mode.json) {
+    if (level === "info" || level === "warn") {
+      process.stderr.write(`${formatHuman(level, msg, meta, mode.color)}\n`);
+      return;
+    }
+
     const line = `${JSON.stringify(serializeMessage(level, msg, meta))}\n`;
-    const stream = level === "error" || level === "debug" ? process.stderr : process.stdout;
-    stream.write(line);
+    process.stderr.write(line);
     return;
   }
 
