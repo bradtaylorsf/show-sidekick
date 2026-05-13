@@ -104,6 +104,8 @@ export interface ToolContext {
   execution?: ToolExecutionPolicy;
 }
 
+export type ToolAvailabilityContext = Pick<ToolContext, "projectRoot">;
+
 export interface Tool<I = unknown, O = unknown> {
   name: string;
   capability: Capability;
@@ -116,6 +118,6 @@ export interface Tool<I = unknown, O = unknown> {
   agent_skills?: string[];
   input: z.ZodSchema<I>;
   output: z.ZodSchema<O>;
-  isAvailable(): Promise<Availability>;
+  isAvailable(ctx?: ToolAvailabilityContext): Promise<Availability>;
   execute(params: I, ctx: ToolContext): Promise<O>;
 }

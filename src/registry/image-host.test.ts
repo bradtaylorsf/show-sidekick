@@ -12,6 +12,7 @@ describe("image hosting wrapper", () => {
       cost_usd: 0,
       provider: "fixture",
     }));
+    const isAvailable = vi.fn(async () => ({ available: true as const }));
     const registry = new Registry({
       tools: [
         defineTool({
@@ -28,7 +29,7 @@ describe("image hosting wrapper", () => {
             cost_usd: z.number(),
             provider: z.string(),
           }),
-          isAvailable: async () => ({ available: true }),
+          isAvailable,
           execute,
         }),
       ],
@@ -36,6 +37,7 @@ describe("image hosting wrapper", () => {
 
     const result = await imageHost.host("/tmp/local.png", { prefer: ["fixture"] }, testContext(registry));
 
+    expect(isAvailable).toHaveBeenCalledWith(expect.objectContaining({ projectRoot: process.cwd() }));
     expect(execute).toHaveBeenCalledWith({ local_path: "/tmp/local.png" }, expect.objectContaining({ registry }));
     expect(result).toEqual({
       url: "https://example.test/image.png",

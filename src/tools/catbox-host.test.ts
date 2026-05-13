@@ -55,16 +55,26 @@ describe("catbox_host tool", () => {
 
   it("is unavailable when the daily Catbox quota is exhausted", async () => {
     const root = await tempDir();
-    process.chdir(root);
     for (let index = 0; index < 50; index += 1) {
       recordUpload("catbox", { projectRoot: root });
     }
 
-    await expect(catboxHost.isAvailable()).resolves.toEqual({
+    await expect(catboxHost.isAvailable({ projectRoot: root })).resolves.toEqual({
       available: false,
       reason: "catbox daily quota exhausted",
       fix: "manual",
     });
+  });
+
+  it("checks quota against the execution project root instead of process cwd", async () => {
+    const cwdRoot = await tempDir();
+    const projectRoot = await tempDir();
+    process.chdir(cwdRoot);
+    for (let index = 0; index < 50; index += 1) {
+      recordUpload("catbox", { projectRoot });
+    }
+
+    await expect(catboxHost.isAvailable({ projectRoot })).resolves.toMatchObject({ available: false });
   });
 });
 

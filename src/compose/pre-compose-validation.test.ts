@@ -87,6 +87,25 @@ describe("validatePreCompose", () => {
     expect(result.findings).toContainEqual(expect.objectContaining({ check: "asset_paths_exist", status: "fail" }));
   });
 
+  it("fails clearly when no asset manifest is supplied", async () => {
+    const projectRoot = await tempDir();
+
+    const result = validatePreCompose({
+      edit_decisions: editDecisions(),
+      proposal_packet: proposalPacket(),
+      projectRoot,
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        check: "asset_manifest_required",
+        status: "fail",
+        detail: expect.not.stringContaining("Missing assets: hero"),
+      }),
+    );
+  });
+
   it("fails when cuts leave timeline gaps", async () => {
     const projectRoot = await tempDir();
     const assetPath = await writeAsset(projectRoot, "hero.mp4");
@@ -105,6 +124,48 @@ describe("validatePreCompose", () => {
 
     expect(result.status).toBe("failed");
     expect(result.findings).toContainEqual(expect.objectContaining({ check: "cut_coverage", status: "fail" }));
+  });
+
+  it("fails when cuts do not cover the planned duration", async () => {
+    const projectRoot = await tempDir();
+    const assetPath = await writeAsset(projectRoot, "hero.mp4");
+
+    const result = validatePreCompose({
+      edit_decisions: editDecisions(),
+      proposal_packet: proposalPacket(),
+      asset_manifest: assetManifest(assetPath, "video"),
+      planned_duration_s: 8,
+      projectRoot,
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        check: "cut_coverage",
+        status: "fail",
+        detail: "Cuts cover 0s through 4s, but planned duration is 8s.",
+      }),
+    );
+  });
+
+  it("does not accept supersessions that point at unrelated decisions", async () => {
+    const projectRoot = await tempDir();
+    const assetPath = await writeAsset(projectRoot, "hero.mp4");
+    const mismatchedProposal = proposalPacket({ runtime: "remotion" });
+
+    const result = validatePreCompose({
+      edit_decisions: editDecisions({ runtime: "ffmpeg" }),
+      proposal_packet: mismatchedProposal,
+      asset_manifest: assetManifest(assetPath, "video"),
+      decision_log: [
+        unrelatedDecision("runtime-1"),
+        ...supersedingDecisionLog("remotion", "ffmpeg").slice(1),
+      ],
+      projectRoot,
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.findings).toContainEqual(expect.objectContaining({ check: "runtime_match", status: "fail" }));
   });
 });
 
@@ -161,6 +222,21 @@ function assetManifest(path: string, kind: string): AssetManifest {
 function supersedingDecisionLog(expected: RenderRuntime, actual: RenderRuntime): DecisionLog {
   return [
     {
+      id: "runtime-1",
+      stage: "proposal",
+      timestamp: "2026-05-13T00:00:00Z",
+      category: "render_runtime_selection",
+      options_considered: [
+        { label: expected, rejected_because: null },
+        { label: actual, rejected_because: "not selected" },
+      ],
+      picked: expected,
+      reason: "Initial runtime selection.",
+      confidence: 0.85,
+      user_visible: true,
+      supersedes: null,
+    },
+    {
       id: "runtime-2",
       stage: "edit",
       timestamp: "2026-05-13T00:00:00Z",
@@ -176,4 +252,22 @@ function supersedingDecisionLog(expected: RenderRuntime, actual: RenderRuntime):
       supersedes: "runtime-1",
     },
   ];
+}
+
+function unrelatedDecision(id: string): DecisionLog[number] {
+  return {
+    id,
+    stage: "assets",
+    timestamp: "2026-05-13T00:00:00Z",
+    category: "provider_selection",
+    options_considered: [
+      { label: "openai", rejected_because: null },
+      { label: "imagen", rejected_because: "not configured" },
+    ],
+    picked: "openai",
+    reason: "OpenAI is configured for this fixture.",
+    confidence: 0.8,
+    user_visible: true,
+    supersedes: null,
+  };
 }

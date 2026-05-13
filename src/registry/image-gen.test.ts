@@ -68,6 +68,51 @@ describe("image generation routing", () => {
     );
     expect(result).toMatchObject({ image_path: "out.png" });
   });
+
+  it("does not route prompt generation to specialty image tools", async () => {
+    const specialtyExecute = vi.fn(async () => ({ image_path: "specialty.png" }));
+    const promptExecute = vi.fn(async (params: unknown) => ({ image_path: "prompt.png", params }));
+    const registry = new Registry({
+      tools: [
+        specialtyTool("code_snippet", "code", specialtyExecute),
+        imageTool("openai_image", "openai", { execute: promptExecute }),
+      ],
+    });
+
+    const result = await imageGen.generate({ prompt: "a forest" }, testContext(registry));
+
+    expect(specialtyExecute).not.toHaveBeenCalled();
+    expect(promptExecute).toHaveBeenCalledWith({ prompt: "a forest" }, expect.objectContaining({ projectRoot: expect.any(String) }));
+    expect(result).toMatchObject({ image_path: "prompt.png" });
+  });
+
+  it("errors clearly when only specialty image tools are available for a prompt", async () => {
+    const registry = new Registry({
+      tools: [specialtyTool("code_snippet", "code", vi.fn(async () => ({ image_path: "specialty.png" })))],
+    });
+
+    await expect(imageGen.generate({ prompt: "a forest" }, testContext(registry))).rejects.toThrow(
+      "No prompt-to-image tool available",
+    );
+  });
+
+  it("can deliberately route prompt-like stock searches to stock_image tools", async () => {
+    const execute = vi.fn(async (params: unknown) => ({ results: [], params, provider: "pexels", cost_usd: 0 }));
+    const registry = new Registry({
+      tools: [stockTool("pexels_stock", "pexels", execute)],
+    });
+
+    const result = await imageGen.generate(
+      { source: "stock", provider: "pexels", prompt: "forest trail", count: 3, download_top: false },
+      testContext(registry),
+    );
+
+    expect(execute).toHaveBeenCalledWith(
+      { query: "forest trail", per_page: 3, download_top: false },
+      expect.objectContaining({ projectRoot: expect.any(String) }),
+    );
+    expect(result).toMatchObject({ provider: "pexels" });
+  });
 });
 
 function imageTool(
@@ -89,6 +134,36 @@ function imageTool(
     output: z.unknown(),
     isAvailable: async () => options.availability ?? { available: true },
     execute: options.execute ?? (async (params) => ({ params })),
+  });
+}
+
+function specialtyTool(name: string, provider: string, execute: Tool["execute"]): Tool {
+  return defineTool({
+    name,
+    capability: "image_generation",
+    provider,
+    status: "beta",
+    integration: { kind: "library", package: "fixture", install: "test" },
+    best_for: "specialty image rendering test",
+    input: z.object({ code: z.string() }),
+    output: z.unknown(),
+    isAvailable: async () => ({ available: true }),
+    execute,
+  });
+}
+
+function stockTool(name: string, provider: string, execute: Tool["execute"]): Tool {
+  return defineTool({
+    name,
+    capability: "stock_image",
+    provider,
+    status: "beta",
+    integration: { kind: "api", env: [], install: "test" },
+    best_for: "stock image routing test",
+    input: z.object({ query: z.string(), per_page: z.number().optional(), download_top: z.boolean().optional() }),
+    output: z.unknown(),
+    isAvailable: async () => ({ available: true }),
+    execute,
   });
 }
 

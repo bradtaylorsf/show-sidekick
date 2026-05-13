@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -12,8 +14,10 @@ import {
 } from "../artifacts/index.js";
 import { ComposeBlockerError } from "../compose/blocker.js";
 import { defineTool, Registry, type Availability, type ToolContext } from "../registry/index.js";
+import ffmpeg from "./ffmpeg.js";
 import videoCompose, { type VideoComposeInput } from "./video-compose.js";
 
+const hasFfmpeg = hasBinary("ffmpeg") && hasBinary("ffprobe");
 let tempDirs: string[] = [];
 
 afterEach(async () => {
@@ -33,6 +37,31 @@ describe("video_compose tool", () => {
     expect(execute).toHaveBeenCalledOnce();
     expect(result.runtime_used).toBe("ffmpeg");
     expect(result.warnings).toContain("pre_compose_validation: passed");
+  });
+
+  it.skipIf(!hasFfmpeg)("routes to the real ffmpeg tool with a compose payload", async () => {
+    const projectRoot = await tempDir();
+    const assetPath = join(projectRoot, "hero.mp4");
+    const outputPath = "renders/ffmpeg-compose.mp4";
+    synthesizeVideo(assetPath, 1);
+    const registry = new Registry({ tools: [ffmpeg] });
+
+    const result = await videoCompose.execute(
+      {
+        edit_decisions: editDecisions({
+          cuts: [{ start_s: 0, end_s: 1, asset_id: "hero" }],
+        }),
+        proposal_packet: proposalPacket({ runtime: "ffmpeg", motionLed: false }),
+        asset_manifest: { assets: [{ id: "hero", kind: "video", path: assetPath }] },
+        output_path: outputPath,
+        planned_duration_s: 1,
+      },
+      testContext(projectRoot, registry),
+    );
+
+    expect(result.runtime_used).toBe("ffmpeg");
+    expect(result.warnings).toContain("pre_compose_validation: passed");
+    expect(existsSync(join(projectRoot, outputPath))).toBe(true);
   });
 
   it("blocks unlogged proposal-to-edit runtime changes before invoking the runtime", async () => {
@@ -265,4 +294,46 @@ function testContext(
       event: () => undefined,
     },
   };
+}
+
+function synthesizeVideo(output: string, durationS: number): void {
+  execFileSync(
+    "ffmpeg",
+    [
+      "-y",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      `testsrc2=size=160x90:rate=15:duration=${durationS}`,
+      "-f",
+      "lavfi",
+      "-i",
+      `sine=frequency=440:duration=${durationS}`,
+      "-shortest",
+      "-c:v",
+      "mpeg4",
+      "-g",
+      "1",
+      "-q:v",
+      "5",
+      "-c:a",
+      "aac",
+      output,
+    ],
+    { stdio: "pipe" },
+  );
+
+  expect(existsSync(output)).toBe(true);
+}
+
+function hasBinary(binary: string): boolean {
+  try {
+    execFileSync("which", [binary], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
 }

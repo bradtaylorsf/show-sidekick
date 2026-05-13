@@ -32,6 +32,7 @@ export type PreComposeValidationInput = {
   asset_manifest?: AssetManifest;
   decision_log?: DecisionLog;
   projectRoot?: string;
+  planned_duration_s?: number;
 };
 
 const COVERAGE_TOLERANCE_S = 0.001;
@@ -44,7 +45,7 @@ export function validatePreCompose(input: PreComposeValidationInput): PreCompose
     validateDeliveryPromise(input.proposal_packet, motionRatio),
     validateRuntimeMatch(input.edit_decisions.render_runtime, input.proposal_packet, input.decision_log),
     validateAssetPaths(input.edit_decisions, input.asset_manifest, input.projectRoot ?? process.cwd()),
-    validateCutCoverage(input.edit_decisions),
+    validateCutCoverage(input.edit_decisions, input.planned_duration_s),
   ];
 
   const result = {
@@ -61,11 +62,16 @@ export function hasRuntimeSupersession(
   expected: RenderRuntime,
   actual: RenderRuntime,
 ): boolean {
+  const entriesById = new Map((decisionLog ?? []).map((entry) => [entry.id, entry]));
+
   return (decisionLog ?? []).some((entry) => {
+    const superseded = entry.supersedes === null ? undefined : entriesById.get(entry.supersedes);
+
     return (
       entry.category === "render_runtime_selection" &&
       entry.picked === actual &&
-      entry.supersedes !== null &&
+      superseded?.category === "render_runtime_selection" &&
+      superseded.picked === expected &&
       entry.options_considered.some((option) => option.label === expected)
     );
   });
@@ -133,6 +139,14 @@ function validateAssetPaths(
   assetManifest: AssetManifest | undefined,
   projectRoot: string,
 ): PreComposeFinding {
+  if (assetManifest === undefined) {
+    return {
+      check: "asset_manifest_required",
+      status: "fail",
+      detail: "No asset_manifest was supplied, so edit_decisions.cuts asset_id values cannot be resolved to filesystem paths.",
+    };
+  }
+
   const assetById = new Map((assetManifest?.assets ?? []).map((asset) => [asset.id, asset]));
   const missing: string[] = [];
   const checked = new Set<string>();
@@ -178,7 +192,7 @@ function validateAssetPaths(
   };
 }
 
-function validateCutCoverage(editDecisions: EditDecisions): PreComposeFinding {
+function validateCutCoverage(editDecisions: EditDecisions, plannedDurationS?: number): PreComposeFinding {
   if (editDecisions.cuts.length === 0) {
     return {
       check: "cut_coverage",
@@ -226,6 +240,14 @@ function validateCutCoverage(editDecisions: EditDecisions): PreComposeFinding {
     }
 
     previousEnd = cut.end_s;
+  }
+
+  if (plannedDurationS !== undefined && Math.abs(previousEnd - plannedDurationS) > COVERAGE_TOLERANCE_S) {
+    return {
+      check: "cut_coverage",
+      status: "fail",
+      detail: `Cuts cover 0s through ${previousEnd}s, but planned duration is ${plannedDurationS}s.`,
+    };
   }
 
   return {

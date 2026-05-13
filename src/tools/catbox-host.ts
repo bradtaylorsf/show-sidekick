@@ -33,8 +33,8 @@ export default defineTool({
   cost: { unit: "call", usd: 0 },
   input: ImageHostInputSchema,
   output: ImageHostOutputSchema,
-  async isAvailable() {
-    const count = getUploadCount("catbox");
+  async isAvailable(ctx) {
+    const count = getUploadCount("catbox", { projectRoot: ctx?.projectRoot });
     if (count >= 50) {
       return { available: false, reason: "catbox daily quota exhausted", fix: "manual" };
     }

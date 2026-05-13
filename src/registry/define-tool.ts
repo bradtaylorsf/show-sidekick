@@ -6,7 +6,7 @@ import {
   requireApproval,
 } from "../announce/index.js";
 import { probe } from "./availability.js";
-import type { Availability, Tool, ToolContext } from "./tool.js";
+import type { Availability, Tool, ToolAvailabilityContext, ToolContext } from "./tool.js";
 
 export type ToolDefinition<IS extends ZodTypeAny, OS extends ZodTypeAny> = Omit<
   Tool<z.infer<IS>, z.infer<OS>>,
@@ -14,7 +14,7 @@ export type ToolDefinition<IS extends ZodTypeAny, OS extends ZodTypeAny> = Omit<
 > & {
   input: IS;
   output: OS;
-  isAvailable?: () => Promise<Availability>;
+  isAvailable?: (ctx?: ToolAvailabilityContext) => Promise<Availability>;
   execute(params: z.infer<IS>, ctx: ToolContext): Promise<z.infer<OS>>;
 };
 
@@ -27,7 +27,7 @@ export function defineTool<IS extends ZodTypeAny, OS extends ZodTypeAny>(
   definition: ToolDefinition<IS, OS>,
 ): DefinedTool<IS, OS> {
   const tool = definition as ToolDefinition<IS, OS> & {
-    isAvailable?: () => Promise<Availability>;
+    isAvailable?: (ctx?: ToolAvailabilityContext) => Promise<Availability>;
   };
   const execute = tool.execute.bind(tool);
 

@@ -1,10 +1,11 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
+import { AssetManifestSchema, EditDecisionsSchema, RenderReportSchema, type EditDecisions } from "../artifacts/index.js";
 import { ffprobe, FfprobeResultSchema } from "../audio/ffprobe.js";
-import { defineTool } from "../registry/index.js";
+import { defineTool, type ToolContext } from "../registry/index.js";
 
 const BaseOutputSchema = z.object({
   operation: z.string(),
@@ -55,15 +56,24 @@ export const FfmpegInputSchema = z.discriminatedUnion("operation", [
     output: z.string(),
     target_lufs: z.number().default(-16),
   }),
+  z.object({
+    operation: z.literal("compose"),
+    edit_decisions: EditDecisionsSchema,
+    asset_manifest: AssetManifestSchema,
+    output_path: z.string().optional(),
+  }),
 ]);
 
-export const FfmpegOutputSchema = BaseOutputSchema.extend({
+export const FfmpegUtilityOutputSchema = BaseOutputSchema.extend({
   operation: z.enum(["trim", "concat", "silence_detect", "probe", "audio_extract", "normalize"]),
   silence_segments: z.array(SilenceSegmentSchema).optional(),
   probe: FfprobeResultSchema.optional(),
 });
 
+export const FfmpegOutputSchema = z.union([FfmpegUtilityOutputSchema, RenderReportSchema]);
+
 export type FfmpegInput = z.infer<typeof FfmpegInputSchema>;
+export type FfmpegUtilityOutput = z.infer<typeof FfmpegUtilityOutputSchema>;
 export type FfmpegOutput = z.infer<typeof FfmpegOutputSchema>;
 export type SilenceSegment = z.infer<typeof SilenceSegmentSchema>;
 
@@ -102,7 +112,7 @@ export default defineTool({
   input: FfmpegInputSchema,
   output: FfmpegOutputSchema,
 
-  async execute(params) {
+  async execute(params, ctx) {
     if (params.operation === "trim" && params.end_s <= params.start_s) {
       throw new FfmpegError("trim end_s must be greater than start_s", {
         command: ["ffmpeg"],
@@ -124,6 +134,8 @@ export default defineTool({
         return runOutputOperation(params.operation, audioExtractArgs(params), params.output);
       case "normalize":
         return runOutputOperation(params.operation, normalizeArgs(params), params.output);
+      case "compose":
+        return compose(params, ctx);
     }
   },
 });
@@ -225,7 +237,145 @@ function normalizeArgs(params: Extract<FfmpegInput, { operation: "normalize" }>)
   ];
 }
 
-async function runOutputOperation(operation: FfmpegOutput["operation"], args: string[], output: string): Promise<FfmpegOutput> {
+async function compose(
+  params: Extract<FfmpegInput, { operation: "compose" }>,
+  ctx: ToolContext,
+): Promise<z.infer<typeof RenderReportSchema>> {
+  const outputPath = resolveAssetPath(params.output_path ?? "renders/ffmpeg.mp4", ctx.projectRoot);
+  const assetById = new Map(params.asset_manifest.assets.map((asset) => [asset.id, asset]));
+  const cuts = [...params.edit_decisions.cuts].sort((left, right) => left.start_s - right.start_s);
+
+  if (cuts.length === 0) {
+    throw new FfmpegError("compose requires at least one cut", {
+      command: ["ffmpeg"],
+      stderr: "edit_decisions.cuts is empty",
+      exitCode: null,
+    });
+  }
+
+  const clipInfos = await Promise.all(
+    cuts.map(async (cut) => {
+      const asset = assetById.get(cut.asset_id);
+      if (!asset) {
+        throw new FfmpegError(`compose asset not found: ${cut.asset_id}`, {
+          command: ["ffmpeg"],
+          stderr: `asset_manifest does not contain ${cut.asset_id}`,
+          exitCode: null,
+        });
+      }
+
+      const path = resolveAssetPath(asset.path, ctx.projectRoot);
+      const probe = await ffprobe(path);
+      const video = probe.streams.find((stream) => stream.codec_type === "video" && stream.width && stream.height);
+      if (!video?.width || !video.height) {
+        throw new FfmpegError(`compose asset has no video stream: ${asset.path}`, {
+          command: ["ffmpeg"],
+          stderr: `asset ${asset.id} has no video stream`,
+          exitCode: null,
+        });
+      }
+
+      return {
+        cut,
+        path,
+        duration_s: Math.max(0, cut.end_s - cut.start_s),
+        width: video.width,
+        height: video.height,
+        hasAudio: probe.streams.some((stream) => stream.codec_type === "audio"),
+      };
+    }),
+  );
+
+  const firstVideo = clipInfos[0];
+  if (!firstVideo) {
+    throw new Error("unreachable: compose requires at least one cut");
+  }
+
+  await mkdir(dirname(outputPath), { recursive: true });
+  const hasAudio = clipInfos.every((clip) => clip.hasAudio);
+  const { filter, videoLabel, audioLabel } = composeFilter(clipInfos, firstVideo, hasAudio);
+  const result = await runFfmpeg([
+    "ffmpeg",
+    "-y",
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    ...clipInfos.flatMap((clip) => ["-i", clip.path]),
+    "-filter_complex",
+    filter,
+    "-map",
+    videoLabel,
+    ...(audioLabel ? ["-map", audioLabel] : ["-an"]),
+    "-c:v",
+    "libx264",
+    "-preset",
+    "ultrafast",
+    "-pix_fmt",
+    "yuv420p",
+    ...(audioLabel ? ["-c:a", "aac"] : []),
+    outputPath,
+  ]);
+
+  const outputProbe = await ffprobe(outputPath);
+
+  return RenderReportSchema.parse({
+    output_path: outputPath,
+    encoding_profile: "ffmpeg/h264-aac",
+    duration_s: outputProbe.format.duration_s,
+    resolution: { width: firstVideo.width, height: firstVideo.height },
+    framerate: 30,
+    runtime_used: "ffmpeg",
+    asset_count: params.asset_manifest.assets.length,
+    warnings: result.stderr.trim() ? [excerpt(result.stderr)] : [],
+    validation_steps: [],
+  });
+}
+
+type ComposeClip = {
+  cut: EditDecisions["cuts"][number];
+  path: string;
+  duration_s: number;
+  width: number;
+  height: number;
+  hasAudio: boolean;
+};
+
+function composeFilter(
+  clips: ComposeClip[],
+  firstVideo: Pick<ComposeClip, "width" | "height">,
+  hasAudio: boolean,
+): { filter: string; videoLabel: string; audioLabel?: string } {
+  const filters: string[] = [];
+
+  clips.forEach((clip, index) => {
+    filters.push(
+      `[${index}:v]trim=duration=${clip.duration_s},setpts=PTS-STARTPTS,scale=${firstVideo.width}:${firstVideo.height},setsar=1,fps=30,format=yuv420p[v${index}]`,
+    );
+
+    if (hasAudio) {
+      filters.push(`[${index}:a]atrim=duration=${clip.duration_s},asetpts=PTS-STARTPTS,aresample=48000[a${index}]`);
+    }
+  });
+
+  const inputs = clips.map((_clip, index) => (hasAudio ? `[v${index}][a${index}]` : `[v${index}]`)).join("");
+  if (clips.length === 1) {
+    return { filter: filters.join(";"), videoLabel: "[v0]", audioLabel: hasAudio ? "[a0]" : undefined };
+  }
+
+  filters.push(`${inputs}concat=n=${clips.length}:v=1:a=${hasAudio ? 1 : 0}[vout]${hasAudio ? "[aout]" : ""}`);
+
+  return { filter: filters.join(";"), videoLabel: "[vout]", audioLabel: hasAudio ? "[aout]" : undefined };
+}
+
+function resolveAssetPath(path: string, projectRoot: string): string {
+  return isAbsolute(path) ? path : resolve(projectRoot, path);
+}
+
+async function runOutputOperation(
+  operation: FfmpegUtilityOutput["operation"],
+  args: string[],
+  output: string,
+): Promise<FfmpegUtilityOutput> {
   const result = await runFfmpeg(["ffmpeg", ...args]);
 
   return {

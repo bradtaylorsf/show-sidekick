@@ -401,6 +401,34 @@ describe("runReview", () => {
     );
   });
 
+  it("flags HyperFrames render reports that skipped lint or validate", () => {
+    const renderReport = {
+      output_path: "renders/hyperframes.mp4",
+      encoding_profile: "hyperframes/default",
+      duration_s: 30,
+      resolution: { width: 1920, height: 1080 },
+      framerate: 30,
+      runtime_used: "hyperframes" as const,
+      asset_count: 4,
+      warnings: [],
+      validation_steps: [],
+    };
+
+    const review = runReview("compose", renderReport, {
+      pipeline: basePipeline,
+      renderReport,
+    });
+
+    expect(review.decision).toBe("revise");
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "HyperFrames validation gate missing",
+        location: "render_report.validation_steps",
+      }),
+    );
+  });
+
   it("runs Layer 3 skill compliance from checkpoint tool invocations", () => {
     const review = runReview(
       "assets",

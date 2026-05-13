@@ -13,7 +13,10 @@ export type ImageHostOutput = {
 };
 
 type RegistryLike = {
-  select(capability: Capability, prefs?: { prefer?: string[]; runtime?: Tool["integration"]["kind"] }): Promise<Tool>;
+  select(
+    capability: Capability,
+    prefs?: { prefer?: string[]; runtime?: Tool["integration"]["kind"]; context?: Pick<ToolContext, "projectRoot"> },
+  ): Promise<Tool>;
   byCapability?(capability: Capability): Tool[];
 };
 
@@ -34,7 +37,7 @@ export async function host(
   const ctx = isContext(optionsOrCtx) ? optionsOrCtx : maybeCtx ?? defaultContext();
   const registry = await resolveRegistry(ctx);
   const prefer = resolvePrefer(registry, "image_hosting", options.prefer ?? ["catbox_host"]);
-  const tool = await registry.select("image_hosting", { prefer });
+  const tool = await registry.select("image_hosting", { prefer, context: ctx });
   const result = await tool.execute({ local_path: localPath }, ctx);
   return result as ImageHostOutput;
 }

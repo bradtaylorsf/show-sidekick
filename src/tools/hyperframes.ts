@@ -50,7 +50,7 @@ export default defineTool({
   supports: ["hyperframes", "lint", "validate", "render", "playbook-css-variables"],
   input: HyperframesComposeInputSchema,
   output: RenderReportSchema,
-  isAvailable: async () => ({ available: true }),
+  isAvailable: async () => hyperframesAvailable(),
 
   async execute(params, ctx) {
     const parsed = HyperframesComposeInputSchema.parse(params);
@@ -122,6 +122,20 @@ function runExecFile(binary: string, args: string[], options: { cwd: string }): 
         stderr,
         exit_code: error && typeof error.code === "number" ? error.code : error ? 1 : 0,
       });
+    });
+  });
+}
+
+function hyperframesAvailable(): Promise<{ available: true } | { available: false; reason: string; fix: "install" }> {
+  return new Promise((resolve) => {
+    execFile("npx", ["--no-install", "hyperframes", "--version"], { timeout: 2_500 }, (error, _stdout, stderr) => {
+      if (error) {
+        const reason = stderr.trim() || (error instanceof Error ? error.message : String(error));
+        resolve({ available: false, reason: `hyperframes not available via npx --no-install: ${reason}`, fix: "install" });
+        return;
+      }
+
+      resolve({ available: true });
     });
   });
 }

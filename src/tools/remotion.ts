@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { z } from "zod";
 import {
   CuesheetSchema,
@@ -9,6 +10,8 @@ import {
 import { playbookToCssVariables } from "../compose/hyperframes-style-bridge.js";
 import { cuesheetToWords, validateCaptionFrameSync } from "../remotion/index.js";
 import { defineTool } from "../registry/index.js";
+
+const require = createRequire(import.meta.url);
 
 export const RemotionComposeInputSchema = z.object({
   edit_decisions: EditDecisionsSchema,
@@ -24,17 +27,17 @@ export default defineTool({
   name: "remotion",
   capability: "video_compose",
   provider: "remotion",
-  status: "production",
+  status: "beta",
   integration: {
     kind: "library",
     package: "remotion",
     install: "pnpm add remotion react react-dom @remotion/renderer",
   },
-  best_for: "typed Remotion-compatible scene catalog composition with word-level caption burn validation",
+  best_for: "typed Remotion-compatible scene catalog validation with word-level caption checks; renderer invocation lands with the compose runner",
   supports: ["scene-catalog", "caption-burn", "playbook-css-variables"],
   input: RemotionComposeInputSchema,
   output: RenderReportSchema,
-  isAvailable: async () => ({ available: true }),
+  isAvailable: async () => remotionAvailable(),
 
   async execute(params) {
     const parsed = RemotionComposeInputSchema.parse(params);
@@ -74,3 +77,12 @@ export default defineTool({
     });
   },
 });
+
+function remotionAvailable(): { available: true } | { available: false; reason: string; fix: "install" } {
+  try {
+    require.resolve("remotion");
+    return { available: true };
+  } catch {
+    return { available: false, reason: "package not installed: remotion", fix: "install" };
+  }
+}

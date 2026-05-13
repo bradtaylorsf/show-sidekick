@@ -19,6 +19,8 @@ export const VideoComposeInputSchema = z.object({
   proposal_packet: ProposalPacketSchema.optional(),
   asset_manifest: AssetManifestSchema.optional(),
   decision_log: DecisionLogSchema.optional(),
+  output_path: z.string().optional(),
+  planned_duration_s: z.number().positive().optional(),
 });
 
 export type VideoComposeInput = z.infer<typeof VideoComposeInputSchema>;
@@ -26,7 +28,7 @@ export type VideoComposeInput = z.infer<typeof VideoComposeInputSchema>;
 type RuntimeTool = Tool<unknown, unknown>;
 
 type RuntimeRegistry = {
-  refreshAvailability(options?: { concurrency?: number; timeoutMs?: number }): Promise<void>;
+  refreshAvailability(options?: { concurrency?: number; timeoutMs?: number; context?: Pick<ToolContext, "projectRoot"> }): Promise<void>;
   get(name: string): RuntimeTool | undefined;
   getAvailability(name: string): Availability | undefined;
 };
@@ -89,6 +91,7 @@ export default defineTool({
       asset_manifest: params.asset_manifest,
       decision_log: params.decision_log,
       projectRoot: ctx.projectRoot,
+      planned_duration_s: params.planned_duration_s,
     });
 
     const validationStatus = validation.status === "passed" ? "passed" : "failed";
@@ -105,16 +108,7 @@ export default defineTool({
     }
 
     const report = RenderReportSchema.parse(
-      await runtimeTool.execute(
-        {
-          edit_decisions: params.edit_decisions,
-          runtime_override: runtime,
-          proposal_packet: params.proposal_packet,
-          asset_manifest: params.asset_manifest,
-          decision_log: params.decision_log,
-        },
-        ctx,
-      ),
+      await runtimeTool.execute(buildRuntimeParams(runtime, params), ctx),
     );
 
     return withPreComposeWarning(
@@ -130,19 +124,39 @@ async function resolveRuntimeTool(
 ): Promise<{ runtimeTool: RuntimeTool | undefined; availability: Availability | undefined; options: string[] }> {
   if (ctx.getRuntimeTool) {
     const runtimeTool = await ctx.getRuntimeTool(runtime);
-    const availability = runtimeTool ? await runtimeTool.isAvailable() : undefined;
+    const availability = runtimeTool ? await runtimeTool.isAvailable(ctx) : undefined;
     const options = availability?.available === true ? [runtime] : [];
     return { runtimeTool, availability, options };
   }
 
   const registry = ctx.registry ?? (await defaultRegistry());
-  await registry.refreshAvailability();
+  await registry.refreshAvailability({ context: ctx });
 
   const runtimeTool = registry.get(runtime);
   const availability = registry.getAvailability(runtime);
   const options = RUNTIME_NAMES.filter((name) => registry.getAvailability(name)?.available === true);
 
   return { runtimeTool, availability, options };
+}
+
+function buildRuntimeParams(runtime: RenderRuntime, params: VideoComposeInput): unknown {
+  if (runtime === "ffmpeg") {
+    return {
+      operation: "compose",
+      edit_decisions: params.edit_decisions,
+      asset_manifest: params.asset_manifest,
+      output_path: params.output_path,
+    };
+  }
+
+  return {
+    edit_decisions: params.edit_decisions,
+    runtime_override: runtime,
+    proposal_packet: params.proposal_packet,
+    asset_manifest: params.asset_manifest,
+    decision_log: params.decision_log,
+    output_path: params.output_path,
+  };
 }
 
 async function defaultRegistry(): Promise<Registry> {
