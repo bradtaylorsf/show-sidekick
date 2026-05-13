@@ -15,7 +15,7 @@ AI pre-production for video. Builds the rough cut and an EDL/XML you finish in P
 
 ## CLI Surface
 
-`predit --help` lists the current command skeleton:
+`predit --help` lists the current command surface:
 
 | Area | Commands |
 |---|---|
@@ -27,6 +27,10 @@ AI pre-production for video. Builds the rough cut and an EDL/XML you finish in P
 | Tooling | `setup`, `tools` |
 
 Global flags: `--json`, `--dry-run`, `--verbose`, `--no-color`, `--config <path>`.
+
+Build/run commands currently validate show, episode, pipeline, stage flags, resume checkpoints, approval checkpoints, revision notes, status state, and cost summaries. `build` emits a Runner-stub plan until the integrated Runner lands.
+
+Create/list commands scaffold project-local shows, episodes, pipelines, and playbooks, and list merged project-local plus `.predit` cache resources with JSON output for automation.
 
 ## License
 

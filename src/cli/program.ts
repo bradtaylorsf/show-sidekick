@@ -1,5 +1,11 @@
 import { Command } from "commander";
+import { createApproveHandler } from "./commands/approve.js";
+import { createBuildHandler } from "./commands/build.js";
+import { createLsHandler } from "./commands/ls.js";
+import { createNewHandlers } from "./commands/new.js";
+import { createResumeHandler } from "./commands/resume.js";
 import { createReviseHandler } from "./commands/revise.js";
+import { createStatusHandler } from "./commands/status.js";
 import { type CliIo, createStubHandler, defaultIo } from "./commands/stub.js";
 import { suggest } from "./fuzzy.js";
 import { configure } from "../log/mode.js";
@@ -90,23 +96,27 @@ function registerCommands(program: Command, io: CliIo): void {
     .action(createStubHandler("doctor", [], io));
 
   const newCommand = program.command("new").description("create shows, episodes, pipelines, or playbooks");
+  const newHandlers = createNewHandlers(io);
   newCommand.action(createStubHandler("new", [], io));
   newCommand
     .command("show <slug>")
     .description("scaffold shows/<slug>/")
-    .action(createStubHandler("new show", ["slug"], io));
+    .option("--from <starter>", "starter to copy from .predit/starters")
+    .option("--pipelines <list>", "comma-separated pipeline slugs")
+    .action(newHandlers.show);
   newCommand
     .command("episode <show> [slug]")
     .description("scaffold an episode under a show")
-    .action(createStubHandler("new episode", ["show", "slug"], io));
+    .option("--pipeline <name>", "pipeline key from show.pipelines")
+    .action(newHandlers.episode);
   newCommand
     .command("pipeline <slug>")
     .description("scaffold a new pipeline and director skills")
-    .action(createStubHandler("new pipeline", ["slug"], io));
+    .action(newHandlers.pipeline);
   newCommand
     .command("playbook <slug>")
     .description("scaffold a new style playbook")
-    .action(createStubHandler("new playbook", ["slug"], io));
+    .action(newHandlers.playbook);
 
   program
     .command("build <target>")
@@ -116,22 +126,23 @@ function registerCommands(program: Command, io: CliIo): void {
     .option("--only <stage>", "run only one stage")
     .option("--to <stage>", "stop after a stage")
     .option("--budget <usd>", "set a budget in USD")
-    .action(createStubHandler("build", ["target"], io));
+    .option("--non-interactive", "pause at required approvals and exit")
+    .action(createBuildHandler(io));
 
   program
     .command("resume <target>")
     .description("resume at the next checkpoint")
-    .action(createStubHandler("resume", ["target"], io));
+    .action(createResumeHandler(io));
 
   program
     .command("status [target]")
     .description("show state, cost, and last decision")
-    .action(createStubHandler("status", ["target"], io));
+    .action(createStatusHandler(io));
 
   program
     .command("approve <target>")
     .description("advance past awaiting_human")
-    .action(createStubHandler("approve", ["target"], io));
+    .action(createApproveHandler(io));
 
   program
     .command("revise <target> <note>")
@@ -141,7 +152,7 @@ function registerCommands(program: Command, io: CliIo): void {
   program
     .command("ls <kind> [arg]")
     .description("list shows, episodes, pipelines, playbooks, tools, or decisions")
-    .action(createStubHandler("ls", ["kind", "arg"], io));
+    .action(createLsHandler(io));
 
   program
     .command("show <target>")

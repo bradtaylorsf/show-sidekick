@@ -55,6 +55,10 @@ export class Registry {
     return this.discoveryOrder.filter((tool) => tool.provider === provider);
   }
 
+  all(): Tool[] {
+    return [...this.discoveryOrder];
+  }
+
   getAvailability(name: string): Availability | undefined {
     return this.availabilityCache.get(name);
   }
