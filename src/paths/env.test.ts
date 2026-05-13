@@ -32,7 +32,7 @@ describe("env loader", () => {
     await writeFile(path.join(root, ".env.build"), "SHARED=build\nCOMMAND_ONLY=1\n", "utf8");
     await writeFile(path.join(root, ".env.local"), "SHARED=local\nLOCAL_ONLY=1\n", "utf8");
 
-    expect(loadEnv("build", root)).toEqual({
+    expect(loadEnv("build", root)).toMatchObject({
       SHARED: "local",
       BASE_ONLY: "1",
       COMMAND_ONLY: "1",
@@ -47,6 +47,7 @@ describe("env loader", () => {
 
     expect(requireEnv(processEnvKey, undefined, root)).toBe("process");
     expect(optionalEnv(processEnvKey, undefined, root)).toBe("process");
+    expect(loadEnv(undefined, root)[processEnvKey]).toBe("process");
   });
 
   it("throws MissingEnvError for required missing values", async () => {

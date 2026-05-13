@@ -19,6 +19,12 @@ export function loadEnv(command?: string, root: string = findProjectRoot()): Rec
     Object.assign(values, parseEnv(readFileSync(filePath, "utf8")));
   }
 
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) {
+      values[key] = value;
+    }
+  }
+
   return values;
 }
 
