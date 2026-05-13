@@ -2,12 +2,14 @@ import type { CostLog } from "../artifacts/cost-log.js";
 import type { Checkpoint } from "../checkpoints/checkpoint.js";
 import type { DecisionLog } from "../artifacts/decision-log.js";
 import type { EditDecisions } from "../artifacts/edit-decisions.js";
+import type { FinalReview } from "../artifacts/final-review.js";
 import type { RenderRuntime } from "../artifacts/enums.js";
 import type { ProposalPacket } from "../artifacts/proposal-packet.js";
 import type { RenderReport } from "../artifacts/render-report.js";
 import { ReviewSchema, type Finding, type Review } from "../artifacts/review.js";
 import type { SourceMediaReview } from "../artifacts/source-media-review.js";
 import type { VideoAnalysisBrief } from "../artifacts/video-analysis-brief.js";
+import { auditBoilerplateReason, auditConfidence, auditRequiredCategories } from "../decisions/audit.js";
 import type { PipelineManifest } from "../pipelines/manifest.js";
 import type { Playbook } from "../shows/playbook.js";
 import { validateComposition } from "./composition-validator.js";
@@ -18,6 +20,7 @@ import {
   type DeliveryPromise,
   type PromiseAsset,
 } from "./delivery-promise.js";
+import { checkFinalReview } from "./final-review.js";
 import { evaluateFocusItem, type FocusEvaluatorHook } from "./focus-evaluator.js";
 import { findSameClassInstances } from "./pattern-match.js";
 import { crossCheckAgainstPlaybook } from "./playbook-check.js";
@@ -41,6 +44,12 @@ export type ReviewContext = {
   costLog?: CostLog;
   approvedProposalAssets?: string[];
   decisionLog?: DecisionLog;
+  audioLed?: boolean;
+  narrationInScope?: boolean;
+  deviatesFromScenePlan?: boolean;
+  substituted?: boolean;
+  decisionCapabilities?: string[];
+  providersWithMultipleModels?: string[];
   sourceMediaReview?: SourceMediaReview;
   userSuppliedMedia?: UserSuppliedMedia[];
   plannedDurationS?: number;
@@ -54,6 +63,9 @@ export type ReviewContext = {
   proposalPacket?: ProposalPacket;
   editDecisions?: EditDecisions;
   renderReport?: RenderReport;
+  finalReviewArtifact?: FinalReview;
+  videoAnalysisBrief?: VideoAnalysisBrief;
+  expectedResolution?: { width: number; height: number };
   availableRuntimes?: RenderRuntime[];
   motionRequired?: boolean;
   checkpoint?: Checkpoint;
@@ -90,6 +102,21 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
     rawFindings.push(...crossCheckAgainstPlaybook(stageSlug, artifact, ctx.playbook));
   }
 
+  if (ctx.decisionLog !== undefined) {
+    rawFindings.push(
+      ...auditRequiredCategories(stageSlug, ctx.decisionLog, {
+        audioLed: ctx.audioLed,
+        narrationInScope: ctx.narrationInScope ?? ctx.narrationRequired,
+        deviatesFromScenePlan: ctx.deviatesFromScenePlan,
+        substituted: ctx.substituted,
+        capabilities: ctx.decisionCapabilities,
+        providersWithMultipleModels: ctx.providersWithMultipleModels,
+      }),
+      ...auditConfidence(ctx.decisionLog),
+      ...auditBoilerplateReason(ctx.decisionLog),
+    );
+  }
+
   rawFindings.push(
     ...checkReferenceAlignment(stageSlug, artifact, {
       brief: ctx.referenceBrief,
@@ -124,6 +151,19 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
       narrationRequired: ctx.narrationRequired,
       narrationPresent: ctx.narrationPresent,
       approvedFallback: ctx.approvedFallback,
+    }),
+  );
+  rawFindings.push(
+    ...checkFinalReview(stageSlug, artifact, {
+      deliveryPromise: ctx.deliveryPromise,
+      proposalPacket: ctx.proposalPacket,
+      editDecisions: ctx.editDecisions,
+      renderReport: ctx.renderReport,
+      finalReviewArtifact: ctx.finalReviewArtifact,
+      videoAnalysisBrief: ctx.videoAnalysisBrief ?? ctx.referenceBrief,
+      decisionLog: ctx.decisionLog,
+      narrationRequired: ctx.narrationRequired,
+      expectedResolution: ctx.expectedResolution,
     }),
   );
   if (ctx.checkpoint !== undefined && ctx.getAgentSkills !== undefined) {

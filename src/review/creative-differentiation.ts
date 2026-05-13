@@ -4,6 +4,7 @@ import type { RenderRuntime } from "../artifacts/enums.js";
 import type { ProposalPacket } from "../artifacts/proposal-packet.js";
 import type { RenderReport } from "../artifacts/render-report.js";
 import type { Finding } from "../artifacts/review.js";
+import { auditPresentBothRuntimes } from "../decisions/audit.js";
 import type { Playbook } from "../shows/playbook.js";
 import { checkSceneVariation } from "./scene-variation.js";
 
@@ -28,8 +29,6 @@ const SHOT_LANGUAGE_HERO_FIELDS = [
   "depth_of_field",
   "color_temperature",
 ] as const;
-
-const RUNTIME_LABELS = ["ffmpeg", "remotion", "hyperframes"] as const;
 
 export function checkCreativeDifferentiation(
   stageSlug: string,
@@ -262,60 +261,7 @@ function checkRuntimeSelectionOptions(
     return [];
   }
 
-  const requiredRuntimes = requiredRuntimeOptions(decisionLog, availableRuntimes, motionRequired);
-  if (requiredRuntimes.length <= 1) {
-    return [];
-  }
-
-  const runtimeDecision = latestActiveDecision(decisionLog, "render_runtime_selection");
-  if (runtimeDecision === undefined) {
-    return [
-      {
-        severity: "critical",
-        title: "Runtime selection omitted available options",
-        location: "decision_log.render_runtime_selection",
-        description: `No active render_runtime_selection decision lists required runtime option(s): ${requiredRuntimes.join(", ")}.`,
-        proposed_fix: `Add a proposal-stage render_runtime_selection decision with options_considered labels "${requiredRuntimes.join('", "')}" before review round 1.`,
-        status: "pending",
-      },
-    ];
-  }
-
-  const presented = new Set(runtimeDecision.options_considered.map((option) => normalizeRuntimeLabel(option.label)));
-  const missing = requiredRuntimes.filter((runtime) => !presented.has(runtime));
-  if (missing.length === 0) {
-    return [];
-  }
-
-  return [
-    {
-      severity: "critical",
-      title: "Runtime selection omitted available options",
-      location: `decision_log.${runtimeDecision.id}.options_considered`,
-      description: `The render_runtime_selection decision did not present available option(s): ${missing.join(", ")}.`,
-      proposed_fix: `Add option label(s) "${missing.join('", "')}" to ${runtimeDecision.id}.options_considered so Remotion, HyperFrames, and applicable DEC-4 ffmpeg choices are visible.`,
-      status: "pending",
-    },
-  ];
-}
-
-function requiredRuntimeOptions(
-  decisionLog: DecisionLog | undefined,
-  availableRuntimes: RenderRuntime[] | undefined,
-  motionRequired: boolean | undefined,
-): RenderRuntime[] {
-  const available = new Set(availableRuntimes ?? inferAvailableRuntimes(decisionLog));
-  const required: RenderRuntime[] = [];
-
-  if (available.has("remotion") && available.has("hyperframes")) {
-    required.push("remotion", "hyperframes");
-  }
-
-  if (motionRequired === false && available.has("ffmpeg")) {
-    required.push("ffmpeg");
-  }
-
-  return [...new Set(required)];
+  return auditPresentBothRuntimes(decisionLog, availableRuntimes, motionRequired);
 }
 
 function hasLoggedSelection(
@@ -329,36 +275,9 @@ function hasLoggedSelection(
   });
 }
 
-function latestActiveDecision(decisionLog: DecisionLog | undefined, category: DecisionEntry["category"]): DecisionEntry | undefined {
-  return activeDecisions(decisionLog)
-    .filter((decision) => decision.category === category)
-    .at(-1);
-}
-
 function activeDecisions(decisionLog: DecisionLog | undefined): DecisionEntry[] {
   const supersededIds = new Set((decisionLog ?? []).map((decision) => decision.supersedes).filter(isString));
   return (decisionLog ?? []).filter((decision) => !supersededIds.has(decision.id));
-}
-
-function inferAvailableRuntimes(decisionLog: DecisionLog | undefined): RenderRuntime[] {
-  const runtimes = new Set<RenderRuntime>();
-  (decisionLog ?? [])
-    .filter((decision) => decision.category === "render_runtime_selection")
-    .forEach((decision) => {
-      const picked = normalizeRuntimeLabel(decision.picked);
-      if (isRenderRuntime(picked)) {
-        runtimes.add(picked);
-      }
-
-      decision.options_considered.forEach((option) => {
-        const label = normalizeRuntimeLabel(option.label);
-        if (isRenderRuntime(label)) {
-          runtimes.add(label);
-        }
-      });
-    });
-
-  return [...runtimes];
 }
 
 function isCleanProfessionalPlaybook(playbook: Playbook): boolean {
@@ -418,14 +337,6 @@ function renderReportFromArtifact(stageSlug: string, artifact: unknown): RenderR
   }
 
   return artifact as RenderReport;
-}
-
-function normalizeRuntimeLabel(label: string): string {
-  return label.trim().toLowerCase();
-}
-
-function isRenderRuntime(value: string): value is RenderRuntime {
-  return RUNTIME_LABELS.some((runtime) => runtime === value);
 }
 
 function isProposalStage(stageSlug: string): boolean {
