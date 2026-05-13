@@ -25,6 +25,7 @@ export type KnownCapability =
   | "transcriber"
   | "stock_image"
   | "stock_video"
+  | "stock_cross_search"
   | "clip_cache"
   | "clip_search"
   | "video_reframe"
@@ -69,6 +70,7 @@ export interface ToolSelector {
     capability: Capability,
     prefs?: { prefer?: string[]; runtime?: Integration["kind"]; context?: ToolAvailabilityContext },
   ): Promise<Tool>;
+  listByCapability?(capability: Capability): Promise<Tool[]>;
 }
 
 export type ToolInteractionMode = "interactive" | "non_interactive" | { json: boolean };
