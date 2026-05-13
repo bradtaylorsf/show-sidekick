@@ -18,7 +18,13 @@ export type KnownCapability =
   | "whisper"
   | "aubio"
   | "audio_energy"
+  | "frame_sampling"
+  | "scene_detection"
+  | "face_tracking"
   | "transcriber"
+  | "transcript_fetch"
+  | "clip_embedding"
+  | "corpus_index"
   | "stock_image";
 
 export type Capability = KnownCapability | (string & {});
