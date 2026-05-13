@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { createReviseHandler } from "./commands/revise.js";
 import { type CliIo, createStubHandler, defaultIo } from "./commands/stub.js";
 import { suggest } from "./fuzzy.js";
 import { configure } from "../log/mode.js";
@@ -135,7 +136,7 @@ function registerCommands(program: Command, io: CliIo): void {
   program
     .command("revise <target> <note>")
     .description("loop the current stage with a note")
-    .action(createStubHandler("revise", ["target", "note"], io));
+    .action(createReviseHandler(io));
 
   program
     .command("ls <kind> [arg]")
