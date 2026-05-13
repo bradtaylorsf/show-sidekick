@@ -2,6 +2,7 @@ export * from "./composition-validator.js";
 export * from "./creative-differentiation.js";
 export * from "./delivery-promise.js";
 export * from "./focus-evaluator.js";
+export * from "./final-review.js";
 export * from "./pattern-match.js";
 export * from "./playbook-check.js";
 export * from "./reference-alignment.js";

@@ -53,6 +53,7 @@ The full enum, used as the `category` field on every decision entry. Naming is n
 |---|---|---|
 | `pipeline_selection` | Show creation / episode authoring | which pipeline this episode runs (from `show.pipelines`) |
 | `provider_selection` | Asset stage (per capability) | `flux-pro` vs `imagen-4` vs `recraft-v3` |
+| `model_selection` | Asset stage (per provider when multiple models are available) | `imagen-4` vs `imagen-4-fast` |
 | `renderer_family_selection` | Proposal | creative grammar: `explainer-teacher`, `cinematic-trailer`, `documentary-montage`, `product-reveal`, `screen-demo`, `presenter`, `animation-first`, `explainer-data` |
 | `render_runtime_selection` | Proposal (technical engine; **must list all available runtimes** in `options_considered`) | `remotion` vs `hyperframes` vs `ffmpeg` |
 | `playbook_selection` | Proposal | which style playbook the show/episode runs under |
@@ -97,13 +98,13 @@ When a decision is changed mid-run (e.g. the user revises the proposal and a dif
 
 | Stage | Required entries |
 |---|---|
-| Proposal | `runtime`, `playbook`, `music`, plus `voice` if narration is in scope |
-| Script | `voice` (per character or single narrator) |
+| Proposal | `render_runtime_selection`, `renderer_family_selection`, `playbook_selection`, `motion_commitment`, `concept_selection`, plus `music_source` for audio-led pipelines |
+| Script | `voice_selection` (per character or single narrator) when narration is in scope |
 | Cuesheet | none (subsystem outputs are not "decisions" per se) |
 | Scene plan | none (creative choices are in the artifact itself) |
-| Assets | `provider` per capability used, `model` per provider |
-| Edit | `runtime` (confirms or supersedes proposal entry), any `fallback` or `downgrade` if the edit deviates from the scene plan |
-| Compose | `runtime` (final, must match edit's), `fallback`/`downgrade` if the compose stage substituted |
+| Assets | `provider_selection` per capability used, `model_selection` per provider when multiple models are available |
+| Edit | `render_runtime_selection` (confirms or supersedes proposal entry), `fallback_decision` or `downgrade_approval` if the edit deviates from the scene plan |
+| Compose | `render_runtime_selection` (final, must match edit's), `fallback_decision`/`downgrade_approval` if the compose stage substituted |
 
 ## Runtime selection rule
 

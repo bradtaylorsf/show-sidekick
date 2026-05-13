@@ -31,6 +31,10 @@ export const FinalReviewSchema = z.object({
     }),
     visual_spotcheck: z.object({
       frames_sampled: z.number().int().min(0),
+      frame_paths: z.array(z.string()).optional(),
+      sample_points_pct: z.array(z.number().min(0).max(100)).optional(),
+      hero_frame_path: z.string().optional(),
+      matched_elements: z.array(z.string()).optional(),
       findings: z.array(z.unknown()).default([]),
     }),
     audio_spotcheck: z.object({

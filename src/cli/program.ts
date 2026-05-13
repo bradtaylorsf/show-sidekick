@@ -1,5 +1,6 @@
 import { Command } from "commander";
-import { type CliIo, createStubHandler, defaultIo } from "./commands/stub.js";
+import { lsDecisions } from "./commands/ls-decisions.js";
+import { type CliIo, createStubHandler, defaultIo, type GlobalOptions } from "./commands/stub.js";
 import { suggest } from "./fuzzy.js";
 import { configure } from "../log/mode.js";
 import { VERSION } from "../version.js";
@@ -140,7 +141,23 @@ function registerCommands(program: Command, io: CliIo): void {
   program
     .command("ls <kind> [arg]")
     .description("list shows, episodes, pipelines, playbooks, tools, or decisions")
-    .action(createStubHandler("ls", ["kind", "arg"], io));
+    .action(async (...actionArgs: unknown[]) => {
+      const kind = actionArgs[0] as string;
+      const arg = typeof actionArgs[1] === "string" ? actionArgs[1] : undefined;
+
+      if (kind === "decisions") {
+        if (arg === undefined) {
+          program.error("missing required argument 'show/episode' for ls decisions");
+          return;
+        }
+
+        await lsDecisions(arg, program.optsWithGlobals<GlobalOptions>(), io);
+        return;
+      }
+
+      const command = actionArgs.at(-1) as Command;
+      createStubHandler("ls", ["kind", "arg"], io)(kind, arg, command);
+    });
 
   program
     .command("show <target>")
