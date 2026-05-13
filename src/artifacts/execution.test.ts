@@ -166,8 +166,9 @@ describe("execution artifact schemas", () => {
         {
           severity: "suggestion",
           title: "Tighten beat two",
+          location: "scene_plan.scenes[1]",
           description: "The second scene is a little loose.",
-          proposed_fix: "Shorten by one second.",
+          proposed_change: "Shorten by one second.",
         },
       ],
       summary: {
@@ -175,6 +176,8 @@ describe("execution artifact schemas", () => {
         suggestions: 1,
         nitpicks: 0,
         investigations: 0,
+        success_criteria_met: 4,
+        success_criteria_total: 4,
       },
     };
 
