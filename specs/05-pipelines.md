@@ -120,7 +120,7 @@ Pipelines declare any subset of canonical stages; the relative order of canonica
 
 - `music-video`: `idea → proposal → script → cuesheet → scene_plan → assets → edit → compose`
 - `documentary-montage`: `idea → scene_plan → assets → edit → compose` (skips proposal, script, cuesheet)
-- `daily-news`: `research → idea → capture → script → scene_plan → assets → edit → compose`
+- `daily-news`: `research → idea → script → capture → scene_plan → assets → edit → compose`
 - `character-animation`: `research → proposal → script → character_design → rig_plan → scene_plan → assets → edit → compose → publish`
 - `framework-smoke`: `research → script` (test pipeline; minimal)
 
