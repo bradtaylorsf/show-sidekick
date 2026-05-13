@@ -1,3 +1,4 @@
+export * from "./character.js";
 export * from "./deep-merge.js";
 export * from "./episode.js";
 export * from "./load.js";
