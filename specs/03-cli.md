@@ -30,6 +30,7 @@ predit build <show>/<episode> --only <stage>
 predit build <show>/<episode> --to <stage>
 predit build <show>/<episode> --budget <usd>
 
+predit cuesheet <show>/<episode>        # build/cache audio cuesheet for debugging
 predit resume <show>/<episode>           # pick up at next checkpoint
 predit status [<show>[/<episode>]]       # state + cost + last decision
 predit approve <show>/<episode>          # advance past awaiting_human
