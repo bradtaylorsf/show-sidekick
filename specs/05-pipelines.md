@@ -15,7 +15,7 @@ slug: music-video
 display_name: "Music Video"
 description: "Vertical music videos for AI-generated music tracks"
 status: production                       # production | beta | experimental
-master_clock: audio                      # audio | voiceover | none
+master_clock: audio                      # audio | voiceover | action_timeline | none
 
 defaults:
   aspect: "9:16"
