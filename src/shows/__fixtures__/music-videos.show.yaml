@@ -1,0 +1,17 @@
+slug: music-videos
+display_name: "Music Videos"
+description: "Personal music-video series"
+created: 2026-05-12
+brand: ./brand/
+characters: ./characters/
+pipelines:
+  music-video:
+    playbook: playful-hip-hop-explainer
+    runtime: hyperframes
+    aspect: "9:16"
+    budget_usd: 5
+defaults:
+  pipeline: music-video
+export:
+  default_target: capcut
+  asset_link_mode: copy

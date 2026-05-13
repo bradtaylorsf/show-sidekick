@@ -1,0 +1,36 @@
+slug: thechaosfm
+display_name: "The Chaos FM"
+description: "PS2-era political news rap + evergreen protest songs"
+created: 2026-05-12
+brand: ./brand/
+characters: ./characters/
+skills: ./skills/
+pipelines:
+  news-song:
+    playbook: ps2-dystopian-news-rap
+    runtime: hyperframes
+    aspect: "16:9"
+    budget_usd: 6
+    playbook_overrides: ./pipelines/news-song.playbook-overrides.yaml
+  music-video:
+    playbook: thechaosfm-gta-political
+    runtime: hyperframes
+    aspect: "16:9"
+    budget_usd: 5
+defaults:
+  pipeline: news-song
+  language: en
+ingest:
+  episode_template: ./episode.template.yaml
+  watch:
+    - path: ../../music_library/thechaosfm-news
+      match: "**/track.mp3"
+      pipeline: news-song
+      slug_from: parent_dir
+    - path: ../../music_library/thechaosfm-songs
+      match: "**/track.mp3"
+      pipeline: music-video
+      slug_from: parent_dir
+export:
+  default_target: capcut
+  asset_link_mode: copy

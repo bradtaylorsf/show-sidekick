@@ -1,0 +1,21 @@
+slug: 2026-05-12-news-jam
+title: "Bi-weekly News Jam - May 12"
+created: 2026-05-12
+pipeline: news-song
+playbook: ps2-dystopian-news-rap
+runtime: hyperframes
+aspect: "16:9"
+budget_usd: 6
+inputs:
+  track: music_library/thechaosfm-news/2026-05-12-news-jam/track.mp3
+  lyrics: music_library/thechaosfm-news/2026-05-12-news-jam/lyrics.txt
+  sources: music_library/thechaosfm-news/2026-05-12-news-jam/sources.yaml
+  notes: |
+    Hook hits at 0:18. Two evidence beats around 0:42 and 1:55.
+cast:
+  - host-mc
+  - ambient-crowd
+tags:
+  - news-song
+  - ps2
+  - political-rap
