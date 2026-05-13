@@ -33,6 +33,7 @@ predit build <show>/<episode> --budget <usd>
 predit resume <show>/<episode>           # pick up at next checkpoint
 predit status [<show>[/<episode>]]       # state + cost + last decision
 predit approve <show>/<episode>          # advance past awaiting_human
+predit approve <show>/<episode> --force "<reason>"  # audited force-approval for failed final_review
 predit revise <show>/<episode> "<note>"  # loop the current stage with note
 
 # Inspect

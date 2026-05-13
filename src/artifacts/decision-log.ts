@@ -3,6 +3,7 @@ import { z } from "zod";
 export const DECISION_CATEGORY = [
   "pipeline_selection",
   "provider_selection",
+  "model_selection",
   "renderer_family_selection",
   "render_runtime_selection",
   "playbook_selection",
@@ -25,6 +26,12 @@ export const DecisionEntrySchema = z.object({
   stage: z.string(),
   timestamp: z.string(),
   category: DecisionCategorySchema,
+  scope: z
+    .object({
+      capability: z.string().optional(),
+      provider: z.string().optional(),
+    })
+    .optional(),
   options_considered: z
     .array(
       z.object({

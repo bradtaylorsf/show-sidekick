@@ -1,17 +1,15 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
-import { DecisionEntrySchema, DecisionLogSchema, type DecisionEntry } from "../../artifacts/decision-log.js";
-import { projectDir } from "../../checkpoints/paths.js";
 import { loadPipeline } from "../../pipelines/load.js";
-import { findProjectRoot, parseShowEpisode, projectPaths } from "../../paths/project.js";
+import { findProjectRoot, projectPaths } from "../../paths/project.js";
 import { Registry } from "../../registry/index.js";
 import type { Availability, Tool } from "../../registry/tool.js";
 import { safeSlug } from "../scaffold/index.js";
 import type { CliIo, GlobalOptions } from "./stub.js";
 
-type ErrorWithCode = Error & { code?: string };
 type Source = "local" | "bundled";
+type ErrorWithCode = Error & { code?: string };
 
 type BaseRow = {
   event: string;
@@ -33,17 +31,7 @@ type ToolRow = BaseRow & {
   reason?: string;
 };
 
-type DecisionRow = BaseRow & {
-  event: "decision_listed";
-  kind: "decisions";
-  stage: string;
-  category: string;
-  picked: string;
-  reason: string;
-  timestamp: string;
-};
-
-type Row = BaseRow | ToolRow | DecisionRow;
+type Row = BaseRow | ToolRow;
 
 export type LsHandlerOptions = {
   registryFactory?: () => Registry;
@@ -91,10 +79,8 @@ async function loadRows(
       return listStarters(projectRoot);
     case "tools":
       return listTools(registryFactory());
-    case "decisions":
-      return listDecisions(projectRoot, requireArg(kind, arg));
     default:
-      throw new Error(`unknown ls kind '${kind}'; expected shows, episodes, pipelines, playbooks, starters, tools, or decisions`);
+      throw new Error(`unknown ls kind '${kind}'; expected shows, episodes, pipelines, playbooks, starters, or tools`);
   }
 }
 
@@ -181,58 +167,6 @@ async function listTools(registry: Registry): Promise<Row[]> {
         left.name.localeCompare(right.name)
       );
     });
-}
-
-async function listDecisions(projectRoot: string, target: string): Promise<Row[]> {
-  const { show, episode } = parseShowEpisode(target, projectRoot);
-  const decisions = await readDecisionLog(projectRoot, show, episode);
-
-  return decisions
-    .map((decision) => ({
-      event: "decision_listed",
-      kind: "decisions",
-      name: decision.id,
-      stage: decision.stage,
-      category: decision.category,
-      picked: decision.picked,
-      reason: decision.reason,
-      timestamp: decision.timestamp,
-    }))
-    .sort((left, right) => left.timestamp.localeCompare(right.timestamp) || left.name.localeCompare(right.name));
-}
-
-async function readDecisionLog(projectRoot: string, show: string, episode: string): Promise<DecisionEntry[]> {
-  const dir = projectDir(projectRoot, show, episode);
-  const jsonlPath = path.join(dir, "decisions.jsonl");
-  const jsonPath = path.join(dir, "decisions.json");
-
-  const jsonl = await readOptionalFile(jsonlPath);
-  if (jsonl !== undefined) {
-    return jsonl
-      .split(/\r?\n/u)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => DecisionEntrySchema.parse(JSON.parse(line) as unknown));
-  }
-
-  const json = await readOptionalFile(jsonPath);
-  if (json === undefined) {
-    return [];
-  }
-
-  return DecisionLogSchema.parse(JSON.parse(json) as unknown);
-}
-
-async function readOptionalFile(filePath: string): Promise<string | undefined> {
-  try {
-    return await readFile(filePath, "utf8");
-  } catch (error) {
-    const fileError = error as ErrorWithCode;
-    if (fileError.code === "ENOENT") {
-      return undefined;
-    }
-    throw error;
-  }
 }
 
 function toolRow(tool: Tool, availability: Availability | undefined): ToolRow {

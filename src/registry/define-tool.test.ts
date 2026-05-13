@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import { AwaitingHuman } from "../announce/index.js";
 import { defineTool } from "./define-tool.js";
 
 afterEach(() => {
@@ -60,4 +61,107 @@ describe("defineTool", () => {
       ),
     ).resolves.toEqual({ url: "voiceover" });
   });
+
+  it("announces non-zero-cost tool execution before running the implementation", async () => {
+    const events: Array<{ event: string; payload: unknown }> = [];
+    const calls: string[] = [];
+    const tool = defineTool({
+      name: "paid-video",
+      capability: "image_to_video",
+      provider: "video-provider",
+      status: "beta",
+      integration: { kind: "api", env: ["SAMPLE_KEY"], install: "noop" },
+      best_for: "video generation",
+      cost: { unit: "clip", usd: 0.25 },
+      input: z.object({ prompt: z.string() }),
+      output: z.object({ path: z.string() }),
+      execute: async (params) => {
+        calls.push("execute");
+        return { path: params.prompt };
+      },
+    });
+
+    await expect(
+      tool.execute(
+        { prompt: "hero" },
+        {
+          projectRoot: "/tmp/predit",
+          logger: logger(),
+          execution: {
+            mode: { json: true },
+            reason: "approved sample render",
+            units: 2,
+            io: {
+              event: (event, payload) => {
+                events.push({ event, payload });
+                calls.push(event);
+              },
+            },
+          },
+        },
+      ),
+    ).resolves.toEqual({ path: "hero" });
+
+    expect(calls).toEqual(["announce", "execute"]);
+    expect(events).toEqual([
+      {
+        event: "announce",
+        payload: expect.objectContaining({
+          tool: "paid-video",
+          provider: "video-provider",
+          estimate_usd: 0.5,
+        }),
+      },
+    ]);
+  });
+
+  it("blocks motion-runtime fallback before paid execution", async () => {
+    let executed = false;
+    const tool = defineTool({
+      name: "paid-video",
+      capability: "image_to_video",
+      provider: "video-provider",
+      status: "beta",
+      integration: { kind: "api", env: ["SAMPLE_KEY"], install: "noop" },
+      best_for: "video generation",
+      cost: { unit: "clip", usd: 0.25 },
+      input: z.object({ prompt: z.string() }),
+      output: z.object({ path: z.string() }),
+      execute: async (params) => {
+        executed = true;
+        return { path: params.prompt };
+      },
+    });
+
+    await expect(
+      tool.execute(
+        { prompt: "hero" },
+        {
+          projectRoot: "/tmp/predit",
+          logger: logger(),
+          execution: {
+            mode: { json: true },
+            io: { event: () => undefined },
+            motionGuardrail: {
+              deliveryPromise: { motion_led: true },
+              lockedRuntime: "hyperframes",
+              availableRuntimes: ["remotion"],
+              attemptedRuntime: "remotion",
+            },
+          },
+        },
+      ),
+    ).rejects.toBeInstanceOf(AwaitingHuman);
+    expect(executed).toBe(false);
+  });
 });
+
+function logger() {
+  return {
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+    debug: () => undefined,
+    event: () => undefined,
+  };
+}
