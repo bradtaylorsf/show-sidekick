@@ -1,12 +1,27 @@
+import type { CostLog } from "../artifacts/cost-log.js";
+import type { DecisionLog } from "../artifacts/decision-log.js";
 import { ReviewSchema, type Finding, type Review } from "../artifacts/review.js";
+import type { SourceMediaReview } from "../artifacts/source-media-review.js";
+import type { VideoAnalysisBrief } from "../artifacts/video-analysis-brief.js";
 import type { PipelineManifest } from "../pipelines/manifest.js";
 import type { Playbook } from "../shows/playbook.js";
+import { validateComposition } from "./composition-validator.js";
+import {
+  checkDeliveryPromise,
+  type ClassifyBriefInput,
+  type DeliveryPromise,
+  type PromiseAsset,
+} from "./delivery-promise.js";
 import { evaluateFocusItem, type FocusEvaluatorHook } from "./focus-evaluator.js";
 import { findSameClassInstances } from "./pattern-match.js";
 import { crossCheckAgainstPlaybook } from "./playbook-check.js";
+import { checkReferenceAlignment } from "./reference-alignment.js";
 import { validateArtifactAgainstSchema } from "./schema-validate.js";
 import { enforceCHAI, type CHAIEnforcementEvent } from "./specificity.js";
+import { checkSourceMediaEnforcement, type UserSuppliedMedia } from "./source-media-enforcement.js";
 import { evaluateSuccessCriteria } from "./success-criteria.js";
+
+type UnknownRecord = Record<string, unknown>;
 
 export type ReviewContext = {
   pipeline: Pick<PipelineManifest, "stages">;
@@ -15,6 +30,19 @@ export type ReviewContext = {
   priorReviews?: Review[];
   events?: CHAIEnforcementEvent[];
   focusEvaluators?: Record<string, FocusEvaluatorHook>;
+  referenceBrief?: VideoAnalysisBrief;
+  costLog?: CostLog;
+  approvedProposalAssets?: string[];
+  decisionLog?: DecisionLog;
+  sourceMediaReview?: SourceMediaReview;
+  userSuppliedMedia?: UserSuppliedMedia[];
+  plannedDurationS?: number;
+  deliveryPromise?: DeliveryPromise;
+  brief?: ClassifyBriefInput;
+  assets?: PromiseAsset[];
+  narrationRequired?: boolean;
+  narrationPresent?: boolean;
+  approvedFallback?: string;
 };
 
 export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewContext): Review {
@@ -45,6 +73,34 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
 
   if (ctx.playbook !== undefined) {
     rawFindings.push(...crossCheckAgainstPlaybook(stageSlug, artifact, ctx.playbook));
+  }
+
+  rawFindings.push(
+    ...checkReferenceAlignment(stageSlug, artifact, {
+      brief: ctx.referenceBrief,
+      costLog: ctx.costLog,
+      approvedProposalAssets: ctx.approvedProposalAssets,
+      decisionLog: ctx.decisionLog,
+    }),
+  );
+  rawFindings.push(
+    ...checkSourceMediaEnforcement(stageSlug, artifact, {
+      sourceMediaReview: ctx.sourceMediaReview,
+      userSuppliedMedia: ctx.userSuppliedMedia,
+    }),
+  );
+  rawFindings.push(
+    ...checkDeliveryPromise(stageSlug, artifact, {
+      deliveryPromise: ctx.deliveryPromise,
+      brief: ctx.brief,
+      assets: ctx.assets,
+      narrationRequired: ctx.narrationRequired,
+      narrationPresent: ctx.narrationPresent,
+      approvedFallback: ctx.approvedFallback,
+    }),
+  );
+  if (ctx.plannedDurationS !== undefined && isCompositionStage(stageSlug) && hasCuts(artifact)) {
+    rawFindings.push(...validateComposition(artifact, ctx.plannedDurationS));
   }
 
   const successCriteria = evaluateSuccessCriteria(stage?.success_criteria ?? [], artifact, stageSlug);
@@ -107,4 +163,16 @@ function dedupeFindings(findings: Finding[]): Finding[] {
     seen.add(key);
     return true;
   });
+}
+
+function isCompositionStage(stageSlug: string): boolean {
+  return stageSlug === "edit" || stageSlug === "compose" || stageSlug === "edit_decisions";
+}
+
+function hasCuts(value: unknown): value is { cuts: never[] } {
+  return isRecord(value) && Array.isArray(value.cuts);
+}
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
