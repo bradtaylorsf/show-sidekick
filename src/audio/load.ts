@@ -9,7 +9,7 @@ export async function load(path: string): Promise<AudioTrack> {
     throw new Error(`No audio stream found in ${path}`);
   }
 
-  const duration_s = parseRequiredNumber(probe.format?.duration ?? stream.duration, "duration_s", path);
+  const duration_s = parseRequiredNumber(probe.format.duration_s, "duration_s", path);
   const sample_rate = parseRequiredInteger(stream.sample_rate, "sample_rate", path);
   const channels = parseRequiredInteger(stream.channels, "channels", path);
 

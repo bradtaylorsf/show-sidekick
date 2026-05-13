@@ -1,4 +1,4 @@
-export { FfprobeError, ffprobe } from "./ffprobe.js";
+export * from "./ffprobe.js";
 export { load } from "./load.js";
 export { findInstrumentalDips, findSectionBoundaries, probeEnergy } from "./energy.js";
 export { detectSections, detectSectionsFromWindows } from "./sections.js";
