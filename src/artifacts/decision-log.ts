@@ -3,6 +3,7 @@ import { z } from "zod";
 export const DECISION_CATEGORY = [
   "pipeline_selection",
   "provider_selection",
+  "model_selection",
   "renderer_family_selection",
   "render_runtime_selection",
   "playbook_selection",

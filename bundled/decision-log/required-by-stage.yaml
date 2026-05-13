@@ -1,0 +1,37 @@
+proposal:
+  required:
+    - render_runtime_selection
+    - renderer_family_selection
+    - playbook_selection
+    - motion_commitment
+    - concept_selection
+  conditional:
+    - if: audio_led
+      add:
+        - music_source
+script:
+  conditional:
+    - if: narration_in_scope
+      add:
+        - voice_selection
+assets:
+  required_per_capability:
+    - provider_selection
+  required_per_provider:
+    - model_selection
+edit:
+  required:
+    - render_runtime_selection
+  conditional:
+    - if: deviates_from_scene_plan
+      add_one_of:
+        - fallback_decision
+        - downgrade_approval
+compose:
+  required:
+    - render_runtime_selection
+  conditional:
+    - if: substituted
+      add_one_of:
+        - fallback_decision
+        - downgrade_approval

@@ -1,12 +1,13 @@
 import { Command } from "commander";
 import { createApproveHandler } from "./commands/approve.js";
 import { createBuildHandler } from "./commands/build.js";
+import { lsDecisions } from "./commands/ls-decisions.js";
 import { createLsHandler } from "./commands/ls.js";
 import { createNewHandlers } from "./commands/new.js";
 import { createResumeHandler } from "./commands/resume.js";
 import { createReviseHandler } from "./commands/revise.js";
 import { createStatusHandler } from "./commands/status.js";
-import { type CliIo, createStubHandler, defaultIo } from "./commands/stub.js";
+import { type CliIo, createStubHandler, defaultIo, type GlobalOptions } from "./commands/stub.js";
 import { suggest } from "./fuzzy.js";
 import { configure } from "../log/mode.js";
 import { VERSION } from "../version.js";
@@ -152,7 +153,23 @@ function registerCommands(program: Command, io: CliIo): void {
   program
     .command("ls <kind> [arg]")
     .description("list shows, episodes, pipelines, playbooks, tools, or decisions")
-    .action(createLsHandler(io));
+    .action(async (...actionArgs: unknown[]) => {
+      const kind = actionArgs[0] as string;
+      const arg = typeof actionArgs[1] === "string" ? actionArgs[1] : undefined;
+      const command = actionArgs.at(-1) as Command;
+
+      if (kind === "decisions") {
+        if (arg === undefined) {
+          command.error("missing required argument 'show/episode' for ls decisions");
+          return;
+        }
+
+        await lsDecisions(arg, command.optsWithGlobals<GlobalOptions>(), io);
+        return;
+      }
+
+      await createLsHandler(io)(kind, arg, command);
+    });
 
   program
     .command("show <target>")
