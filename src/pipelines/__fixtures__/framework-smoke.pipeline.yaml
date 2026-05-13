@@ -1,0 +1,4 @@
+slug: framework-smoke
+stages:
+  - slug: research
+  - slug: script
