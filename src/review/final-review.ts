@@ -1,3 +1,4 @@
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { DecisionEntrySchema, type DecisionEntry, type DecisionLog } from "../artifacts/decision-log.js";
 import { RenderRuntimeSchema, type RenderRuntime } from "../artifacts/enums.js";
@@ -22,6 +23,10 @@ export type FinalReviewContext = {
   narrationRequired?: boolean;
   expectedResolution?: { width: number; height: number };
   finalReviewArtifact?: FinalReview;
+  heroScenePresent?: boolean;
+  show?: string;
+  episode?: string;
+  projectRoot?: string;
 };
 
 export type BuildFinalReviewInput = FinalReviewContext & {
@@ -156,22 +161,34 @@ export function finalFailedRenderPath(show: string, episode: string, root: strin
 
 export function haltOnFinalReviewFail(
   finalReview: Pick<FinalReview, "status">,
-  target: { show: string; episode: string; root?: string },
+  target: { show: string; episode: string; root?: string; renderPath?: string },
 ): { halt: boolean; preservedPath: string } {
+  const halt = finalReview.status === "fail";
+  const preservedPath = finalFailedRenderPath(target.show, target.episode, target.root);
+
+  if (halt && target.renderPath !== undefined) {
+    mkdirSync(path.dirname(preservedPath), { recursive: true });
+    copyFileSync(target.renderPath, preservedPath);
+  }
+
   return {
-    halt: finalReview.status === "fail",
-    preservedPath: finalFailedRenderPath(target.show, target.episode, target.root),
+    halt,
+    preservedPath,
   };
 }
 
 export function buildForceApprovalDecision(input: {
   reason: string;
   timestamp: string;
+  id?: string;
+  confidence?: number;
   stage?: string;
   supersedes?: string | null;
 }): DecisionEntry {
+  const stableTimestamp = input.timestamp.replace(/[^0-9A-Za-z]+/gu, "-").replace(/^-|-$/gu, "");
+
   return DecisionEntrySchema.parse({
-    id: "force_approval",
+    id: input.id ?? `force_approval-${stableTimestamp}`,
     stage: input.stage ?? "compose",
     timestamp: input.timestamp,
     category: "downgrade_approval",
@@ -189,7 +206,7 @@ export function buildForceApprovalDecision(input: {
     ],
     picked: "force_approval",
     reason: input.reason,
-    confidence: 1,
+    confidence: input.confidence ?? 0.75,
     user_visible: true,
     supersedes: input.supersedes ?? null,
   });
@@ -207,7 +224,7 @@ function evaluateFinalReview(finalReview: FinalReview, ctx: FinalReviewContext):
   const existingRuntimeSwap = finalReview.checks.promise_preservation.runtime_swap_detected;
   const findings = [
     ...checkTechnicalProbe(finalReview, ctx),
-    ...checkVisualSpotcheck(finalReview),
+    ...checkVisualSpotcheck(finalReview, ctx),
     ...checkAudioSpotcheck(finalReview),
     ...checkSubtitleCheck(finalReview),
     ...checkTranscriptComparison(finalReview),
@@ -302,14 +319,12 @@ function checkTechnicalProbe(finalReview: FinalReview, ctx: FinalReviewContext):
   return findings;
 }
 
-function checkVisualSpotcheck(finalReview: FinalReview): Finding[] {
+function checkVisualSpotcheck(finalReview: FinalReview, ctx: FinalReviewContext): Finding[] {
   const visual = finalReview.checks.visual_spotcheck;
-  if (visual.frames_sampled >= FINAL_REVIEW_THRESHOLDS.visual_frames_sampled_min) {
-    return [];
-  }
+  const findings: Finding[] = [];
 
-  return [
-    {
+  if (visual.frames_sampled < FINAL_REVIEW_THRESHOLDS.visual_frames_sampled_min) {
+    findings.push({
       severity: "critical",
       title: "Final review sampled too few frames",
       location: "final_review.checks.visual_spotcheck.frames_sampled",
@@ -317,8 +332,40 @@ function checkVisualSpotcheck(finalReview: FinalReview): Finding[] {
       proposed_fix:
         "Sample and save at least four distributed frames under projects/<show>/<episode>/final_review/frames/ before final review passes.",
       status: "pending",
-    },
-  ];
+    });
+  }
+
+  if (!hasDistributedSamplePoints(visual.sample_points_pct)) {
+    findings.push({
+      severity: "critical",
+      title: "Final review sample points are not distributed across the timeline",
+      location: "final_review.checks.visual_spotcheck.sample_points_pct",
+      description: `V-9 requires visual sample points near 10/35/65/90%, but final_review recorded ${JSON.stringify(visual.sample_points_pct ?? [])}.`,
+      proposed_fix:
+        "Set final_review.checks.visual_spotcheck.sample_points_pct to four frame samples near 10, 35, 65, and 90 percent.",
+      status: "pending",
+    });
+  }
+
+  if (ctx.heroScenePresent === true && emptyString(visual.hero_frame_path)) {
+    findings.push({
+      severity: "critical",
+      title: "Final review is missing the hero scene frame",
+      location: "final_review.checks.visual_spotcheck.hero_frame_path",
+      description: "A hero scene is present, but final_review did not record a hero_frame_path.",
+      proposed_fix:
+        "Save a hero-scene frame under projects/<show>/<episode>/final_review/frames/hero.png and set final_review.checks.visual_spotcheck.hero_frame_path.",
+      status: "pending",
+    });
+  }
+
+  findings.push(...checkFramePaths(visual.frame_paths ?? [], ctx, "frame_paths"));
+  const heroFramePath = visual.hero_frame_path;
+  if (heroFramePath !== undefined && heroFramePath.trim().length > 0) {
+    findings.push(...checkFramePaths([heroFramePath], ctx, "hero_frame_path"));
+  }
+
+  return findings;
 }
 
 function checkAudioSpotcheck(finalReview: FinalReview): Finding[] {
@@ -479,6 +526,20 @@ function runtimeSwap(finalReview: FinalReview, ctx: FinalReviewContext): Runtime
   const proposalRuntime = ctx.proposalPacket?.production_plan.render_runtime;
   const editRuntime = ctx.editDecisions?.render_runtime;
   const renderRuntime = finalReview.checks.promise_preservation.render_runtime_used;
+  const lockExpected =
+    ctx.decisionLog !== undefined ||
+    ctx.proposalPacket !== undefined ||
+    ctx.editDecisions !== undefined ||
+    ctx.renderReport !== undefined;
+
+  if (lockExpected && proposalRuntime === undefined && editRuntime === undefined) {
+    return {
+      detected: true,
+      allowed: false,
+      check: `missing lock - no proposal or edit render_runtime is available, render=${renderRuntime}`,
+    };
+  }
+
   const mismatch =
     (proposalRuntime !== undefined && renderRuntime !== proposalRuntime) ||
     (editRuntime !== undefined && renderRuntime !== editRuntime);
@@ -557,6 +618,73 @@ function isReasonableVideoCodec(codec: string): boolean {
 function isReasonableAudioCodec(codec: string): boolean {
   const normalized = normalizeText(codec);
   return ["aac", "mp3", "opus", "pcm_s16le", "pcm_s24le", "pcm_f32le"].includes(normalized);
+}
+
+function hasDistributedSamplePoints(samplePoints: number[] | undefined): boolean {
+  const expected = [10, 35, 65, 90];
+  const tolerance = 5;
+
+  if (samplePoints === undefined || samplePoints.length < expected.length) {
+    return false;
+  }
+
+  return expected.every((target) => samplePoints.some((point) => Math.abs(point - target) <= tolerance));
+}
+
+function checkFramePaths(paths: string[], ctx: FinalReviewContext, field: "frame_paths" | "hero_frame_path"): Finding[] {
+  if (paths.length === 0) {
+    return [];
+  }
+
+  const { show, episode } = ctx;
+  if (show === undefined || episode === undefined) {
+    return [];
+  }
+
+  const root = path.resolve(ctx.projectRoot ?? process.cwd());
+  const framesDir = finalReviewFramesDir(show, episode, root);
+
+  return paths.flatMap((framePath, index) => {
+    const absolutePath = path.isAbsolute(framePath) ? framePath : path.resolve(root, framePath);
+    const location =
+      field === "hero_frame_path"
+        ? "final_review.checks.visual_spotcheck.hero_frame_path"
+        : `final_review.checks.visual_spotcheck.frame_paths[${index}]`;
+    const findings: Finding[] = [];
+
+    if (!isInsideOrEqual(absolutePath, framesDir)) {
+      findings.push({
+        severity: "critical",
+        title: "Final review frame path is outside the expected frames directory",
+        location,
+        description: `${framePath} is not under ${path.join("projects", show, episode, FINAL_REVIEW_FRAMES_RELATIVE_DIR)}.`,
+        proposed_fix: `Save the frame under ${path.join("projects", show, episode, FINAL_REVIEW_FRAMES_RELATIVE_DIR)} and update ${location}.`,
+        status: "pending",
+      });
+    }
+
+    if (!existsSync(absolutePath)) {
+      findings.push({
+        severity: "critical",
+        title: "Final review frame file is missing",
+        location,
+        description: `${framePath} does not exist on disk.`,
+        proposed_fix: `Write ${framePath} before final_review passes, or update ${location} to an existing sampled frame path.`,
+        status: "pending",
+      });
+    }
+
+    return findings;
+  });
+}
+
+function isInsideOrEqual(child: string, parent: string): boolean {
+  const relative = path.relative(parent, child);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function emptyString(value: string | undefined): boolean {
+  return value === undefined || value.trim().length === 0;
 }
 
 function normalizeText(value: string): string {

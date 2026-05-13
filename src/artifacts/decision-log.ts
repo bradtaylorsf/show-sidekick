@@ -26,6 +26,12 @@ export const DecisionEntrySchema = z.object({
   stage: z.string(),
   timestamp: z.string(),
   category: DecisionCategorySchema,
+  scope: z
+    .object({
+      capability: z.string().optional(),
+      provider: z.string().optional(),
+    })
+    .optional(),
   options_considered: z
     .array(
       z.object({

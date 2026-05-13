@@ -1,5 +1,8 @@
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { DecisionEntry, DecisionLog } from "../artifacts/decision-log.js";
 import type { EditDecisions } from "../artifacts/edit-decisions.js";
 import type { RenderRuntime } from "../artifacts/enums.js";
@@ -14,6 +17,22 @@ import {
   finalReviewFramesDir,
   haltOnFinalReviewFail,
 } from "./final-review.js";
+
+let scratchDirs: string[] = [];
+
+async function scratchProject(): Promise<string> {
+  const root = path.join(tmpdir(), `predit-final-review-${randomUUID()}`);
+  scratchDirs.push(root);
+  await mkdir(path.join(root, ".predit"), { recursive: true });
+  await writeFile(path.join(root, "CLAUDE.md"), "# project\n", "utf8");
+
+  return root;
+}
+
+afterEach(async () => {
+  await Promise.all(scratchDirs.map((dir) => rm(dir, { recursive: true, force: true })));
+  scratchDirs = [];
+});
 
 function proposalPacket(runtime: RenderRuntime = "remotion", narrationPresent = true): ProposalPacket {
   return {
@@ -225,6 +244,7 @@ describe("final review", () => {
       videoAnalysisBrief: videoAnalysisBrief(["neon logo", "red launch button"]),
       visual_spotcheck: {
         frames_sampled: 5,
+        sample_points_pct: [10, 35, 65, 90],
         matched_elements: ["neon logo"],
         findings: [],
       },
@@ -318,12 +338,119 @@ describe("final review", () => {
     expect(titles).toContain("Final render resolution does not match plan");
   });
 
-  it("exposes halt path, frames path, and force approval decision helpers", () => {
-    const root = path.join("tmp", "project");
+  it("fails visual spotchecks without distributed sample points", () => {
+    const review = buildReview({
+      visual_spotcheck: {
+        frames_sampled: 4,
+        sample_points_pct: [1, 2, 3, 4],
+        findings: [],
+      },
+    });
+
+    expect(review.status).toBe("fail");
+    expect(findingTitles(review)).toContain("Final review sample points are not distributed across the timeline");
+  });
+
+  it("requires a hero frame when a hero scene is present", () => {
+    const review = buildReview({
+      visual_spotcheck: {
+        frames_sampled: 4,
+        sample_points_pct: [10, 35, 65, 90],
+        findings: [],
+      },
+      heroScenePresent: true,
+    });
+
+    expect(review.status).toBe("fail");
+    expect(checkFinalReview("final_review", review, { heroScenePresent: true })).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Final review is missing the hero scene frame",
+      }),
+    );
+  });
+
+  it("requires frame paths to exist under the final review frames directory when a target is supplied", async () => {
+    const root = await scratchProject();
+    const review = buildReview({
+      visual_spotcheck: {
+        frames_sampled: 4,
+        sample_points_pct: [10, 35, 65, 90],
+        frame_paths: ["projects/demo/episode/final_review/frames/missing.png"],
+        findings: [],
+      },
+    });
+
+    expect(
+      checkFinalReview("final_review", review, {
+        show: "demo",
+        episode: "episode",
+        projectRoot: root,
+      }),
+    ).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Final review frame file is missing",
+      }),
+    );
+  });
+
+  it("passes visual spotcheck frame files that are distributed and saved under the target frames directory", async () => {
+    const root = await scratchProject();
+    const framesDir = finalReviewFramesDir("demo", "episode", root);
+    await mkdir(framesDir, { recursive: true });
+    const framePaths = await Promise.all(
+      ["10.png", "35.png", "65.png", "90.png", "hero.png"].map(async (name) => {
+        const framePath = path.join(framesDir, name);
+        await writeFile(framePath, "frame", "utf8");
+        return path.relative(root, framePath);
+      }),
+    );
+    const review = buildReview({
+      visual_spotcheck: {
+        frames_sampled: 5,
+        sample_points_pct: [10, 35, 65, 90],
+        frame_paths: framePaths.slice(0, 4),
+        hero_frame_path: framePaths[4],
+        findings: [],
+      },
+    });
+
+    expect(
+      checkFinalReview("final_review", review, {
+        show: "demo",
+        episode: "episode",
+        projectRoot: root,
+        heroScenePresent: true,
+        proposalPacket: proposalPacket(),
+        editDecisions: editDecisions(),
+        renderReport: renderReport(),
+      }),
+    ).toEqual([]);
+  });
+
+  it("fails when final review has no runtime lock context", () => {
+    const review = buildReview();
+
+    expect(checkFinalReview("final_review", review, { decisionLog: [] })).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Render runtime changed without superseding decision",
+        description: expect.stringContaining("missing lock"),
+      }),
+    );
+  });
+
+  it("exposes halt path, frames path, and force approval decision helpers", async () => {
+    const root = await scratchProject();
+    const renderPath = path.join(root, "renders", "failed.mp4");
+    await mkdir(path.dirname(renderPath), { recursive: true });
+    await writeFile(renderPath, "failed render", "utf8");
     const halt = haltOnFinalReviewFail(buildReview({ motion_ratio_actual: 0.1 }), {
       show: "demo",
       episode: "episode",
       root,
+      renderPath,
     });
     const approval = buildForceApprovalDecision({
       timestamp: "2026-05-12T15:18:42Z",
@@ -337,10 +464,12 @@ describe("final review", () => {
     expect(finalReviewFramesDir("demo", "episode", root)).toBe(
       path.join(root, "projects", "demo", "episode", "final_review", "frames"),
     );
+    await expect(readFile(halt.preservedPath, "utf8")).resolves.toBe("failed render");
     expect(approval).toMatchObject({
-      id: "force_approval",
+      id: "force_approval-2026-05-12T15-18-42Z",
       category: "downgrade_approval",
       picked: "force_approval",
+      confidence: 0.75,
     });
   });
 });

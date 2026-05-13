@@ -1,4 +1,7 @@
 import type { z } from "zod";
+import type { CostLog } from "../artifacts/cost-log.js";
+import type { DecisionEntry, DecisionLog } from "../artifacts/decision-log.js";
+import type { RenderRuntime } from "../artifacts/enums.js";
 
 export type CostUnit = "clip" | "second" | "minute" | "token" | "image" | "call";
 
@@ -48,9 +51,57 @@ export interface ToolLogger {
   event(name: string, payload?: unknown): void;
 }
 
+export type ToolInteractionMode = "interactive" | "non_interactive" | { json: boolean };
+
+export type ToolInteractionIO = {
+  write?: (message: string) => void;
+  event?: (event: string, payload: unknown) => void;
+  prompt?: (message: string) => boolean | string | Promise<boolean | string>;
+};
+
+export type ToolExecutionState = {
+  provider?: string;
+  model?: string;
+  runtime?: string;
+  narrationPresent?: boolean;
+  musicPresent?: boolean;
+  sampleOrBatch?: "sample" | "batch";
+};
+
+export interface ToolExecutionPolicy {
+  reason?: string;
+  sampleOrBatch?: "sample" | "batch";
+  model?: string;
+  units?: number;
+  budgetUsd?: number;
+  budgetRemainingUsd?: number | "unknown";
+  costLog?: CostLog;
+  showEpisode?: string | { show: string; episode: string };
+  mode?: ToolInteractionMode;
+  io?: ToolInteractionIO;
+  majorChange?: {
+    previous: ToolExecutionState;
+    next: ToolExecutionState;
+    decisionLog?: DecisionLog;
+    recordDecision?: (entry: DecisionEntry) => DecisionLog | Promise<DecisionLog>;
+    stage?: string;
+    timestamp?: string;
+    reason?: string;
+    id?: string;
+  };
+  motionGuardrail?: {
+    deliveryPromise?: { motion_led?: boolean } | string;
+    availableRuntimes?: readonly RenderRuntime[];
+    attemptedRuntime: RenderRuntime;
+    lockedRuntime?: RenderRuntime;
+    decisionLog?: DecisionLog;
+  };
+}
+
 export interface ToolContext {
   projectRoot: string;
   logger: ToolLogger;
+  execution?: ToolExecutionPolicy;
 }
 
 export interface Tool<I = unknown, O = unknown> {

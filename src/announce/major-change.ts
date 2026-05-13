@@ -6,6 +6,7 @@ import {
 } from "../artifacts/decision-log.js";
 import { currentDecisions, recordDecision as recordDecisionToStore, type ShowEpisodeTarget } from "../decisions/store.js";
 import { MajorChangeBlocked } from "./errors.js";
+import type { EscalateBlockerInput } from "./escalate.js";
 import { escalateBlocker } from "./escalate.js";
 import { askForApproval, isNonInteractive, type AnnounceIO, type InteractionMode, writeHuman } from "./io.js";
 
@@ -81,30 +82,13 @@ export async function requireApproval(change: MajorChangeType, opts: RequireAppr
     return undefined;
   }
 
+  const blocker = majorChangeBlock(change, opts.previous, opts.next);
+
   if (isNonInteractive(opts.mode)) {
-    await escalateBlocker(
-      {
-        attempted: { change, previous: opts.previous, next: opts.next },
-        failed: "A major production change requires explicit user approval and a superseding decision log entry.",
-        type: "provider_access",
-        options: [
-          {
-            label: "keep approved path",
-            cost_note: "no new spend until the approved path is restored",
-            quality_note: "preserves the user's approved production promise",
-          },
-          {
-            label: "approve substituted path",
-            cost_note: "may change cost or runtime",
-            quality_note: "requires a user-visible supersession decision before execution",
-          },
-        ],
-        recommendation: "Pause execution, ask the user to approve or reject the substitution, then record the superseding decision.",
-      },
-      { mode: opts.mode, io: opts.io },
-    );
+    await escalateBlocker(blocker, { mode: opts.mode, io: opts.io });
   }
 
+  writeHuman(opts.io, formatEscalationBlock(blocker));
   writeHuman(opts.io, formatMajorChange(change, opts.previous, opts.next));
   if (!(await askForApproval(opts.io, "Approve this major change? [y/N] "))) {
     throw new MajorChangeBlocked(change, `User did not approve major change "${change}"`);
@@ -221,6 +205,41 @@ function latestActiveDecision(log: DecisionLog | undefined, category: DecisionCa
 
 function changed(previous: string | undefined, next: string | undefined): boolean {
   return previous !== undefined && next !== undefined && previous !== next;
+}
+
+function majorChangeBlock(change: MajorChangeType, previous: MajorChangeState, next: MajorChangeState): EscalateBlockerInput {
+  return {
+    attempted: { change, previous, next },
+    failed: "A major production change requires explicit user approval and a superseding decision log entry.",
+    type: "provider_access",
+    options: [
+      {
+        label: "keep approved path",
+        cost_note: "no new spend until the approved path is restored",
+        quality_note: "preserves the user's approved production promise",
+      },
+      {
+        label: "approve substituted path",
+        cost_note: "may change cost or runtime",
+        quality_note: "requires a user-visible supersession decision before execution",
+      },
+    ],
+    recommendation: "Pause execution, ask the user to approve or reject the substitution, then record the superseding decision.",
+  };
+}
+
+function formatEscalationBlock(input: EscalateBlockerInput): string {
+  return [
+    "BLOCKER: major production change requires approval",
+    `What was attempted: ${JSON.stringify(input.attempted)}`,
+    `What failed: ${input.failed}`,
+    `Issue type: ${input.type}`,
+    "What options exist next:",
+    ...input.options.map((option, index) => {
+      return `${index + 1}. ${option.label} (cost: ${option.cost_note}; quality: ${option.quality_note})`;
+    }),
+    `Recommendation: ${input.recommendation}`,
+  ].join("\n");
 }
 
 function formatMajorChange(change: MajorChangeType, previous: MajorChangeState, next: MajorChangeState): string {

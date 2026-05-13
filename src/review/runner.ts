@@ -32,6 +32,8 @@ import { checkSourceMediaEnforcement, type UserSuppliedMedia } from "./source-me
 import { evaluateSuccessCriteria } from "./success-criteria.js";
 import { checkRuntimeSwap } from "./runtime-swap.js";
 import { checkSampleFirstProtocol } from "./sample-first.js";
+import { verifyScenePacing, type ScenePacingPipeline } from "./scene-pacing.js";
+import { detectEditRegression, scoreSlideshowRisk } from "./slideshow-risk.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -68,6 +70,9 @@ export type ReviewContext = {
   finalReviewArtifact?: FinalReview;
   videoAnalysisBrief?: VideoAnalysisBrief;
   expectedResolution?: { width: number; height: number };
+  rendererFamily?: string;
+  priorSlideshowScore?: number;
+  scenePacingPipeline?: ScenePacingPipeline;
   availableRuntimes?: RenderRuntime[];
   motionRequired?: boolean;
   pipelineSlug?: string;
@@ -75,6 +80,9 @@ export type ReviewContext = {
   estimatedTimeMinutes?: number;
   referenceDriven?: boolean;
   heroScenePresent?: boolean;
+  show?: string;
+  episode?: string;
+  projectRoot?: string;
   checkpoint?: Checkpoint;
   getAgentSkills?: (toolName: string) => readonly string[] | undefined;
 };
@@ -144,6 +152,7 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
       motionRequired: ctx.motionRequired,
     }),
   );
+  rawFindings.push(...checkSlideshowAndScenePacing(stageSlug, artifact, ctx));
   rawFindings.push(
     ...checkSourceMediaEnforcement(stageSlug, artifact, {
       sourceMediaReview: ctx.sourceMediaReview,
@@ -182,6 +191,10 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
       decisionLog: ctx.decisionLog,
       narrationRequired: ctx.narrationRequired,
       expectedResolution: ctx.expectedResolution,
+      heroScenePresent: ctx.heroScenePresent,
+      show: ctx.show,
+      episode: ctx.episode,
+      projectRoot: ctx.projectRoot,
     }),
   );
   rawFindings.push(
@@ -266,6 +279,103 @@ function dedupeFindings(findings: Finding[]): Finding[] {
 
 function isCompositionStage(stageSlug: string): boolean {
   return stageSlug === "edit" || stageSlug === "compose" || stageSlug === "edit_decisions";
+}
+
+function checkSlideshowAndScenePacing(stageSlug: string, artifact: unknown, ctx: ReviewContext): Finding[] {
+  const scenes = ctx.scenes ?? scenesFromArtifact(artifact);
+  if (!isSceneReviewStage(stageSlug) || scenes === undefined || scenes.length === 0) {
+    return [];
+  }
+
+  const slideshow = scoreSlideshowRisk(scenes, isRecord(artifact) ? artifact : undefined, rendererFamily(stageSlug, artifact, ctx));
+  const findings: Finding[] = [
+    ...slideshowVerdictFindings(stageSlug, slideshow.score, slideshow.verdict),
+    ...slideshow.findings,
+  ];
+
+  if (isEditStage(stageSlug) && ctx.priorSlideshowScore !== undefined) {
+    findings.push(...detectEditRegression({ score: ctx.priorSlideshowScore }, { score: slideshow.score }));
+  }
+
+  findings.push(...verifyScenePacing(scenes, ctx.scenePacingPipeline ?? (ctx.pipeline as ScenePacingPipeline)));
+
+  return findings;
+}
+
+function slideshowVerdictFindings(stageSlug: string, score: number, verdict: string): Finding[] {
+  if (verdict === "fail") {
+    return [
+      {
+        severity: "critical",
+        title: "Slideshow risk score failed",
+        location: `${stageSlug}.scenes`,
+        description: `Slideshow risk score is ${score.toFixed(2)}, which maps to the V-5 "fail" verdict.`,
+        proposed_fix: `Revise ${stageSlug}.scenes to reduce slideshow risk below 4.00; current score is ${score.toFixed(2)}.`,
+        status: "pending",
+      },
+    ];
+  }
+
+  if (verdict === "revise") {
+    return [
+      {
+        severity: "suggestion",
+        title: "Slideshow risk score needs revision",
+        location: `${stageSlug}.scenes`,
+        description: `Slideshow risk score is ${score.toFixed(2)}, which maps to the V-5 "revise" verdict.`,
+        proposed_change: `Reduce repetition, decorative visuals, weak motion, weak shot intent, typography overreliance, or unsupported cinematic claims until score is below 3.00.`,
+        status: "pending",
+      },
+    ];
+  }
+
+  return [];
+}
+
+function rendererFamily(stageSlug: string, artifact: unknown, ctx: ReviewContext): string {
+  if (ctx.rendererFamily !== undefined) {
+    return ctx.rendererFamily;
+  }
+
+  if (ctx.proposalPacket !== undefined) {
+    return ctx.proposalPacket.production_plan.renderer_family;
+  }
+
+  if (isRecord(artifact) && typeof artifact.renderer_family === "string") {
+    return artifact.renderer_family;
+  }
+
+  if (stageSlug === "proposal" && isRecord(artifact) && isRecord(artifact.production_plan)) {
+    const value = artifact.production_plan.renderer_family;
+    return typeof value === "string" ? value : "";
+  }
+
+  return "";
+}
+
+function scenesFromArtifact(artifact: unknown): UnknownRecord[] | undefined {
+  if (!isRecord(artifact) || !Array.isArray(artifact.scenes)) {
+    return undefined;
+  }
+
+  return artifact.scenes.filter(isRecord);
+}
+
+function isSceneReviewStage(stageSlug: string): boolean {
+  const normalized = normalizeStage(stageSlug);
+  return normalized === "scene_plan" || normalized === "edit";
+}
+
+function isEditStage(stageSlug: string): boolean {
+  return normalizeStage(stageSlug) === "edit";
+}
+
+function normalizeStage(stageSlug: string): string {
+  if (stageSlug === "edit_decisions") {
+    return "edit";
+  }
+
+  return stageSlug;
 }
 
 function hasCuts(value: unknown): value is { cuts: never[] } {

@@ -171,6 +171,95 @@ describe("runReview", () => {
     );
   });
 
+  it("runs slideshow-risk scoring during scene-plan review", () => {
+    const review = runReview(
+      "scene_plan",
+      {
+        scenes: Array.from({ length: 4 }, (_, index) => ({
+          slug: `slide-${index}`,
+          order: index,
+          start_s: index * 3,
+          end_s: index * 3 + 3,
+          narrative_role: "",
+          scene_anchor: "same anchor",
+          character_actions: [],
+          description: "beautiful same slide",
+          type: "text_card",
+          shot_language: {
+            shot_size: "CU",
+            camera_movement: "dolly",
+            lighting_key: "flat",
+          },
+          required_assets: [],
+        })),
+      },
+      {
+        pipeline: basePipeline,
+        rendererFamily: "cinematic-trailer",
+      },
+    );
+
+    expect(review.decision).toBe("revise");
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Slideshow risk score failed",
+      }),
+    );
+  });
+
+  it("runs edit-stage slideshow regression detection", () => {
+    const review = runReview(
+      "edit",
+      {
+        cuts: [],
+        overlays: [],
+        render_runtime: "remotion",
+        renderer_family: "cinematic-trailer",
+        scenes: Array.from({ length: 4 }, (_, index) => ({
+          description: "same text card",
+          type: "text_card",
+          shot_language: {
+            shot_size: "CU",
+            camera_movement: "dolly",
+            lighting_key: "flat",
+          },
+          start_s: index * 3,
+          end_s: index * 3 + 3,
+        })),
+      },
+      {
+        pipeline: basePipeline,
+        priorSlideshowScore: 1.2,
+      },
+    );
+
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "edit_regression",
+      }),
+    );
+  });
+
+  it("runs scene pacing verification during scene-plan review", () => {
+    const review = runReview("scene_plan", validScenePlan, {
+      pipeline: basePipeline,
+      scenePacingPipeline: {
+        defaults: {
+          max_scene_duration_s: 2,
+        },
+      },
+    });
+
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Scene exceeds maximum duration",
+      }),
+    );
+  });
+
   it("runs sample-first validation only at proposal when the pipeline slug is supplied", () => {
     const missingSample = runReview("proposal", validProposal, {
       pipeline: basePipeline,

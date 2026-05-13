@@ -44,7 +44,7 @@ export function auditRequiredCategories(stageSlug: string, log: DecisionLog, ctx
     }
 
     for (const requirement of scopedRequirements(stage, stageRequirements, ctx)) {
-      if (!hasDecision(log, requirement.stage, requirement.category, requirement.scope)) {
+      if (!hasDecision(log, requirement.stage, requirement.category, requirement.scope, requirement.kind)) {
         findings.push(missingRequiredFinding(currentStage, requirement));
       }
     }
@@ -117,6 +117,23 @@ export function auditPresentBothRuntimes(
   const findings: Finding[] = [];
   const hasRemotion = options.has("remotion");
   const hasHyperFrames = options.has("hyperframes");
+
+  for (const runtime of available) {
+    if (runtime === "ffmpeg" && motionRequired === true) {
+      continue;
+    }
+
+    if (!options.has(runtime)) {
+      findings.push(
+        runtimeOptionsFinding(runtimeDecision, `${runtime} is available on this machine but missing from options_considered.`),
+      );
+    }
+  }
+
+  const pickedRuntime = normalizeRuntimeLabel(runtimeDecision.picked);
+  if (isRenderRuntime(pickedRuntime) && !options.has(pickedRuntime)) {
+    findings.push(runtimeOptionsFinding(runtimeDecision, `picked "${runtimeDecision.picked}" is not present in options_considered.`));
+  }
 
   if (available.has("remotion") && available.has("hyperframes") && (!hasRemotion || !hasHyperFrames)) {
     findings.push(runtimeOptionsFinding(runtimeDecision, "remotion and hyperframes are both available, but the decision did not list both."));
@@ -236,28 +253,32 @@ function missingOneOfFinding(currentStage: string, requirement: OneOfRequirement
   };
 }
 
-function hasDecision(log: DecisionLog, stage: string, category: DecisionCategory, scope?: string): boolean {
+function hasDecision(
+  log: DecisionLog,
+  stage: string,
+  category: DecisionCategory,
+  scope?: string,
+  kind: ScopedRequirement["kind"] = "category",
+): boolean {
   return log.some((decision) => {
-    return decision.category === category && normalizeStage(decision.stage) === stage && decisionMatchesScope(decision, scope);
+    return decision.category === category && normalizeStage(decision.stage) === stage && decisionMatchesScope(decision, scope, kind);
   });
 }
 
-function decisionMatchesScope(decision: DecisionEntry, scope: string | undefined): boolean {
+function decisionMatchesScope(decision: DecisionEntry, scope: string | undefined, kind: ScopedRequirement["kind"]): boolean {
   if (scope === undefined) {
     return true;
   }
 
-  const normalizedScope = normalizeLabel(scope);
-  const searchable = [
-    decision.id,
-    decision.picked,
-    decision.reason,
-    ...decision.options_considered.flatMap((option) => [option.label, option.rejected_because ?? "", option.notes ?? ""]),
-  ]
-    .map(normalizeLabel)
-    .join(" ");
+  if (kind === "capability") {
+    return decision.scope?.capability === scope;
+  }
 
-  return searchable.includes(normalizedScope);
+  if (kind === "provider") {
+    return decision.scope?.provider === scope;
+  }
+
+  return false;
 }
 
 function conditionMet(condition: DecisionAuditCondition, ctx: DecisionAuditContext): boolean {
@@ -280,7 +301,22 @@ function hasBoilerplateReason(decision: DecisionEntry): boolean {
 
   const normalized = normalizeLabel(decision.reason);
   const words = normalized.split(" ").filter((word) => word.length > 0);
-  const boilerplateWords = new Set(["best", "option", "good", "choice", "default"]);
+  const boilerplateWords = new Set([
+    "best",
+    "option",
+    "good",
+    "choice",
+    "default",
+    "provider",
+    "model",
+    "runtime",
+    "configured",
+    "available",
+    "chosen",
+    "here",
+    "only",
+    "the",
+  ]);
 
   return words.length > 0 && words.every((word) => boilerplateWords.has(word));
 }

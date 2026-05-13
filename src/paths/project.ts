@@ -135,7 +135,7 @@ function isInside(child: string, parent: string): boolean {
   return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
-function isSafeSegment(segment: string): boolean {
+export function isSafeSegment(segment: string): boolean {
   return (
     segment !== "" &&
     segment !== "." &&

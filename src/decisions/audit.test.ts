@@ -61,7 +61,13 @@ describe("decision audit", () => {
   it("requires provider selections per capability and model selections per multi-model provider", () => {
     const log: DecisionLog = [
       ...proposalCoverage(),
-      decision({ id: "provider-image", stage: "assets", category: "provider_selection", picked: "openai-image" }),
+      decision({
+        id: "provider-image",
+        stage: "assets",
+        category: "provider_selection",
+        picked: "openai-image",
+        scope: { capability: "image" },
+      }),
     ];
 
     expect(
@@ -73,6 +79,44 @@ describe("decision audit", () => {
       expect.objectContaining({
         severity: "suggestion",
         location: "decision_log.assets.model_selection",
+      }),
+    );
+  });
+
+  it("requires structured capability and provider scope instead of matching free text", () => {
+    const log: DecisionLog = [
+      ...proposalCoverage(),
+      decision({
+        id: "voice-script",
+        stage: "assets",
+        category: "provider_selection",
+        picked: "voice-lab",
+        reason: "voice-lab is the best provider for image generation mentions in this test",
+      }),
+      decision({
+        id: "model-openai",
+        stage: "assets",
+        category: "model_selection",
+        picked: "imagen-4",
+        reason: "openai-image appears in text but no provider scope is set",
+      }),
+    ];
+
+    const findings = auditRequiredCategories("assets", log, {
+      capabilities: ["image"],
+      providersWithMultipleModels: ["openai-image"],
+    });
+
+    expect(findings).toContainEqual(
+      expect.objectContaining({
+        location: "decision_log.assets.provider_selection",
+        description: expect.stringContaining('capability "image"'),
+      }),
+    );
+    expect(findings).toContainEqual(
+      expect.objectContaining({
+        location: "decision_log.assets.model_selection",
+        description: expect.stringContaining('provider "openai-image"'),
       }),
     );
   });
@@ -94,10 +138,72 @@ describe("decision audit", () => {
         title: "Decision reason is boilerplate",
       }),
     );
+    expect(auditBoilerplateReason([decision({ reason: "best provider" })])).toContainEqual(
+      expect.objectContaining({
+        severity: "suggestion",
+        title: "Decision reason is boilerplate",
+      }),
+    );
     expect(auditBoilerplateReason([decision({ reason: "Only Remotion has the scene library available locally." })])).toEqual([]);
   });
 
   it("enforces present-both-runtimes rules", () => {
+    expect(
+      auditPresentBothRuntimes(
+        [
+          decision({
+            picked: "remotion",
+            options_considered: [
+              { label: "hyperframes", rejected_because: "runtime not available on this machine" },
+              { label: "ffmpeg", rejected_because: "still-image-only; brief requires motion-led delivery." },
+            ],
+          }),
+        ],
+        ["remotion"],
+        true,
+      ),
+    ).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Runtime selection omitted available options",
+        description: expect.stringContaining("remotion is available"),
+      }),
+    );
+
+    expect(
+      auditPresentBothRuntimes(
+        [
+          decision({
+            picked: "remotion",
+            options_considered: [
+              { label: "hyperframes", rejected_because: "runtime not available on this machine" },
+              { label: "ffmpeg", rejected_because: "still-image-only; brief requires motion-led delivery." },
+            ],
+          }),
+        ],
+        ["hyperframes", "ffmpeg"],
+        true,
+      ),
+    ).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        description: expect.stringContaining('picked "remotion" is not present'),
+      }),
+    );
+
+    expect(
+      auditPresentBothRuntimes(
+        [decision({ options_considered: [{ label: "ffmpeg", rejected_because: null }, { label: "other", rejected_because: null }] })],
+        ["remotion", "hyperframes"],
+        true,
+      ),
+    ).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Runtime selection omitted available options",
+      }),
+    );
+
     expect(
       auditPresentBothRuntimes([decision({ options_considered: [{ label: "remotion", rejected_because: null }, { label: "ffmpeg", rejected_because: null }] })], ["remotion", "hyperframes"], true),
     ).toContainEqual(

@@ -55,6 +55,25 @@ describe("decision store", () => {
     expect(JSON.parse(raw)).toEqual([first, second]);
   });
 
+  it("does not lose entries under concurrent appends", async () => {
+    const root = await scratchProject();
+
+    await Promise.all(
+      Array.from({ length: 10 }, (_, index) =>
+        recordDecision("demo/episode", decision({ id: `runtime-${index}` }), { root }),
+      ),
+    );
+
+    const log = await readDecisionLog("demo/episode", { root });
+    const raw = await readFile(decisionsPath("demo/episode", { root }), "utf8");
+
+    expect(log).toHaveLength(10);
+    expect(JSON.parse(raw)).toHaveLength(10);
+    expect(log.map((entry) => entry.id).sort()).toEqual(
+      Array.from({ length: 10 }, (_, index) => `runtime-${index}`).sort(),
+    );
+  });
+
   it("returns an empty log when decisions.json is absent", async () => {
     const root = await scratchProject();
 
@@ -75,6 +94,25 @@ describe("decision store", () => {
       ),
     ).rejects.toThrow("Array must contain at least 2 element(s)");
     await expect(readDecisionLog("demo/episode", { root })).resolves.toEqual([]);
+  });
+
+  it("rejects unsafe object-form show or episode targets", async () => {
+    const root = await scratchProject();
+
+    await expect(recordDecision({ show: "../evil", episode: "episode" }, decision(), { root })).rejects.toThrow(
+      "Expected <show>/<episode>",
+    );
+    await expect(recordDecision({ show: "demo", episode: "../evil" }, decision(), { root })).rejects.toThrow(
+      "Expected <show>/<episode>",
+    );
+  });
+
+  it("keeps safe object-form targets under the project decisions path", async () => {
+    const root = await scratchProject();
+
+    expect(decisionsPath({ show: "demo", episode: "episode" }, { root })).toBe(
+      path.join(root, "projects", "demo", "episode", "decisions.json"),
+    );
   });
 
   it("returns the non-superseded subset", () => {

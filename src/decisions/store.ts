@@ -1,13 +1,17 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { DecisionEntrySchema, DecisionLogSchema, type DecisionEntry, type DecisionLog } from "../artifacts/decision-log.js";
-import { findProjectRoot, parseShowEpisode } from "../paths/project.js";
+import { InvalidShowEpisodeError } from "../paths/errors.js";
+import { findProjectRoot, isSafeSegment, parseShowEpisode } from "../paths/project.js";
 
 export type ShowEpisodeTarget = string | { show: string; episode: string };
 
 export type DecisionStoreOptions = {
   root?: string;
 };
+
+const writeQueues = new Map<string, Promise<unknown>>();
 
 export async function recordDecision(
   showEpisode: ShowEpisodeTarget,
@@ -16,15 +20,15 @@ export async function recordDecision(
 ): Promise<DecisionLog> {
   const validatedEntry = DecisionEntrySchema.parse(entry);
   const filePath = decisionsPath(showEpisode, options);
-  const existing = await readDecisionLog(showEpisode, options);
-  const nextLog = DecisionLogSchema.parse([...existing, validatedEntry]);
 
-  await mkdir(path.dirname(filePath), { recursive: true });
-  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tempPath, `${JSON.stringify(nextLog, null, 2)}\n`, "utf8");
-  await rename(tempPath, filePath);
+  return enqueueWrite(filePath, async () => {
+    const existing = await readDecisionLog(showEpisode, options);
+    const nextLog = DecisionLogSchema.parse([...existing, validatedEntry]);
 
-  return nextLog;
+    await atomicWrite(filePath, `${JSON.stringify(nextLog, null, 2)}\n`);
+
+    return nextLog;
+  });
 }
 
 export async function readDecisionLog(
@@ -63,7 +67,40 @@ function normalizeShowEpisode(showEpisode: ShowEpisodeTarget, root: string): { s
     return { show: parsed.show, episode: parsed.episode };
   }
 
+  if (!isSafeSegment(showEpisode.show) || !isSafeSegment(showEpisode.episode)) {
+    throw new InvalidShowEpisodeError(`${showEpisode.show}/${showEpisode.episode}`);
+  }
+
   return showEpisode;
+}
+
+function enqueueWrite<T>(filePath: string, write: () => Promise<T>): Promise<T> {
+  const previous = writeQueues.get(filePath) ?? Promise.resolve();
+  const next = previous.catch(() => undefined).then(write);
+
+  writeQueues.set(
+    filePath,
+    next.finally(() => {
+      if (writeQueues.get(filePath) === next) {
+        writeQueues.delete(filePath);
+      }
+    }),
+  );
+
+  return next;
+}
+
+async function atomicWrite(filePath: string, contents: string): Promise<void> {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  const tempPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
+  await writeFile(tempPath, contents, "utf8");
+
+  try {
+    await rename(tempPath, filePath);
+  } catch (error) {
+    await unlink(tempPath).catch(() => undefined);
+    throw error;
+  }
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

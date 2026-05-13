@@ -143,6 +143,7 @@ function registerCommands(program: Command, io: CliIo): void {
   program
     .command("approve <target>")
     .description("advance past awaiting_human")
+    .option("--force <reason>", "force-approve a failed final review and log an audited downgrade approval")
     .action(createApproveHandler(io));
 
   program

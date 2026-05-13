@@ -141,6 +141,7 @@ describe("major-change gate", () => {
 
   it("records a superseding decision with the mapped category after approval", async () => {
     const entries: DecisionEntry[] = [];
+    const writes: string[] = [];
     const previous = decision({ id: "provider-proposal", category: "provider_selection", picked: "flux" });
 
     const entry = await requireApproval("provider_swap", {
@@ -148,7 +149,7 @@ describe("major-change gate", () => {
       next: { provider: "imagen" },
       decisionLog: [previous],
       mode: "interactive",
-      io: { write: () => undefined, prompt: () => true },
+      io: { write: (message) => writes.push(message), prompt: () => true },
       timestamp: "2026-05-13T12:00:00Z",
       id: "provider-assets-approved",
       recordDecision: async (decisionEntry) => {
@@ -164,6 +165,9 @@ describe("major-change gate", () => {
       supersedes: "provider-proposal",
     });
     expect(entries).toEqual([entry]);
+    expect(writes.join("\n")).toContain("What was attempted:");
+    expect(writes.join("\n")).toContain("What options exist next:");
+    expect(writes.join("\n")).toContain("Recommendation:");
   });
 
   it("escalates instead of approving major changes in non-interactive mode", async () => {
