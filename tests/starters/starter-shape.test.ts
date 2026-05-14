@@ -12,6 +12,7 @@ const repoRoot = process.cwd();
 const startersRoot = path.join(repoRoot, "bundled", "starters");
 const requiredAudioLedStarters = ["cinematic-trailer", "music-video", "news-song", "thechaosfm"];
 const requiredVisualExplainerStarters = ["animated-explainer", "documentary", "product-demo"];
+const requiredSpecialtyStarters = ["ai-workflow-demo", "ww2-diary"];
 
 const StarterMetadataSchema = z.object({
   fixture_size_bytes: z.number().int().nonnegative(),
@@ -30,6 +31,12 @@ describe("bundled starters", () => {
     const starterNames = await starterDirectoryNames();
 
     expect(starterNames).toEqual(expect.arrayContaining(requiredVisualExplainerStarters));
+  });
+
+  it("ships the D-6 specialty starter set", async () => {
+    const starterNames = await starterDirectoryNames();
+
+    expect(starterNames).toEqual(expect.arrayContaining(requiredSpecialtyStarters));
   });
 
   it("keeps every starter schema-valid and fixture-backed", async () => {
@@ -62,6 +69,9 @@ describe("bundled starters", () => {
       expect(metadata.expected_sample_duration_s).toBe(15);
       expect(sampleEpisode.inputs).not.toEqual({});
       await expectSampleInputsExist(starterDir, show, sampleEpisode.inputs);
+      if (starterName === "ai-workflow-demo") {
+        expect(show.pipelines["screen-demo"]?.capture_mode).toBe("synthetic_terminal");
+      }
 
       for (const [pipelineName, config] of Object.entries(show.pipelines)) {
         await expectPipelineExistsOrPending(starterName, pipelineName, metadata.pending_pipelines, readme);

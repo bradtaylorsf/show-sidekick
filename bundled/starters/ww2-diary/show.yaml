@@ -1,0 +1,28 @@
+slug: ww2-diary
+display_name: "WW2 Diary"
+description: "Specialty WW2 diary starter with a diary text fixture and reference image."
+created: 2026-05-14
+brand: ./brand/
+characters: ./characters/
+skills: ./skills/
+pipelines:
+  ww2-diary:
+    playbook: news-broadcast
+    runtime: ffmpeg
+    aspect: "16:9"
+    budget_usd: 0.75
+defaults:
+  pipeline: ww2-diary
+  language: en
+ingest:
+  episode_template: ./episode.template.yaml
+  watch:
+    - path: ./inputs/
+      match: "**/diary.txt"
+      pipeline: ww2-diary
+      slug_from: parent_dir
+starter:
+  fixture_size_bytes: 1998
+  expected_sample_duration_s: 15
+  pending_pipelines:
+    - ww2-diary

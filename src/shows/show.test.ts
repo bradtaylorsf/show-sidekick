@@ -91,6 +91,7 @@ describe("ShowSchema", () => {
         "screen-demo": {
           playbook: "clean-professional",
           runtime: "remotion",
+          capture_mode: "synthetic_terminal",
         },
         "talking-head": {
           playbook: "clean-professional",
@@ -103,6 +104,7 @@ describe("ShowSchema", () => {
     });
 
     expect(show.pipelines["talking-head"]?.runtime).toBe("remotion");
+    expect(show.pipelines["screen-demo"]?.capture_mode).toBe("synthetic_terminal");
   });
 
   it("rejects a show with no pipelines", () => {
