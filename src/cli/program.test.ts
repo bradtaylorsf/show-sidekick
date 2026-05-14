@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { CommanderError } from "commander";
@@ -66,6 +66,8 @@ describe("createProgram", () => {
   });
 
   it("emits parseable NDJSON for remaining stub commands in json mode", async () => {
+    const root = await scratchCurrentProject();
+    process.chdir(root);
     const { program, output } = captureProgram();
 
     await program.parseAsync(["node", "predit", "--json", "doctor"], { from: "node" });
@@ -82,6 +84,8 @@ describe("createProgram", () => {
   });
 
   it("writes debug output to stderr when verbose is enabled", async () => {
+    const root = await scratchCurrentProject();
+    process.chdir(root);
     const { program, output } = captureProgram();
     let stderr = "";
     vi.spyOn(process.stderr, "write").mockImplementation((chunk: string | Uint8Array) => {
@@ -93,6 +97,25 @@ describe("createProgram", () => {
 
     expect(output().stderr).toBe("");
     expect(stderr).toContain("stub command invoked: doctor");
+  });
+
+  it("requires a project root before non-init commands run", async () => {
+    const root = await scratchDir();
+    process.chdir(root);
+    const { program } = captureProgram();
+
+    await expect(program.parseAsync(["node", "predit", "doctor"], { from: "node" })).rejects.toThrow("predit init");
+  });
+
+  it("allows init to run outside an existing project", async () => {
+    const root = await scratchDir();
+    process.chdir(root);
+    const { program, output } = captureProgram();
+
+    await program.parseAsync(["node", "predit", "init"], { from: "node" });
+
+    expect(output().stdout).toContain("init: scaffolded predit project at");
+    await expect(access(path.join(root, ".predit", "version.json"))).resolves.toBeUndefined();
   });
 
   it("throws on unknown commands with a fuzzy suggestion", async () => {
@@ -174,6 +197,21 @@ async function scratchProject(version: {
   await mkdir(path.join(root, ".predit"), { recursive: true });
   await writeFile(path.join(root, "CLAUDE.md"), "# project\n", "utf8");
   await writeFile(path.join(root, ".predit", "version.json"), `${JSON.stringify(version, null, 2)}\n`, "utf8");
+  return root;
+}
+
+async function scratchCurrentProject(): Promise<string> {
+  return scratchProject({
+    harness_version: VERSION,
+    bundled_checksum: await computeBundledChecksum(),
+    locked_at: "2026-05-14T00:00:00.000Z",
+  });
+}
+
+async function scratchDir(): Promise<string> {
+  const root = path.join(tmpdir(), `predit-program-${randomUUID()}`);
+  scratchDirs.push(root);
+  await mkdir(root, { recursive: true });
   return root;
 }
 
