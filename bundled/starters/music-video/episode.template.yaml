@@ -1,0 +1,19 @@
+# Copy this file to episodes/<slug>.yaml and replace the title, inputs, and notes.
+slug: new-music-video
+title: "New Music Video"
+created: 2026-05-14
+pipeline: music-video
+playbook: news-song
+runtime: ffmpeg
+aspect: "9:16"
+budget_usd: 0.5
+inputs:
+  track: shows/music-video/inputs/sample-episode/track.wav
+  lyrics: shows/music-video/inputs/sample-episode/lyrics.txt
+  notes: |
+    Replace with song mood, chorus timing, and any visual references.
+cast: []
+tags:
+  - music-video
+  - audio-led
+

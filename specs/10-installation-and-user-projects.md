@@ -94,6 +94,8 @@ Creates `shows/<slug>/`. With `--from <starter>`, copies a starter template from
 
 Available starters listed by `predit ls starters`.
 
+`predit ls starters` reports each starter's name, description, declared pipeline keys, fixture size, and expected sample duration. Starter metadata is read from the bundled starter's `show.yaml` when present, with fixture size derived from `inputs/` as a fallback.
+
 ## What is bundled vs user-owned
 
 | Content | Lives in | Editable by user? |

@@ -1,0 +1,20 @@
+slug: sample-episode
+title: "Sample News Song"
+created: 2026-05-14
+pipeline: news-song
+playbook: news-song
+runtime: ffmpeg
+aspect: "16:9"
+budget_usd: 0.75
+inputs:
+  track: shows/news-song/inputs/sample-episode/track.wav
+  lyrics: shows/news-song/inputs/sample-episode/lyrics.txt
+  notes: |
+    Fifteen-second synthesized pulse track with a headline-style hook.
+    Build as a short zero-key sample with clear source-card placeholders.
+cast: []
+tags:
+  - news-song
+  - sample
+  - audio-led
+
