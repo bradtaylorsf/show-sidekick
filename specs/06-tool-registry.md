@@ -119,15 +119,26 @@ export default defineTool({
 });
 ```
 
-## Selectors are methods, not tools
+## Provider selection
 
-Routing across providers for a capability (TTS, image, video, music) is `registry.select(cap, prefs?)`. There is no `tts_selector` "tool" — the agent introspects providers via `registry.byCapability('tts')` and picks via `select()` or its own logic.
+Routing across providers for a capability (TTS, image, video, music, capture) is `registry.select(cap, prefs?)`. The agent introspects providers via `registry.byCapability('<capability>')` and picks via `select()` or its own logic.
+
+Some capabilities also expose a `predit` provider-selection marker tool for discovery when no concrete provider is bundled yet, or when a manifest needs a stable capability entry. Marker tools use `supports: ['provider-selection']` and throw a clear error if executed directly. When concrete providers exist for the same capability, `registry.select()` ignores the marker and ranks only executable providers.
 
 ## Setup UX
 
 - `predit setup <tool>` reads the tool's setup metadata and shells out to the tool's own login/install commands. For `cli-login` tools whose binary is already installed, setup may run the login refresh command directly instead of repeating the install step.
 - `predit` never collects, stores, or transmits credentials. CLI tools own their own auth (e.g. `higgsfield login` keeps a token in the CLI's own config dir; API tools rely on env vars in the user's shell).
 - The provider menu groups setup offers by 1-minute fixes (env var or `cli-login`), 5-minute installs, and complex setups (GPU, model downloads).
+
+## Tool path policy
+
+Tools that read user-supplied source media may accept absolute paths outside the project root, so users can inspect or ingest media from locations such as `~/Videos` or `/tmp`.
+Relative read paths resolve against `projectRoot`.
+
+Tools that write generated artifacts must keep output paths inside `projectRoot`.
+When a tool needs an output directory for frames, recordings, downloads, or rendered media, it should resolve that path with the write-path helper and reject traversal outside the project.
+If a tool stores a review artifact for a caller-supplied source path, it should preserve the caller's original path string in the artifact and use the resolved path only for probing.
 
 ## Layer 3 vendor knowledge
 

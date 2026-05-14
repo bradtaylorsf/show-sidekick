@@ -1,9 +1,13 @@
 import { mkdir } from "node:fs/promises";
-import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, extname, join } from "node:path";
 import { z } from "zod";
 import { defineTool } from "../registry/define-tool.js";
 import type { ToolContext } from "../registry/tool.js";
 import { defaultRunCli } from "../tool-support/cli-runner.js";
+import { errorWithInstallHint } from "../tool-support/errors.js";
+import { resolveProjectPath, resolveProjectReadPath } from "../tool-support/paths.js";
+
+const INSTALL = "brew install ffmpeg";
 
 type BBox = {
   x: number;
@@ -19,7 +23,7 @@ type TrackFrame = {
 
 const inputSchema = z.object({
   video_path: z.string().min(1),
-  target_aspect: z.string().min(1).default("9:16"),
+  target_aspect: z.string().regex(/^\d+:\d+$/u, "target_aspect must be width:height").default("9:16"),
   output_path: z.string().min(1).optional(),
   allow_center_fallback: z.boolean().default(false),
 });
@@ -35,7 +39,7 @@ export default defineTool({
   capability: "auto_reframe",
   provider: "local",
   status: "beta",
-  integration: { kind: "binary", binary: "ffmpeg", install: "brew install ffmpeg" },
+  integration: { kind: "binary", binary: "ffmpeg", install: INSTALL },
   best_for: "Reframing landscape clips into vertical or square deliverables with face/object-aware smart crop.",
   supports: ["ffmpeg", "smart-crop", "9:16", "1:1", "4:5"],
   cost: { unit: "call", usd: 0 },
@@ -43,7 +47,7 @@ export default defineTool({
   output: outputSchema,
   async execute(params, ctx) {
     const input = inputSchema.parse(params);
-    const inputPath = resolveProjectPath(input.video_path, ctx.projectRoot);
+    const inputPath = resolveProjectReadPath(input.video_path, ctx.projectRoot);
     const outputPath = resolveOutputPath(input.output_path, inputPath, input.target_aspect, ctx.projectRoot);
     await mkdir(dirname(outputPath), { recursive: true });
 
@@ -53,11 +57,15 @@ export default defineTool({
     const filter = buildFilter(input.target_aspect, subjectCenterX, subjectCenterY);
     const runner = ctx.runCli ?? defaultRunCli;
 
-    await runner(
-      "ffmpeg",
-      ["-y", "-i", inputPath, "-vf", filter, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "copy", outputPath],
-      { cwd: ctx.projectRoot },
-    );
+    try {
+      await runner(
+        "ffmpeg",
+        ["-y", "-i", inputPath, "-vf", filter, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "copy", outputPath],
+        { cwd: ctx.projectRoot },
+      );
+    } catch (error) {
+      throw errorWithInstallHint(error, INSTALL);
+    }
 
     return outputSchema.parse({ video_path: outputPath, target_aspect: input.target_aspect, cost_usd: 0 });
   },
@@ -65,20 +73,20 @@ export default defineTool({
 
 async function loadTrack(videoPath: string, ctx: ToolContext, allowCenterFallback: boolean): Promise<TrackFrame[]> {
   if (!ctx.registry) {
-    return fallbackOrThrow("face_tracker capability required for auto_reframe smart crop", ctx, allowCenterFallback);
+    return fallbackOrThrow("face_tracking capability required for auto_reframe smart crop", ctx, allowCenterFallback);
   }
 
   try {
-    const faceTracker = await ctx.registry.select("face_tracker");
-    const track = readTrack(await faceTracker.execute({ video_path: videoPath }, ctx));
+    const faceTracker = await ctx.registry.select("face_tracking");
+    const track = readTrack(await faceTracker.execute({ path: videoPath }, ctx));
     if (track.length === 0) {
-      throw new Error("face_tracker returned no usable bboxes");
+      throw new Error("face_tracking returned no usable bboxes");
     }
 
     return track;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return fallbackOrThrow(`face_tracker capability required for auto_reframe smart crop: ${message}`, ctx, allowCenterFallback);
+    return fallbackOrThrow(`face_tracking capability required for auto_reframe smart crop: ${message}`, ctx, allowCenterFallback);
   }
 }
 
@@ -87,19 +95,25 @@ function fallbackOrThrow(message: string, ctx: ToolContext, allowCenterFallback:
     throw new Error(message);
   }
 
-  ctx.logger.warn("face_tracker capability unavailable; using center crop fallback", { error: message });
+  ctx.logger.warn("face_tracking capability unavailable; using center crop fallback", { error: message });
   return [];
 }
 
 function readTrack(output: unknown): TrackFrame[] {
-  const frames = Array.isArray(output) ? output : isRecord(output) && Array.isArray(output.track) ? output.track : isRecord(output) && Array.isArray(output.frames) ? output.frames : [];
+  const frames = Array.isArray(output)
+    ? output
+    : isRecord(output) && Array.isArray(output.track)
+      ? output.track
+      : isRecord(output) && Array.isArray(output.frames)
+        ? output.frames
+        : [];
 
   return frames.flatMap((frame, index) => {
     if (!isRecord(frame)) {
       return [];
     }
 
-    const bbox = readBBox(frame.bbox);
+    const bbox = readBBox(frame.bbox) ?? readFirstFaceBBox(frame.faces);
 
     if (!bbox) {
       return [];
@@ -129,6 +143,19 @@ function readBBox(value: unknown): BBox | undefined {
   }
 
   return undefined;
+}
+
+function readFirstFaceBBox(value: unknown): BBox | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const face = value.find(isRecord);
+  if (face === undefined) {
+    return undefined;
+  }
+
+  return readBBox(face);
 }
 
 function smoothedCenters(track: TrackFrame[], axis: "x" | "y"): number[] {
@@ -185,10 +212,6 @@ function scaleHeight(ratio: number): number {
 
 function average(values: number[]): number {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-function resolveProjectPath(path: string, projectRoot: string): string {
-  return isAbsolute(path) ? path : resolve(projectRoot, path);
 }
 
 function resolveOutputPath(outputPath: string | undefined, inputPath: string, targetAspect: string, projectRoot: string): string {

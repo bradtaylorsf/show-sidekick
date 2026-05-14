@@ -9,14 +9,16 @@ function testTool(
   name: string,
   availability: Availability,
   integration: Integration = { kind: "api", env: [`${name.toUpperCase()}_KEY`], install: "set env" },
+  overrides: Partial<Pick<Tool, "provider" | "supports">> = {},
 ): Tool {
   return defineTool({
     name,
     capability: "tts",
-    provider: name,
+    provider: overrides.provider ?? name,
     status: "beta",
     integration,
     best_for: "select tests",
+    supports: overrides.supports,
     input: z.object({ text: z.string() }),
     output: z.object({ path: z.string() }),
     isAvailable: async () => availability,
@@ -80,5 +82,32 @@ describe("Registry.select", () => {
     });
 
     await expect(registry.select("tts", { runtime: "cli" })).resolves.toMatchObject({ name: "cli-tool" });
+  });
+
+  it("prefers concrete providers over provider-selection markers", async () => {
+    const registry = new Registry({
+      tools: [
+        testTool("tts_selector", { available: true }, undefined, {
+          provider: "predit",
+          supports: ["provider-selection"],
+        }),
+        testTool("concrete-tts", { available: true }),
+      ],
+    });
+
+    await expect(registry.select("tts")).resolves.toMatchObject({ name: "concrete-tts" });
+  });
+
+  it("keeps a provider-selection marker selectable when it is the only provider", async () => {
+    const registry = new Registry({
+      tools: [
+        testTool("tts_selector", { available: true }, undefined, {
+          provider: "predit",
+          supports: ["provider-selection"],
+        }),
+      ],
+    });
+
+    await expect(registry.select("tts")).resolves.toMatchObject({ name: "tts_selector" });
   });
 });
