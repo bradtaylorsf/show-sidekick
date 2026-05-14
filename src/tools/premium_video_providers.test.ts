@@ -302,6 +302,40 @@ describe("premium video provider tools", () => {
     });
   });
 
+  it("does not reuse cached clips across different reference images", async () => {
+    stubProviderEnv();
+    const projectRoot = await mkdtemp(join(tmpdir(), "predit-video-cache-"));
+    const fetchMock = vi.fn(async () => {
+      const id = `provider-request-${fetchMock.mock.calls.length}`;
+      return new Response(JSON.stringify({ id, video_path: `projects/show/episode/clips/${id}.mp4` }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = await klingVideo.execute(
+      klingVideo.input.parse({
+        prompt: "same prompt",
+        image_url: "https://cdn.example.com/ref-a.png",
+        duration: 5,
+      }),
+      context(projectRoot),
+    );
+    const second = await klingVideo.execute(
+      klingVideo.input.parse({
+        prompt: "same prompt",
+        image_url: "https://cdn.example.com/ref-b.png",
+        duration: 5,
+      }),
+      context(projectRoot),
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(first.video_path).toBe("projects/show/episode/clips/provider-request-1.mp4");
+    expect(second.video_path).toBe("projects/show/episode/clips/provider-request-2.mp4");
+  });
+
   it("fails before fetch when required provider env vars are missing", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

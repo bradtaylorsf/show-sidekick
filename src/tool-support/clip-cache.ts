@@ -7,6 +7,9 @@ export type ClipCacheKeyInput = {
   prompt: string;
   provider: string;
   model: string;
+  image_url?: string;
+  duration?: number;
+  aspect_ratio?: string;
 };
 
 export type ClipCacheStoreInput = ClipCacheKeyInput & {
@@ -20,7 +23,7 @@ export type ClipCacheEntry = ClipCacheStoreInput & {
 type CacheIndex = Record<string, ClipCacheEntry>;
 
 export function clipCacheKey(input: ClipCacheKeyInput): string {
-  return createHash("sha256").update(`${input.prompt}|${input.provider}|${input.model}`).digest("hex").slice(0, 16);
+  return createHash("sha256").update(stableStringify(normalizeCacheKey(input))).digest("hex").slice(0, 16);
 }
 
 export async function lookupClipCache(
@@ -129,6 +132,32 @@ function isCacheIndex(value: unknown): value is CacheIndex {
       typeof (entry as ClipCacheEntry).cached_at === "string"
     );
   });
+}
+
+function normalizeCacheKey(input: ClipCacheKeyInput): ClipCacheKeyInput {
+  return {
+    prompt: input.prompt,
+    provider: input.provider,
+    model: input.model,
+    ...(input.image_url !== undefined ? { image_url: input.image_url } : {}),
+    ...(input.duration !== undefined ? { duration: input.duration } : {}),
+    ...(input.aspect_ratio !== undefined ? { aspect_ratio: input.aspect_ratio } : {}),
+  };
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`;
+  }
+
+  if (typeof value === "object" && value !== null) {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableStringify((value as Record<string, unknown>)[key])}`)
+      .join(",")}}`;
+  }
+
+  return JSON.stringify(value) ?? "undefined";
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
