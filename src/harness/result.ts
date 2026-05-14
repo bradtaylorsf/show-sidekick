@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CostEntrySchema } from "../artifacts/cost-log.js";
 import { DecisionEntrySchema } from "../artifacts/decision-log.js";
 
 export const StageCostUsedSchema = z.object({
@@ -19,6 +20,7 @@ export const StageReviewSummarySchema = z.object({
 export const StageResultSchema = z.object({
   artifact: z.unknown(),
   cost_used: StageCostUsedSchema,
+  cost_entries: z.array(CostEntrySchema).optional(),
   decisions: z.array(DecisionEntrySchema),
   review_summary: StageReviewSummarySchema.optional(),
 });

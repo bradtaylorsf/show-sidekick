@@ -9,6 +9,7 @@ import type { ProposalPacket } from "../artifacts/proposal-packet.js";
 import type { RenderReport } from "../artifacts/render-report.js";
 import { reviewHyperframesValidationSteps } from "../compose/render-report-validation.js";
 import { ReviewSchema, type Finding, type Review } from "../artifacts/review.js";
+import { cumulativeCostDrift } from "../cost/aggregate.js";
 import type { SourceMediaReview } from "../artifacts/source-media-review.js";
 import type { VideoAnalysisBrief } from "../artifacts/video-analysis-brief.js";
 import { auditBoilerplateReason, auditConfidence, auditRequiredCategories } from "../decisions/audit.js";
@@ -80,6 +81,9 @@ export type ReviewContext = {
   motionRequired?: boolean;
   pipelineSlug?: string;
   estimatedCostUsd?: number;
+  cumulativeEstimatedUsd?: number;
+  cumulativeActualUsd?: number;
+  costDriftThreshold?: number;
   estimatedTimeMinutes?: number;
   referenceDriven?: boolean;
   heroScenePresent?: boolean;
@@ -189,6 +193,15 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
     }),
   );
   rawFindings.push(...checkTranscriptConfidence(stageSlug, ctx.cuesheet));
+  if (ctx.cumulativeActualUsd !== undefined && ctx.cumulativeEstimatedUsd !== undefined) {
+    rawFindings.push(
+      ...cumulativeCostDrift({
+        actual: ctx.cumulativeActualUsd,
+        estimated: ctx.cumulativeEstimatedUsd,
+        threshold: ctx.costDriftThreshold,
+      }),
+    );
+  }
   rawFindings.push(...checkRenderReportValidation(stageSlug, ctx.renderReport));
   rawFindings.push(
     ...checkFinalReview(stageSlug, artifact, {

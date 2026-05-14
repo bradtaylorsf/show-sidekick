@@ -116,10 +116,19 @@ describe("approval presentation", () => {
   });
 
   it("includes stage, total, remaining, and projection in the cost section", () => {
-    const block = formatApprovalBlock(checkpoint(), approvalContext());
+    const block = formatApprovalBlock(
+      checkpoint(),
+      approvalContext({
+        projectedRemainingTotals: {
+          sample: 1.25,
+          full: 6.5,
+        },
+      }),
+    );
 
     expect(block).toContain("$1.18 of $5.00 budget ($3.82 remaining). This stage: $0.42.");
     expect(block).toContain("Next stage (assets) estimates $2.40 full / $0.40 sample.");
+    expect(block).toContain("Projected remaining: $6.50 full / $1.25 sample.");
   });
 
   it("omits the projection sentence when no projected next stage is supplied", () => {
@@ -196,6 +205,7 @@ describe("approval presentation", () => {
         },
       ],
     });
+    expect(events[3]).not.toHaveProperty("projected_remaining_totals");
     expect(events[4]).toMatchObject({
       actions: ["approve", "revise", "abort"],
     });

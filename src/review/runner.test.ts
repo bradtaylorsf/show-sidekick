@@ -318,6 +318,22 @@ describe("runReview", () => {
     );
   });
 
+  it("adds a critical finding when cumulative actual cost drifts above cumulative estimates", () => {
+    const review = runReview("scene_plan", validScenePlan, {
+      pipeline: basePipeline,
+      cumulativeActualUsd: 1.31,
+      cumulativeEstimatedUsd: 1,
+    });
+
+    expect(review.decision).toBe("revise");
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Cumulative cost drift exceeded estimate",
+      }),
+    );
+  });
+
   it("flags audio-led proposal reviews without manually wiring audioLed", () => {
     const review = runReview("proposal", validProposal, {
       pipeline: { ...basePipeline, master_clock: "audio" },
