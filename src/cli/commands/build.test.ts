@@ -159,9 +159,37 @@ describe("build command", () => {
 
     expect(referenceSources).toEqual([referencePath]);
   });
+
+  it("loads active project playbooks through the PBK project loader", async () => {
+    const root = await scratchProject();
+    await writeShow(root, "show", "framework-smoke", "custom-look");
+    await mkdir(path.join(root, "playbooks"), { recursive: true });
+    await writeFile(path.join(root, "playbooks", "custom-look.yaml"), validPlaybookYaml(), "utf8");
+    process.chdir(root);
+
+    const contexts: StageContext[] = [];
+    const { program } = captureProgram({
+      registryFactory: () => new Registry({ tools: [] }),
+      dispatcherFactory: () => async (ctx) => {
+        contexts.push(ctx);
+        return fixtures[ctx.stage.slug] ?? stageResult({ unexpected: ctx.stage.slug }, 0);
+      },
+      reviewer: (stageSlug, _artifact, ctx) => passReview(stageSlug, ctx.round ?? 0),
+      now: () => new Date("2026-05-12T15:42:00.000Z"),
+    });
+
+    await program.parseAsync(["node", "predit", "--json", "build", "show/episode"], { from: "node" });
+
+    expect(contexts[0]?.playbook).toMatchObject({
+      identity: {
+        name: "Custom Look",
+        category: "custom",
+      },
+    });
+  });
 });
 
-async function writeShow(root: string, slug: string, pipeline: string): Promise<void> {
+async function writeShow(root: string, slug: string, pipeline: string, playbook?: string): Promise<void> {
   const showDir = path.join(root, "shows", slug);
   await mkdir(path.join(showDir, "episodes"), { recursive: true });
   await writeFile(
@@ -171,7 +199,7 @@ async function writeShow(root: string, slug: string, pipeline: string): Promise<
       'display_name: "Test Show"',
       "created: 2026-05-12",
       "pipelines:",
-      `  ${pipeline}: {}`,
+      ...(playbook === undefined ? [`  ${pipeline}: {}`] : [`  ${pipeline}:`, `    playbook: ${playbook}`]),
       "defaults:",
       `  pipeline: ${pipeline}`,
       "",
@@ -319,4 +347,43 @@ function captureProgram(build?: BuildHandlerOptions) {
     program,
     output: () => ({ stdout, stderr }),
   };
+}
+
+function validPlaybookYaml(): string {
+  return [
+    "identity:",
+    "  name: Custom Look",
+    "  category: custom",
+    "  mood: precise",
+    "  pace: moderate",
+    "visual_language:",
+    "  color_palette:",
+    "    primary: ['#111111']",
+    "    accent: ['#ffcc00']",
+    "    background: '#ffffff'",
+    "    text: '#000000'",
+    "  composition: centered editorial frames",
+    "  texture: clean paper",
+    "typography:",
+    "  headings:",
+    "    font: Inter",
+    "  body:",
+    "    font: Inter",
+    "motion:",
+    "  transitions: [cut]",
+    "  animation_style: restrained motion",
+    "  pacing_rules:",
+    "    min_scene_hold_seconds: 2",
+    "    max_scene_hold_seconds: 6",
+    "audio:",
+    "  voice_style: calm",
+    "  music_mood: light pulse",
+    "  music_volume: 0.4",
+    "asset_generation:",
+    "  image_prompt_prefix: clean editorial",
+    "  consistency_anchors: [centered]",
+    "quality_rules:",
+    "  - keep typography readable",
+    "",
+  ].join("\n");
 }

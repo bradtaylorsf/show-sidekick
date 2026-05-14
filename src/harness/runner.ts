@@ -1,6 +1,11 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { AbortedByUser, AwaitingHuman } from "../announce/index.js";
+import {
+  AbortedByUser,
+  AwaitingHuman,
+  announceCapabilityExtension,
+  buildCapabilityExtensionDecision,
+} from "../announce/index.js";
 import type { CostLog } from "../artifacts/cost-log.js";
 import { FinalReviewSchema, type FinalReview } from "../artifacts/final-review.js";
 import type { DecisionEntry, DecisionLog } from "../artifacts/decision-log.js";
@@ -22,7 +27,7 @@ import { readCostLog, recordCost } from "../cost/tracker.js";
 import { currentDecisions, readDecisionLog, recordDecision } from "../decisions/store.js";
 import type { PipelineManifest, Stage } from "../pipelines/index.js";
 import type { Registry } from "../registry/index.js";
-import type { Availability, ToolExecutionPolicy, ToolExecutionState, ToolInteractionIO } from "../registry/tool.js";
+import type { Availability, Tool, ToolExecutionPolicy, ToolExecutionState, ToolInteractionIO } from "../registry/tool.js";
 import { runReview, type ReviewContext } from "../review/runner.js";
 import { haltOnFinalReviewFail } from "../review/final-review.js";
 import { PlaybookSchema } from "../shows/playbook.js";
@@ -32,6 +37,7 @@ import { createStageContext, loadPriorArtifacts, type StageRunOptions } from "./
 import type { Dispatcher } from "./dispatcher.js";
 import type { StageResult } from "./result.js";
 import { planStages } from "./plan.js";
+import { loadCapabilityExtensions, type CapabilityExtension, type CapabilityExtensions } from "./capability-extension.js";
 
 export type RunnerStatus =
   | "completed"
@@ -100,6 +106,12 @@ export class Runner {
   static async run(opts: RunnerOptions): Promise<RunnerResult> {
     const now = opts.now ?? (() => new Date());
     const reviewer = opts.reviewer ?? runReview;
+    const extensions = await loadCapabilityExtensions({
+      projectRoot: opts.projectRoot,
+      show: opts.show,
+      episode: opts.episode,
+    });
+    await opts.registry.registerProjectTools(opts.projectRoot, opts.show, opts.episode);
     const warnings = await refreshRegistryAndWarn(opts);
     const state = await readState(opts.projectRoot, opts.show.slug, opts.episode.slug);
     const revisionNotes = cloneRevisionNotes(state?.revision_notes);
@@ -112,7 +124,8 @@ export class Runner {
     let plannedStages = planStages(opts.pipeline, opts.runOptions, { completedStages });
     let cumulativeCost = state?.cost_total_usd ?? 0;
     const budget = resolveBudget(opts);
-    const decisions: DecisionEntry[] = [];
+    const decisions = await recordLoadedCapabilityExtensions(opts, extensions, now);
+    const firstPaidApprovals = new Set<string>();
     let sendBacks = 0;
     let lastStage: string | undefined;
     const startMs = now().getTime();
@@ -182,6 +195,7 @@ export class Runner {
         decisions,
         warnings,
         sendBacks,
+        firstPaidApprovals,
         startMs,
         now,
       });
@@ -252,6 +266,87 @@ function registryWarning(tool: string, availability: Extract<Availability, { ava
   };
 }
 
+async function recordLoadedCapabilityExtensions(
+  opts: RunnerOptions,
+  extensions: CapabilityExtensions,
+  now: () => Date,
+): Promise<DecisionEntry[]> {
+  const existing = await readDecisionLog({ show: opts.show.slug, episode: opts.episode.slug }, { root: opts.projectRoot });
+  const alreadyLogged = new Set(existing.filter((entry) => entry.category === "capability_extension").map((entry) => entry.picked));
+  const activePlaybook = opts.episode.playbook ?? opts.show.pipelines[opts.pipelineName]?.playbook;
+  const entries: DecisionEntry[] = [];
+
+  for (const extension of extensions.all.filter((candidate) => shouldLogLoadedExtension(candidate, activePlaybook))) {
+    const picked = `${extension.kind}:${extension.name}`;
+    if (alreadyLogged.has(picked)) {
+      continue;
+    }
+
+    const entry = buildCapabilityExtensionDecision({
+      kind: extension.kind,
+      name: extension.name,
+      why: extensionWhy(opts, extension),
+      path: path.relative(opts.projectRoot, extension.path),
+      timestamp: now().toISOString(),
+      id: `capability-extension-${extension.kind}-${safeDecisionSegment(extension.name)}`,
+    });
+    await recordDecision({ show: opts.show.slug, episode: opts.episode.slug }, entry, { root: opts.projectRoot });
+    alreadyLogged.add(picked);
+    entries.push(entry);
+  }
+
+  return entries;
+}
+
+function shouldLogLoadedExtension(extension: CapabilityExtension, activePlaybook: string | undefined): boolean {
+  if (extension.kind === "tool" && extension.isPaid) {
+    return false;
+  }
+
+  if (extension.kind !== "playbook") {
+    return true;
+  }
+
+  return activePlaybook !== undefined && playbookNamesMatch(extension.name, activePlaybook);
+}
+
+function playbookNamesMatch(extensionName: string, playbookName: string): boolean {
+  const normalized = playbookName.replace(/\.(ya?ml)$/iu, "");
+  return extensionName === normalized;
+}
+
+function extensionWhy(opts: RunnerOptions, extension: CapabilityExtension): { x: string; y: string } {
+  switch (extension.kind) {
+    case "script":
+      return {
+        x: `${opts.show.slug}/${opts.episode.slug}`,
+        y: `${extension.name} script workflow`,
+      };
+    case "tool":
+      return {
+        x: `${opts.show.slug}/${opts.episode.slug}`,
+        y: `${extension.name} tool capability`,
+      };
+    case "playbook":
+      return {
+        x: `${opts.pipelineName} look`,
+        y: `${extension.name} custom style rules`,
+      };
+    case "skill":
+      return {
+        x: opts.show.slug,
+        y: `${extension.name} show-specific instructions`,
+      };
+  }
+}
+
+function safeDecisionSegment(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/gu, "-")
+    .replace(/^-+|-+$/gu, "");
+}
+
 async function runStage(input: {
   opts: RunnerOptions;
   stage: Stage;
@@ -265,6 +360,7 @@ async function runStage(input: {
   decisions: DecisionEntry[];
   warnings: RegistryWarning[];
   sendBacks: number;
+  firstPaidApprovals: Set<string>;
   startMs: number;
   now: () => Date;
 }): Promise<StageExecutionOutcome> {
@@ -299,6 +395,7 @@ async function runStage(input: {
         cumulativeCost: roundUsd(input.cumulativeCost + stageCostUsd),
         priorArtifacts: input.priorArtifacts,
         decisions: toolPolicyDecisions,
+        firstPaidApprovals: input.firstPaidApprovals,
         now,
       }),
       revisionNotes: input.revisionNotes[stage.slug] ?? [],
@@ -777,6 +874,7 @@ function buildToolPolicy(input: {
   cumulativeCost: number;
   priorArtifacts: Record<string, unknown>;
   decisions: DecisionEntry[];
+  firstPaidApprovals: Set<string>;
   now: () => Date;
 }): ToolExecutionPolicy {
   const previous = majorChangePreviousState(input.decisionLog, input.priorArtifacts, input.opts.runOptions);
@@ -802,7 +900,62 @@ function buildToolPolicy(input: {
         });
       },
     },
+    firstPaidCallApproval: async ({ tool, reason }) => {
+      if (!requiresFirstPaidProjectTool(tool)) {
+        return;
+      }
+
+      const key = `${tool.source}:${tool.name}`;
+      if (input.firstPaidApprovals.has(key)) {
+        return;
+      }
+
+      const latestDecisionLog = await readDecisionLog(
+        { show: input.opts.show.slug, episode: input.opts.episode.slug },
+        { root: input.opts.projectRoot },
+      );
+      if (hasCapabilityExtensionDecision(latestDecisionLog, `tool:${tool.name}`)) {
+        input.firstPaidApprovals.add(key);
+        return;
+      }
+
+      await announceCapabilityExtension({
+        kind: "tool",
+        name: tool.name,
+        why: {
+          x: tool.capability,
+          y: reason ?? tool.best_for,
+        },
+        stage: input.stage.slug,
+        timestamp: input.now().toISOString(),
+        mode: toolInteractionMode(input.opts),
+        io: toolInteractionIo(input.opts.io),
+        showEpisode: { show: input.opts.show.slug, episode: input.opts.episode.slug },
+        requiresApproval: true,
+        recordDecision: async (entry) => {
+          input.decisions.push(entry);
+          return await recordDecision({ show: input.opts.show.slug, episode: input.opts.episode.slug }, entry, {
+            root: input.opts.projectRoot,
+          });
+        },
+      });
+      input.firstPaidApprovals.add(key);
+    },
   };
+}
+
+function requiresFirstPaidProjectTool(tool: Tool): boolean {
+  return (
+    tool.source === "project" &&
+    tool.requires_first_call_approval === true &&
+    tool.integration.kind === "api" &&
+    tool.cost !== undefined &&
+    tool.cost.usd > 0
+  );
+}
+
+function hasCapabilityExtensionDecision(log: DecisionLog, picked: string): boolean {
+  return log.some((entry) => entry.category === "capability_extension" && entry.picked === picked);
 }
 
 function budgetRemainingFromCostLog(budget: number, costLog: Awaited<ReturnType<typeof readCostLog>>, fallbackCost: number): number {

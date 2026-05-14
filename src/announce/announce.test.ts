@@ -2,7 +2,15 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { Tool, ToolContext } from "../registry/tool.js";
-import { AbortedByUser, AwaitingHuman, announceBeforeExecute, detectMajorChange, enforceMotionGuardrail, requireApproval } from "./index.js";
+import {
+  AbortedByUser,
+  AwaitingHuman,
+  announceBeforeExecute,
+  announceCapabilityExtension,
+  detectMajorChange,
+  enforceMotionGuardrail,
+  requireApproval,
+} from "./index.js";
 
 const ctx: ToolContext = {
   projectRoot: process.cwd(),
@@ -121,6 +129,89 @@ describe("announceBeforeExecute", () => {
       }),
     ).rejects.toBeInstanceOf(AbortedByUser);
     expect(calls).toBe(0);
+  });
+});
+
+describe("announceCapabilityExtension", () => {
+  it("prints the required phrase and records a capability_extension decision", async () => {
+    const writes: string[] = [];
+    const prompts: string[] = [];
+    const entries: DecisionEntry[] = [];
+
+    const entry = await announceCapabilityExtension({
+      kind: "tool",
+      name: "signed-upload",
+      why: {
+        x: "signed vendor upload",
+        y: "the provider needs a custom signature flow",
+      },
+      stage: "assets",
+      timestamp: "2026-05-13T12:00:00Z",
+      id: "capability-extension-tool-signed-upload",
+      requiresApproval: true,
+      io: {
+        write: (message) => writes.push(message),
+        prompt: (message) => {
+          prompts.push(message);
+          return true;
+        },
+      },
+      recordDecision: async (decisionEntry) => {
+        entries.push(decisionEntry);
+        return entries;
+      },
+    });
+
+    expect(writes).toEqual([
+      "I wrote a custom tool for signed vendor upload because no existing tool handles the provider needs a custom signature flow.",
+    ]);
+    expect(prompts).toEqual(["Approve this custom capability? [y/N] "]);
+    expect(entry).toMatchObject({
+      id: "capability-extension-tool-signed-upload",
+      stage: "assets",
+      category: "capability_extension",
+      picked: "tool:signed-upload",
+      reason:
+        "I wrote a custom tool for signed vendor upload because no existing tool handles the provider needs a custom signature flow.",
+    });
+    expect(entries).toEqual([entry]);
+  });
+
+  it("halts in non-interactive mode before approving a paid custom capability", async () => {
+    const events: Array<{ event: string; payload: unknown }> = [];
+    const entries: DecisionEntry[] = [];
+
+    await expect(
+      announceCapabilityExtension({
+        kind: "tool",
+        name: "signed-upload",
+        why: {
+          x: "signed vendor upload",
+          y: "the provider needs a custom signature flow",
+        },
+        mode: { json: true },
+        requiresApproval: true,
+        io: { event: (event, payload) => events.push({ event, payload }) },
+        recordDecision: async (entry) => {
+          entries.push(entry);
+          return entries;
+        },
+      }),
+    ).rejects.toBeInstanceOf(AwaitingHuman);
+
+    expect(entries).toEqual([]);
+    expect(events).toEqual([
+      {
+        event: "awaiting_human",
+        payload: expect.objectContaining({
+          type: "capability_extension",
+          kind: "tool",
+          name: "signed-upload",
+          phrase:
+            "I wrote a custom tool for signed vendor upload because no existing tool handles the provider needs a custom signature flow.",
+        }),
+      },
+    ]);
   });
 });
 

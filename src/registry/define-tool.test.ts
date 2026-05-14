@@ -116,6 +116,77 @@ describe("defineTool", () => {
     ]);
   });
 
+  it("fires first-paid-call approval for paid project API tools before announce and execution", async () => {
+    vi.stubEnv("SAMPLE_KEY", "present");
+    const calls: string[] = [];
+    const tool = defineTool({
+      name: "custom-paid-video",
+      capability: "image_to_video",
+      provider: "custom",
+      source: "project",
+      requires_first_call_approval: true,
+      status: "beta",
+      integration: { kind: "api", env: ["SAMPLE_KEY"], install: "noop" },
+      best_for: "custom project video generation",
+      cost: { unit: "clip", usd: 0.25 },
+      input: z.object({ prompt: z.string() }),
+      output: z.object({ path: z.string() }),
+      execute: async (params) => {
+        calls.push("execute");
+        return { path: params.prompt };
+      },
+    });
+
+    await expect(
+      tool.execute(
+        { prompt: "hero" },
+        {
+          projectRoot: "/tmp/predit",
+          logger: logger(),
+          execution: {
+            mode: { json: true },
+            io: {
+              event: (event) => calls.push(event),
+            },
+            firstPaidCallApproval: async ({ tool: approvedTool }) => {
+              calls.push(`approve:${approvedTool.name}`);
+            },
+          },
+        },
+      ),
+    ).resolves.toEqual({ path: "hero" });
+
+    expect(calls).toEqual(["approve:custom-paid-video", "announce", "execute"]);
+  });
+
+  it("requires a first-paid-call approval hook for paid project API tools", async () => {
+    const tool = defineTool({
+      name: "custom-paid-video",
+      capability: "image_to_video",
+      provider: "custom",
+      source: "project",
+      requires_first_call_approval: true,
+      status: "beta",
+      integration: { kind: "api", env: [], install: "noop" },
+      best_for: "custom project video generation",
+      cost: { unit: "clip", usd: 0.25 },
+      input: z.object({ prompt: z.string() }),
+      output: z.object({ path: z.string() }),
+      execute: async (params) => ({ path: params.prompt }),
+    });
+
+    await expect(
+      tool.execute(
+        { prompt: "hero" },
+        {
+          projectRoot: "/tmp/predit",
+          logger: logger(),
+          execution: { mode: { json: true }, io: { event: () => undefined } },
+        },
+      ),
+    ).rejects.toBeInstanceOf(AwaitingHuman);
+  });
+
   it("blocks motion-runtime fallback before paid execution", async () => {
     let executed = false;
     const tool = defineTool({

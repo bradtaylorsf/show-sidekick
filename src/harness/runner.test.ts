@@ -772,6 +772,100 @@ describe("Runner", () => {
     ]);
     expect(output.stdout()).toContain("Registry warnings:");
   });
+
+  it("registers free project capability extensions and records capability_extension decisions", async () => {
+    const root = await scratchProject();
+    await mkdir(path.join(root, "projects", "show", "episode", "scripts"), { recursive: true });
+    await mkdir(path.join(root, "shows", "show", "skills"), { recursive: true });
+    await writeFile(path.join(root, "projects", "show", "episode", "scripts", "shot-map.ts"), "export {}\n", "utf8");
+    await writeFile(path.join(root, "shows", "show", "skills", "shot-map.md"), "# Shot Map\n", "utf8");
+    await writeProjectTool(root, "custom-helper.js", {
+      name: "custom_helper",
+      capability: "research",
+      integration: "{ kind: 'library', package: 'fixture', install: 'none' }",
+      execute: "async execute(params) { return params; }",
+    });
+    const pipeline = pipelineManifest([stage("research")]);
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: async (ctx) => {
+        expect(ctx.registry.get("custom_helper")).toMatchObject({ source: "project" });
+        return stageResult({ ok: true }, 0);
+      },
+      reviewer: passReviewer,
+      runOptions: { sample: false },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    const decisions = await readDecisionLog({ show: "show", episode: "episode" }, { root });
+    expect(decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ category: "capability_extension", picked: "script:shot-map" }),
+        expect.objectContaining({ category: "capability_extension", picked: "skill:shot-map" }),
+        expect.objectContaining({ category: "capability_extension", picked: "tool:custom-helper" }),
+      ]),
+    );
+  });
+
+  it("halts before the first unapproved paid API call from a project tool", async () => {
+    const root = await scratchProject();
+    await writeProjectTool(root, "paid-upload.js", {
+      name: "paid_upload",
+      capability: "image_hosting",
+      integration: "{ kind: 'api', env: [], install: 'configured in test' }",
+      cost: "{ unit: 'call', usd: 0.2 }",
+      execute:
+        "async execute(params, ctx) { await ctx.execution?.firstPaidCallApproval?.({ tool, reason: 'signed upload flow' }); return { ok: true }; }",
+    });
+    const pipeline = pipelineManifest([stage("assets")]);
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+    const output = captureIo();
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: async (ctx) => {
+        const paidUpload = ctx.registry.get("paid_upload");
+        if (paidUpload === undefined) {
+          throw new Error("expected paid_upload to be registered");
+        }
+        await paidUpload.execute(
+          {},
+          {
+            projectRoot: root,
+            logger: logger(),
+            registry: ctx.registry,
+            execution: ctx.toolPolicy,
+          },
+        );
+        return stageResult({ ok: true }, 0.2);
+      },
+      reviewer: passReviewer,
+      runOptions: { sample: false, nonInteractive: true },
+      io: output.io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("awaiting_human");
+    expect(output.stdout()).toContain('"event":"awaiting_human"');
+    expect(output.stdout()).toContain('"type":"capability_extension"');
+    await expect(readDecisionLog({ show: "show", episode: "episode" }, { root })).resolves.toEqual([]);
+  });
 });
 
 async function scratchProject(): Promise<string> {
@@ -858,6 +952,43 @@ async function writePipeline(root: string, slug: string, stages: string[]): Prom
         "    produces: unknown_artifact",
         "    human_approval: never",
       ]),
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+}
+
+async function writeProjectTool(
+  root: string,
+  fileName: string,
+  options: {
+    name: string;
+    capability: string;
+    integration: string;
+    cost?: string;
+    execute: string;
+  },
+): Promise<void> {
+  const toolsDir = path.join(root, "projects", "show", "episode", "tools");
+  await mkdir(toolsDir, { recursive: true });
+  await writeFile(
+    path.join(toolsDir, fileName),
+    [
+      "const schema = { parse(value) { return value; } };",
+      "const tool = {",
+      `  name: ${JSON.stringify(options.name)},`,
+      `  capability: ${JSON.stringify(options.capability)},`,
+      "  provider: 'project',",
+      "  status: 'beta',",
+      `  integration: ${options.integration},`,
+      "  best_for: 'project capability extension',",
+      ...(options.cost === undefined ? [] : [`  cost: ${options.cost},`]),
+      "  input: schema,",
+      "  output: schema,",
+      "  async isAvailable() { return { available: true }; },",
+      `  ${options.execute},`,
+      "};",
+      "export default tool;",
       "",
     ].join("\n"),
     "utf8",

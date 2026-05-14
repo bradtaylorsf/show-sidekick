@@ -1,6 +1,6 @@
 import type { Capability } from "./tool.js";
 
-export type RegistryErrorCode = "duplicate-tool" | "invalid-tool" | "discover-failed";
+export type RegistryErrorCode = "duplicate-tool" | "invalid-tool" | "discover-failed" | "project-tool-failed";
 
 export class RegistryError extends Error {
   readonly code: RegistryErrorCode;
