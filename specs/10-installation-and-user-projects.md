@@ -74,6 +74,18 @@ my-shows/
 
 Refreshes `.predit/` from the currently installed harness version. Detects mismatch automatically on every command and warns when stale. The user runs `predit update` to sync.
 
+`.predit/version.json` records the cache lock:
+
+```json
+{
+  "harness_version": "0.1.0",
+  "bundled_checksum": "sha256-of-bundled-cache-inputs",
+  "locked_at": "2026-05-14T12:00:00.000Z"
+}
+```
+
+`predit update --check` compares the installed harness version and bundled checksum against that file without writing. It exits non-zero when the cache is stale. Commands refuse to run when the cache was locked by an incompatible major version; the remediation is either `predit update` to refresh the project cache or installing a matching `predit` version.
+
 ### `predit new show <slug> [--from <starter>]`
 
 Creates `shows/<slug>/`. With `--from <starter>`, copies a starter template from `.predit/starters/<starter>/` as the initial content. Starters carry an example `show.yaml`, a brand stub, sample characters, and an episode template.

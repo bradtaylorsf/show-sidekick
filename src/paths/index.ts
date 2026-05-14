@@ -2,6 +2,7 @@ export {
   InvalidResourceNameError,
   InvalidShowEpisodeError,
   MissingEnvError,
+  ProjectAlreadyInitializedError,
   ProjectRootNotFoundError,
 } from "./errors.js";
 export { loadEnv, optionalEnv, requireEnv } from "./env.js";
