@@ -17,5 +17,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Nine bundled starter shows with zero-key sample fixtures: music-video, news-song, thechaosfm, cinematic-trailer, animated-explainer, documentary, product-demo, ww2-diary, and ai-workflow-demo.
 - Registry-driven tool selection with generated provider documentation and CI freshness checks.
 - Zero-key sample render path for bundled starters and framework smoke validation.
+- Public release verification with `pnpm release:check` and `pnpm release:check:full`.
 
 See the [README](README.md) for the current command surface.

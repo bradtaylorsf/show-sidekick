@@ -1,13 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Command } from "commander";
 import { afterEach, describe, expect, it } from "vitest";
 import { createWatchHandler, type WatchFactory } from "./watch.js";
 
 let scratchDirs: string[] = [];
 const originalCwd = process.cwd();
+const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
+const ingestWatchFixture = path.join(repoRoot, "bundled/fixtures/ingest-watch/thechaosfm-news/pilot");
 
 async function scratchProject(): Promise<string> {
   const root = path.join(tmpdir(), `predit-watch-${randomUUID()}`);
@@ -27,9 +30,7 @@ describe("watch command", () => {
   it("prints a suggested import command for a matching drop", async () => {
     const root = await scratchProject();
     await writeShow(root, "thechaosfm");
-    const track = path.join(root, "music_library", "thechaosfm-news", "pilot", "track.mp3");
-    await mkdir(path.dirname(track), { recursive: true });
-    await writeFile(track, "audio", "utf8");
+    await writeDropFixture(root);
     process.chdir(root);
     const { io, output } = captureIo();
     const watch: WatchFactory = async function* (_rootPath) {
@@ -46,9 +47,7 @@ describe("watch command", () => {
   it("emits a JSON event for a matching drop", async () => {
     const root = await scratchProject();
     await writeShow(root, "thechaosfm");
-    const track = path.join(root, "music_library", "thechaosfm-news", "pilot", "track.mp3");
-    await mkdir(path.dirname(track), { recursive: true });
-    await writeFile(track, "audio", "utf8");
+    await writeDropFixture(root);
     process.chdir(root);
     const { io, output } = captureIo();
     const watch: WatchFactory = async function* () {
@@ -144,4 +143,10 @@ async function writeShow(root: string, slug: string, options: { ingest?: boolean
     ].join("\n"),
     "utf8",
   );
+}
+
+async function writeDropFixture(root: string): Promise<void> {
+  const dropDir = path.join(root, "music_library", "thechaosfm-news", "pilot");
+  await mkdir(path.dirname(dropDir), { recursive: true });
+  await cp(ingestWatchFixture, dropDir, { recursive: true });
 }
