@@ -184,7 +184,7 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
 
   program
     .command("ls <kind> [arg]")
-    .description("list shows, episodes, pipelines, playbooks, tools, or decisions")
+    .description("list shows, episodes, pipelines, playbooks, starters, tools, or decisions")
     .action(async (...actionArgs: unknown[]) => {
       const kind = actionArgs[0] as string;
       const arg = typeof actionArgs[1] === "string" ? actionArgs[1] : undefined;
