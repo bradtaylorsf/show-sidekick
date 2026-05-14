@@ -3,6 +3,7 @@ import { createApproveHandler } from "./commands/approve.js";
 import { createBuildHandler, type BuildHandlerOptions } from "./commands/build.js";
 import { createCuesheetHandler } from "./commands/cuesheet.js";
 import { createInitHandler } from "./commands/init.js";
+import { createImportHandler } from "./commands/import.js";
 import { lsDecisions } from "./commands/ls-decisions.js";
 import { createLsHandler } from "./commands/ls.js";
 import { createNewHandlers } from "./commands/new.js";
@@ -12,6 +13,7 @@ import { createSetupHandler } from "./commands/setup.js";
 import { createStatusHandler } from "./commands/status.js";
 import { type CliIo, createStubHandler, defaultIo, type GlobalOptions } from "./commands/stub.js";
 import { createUpdateHandler } from "./commands/update.js";
+import { createWatchHandler } from "./commands/watch.js";
 import { suggest } from "./fuzzy.js";
 import { configure } from "../log/mode.js";
 import { ProjectRootNotFoundError } from "../paths/errors.js";
@@ -214,12 +216,12 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
     .command("import <path>")
     .description("scaffold an episode from a dropped folder")
     .option("--as <target>", "target show/episode")
-    .action(createStubHandler("import", ["path"], io));
+    .action(createImportHandler(io));
 
   program
     .command("watch")
     .description("detect drops and suggest imports")
-    .action(createStubHandler("watch", [], io));
+    .action(createWatchHandler(io));
 
   program
     .command("setup <tool>")

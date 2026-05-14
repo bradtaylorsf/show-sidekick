@@ -97,6 +97,12 @@ The analysis writes `projects/<show>/<episode>/artifacts/video_analysis_brief.js
 - `--json` switches to NDJSON for streaming-friendly machine output. Each command documents its event schema in its source.
 - Errors always go to stderr; results to stdout.
 
+## Ingest Commands
+
+`predit import <path> --as <show>/<episode>` resolves `<path>` as either a dropped file or a folder containing a matching dropped file. It matches the path against the target show's `ingest.watch[]`, uses the matched watch entry's `pipeline`, derives sibling inputs, and writes `shows/<show>/episodes/<episode>.yaml`. It refuses to overwrite an existing episode file.
+
+`predit watch` loads every show's `ingest.watch[]`, watches the declared paths recursively, and prints a suggested `predit import <path> --as <show>/<derived-episode>` command when a drop matches. Watch suggestions are emitted within two seconds of the filesystem event.
+
 ## Addressing — `<show>/<episode>`
 
 - The path separator is `/`, mirroring filesystem layout.
