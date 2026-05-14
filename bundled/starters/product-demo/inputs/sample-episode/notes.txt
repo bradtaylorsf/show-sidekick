@@ -1,0 +1,4 @@
+Open on the dashboard screenshot and zoom to the review queue.
+Call out the top status pill, then pan to the owner column.
+Show the moment a blocker becomes visible before launch.
+End with the simple promise: fewer missed handoffs.

@@ -11,6 +11,7 @@ import { ShowSchema, type Show } from "../../src/shows/show.js";
 const repoRoot = process.cwd();
 const startersRoot = path.join(repoRoot, "bundled", "starters");
 const requiredAudioLedStarters = ["cinematic-trailer", "music-video", "news-song", "thechaosfm"];
+const requiredVisualExplainerStarters = ["animated-explainer", "documentary", "product-demo"];
 
 const StarterMetadataSchema = z.object({
   fixture_size_bytes: z.number().int().nonnegative(),
@@ -23,6 +24,12 @@ describe("bundled starters", () => {
     const starterNames = await starterDirectoryNames();
 
     expect(starterNames).toEqual(expect.arrayContaining(requiredAudioLedStarters));
+  });
+
+  it("ships the D-5 visual/explainer starter set", async () => {
+    const starterNames = await starterDirectoryNames();
+
+    expect(starterNames).toEqual(expect.arrayContaining(requiredVisualExplainerStarters));
   });
 
   it("keeps every starter schema-valid and fixture-backed", async () => {
@@ -150,4 +157,3 @@ async function exists(filePath: string): Promise<boolean> {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-
