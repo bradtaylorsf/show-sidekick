@@ -9,14 +9,17 @@ import {
 import type { CostLog } from "../artifacts/cost-log.js";
 import { FinalReviewSchema, type FinalReview } from "../artifacts/final-review.js";
 import type { DecisionEntry, DecisionLog } from "../artifacts/decision-log.js";
+import { ProposalPacketSchema } from "../artifacts/proposal-packet.js";
 import { ReviewSchema, type Review } from "../artifacts/review.js";
 import type { VideoAnalysisBrief } from "../artifacts/video-analysis-brief.js";
 import {
+  latestSampleVersion,
   listCheckpoints,
   readCheckpoint,
   readState,
   updateState,
   writeCheckpoint,
+  writeSampleCheckpoint,
   type Checkpoint,
   type CheckpointStatus,
   type PipelineState,
@@ -30,6 +33,7 @@ import type { Registry } from "../registry/index.js";
 import type { Availability, Tool, ToolExecutionPolicy, ToolExecutionState, ToolInteractionIO } from "../registry/tool.js";
 import { runReview, type ReviewContext } from "../review/runner.js";
 import { haltOnFinalReviewFail } from "../review/final-review.js";
+import { hasSampleFirstSkipApproval, isSampleFirstFinding } from "../review/sample-first.js";
 import { PlaybookSchema } from "../shows/playbook.js";
 import type { LoadedEpisode, LoadedShow } from "../shows/index.js";
 import { writeApprovalBlock, type ApprovalAction, type ApprovalContext } from "./approval.js";
@@ -482,6 +486,31 @@ async function runStage(input: {
     }
 
     if (review.decision === "revise") {
+      const sampleFirstOutcome = await handleSampleFirstReview({
+        opts,
+        stage,
+        nextStage: input.nextStage,
+        remainingStages: input.remainingStages,
+        result,
+        review,
+        stageCostUsd,
+        cumulativeCost: input.cumulativeCost,
+        budget: input.budget,
+        skillsRead: ctx.skills_read,
+        playbook: opts.playbook,
+        toolInvocations: result.cost_entries ?? [],
+        revisionNotes: input.revisionNotes,
+        decisions: input.decisions,
+        toolPolicyDecisions,
+        warnings: input.warnings,
+        sendBacks,
+        now,
+      });
+
+      if (sampleFirstOutcome !== undefined) {
+        return sampleFirstOutcome;
+      }
+
       if (round >= opts.pipeline.orchestration.max_revisions_per_stage) {
         const totalCostUsd = roundUsd(input.cumulativeCost + stageCostUsd);
         const checkpoint = checkpointForStage({
@@ -612,6 +641,251 @@ async function runStage(input: {
   }
 }
 
+async function handleSampleFirstReview(input: {
+  opts: RunnerOptions;
+  stage: Stage;
+  nextStage?: Stage;
+  remainingStages: Stage[];
+  result: StageResult;
+  review: Review;
+  stageCostUsd: number;
+  cumulativeCost: number;
+  budget: number;
+  skillsRead: string[];
+  playbook: unknown;
+  toolInvocations: Checkpoint["tool_invocations"];
+  revisionNotes: Record<string, string[]>;
+  decisions: DecisionEntry[];
+  toolPolicyDecisions: DecisionEntry[];
+  warnings: RegistryWarning[];
+  sendBacks: number;
+  now: () => Date;
+}): Promise<StageExecutionOutcome | undefined> {
+  const { opts, stage, review, result, now } = input;
+
+  if (!isProposalStageSlug(stage.slug)) {
+    return undefined;
+  }
+
+  const proposal = ProposalPacketSchema.safeParse(result.artifact);
+  if (!proposal.success || proposal.data.production_plan.sample_required === true) {
+    return undefined;
+  }
+
+  const criticalFindings = review.findings.filter((finding) => finding.severity === "critical");
+  if (
+    criticalFindings.length === 0 ||
+    !criticalFindings.some(isSampleFirstFinding) ||
+    !criticalFindings.every(isSampleFirstFinding)
+  ) {
+    return undefined;
+  }
+
+  const existingDecisionLog = await readDecisionLog({ show: opts.show.slug, episode: opts.episode.slug }, { root: opts.projectRoot });
+  if (hasSampleFirstSkipApproval([...existingDecisionLog, ...result.decisions])) {
+    return undefined;
+  }
+
+  const totalCostUsd = roundUsd(input.cumulativeCost + input.stageCostUsd);
+  const checkpoint = checkpointForStage({
+    stage,
+    status: "awaiting_human",
+    artifact: result.artifact,
+    review,
+    stageCostUsd: input.stageCostUsd,
+    totalCostUsd,
+    budget: input.budget,
+    skillsRead: input.skillsRead,
+    playbook: input.playbook,
+    toolInvocations: input.toolInvocations,
+    now,
+  });
+  const approvalCtx: ApprovalContext = {
+    ...buildApprovalContext(checkpoint, input.budget, input.nextStage, input.remainingStages),
+    kind: "sample-first",
+    actions: ["sample", "downgrade", "abort"],
+  };
+
+  writeApprovalBlock(opts.io, checkpoint, approvalCtx, { json: opts.json === true });
+
+  if (opts.runOptions.nonInteractive === true || opts.prompt === undefined) {
+    await writeSampleFirstAwaitingState({
+      opts,
+      checkpoint,
+      totalCostUsd,
+      revisionNotes: input.revisionNotes,
+    });
+    return {
+      kind: "halt",
+      result: {
+        status: "awaiting_human",
+        lastStage: stage.slug,
+        totalCostUsd,
+        decisions: [...input.decisions, ...input.toolPolicyDecisions],
+        warnings: input.warnings,
+      },
+    };
+  }
+
+  const action = normalizeApprovalPromptResult(await opts.prompt(checkpoint, approvalCtx));
+  if (action.action === "abort") {
+    return {
+      kind: "halt",
+      result: {
+        status: "aborted",
+        lastStage: stage.slug,
+        totalCostUsd,
+        decisions: [...input.decisions, ...input.toolPolicyDecisions],
+        warnings: input.warnings,
+      },
+    };
+  }
+
+  if (action.action === "sample") {
+    await writeSampleFirstAwaitingState({
+      opts,
+      checkpoint,
+      totalCostUsd,
+      revisionNotes: input.revisionNotes,
+    });
+    return {
+      kind: "halt",
+      result: {
+        status: "awaiting_human",
+        lastStage: stage.slug,
+        totalCostUsd,
+        decisions: [...input.decisions, ...input.toolPolicyDecisions],
+        warnings: input.warnings,
+      },
+    };
+  }
+
+  if (action.action !== "downgrade") {
+    throw new Error(`sample-first prompt expected sample, downgrade, or abort; received ${action.action}`);
+  }
+
+  const downgradeDecision = buildSampleFirstDowngradeDecision({
+    stage: stage.slug,
+    timestamp: now().toISOString(),
+    note: action.note,
+  });
+  await recordDecision({ show: opts.show.slug, episode: opts.episode.slug }, downgradeDecision, { root: opts.projectRoot });
+  const acceptedReview = reviewWithoutSampleFirstCriticals(review);
+  const completedCheckpoint = checkpointForStage({
+    stage,
+    status: "completed",
+    artifact: result.artifact,
+    review: acceptedReview,
+    stageCostUsd: input.stageCostUsd,
+    totalCostUsd,
+    budget: input.budget,
+    skillsRead: input.skillsRead,
+    playbook: input.playbook,
+    toolInvocations: input.toolInvocations,
+    now,
+  });
+  const stageDecisions = [
+    ...input.toolPolicyDecisions,
+    ...(await recordStageDecisions(opts, result.decisions)),
+    downgradeDecision,
+  ];
+
+  await writeCompletedCheckpointAndState(opts, completedCheckpoint, totalCostUsd, input.revisionNotes);
+
+  return {
+    kind: "continue",
+    stage: stage.slug,
+    totalCostUsd,
+    decisions: stageDecisions,
+    artifact: result.artifact,
+    sendBacks: input.sendBacks,
+  };
+}
+
+async function writeSampleFirstAwaitingState(input: {
+  opts: RunnerOptions;
+  checkpoint: Checkpoint;
+  totalCostUsd: number;
+  revisionNotes: Record<string, string[]>;
+}): Promise<void> {
+  const { opts } = input;
+  const state = await readState(opts.projectRoot, opts.show.slug, opts.episode.slug);
+  const version = latestSampleVersion(state) + 1;
+  const projected = sampleFirstCostProjection(opts.pipeline, input.totalCostUsd);
+
+  await writeSampleCheckpoint(opts.projectRoot, opts.show.slug, opts.episode.slug, version, {
+    cost_for_this_sample: projected.sample,
+    cumulative_sample_cost: projected.sample,
+    projected_full_cost: projected.full,
+    sample_video_path: "pending",
+  });
+  await writeCompletedCheckpointAndState(opts, input.checkpoint, input.totalCostUsd, input.revisionNotes);
+}
+
+function sampleFirstCostProjection(pipeline: PipelineManifest, fallbackFullCost: number): { sample: number; full: number } {
+  const sample = totalEstimatedCost(pipeline, true) ?? 0;
+  const full = totalEstimatedCost(pipeline, false) ?? fallbackFullCost;
+
+  return {
+    sample: roundUsd(sample),
+    full: roundUsd(full),
+  };
+}
+
+function buildSampleFirstDowngradeDecision(input: {
+  stage: string;
+  timestamp: string;
+  note?: string;
+}): DecisionEntry {
+  const suffix = input.timestamp.replace(/[^0-9A-Z]/gu, "");
+  const note = input.note?.trim();
+  const reason =
+    note && note.length > 0
+      ? `User approved a sample-first skip after prompt: ${note}`
+      : "User approved a sample-first skip after prompt and accepted proceeding at full cost.";
+
+  return {
+    id: `sample-first-downgrade-${suffix}`,
+    stage: input.stage,
+    timestamp: input.timestamp,
+    category: "downgrade_approval",
+    options_considered: [
+      {
+        label: "produce_sample_first",
+        rejected_because: "User chose to skip the representative sample checkpoint.",
+        notes: "Recommended path for expensive, slow, reference-driven, or motion-sensitive work.",
+      },
+      {
+        label: "skip_sample_first",
+        rejected_because: null,
+        notes: "Proceed at full cost with an audited downgrade approval.",
+      },
+    ],
+    picked: "skip_sample_first",
+    reason,
+    confidence: 0.7,
+    user_visible: true,
+    supersedes: null,
+  };
+}
+
+function reviewWithoutSampleFirstCriticals(review: Review): Review {
+  const findings = review.findings.filter((finding) => !isSampleFirstFinding(finding)) as Review["findings"];
+
+  return ReviewSchema.parse({
+    ...review,
+    decision: "pass",
+    findings,
+    summary: {
+      ...review.summary,
+      critical: findings.filter((finding) => finding.severity === "critical").length,
+      suggestions: findings.filter((finding) => finding.severity === "suggestion").length,
+      nitpicks: findings.filter((finding) => finding.severity === "nitpick").length,
+      investigations: findings.filter((finding) => finding.severity === "investigation").length,
+    },
+  });
+}
+
 async function runStageReview(
   opts: RunnerOptions,
   reviewer: StageReviewer,
@@ -631,7 +905,7 @@ async function runStageReview(
     cuesheet: opts.cuesheet,
     audioLed: opts.pipeline.master_clock !== undefined && opts.pipeline.master_clock !== "none",
     pipelineSlug: opts.pipeline.slug,
-    estimatedCostUsd: estimatedStageCost(stage, opts.runOptions),
+    estimatedCostUsd: estimatedCostForReview(opts.pipeline, stage, opts.runOptions),
     cumulativeEstimatedUsd: cumulative.cumulativeEstimatedUsd,
     cumulativeActualUsd: cumulative.cumulativeActualUsd,
     costLog: cumulative.costLog,
@@ -730,6 +1004,10 @@ async function handleApprovalGate(input: {
     }
 
     return { sendBacks, outcome: { kind: "rerun" } };
+  }
+
+  if (action.action !== "approve") {
+    throw new Error(`approval prompt expected approve, revise, or abort; received ${action.action}`);
   }
 
   const approvedCheckpoint = {
@@ -1237,6 +1515,18 @@ function estimatedStageCost(stage: Stage, runOptions: StageRunOptions): number |
   return runOptions.sample ? stage.estimated_cost.sample.usd : stage.estimated_cost.full.usd;
 }
 
+function estimatedCostForReview(
+  pipeline: PipelineManifest,
+  stage: Stage,
+  runOptions: StageRunOptions,
+): number | undefined {
+  if (!isProposalStageSlug(stage.slug)) {
+    return estimatedStageCost(stage, runOptions);
+  }
+
+  return totalEstimatedCost(pipeline, false) ?? estimatedStageCost(stage, runOptions);
+}
+
 function cumulativeEstimatedCost(pipeline: PipelineManifest, stageSlug: string, runOptions: StageRunOptions): number {
   let total = 0;
 
@@ -1249,6 +1539,26 @@ function cumulativeEstimatedCost(pipeline: PipelineManifest, stageSlug: string, 
   }
 
   return total;
+}
+
+function totalEstimatedCost(pipeline: PipelineManifest, sample: boolean): number | undefined {
+  let total = 0;
+  let hasEstimate = false;
+
+  for (const stage of pipeline.stages) {
+    if (stage.estimated_cost === undefined) {
+      continue;
+    }
+
+    total = roundUsd(total + (sample ? stage.estimated_cost.sample.usd : stage.estimated_cost.full.usd));
+    hasEstimate = true;
+  }
+
+  return hasEstimate ? total : undefined;
+}
+
+function isProposalStageSlug(stageSlug: string): boolean {
+  return stageSlug === "proposal" || stageSlug === "proposal_packet";
 }
 
 function reviewPlaybook(playbook: unknown): ReviewContext["playbook"] {

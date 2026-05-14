@@ -12,6 +12,8 @@ export const SAMPLE_FIRST_TRIGGERS_PATH = fileURLToPath(
   new URL("../../bundled/sample-first/triggers.yaml", import.meta.url),
 );
 
+export const SAMPLE_FIRST_FINDING_TITLE = "Sample-first protocol triggered but sample_required not set";
+
 export const SAMPLE_FIRST_CONDITIONS = ["reference_driven", "motion_required", "hero_scene_present"] as const;
 
 export const SampleFirstConditionSchema = z.enum(SAMPLE_FIRST_CONDITIONS);
@@ -110,7 +112,7 @@ export function checkSampleFirstProtocol(stageSlug: string, artifact: unknown, c
   return [
     {
       severity: "critical",
-      title: "Sample-first protocol triggered but sample_required not set",
+      title: SAMPLE_FIRST_FINDING_TITLE,
       location: "proposal.production_plan.sample_required",
       description: `Pipeline "${ctx.pipelineSlug}" triggered sample-first because ${evaluation.reason ?? "its trigger fired"}, but production_plan.sample_required is not true.`,
       proposed_fix:
@@ -118,6 +120,10 @@ export function checkSampleFirstProtocol(stageSlug: string, artifact: unknown, c
       status: "pending",
     },
   ];
+}
+
+export function isSampleFirstFinding(finding: unknown): finding is Finding {
+  return isRecord(finding) && finding.severity === "critical" && finding.title === SAMPLE_FIRST_FINDING_TITLE;
 }
 
 export function evaluateSampleFirstTrigger(
@@ -171,7 +177,7 @@ function evaluateConditionalTrigger(
   };
 }
 
-function hasSampleFirstSkipApproval(decisionLog: DecisionLog | undefined): boolean {
+export function hasSampleFirstSkipApproval(decisionLog: DecisionLog | undefined): boolean {
   return currentDecisions(decisionLog ?? []).some((decision) => {
     return decision.category === "downgrade_approval" && /sample[- ]first|sample skip/iu.test(decision.reason);
   });
@@ -179,4 +185,8 @@ function hasSampleFirstSkipApproval(decisionLog: DecisionLog | undefined): boole
 
 function isProposalStage(stageSlug: string): boolean {
   return stageSlug === "proposal" || stageSlug === "proposal_packet";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
