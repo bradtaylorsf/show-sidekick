@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
 import { errorWithInstallHint } from "../tool-support/errors.js";
-import { resolveProjectPath } from "../tool-support/paths.js";
+import { resolveProjectReadPath } from "../tool-support/paths.js";
 
 const INSTALL = "pip install opencv-python";
 
@@ -115,7 +115,7 @@ const faceTracker = defineTool({
   output: outputSchema,
   async execute(params: FaceTrackerInput, ctx): Promise<FaceTrackerOutput> {
     const input = inputSchema.parse(params);
-    const stdout = await runPython(trackerArgs({ ...input, path: resolveProjectPath(input.path, ctx.projectRoot) }));
+    const stdout = await runPython(trackerArgs({ ...input, path: resolveProjectReadPath(input.path, ctx.projectRoot) }));
 
     return parseFaceTrackerJson(stdout);
   },

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
 import { errorWithInstallHint } from "../tool-support/errors.js";
-import { resolveProjectPath } from "../tool-support/paths.js";
+import { resolveProjectReadPath, resolveProjectWritePath } from "../tool-support/paths.js";
 import { parseSceneCutTimes } from "./scene-detector.js";
 
 const INSTALL = "brew install ffmpeg";
@@ -121,8 +121,8 @@ const frameSampler = defineTool({
   output: outputSchema,
   async execute(params: FrameSamplerInput, ctx): Promise<FrameSamplerOutput> {
     const input = inputSchema.parse(params);
-    const inputPath = resolveProjectPath(input.path, ctx.projectRoot);
-    const outputDir = resolveProjectPath(input.output_dir, ctx.projectRoot);
+    const inputPath = resolveProjectReadPath(input.path, ctx.projectRoot);
+    const outputDir = resolveProjectWritePath(input.output_dir, ctx.projectRoot);
     await mkdir(outputDir, { recursive: true });
 
     const duration = await probeDuration(inputPath);

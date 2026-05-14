@@ -105,4 +105,23 @@ describe("auto_reframe tool", () => {
     expect(filter).toContain("crop=iw:iw/16/9");
     expect(filter).toContain("min(max(0,100");
   });
+
+  it("adds the ffmpeg install hint when rendering fails", async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), "predit-reframe-"));
+    const faceTracker = {
+      execute: vi.fn(async () => ({
+        frames: [{ time_s: 0, faces: [{ x: 200, y: 40, w: 120, h: 120, score: 1 }] }],
+      })),
+    } as unknown as Tool;
+    const ctx = context(projectRoot, {
+      registry: { select: vi.fn(async () => faceTracker) },
+      runCli: vi.fn(async () => {
+        throw new Error("ffmpeg failed: spawn ffmpeg ENOENT");
+      }),
+    });
+
+    await expect(
+      autoReframe.execute(autoReframe.input.parse({ video_path: "clips/source.mp4", target_aspect: "9:16" }), ctx),
+    ).rejects.toThrow(/Install: brew install ffmpeg/);
+  });
 });

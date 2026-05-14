@@ -4,7 +4,10 @@ import { z } from "zod";
 import { defineTool } from "../registry/define-tool.js";
 import type { ToolContext } from "../registry/tool.js";
 import { defaultRunCli } from "../tool-support/cli-runner.js";
+import { errorWithInstallHint } from "../tool-support/errors.js";
 import { resolveProjectPath } from "../tool-support/paths.js";
+
+const INSTALL = "brew install ffmpeg";
 
 type BBox = {
   x: number;
@@ -36,7 +39,7 @@ export default defineTool({
   capability: "auto_reframe",
   provider: "local",
   status: "beta",
-  integration: { kind: "binary", binary: "ffmpeg", install: "brew install ffmpeg" },
+  integration: { kind: "binary", binary: "ffmpeg", install: INSTALL },
   best_for: "Reframing landscape clips into vertical or square deliverables with face/object-aware smart crop.",
   supports: ["ffmpeg", "smart-crop", "9:16", "1:1", "4:5"],
   cost: { unit: "call", usd: 0 },
@@ -54,11 +57,15 @@ export default defineTool({
     const filter = buildFilter(input.target_aspect, subjectCenterX, subjectCenterY);
     const runner = ctx.runCli ?? defaultRunCli;
 
-    await runner(
-      "ffmpeg",
-      ["-y", "-i", inputPath, "-vf", filter, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "copy", outputPath],
-      { cwd: ctx.projectRoot },
-    );
+    try {
+      await runner(
+        "ffmpeg",
+        ["-y", "-i", inputPath, "-vf", filter, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "copy", outputPath],
+        { cwd: ctx.projectRoot },
+      );
+    } catch (error) {
+      throw errorWithInstallHint(error, INSTALL);
+    }
 
     return outputSchema.parse({ video_path: outputPath, target_aspect: input.target_aspect, cost_usd: 0 });
   },

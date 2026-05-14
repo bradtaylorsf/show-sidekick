@@ -2,7 +2,8 @@ import { mkdir, mkdtemp } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { transcribe } from "../audio/transcribe.js";
-import { defineTool, type ToolContext } from "../registry/index.js";
+import { NoToolAvailable, defineTool, type ToolContext } from "../registry/index.js";
+import { resolveProjectReadPath } from "../tool-support/paths.js";
 import frameSampler from "./frame-sampler.js";
 
 const inputSchema = z.object({
@@ -79,12 +80,13 @@ const videoUnderstand = defineTool({
   },
   async execute(params: VideoUnderstandInput, ctx: ToolContext): Promise<VideoUnderstandOutput> {
     const input = inputSchema.parse(params);
+    const inputPath = resolveProjectReadPath(input.path, ctx.projectRoot);
     const toolRunDir = join(ctx.projectRoot, "projects", "_tool_runs");
     await mkdir(toolRunDir, { recursive: true });
     const outputDir = input.output_dir ?? (await mkdtemp(join(toolRunDir, "video-understand-")));
     const frameResult = await frameSampler.execute(
       {
-        path: input.path,
+        path: inputPath,
         count: input.frame_count,
         mode: "uniform",
         output_dir: outputDir,
@@ -93,20 +95,30 @@ const videoUnderstand = defineTool({
     );
     let transcriptSegments: TranscriptSegment[] = [];
 
-    const transcript = await transcribe(
-      { path: input.path, duration_s: 0, sample_rate: 0, channels: 0 },
-      {
-        language: input.language,
-        registry: ctx.registry,
-        logger: ctx.logger,
-        projectRoot: ctx.projectRoot,
-      },
-    );
-    transcriptSegments = transcript.segments.map((segment) => ({
-      text: segment.text,
-      start_s: segment.start_s,
-      end_s: segment.end_s,
-    }));
+    try {
+      const transcript = await transcribe(
+        { path: inputPath, duration_s: 0, sample_rate: 0, channels: 0 },
+        {
+          language: input.language,
+          registry: ctx.registry,
+          logger: ctx.logger,
+          projectRoot: ctx.projectRoot,
+        },
+      );
+      transcriptSegments = transcript.segments.map((segment) => ({
+        text: segment.text,
+        start_s: segment.start_s,
+        end_s: segment.end_s,
+      }));
+    } catch (error) {
+      if (!isTranscriptionUnavailable(error)) {
+        throw error;
+      }
+
+      ctx.logger.warn("video_understand skipped transcription because no concrete transcriber was available", {
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     return outputSchema.parse({
       summary: summarizeUnderstanding(frameResult.frames, transcriptSegments),
@@ -118,3 +130,12 @@ const videoUnderstand = defineTool({
 });
 
 export default videoUnderstand;
+
+function isTranscriptionUnavailable(error: unknown): boolean {
+  if (error instanceof NoToolAvailable) {
+    return true;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  return /binary not on PATH|missing env|not-authenticated|No tool available|unavailable:/iu.test(message);
+}

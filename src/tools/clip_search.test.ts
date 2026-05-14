@@ -62,10 +62,11 @@ describe("clip_search tool", () => {
   });
 
   it("throws a clear error when clip_embedder is not available", async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), "predit-search-missing-"));
     await expect(
       clipSearch.execute(
-        clipSearch.input.parse({ query: "anything", corpus_dir: "/tmp/corpus" }),
-        { projectRoot: "/tmp/project", logger: noopLogger() },
+        clipSearch.input.parse({ query: "anything", corpus_dir: "corpus" }),
+        { projectRoot, logger: noopLogger() },
       ),
     ).rejects.toThrow("clip_embedding capability required (S-2)");
   });

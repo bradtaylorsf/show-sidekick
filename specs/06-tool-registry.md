@@ -131,6 +131,15 @@ Some capabilities also expose a `predit` provider-selection marker tool for disc
 - `predit` never collects, stores, or transmits credentials. CLI tools own their own auth (e.g. `higgsfield login` keeps a token in the CLI's own config dir; API tools rely on env vars in the user's shell).
 - The provider menu groups setup offers by 1-minute fixes (env var or `cli-login`), 5-minute installs, and complex setups (GPU, model downloads).
 
+## Tool path policy
+
+Tools that read user-supplied source media may accept absolute paths outside the project root, so users can inspect or ingest media from locations such as `~/Videos` or `/tmp`.
+Relative read paths resolve against `projectRoot`.
+
+Tools that write generated artifacts must keep output paths inside `projectRoot`.
+When a tool needs an output directory for frames, recordings, downloads, or rendered media, it should resolve that path with the write-path helper and reject traversal outside the project.
+If a tool stores a review artifact for a caller-supplied source path, it should preserve the caller's original path string in the artifact and use the resolved path only for probing.
+
 ## Layer 3 vendor knowledge
 
 Tool definitions stay terse. Provider-specific prompt engineering, parameter tuning, and quality techniques live in Markdown skills under `skills/agents/<name>.md`, referenced from `agent_skills`. The agent reads the vendor skill before calling the tool. Layer 3 is hand-editable without a TypeScript rebuild.

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { NoToolAvailable } from "../registry/index.js";
 import { transcribe } from "../audio/transcribe.js";
 import frameSampler from "./frame-sampler.js";
 import videoUnderstand, { inferUnderstandingDuration, summarizeUnderstanding } from "./video-understand.js";
@@ -84,14 +85,28 @@ describe("video_understand", () => {
     });
 
     expect(frameSampler.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ path: "fixture.mp4", count: 6, mode: "uniform" }),
+      expect.objectContaining({ path: join(projectRoot, "fixture.mp4"), count: 6, mode: "uniform" }),
       expect.any(Object),
     );
     expect(transcribe).toHaveBeenCalledWith(
-      expect.objectContaining({ path: "fixture.mp4" }),
+      expect.objectContaining({ path: join(projectRoot, "fixture.mp4") }),
       expect.objectContaining({ registry, projectRoot }),
     );
     expect(result.transcript_segments).toEqual([{ text: "fixture narration", start_s: 0, end_s: 1.8 }]);
     expect(result.summary).toContain("fixture narration");
+  });
+
+  it("keeps frame understanding available when transcription providers are unavailable", async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), "predit-video-understand-"));
+    vi.mocked(transcribe).mockRejectedValueOnce(new NoToolAvailable("transcribe", []));
+
+    const result = await videoUnderstand.execute(videoUnderstand.input.parse({ path: "fixture.mp4" }), {
+      projectRoot,
+      logger: logger(),
+      registry: { select: vi.fn() },
+    });
+
+    expect(result.transcript_segments).toEqual([]);
+    expect(result.summary).toContain("No transcript segments were available.");
   });
 });

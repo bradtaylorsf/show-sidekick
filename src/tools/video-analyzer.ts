@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { VideoAnalysisBriefSchema, type MotionType, type VideoAnalysisBrief } from "../artifacts/index.js";
 import { defineTool, type ToolContext } from "../registry/index.js";
+import { resolveProjectReadPath } from "../tool-support/paths.js";
 import frameSampler from "./frame-sampler.js";
 import sceneDetector from "./scene-detector.js";
 import { probeMediaFile } from "./source-media-review.js";
@@ -146,7 +147,7 @@ const videoAnalyzer = defineTool({
             ctx,
           )
         ).path
-      : input.path;
+      : resolveProjectReadPath(input.path, ctx.projectRoot);
     const probe = await probeMediaFile(sourcePath);
     const sceneResult = await sceneDetector.execute({ path: sourcePath, threshold: 0.3 }, ctx);
 

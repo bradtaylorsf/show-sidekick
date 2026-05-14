@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
 import { errorWithInstallHint } from "../tool-support/errors.js";
-import { resolveProjectPath } from "../tool-support/paths.js";
+import { resolveProjectReadPath } from "../tool-support/paths.js";
 
 const INSTALL = "brew install ffmpeg";
 
@@ -103,7 +103,7 @@ const sceneDetector = defineTool({
   output: outputSchema,
   async execute(params: SceneDetectorInput, ctx): Promise<SceneDetectorOutput> {
     const input = inputSchema.parse(params);
-    const inputPath = resolveProjectPath(input.path, ctx.projectRoot);
+    const inputPath = resolveProjectReadPath(input.path, ctx.projectRoot);
     const duration = await probeDuration(inputPath);
     const result = await runFile("ffmpeg", [
       "-hide_banner",

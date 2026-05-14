@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
 import { errorWithInstallHint } from "../tool-support/errors.js";
-import { resolveProjectPath } from "../tool-support/paths.js";
+import { resolveProjectReadPath } from "../tool-support/paths.js";
 
 export const CLIP_MODEL_ID = "ViT-B-32/laion2b_s34b_b79k";
 const INSTALL = "pip install open_clip_torch pillow; brew install ffmpeg for video-frame inputs";
@@ -195,7 +195,7 @@ const clipEmbedder = defineTool({
   output: outputSchema,
   async execute(params: ClipEmbedderInput, ctx): Promise<ClipEmbedderOutput> {
     const input = inputSchema.parse(params);
-    const safeInput = input.path === undefined ? input : { ...input, path: resolveProjectPath(input.path, ctx.projectRoot) };
+    const safeInput = input.path === undefined ? input : { ...input, path: resolveProjectReadPath(input.path, ctx.projectRoot) };
     let prepared: Awaited<ReturnType<typeof preparedInput>> | undefined;
 
     try {

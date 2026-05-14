@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
 import { errorWithInstallHint } from "../tool-support/errors.js";
-import { resolveProjectPath } from "../tool-support/paths.js";
+import { resolveProjectReadPath } from "../tool-support/paths.js";
 
 const INSTALL = "brew install ffmpeg";
 
@@ -92,7 +92,7 @@ const audioEnergy = defineTool({
   output: outputSchema,
   async execute(params: AudioEnergyInput, ctx) {
     const input = inputSchema.parse(params);
-    const inputPath = resolveProjectPath(input.path, ctx.projectRoot);
+    const inputPath = resolveProjectReadPath(input.path, ctx.projectRoot);
     const filter = `astats=metadata=1:reset=${input.window_s},ebur128=metadata=1`;
     const result = await runFile("ffmpeg", ["-hide_banner", "-nostats", "-i", inputPath, "-af", filter, "-f", "null", "-"]);
 

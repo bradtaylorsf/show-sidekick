@@ -4,7 +4,7 @@ import { z } from "zod";
 import { SourceMediaReviewSchema, type SourceMediaReview } from "../artifacts/index.js";
 import { defineTool } from "../registry/index.js";
 import { errorWithInstallHint } from "../tool-support/errors.js";
-import { resolveProjectPath } from "../tool-support/paths.js";
+import { resolveProjectReadPath } from "../tool-support/paths.js";
 
 const INSTALL = "brew install ffmpeg";
 
@@ -273,9 +273,9 @@ const sourceMediaReview = defineTool({
     const files = [];
 
     for (const path of input.files) {
-      const resolvedPath = resolveProjectPath(path, ctx.projectRoot);
+      const resolvedPath = resolveProjectReadPath(path, ctx.projectRoot);
       const result = await runFfprobe(resolvedPath);
-      files.push(buildSourceMediaReviewFile(resolvedPath, parseFfprobeJson(result.stdout)));
+      files.push(buildSourceMediaReviewFile(path, parseFfprobeJson(result.stdout)));
     }
 
     return SourceMediaReviewSchema.parse({ files });
