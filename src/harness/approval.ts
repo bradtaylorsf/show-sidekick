@@ -1,9 +1,10 @@
 import type { Checkpoint } from "../checkpoints/index.js";
 import type { CliIo } from "../cli/commands/stub.js";
 
-export type ApprovalAction = "approve" | "revise" | "abort";
+export type ApprovalAction = "approve" | "revise" | "abort" | "sample" | "downgrade";
 
 export type ApprovalContext = {
+  kind?: "stage" | "sample-first";
   stageCost: number;
   totalSoFar: number;
   budgetRemaining: number;
@@ -38,21 +39,25 @@ export type ApprovalEvent =
   | {
       event: "approval_block_start";
       stage: string;
+      kind?: ApprovalContext["kind"];
     }
   | {
       event: "artifact_summary";
       stage: string;
+      kind?: ApprovalContext["kind"];
       bullets: string[];
     }
   | {
       event: "review_findings";
       stage: string;
+      kind?: ApprovalContext["kind"];
       counts: ApprovalCounts;
       critical_findings: ApprovalCriticalFinding[];
     }
   | {
       event: "cost_snapshot";
       stage: string;
+      kind?: ApprovalContext["kind"];
       stage_cost_usd: number;
       total_so_far_usd: number;
       budget_remaining_usd: number;
@@ -62,6 +67,7 @@ export type ApprovalEvent =
   | {
       event: "action_options";
       stage: string;
+      kind?: ApprovalContext["kind"];
       actions: ApprovalAction[];
     };
 
@@ -92,21 +98,25 @@ export function formatApprovalEvents(checkpoint: Checkpoint, ctx: ApprovalContex
     {
       event: "approval_block_start",
       stage: checkpoint.stage,
+      kind: ctx.kind,
     },
     {
       event: "artifact_summary",
       stage: checkpoint.stage,
+      kind: ctx.kind,
       bullets: artifactSummaryBullets(ctx.artifactSummary),
     },
     {
       event: "review_findings",
       stage: checkpoint.stage,
+      kind: ctx.kind,
       counts: reviewCounts(checkpoint),
       critical_findings: criticalFindingsForApproval(checkpoint),
     },
     {
       event: "cost_snapshot",
       stage: checkpoint.stage,
+      kind: ctx.kind,
       stage_cost_usd: ctx.stageCost,
       total_so_far_usd: ctx.totalSoFar,
       budget_remaining_usd: ctx.budgetRemaining,
@@ -116,6 +126,7 @@ export function formatApprovalEvents(checkpoint: Checkpoint, ctx: ApprovalContex
     {
       event: "action_options",
       stage: checkpoint.stage,
+      kind: ctx.kind,
       actions,
     },
   ];

@@ -11,6 +11,7 @@ import {
   createExternalAgentDispatcher,
   resolveReferenceSource,
   Runner,
+  type ApprovalAction,
   type ApprovalPromptResult,
   type Dispatcher,
   type ReferenceSource,
@@ -193,11 +194,15 @@ async function resolvePlaybook(loaded: LoadedRunTarget): Promise<unknown> {
 }
 
 function createReadlineApprovalPrompt(): RunnerOptions["prompt"] {
-  return async (): Promise<ApprovalPromptResult> => {
+  return async (_checkpoint, approvalCtx): Promise<ApprovalPromptResult> => {
     const readline = createInterface({ input: process.stdin, output: process.stdout });
 
     try {
-      const action = normalizeAction(await readline.question("Action (approve/revise/abort): "));
+      const question =
+        approvalCtx.kind === "sample-first"
+          ? "Action (sample/downgrade/abort): "
+          : "Action (approve/revise/abort): ";
+      const action = normalizeAction(await readline.question(question));
       if (action !== "revise") {
         return action;
       }
@@ -210,11 +215,17 @@ function createReadlineApprovalPrompt(): RunnerOptions["prompt"] {
   };
 }
 
-function normalizeAction(value: string): "approve" | "revise" | "abort" {
+function normalizeAction(value: string): ApprovalAction {
   const normalized = value.trim().toLowerCase();
 
   if (normalized === "approve" || normalized === "a" || normalized === "yes" || normalized === "y") {
     return "approve";
+  }
+  if (normalized === "sample" || normalized === "s") {
+    return "sample";
+  }
+  if (normalized === "downgrade" || normalized === "skip" || normalized === "d") {
+    return "downgrade";
   }
   if (normalized === "revise" || normalized === "r") {
     return "revise";
@@ -223,7 +234,7 @@ function normalizeAction(value: string): "approve" | "revise" | "abort" {
     return "abort";
   }
 
-  throw new Error(`unknown approval action '${value}'; expected approve, revise, or abort`);
+  throw new Error(`unknown approval action '${value}'; expected approve, revise, sample, downgrade, or abort`);
 }
 
 function emitBuildFinished(

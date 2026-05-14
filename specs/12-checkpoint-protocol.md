@@ -109,6 +109,7 @@ projects/<show>/<episode>/checkpoints/sample_v2.json
 The sample checkpoint:
 
 - References the rendered sample clip path.
+- Proposal-time sample-first halts may write `sample_video_path: "pending"` until the rendered sample exists.
 - Records sample cost and projected full cost.
 - Status is always `awaiting_human` — the user must approve before the full run begins.
 - Is versioned so `predit revise <show>/<episode> "<note>"` can preserve each human revision request as its own sub-checkpoint.

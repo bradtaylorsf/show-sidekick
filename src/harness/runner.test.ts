@@ -3,9 +3,9 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { readCheckpoint, readState } from "../checkpoints/index.js";
+import { readCheckpoint, readSampleCheckpoint, readState } from "../checkpoints/index.js";
 import { readCostLog } from "../cost/tracker.js";
-import { readDecisionLog, type DecisionEntry } from "../decisions/index.js";
+import { readDecisionLog, recordDecision, type DecisionEntry } from "../decisions/index.js";
 import { loadPipeline } from "../pipelines/load.js";
 import type { PipelineManifest, Stage } from "../pipelines/index.js";
 import { defineTool, Registry, type Tool } from "../registry/index.js";
@@ -619,6 +619,133 @@ describe("Runner", () => {
     expect(output.stdout()).toContain("Projected remaining: $3.00 full / $0.50 sample.");
   });
 
+  it("halts sample-first proposal reviews by writing sample_v1", async () => {
+    const root = await scratchProject();
+    const pipeline = sampleFirstPipeline();
+    const show = loadedShow(root, "hybrid");
+    const episode = loadedEpisode(show, "hybrid");
+    const output = captureIo();
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "hybrid",
+      registry: new Registry({ tools: [] }),
+      dispatcher: scriptedDispatcher([], {
+        proposal: stageResult(proposalPacket(), 0.05),
+      }),
+      runOptions: { sample: false, nonInteractive: true },
+      io: output.io,
+      json: true,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("awaiting_human");
+    expect(result.lastStage).toBe("proposal");
+    await expect(readSampleCheckpoint(root, "show", "episode", 1)).resolves.toMatchObject({
+      version: 1,
+      status: "awaiting_human",
+      cost_for_this_sample: 0.3,
+      cumulative_sample_cost: 0.3,
+      projected_full_cost: 1.2,
+      sample_video_path: "pending",
+    });
+    await expect(readState(root, "show", "episode")).resolves.toMatchObject({
+      current_stage: "proposal",
+      last_status: "awaiting_human",
+      sample: { latest_version: 1 },
+    });
+    expect(output.stdout()).toContain('"kind":"sample-first"');
+    expect(output.stdout()).toContain('"actions":["sample","downgrade","abort"]');
+  });
+
+  it("records a downgrade_approval and continues when the sample-first prompt chooses downgrade", async () => {
+    const root = await scratchProject();
+    const pipeline = sampleFirstPipeline();
+    const show = loadedShow(root, "hybrid");
+    const episode = loadedEpisode(show, "hybrid");
+    const dispatched: string[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "hybrid",
+      registry: new Registry({ tools: [] }),
+      dispatcher: scriptedDispatcher(dispatched, {
+        proposal: stageResult(proposalPacket(), 0.05),
+        script: stageResult({ ok: true }, 0.1),
+      }),
+      runOptions: { sample: false },
+      io: captureIo().io,
+      prompt: async () => ({ action: "downgrade", note: "Deadline matters more than the sample." }),
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(dispatched).toEqual(["proposal", "script"]);
+    await expect(readDecisionLog({ show: "show", episode: "episode" }, { root })).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: "downgrade_approval",
+          picked: "skip_sample_first",
+          reason: expect.stringContaining("sample-first"),
+        }),
+      ]),
+    );
+    await expect(readCheckpoint(root, "show", "episode", "proposal")).resolves.toMatchObject({
+      status: "completed",
+      review_summary: {
+        decision: "pass",
+        critical: 0,
+      },
+    });
+  });
+
+  it("does not write a sample checkpoint when a sample-first downgrade was already approved", async () => {
+    const root = await scratchProject();
+    const pipeline = sampleFirstPipeline();
+    const show = loadedShow(root, "hybrid");
+    const episode = loadedEpisode(show, "hybrid");
+    const dispatched: string[] = [];
+    await recordDecision(
+      { show: "show", episode: "episode" },
+      {
+        ...decisionEntry("sample-first-skip", "proposal"),
+        category: "downgrade_approval",
+        picked: "skip_sample_first",
+        reason: "User insists on sample-first skip after pushback.",
+        user_visible: true,
+      },
+      { root },
+    );
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "hybrid",
+      registry: new Registry({ tools: [] }),
+      dispatcher: scriptedDispatcher(dispatched, {
+        proposal: stageResult(proposalPacket(), 0.05),
+        script: stageResult({ ok: true }, 0.1),
+      }),
+      runOptions: { sample: false },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(dispatched).toEqual(["proposal", "script"]);
+    await expect(readSampleCheckpoint(root, "show", "episode", 1)).rejects.toThrow();
+    const state = await readState(root, "show", "episode");
+    expect(state?.sample).toBeUndefined();
+  });
+
   it("adds a cost-drift finding when cumulative actual cost exceeds estimated cost by 30 percent", async () => {
     const root = await scratchProject();
     const pipeline = pipelineManifest(
@@ -1041,6 +1168,23 @@ function pipelineManifest(
   };
 }
 
+function sampleFirstPipeline(): PipelineManifest {
+  return {
+    ...pipelineManifest([
+      stage("proposal", {
+        produces: "proposal_packet",
+      }),
+      stage("script", {
+        estimated_cost: {
+          sample: { usd: 0.3 },
+          full: { usd: 1.2 },
+        },
+      }),
+    ]),
+    slug: "hybrid",
+  };
+}
+
 function stage(slug: string, overrides: Partial<Stage> = {}): Stage {
   return {
     slug,
@@ -1056,6 +1200,41 @@ function stage(slug: string, overrides: Partial<Stage> = {}): Stage {
     success_criteria: [],
     human_approval: "never",
     ...overrides,
+  };
+}
+
+function proposalPacket(overrides: { sample_required?: boolean } = {}) {
+  return {
+    concept_options: [
+      {
+        slug: "one",
+        hook: "A compact opening hook.",
+        treatment: "Use clear motion graphics to explain the point.",
+      },
+      {
+        slug: "two",
+        hook: "A more direct opening hook.",
+        treatment: "Use a presenter-led explanation with simple charts.",
+      },
+      {
+        slug: "three",
+        hook: "A question-led opening hook.",
+        treatment: "Use a quick setup and payoff structure.",
+      },
+    ],
+    production_plan: {
+      render_runtime: "remotion",
+      renderer_family: "explainer-teacher",
+      audio_architecture: "single_narrator",
+      ...(overrides.sample_required === undefined ? {} : { sample_required: overrides.sample_required }),
+    },
+    delivery_promise: {
+      motion_led: true,
+      narration_present: true,
+      music_present: false,
+      reference_driven: false,
+    },
+    decision_log_ref: "projects/show/episode/decisions.json",
   };
 }
 

@@ -12,6 +12,7 @@ export const SampleCheckpointPayloadSchema = z.object({
   cost_for_this_sample: z.number().nonnegative(),
   cumulative_sample_cost: z.number().nonnegative(),
   projected_full_cost: z.number().nonnegative(),
+  // Proposal-time sample-first halts may use "pending" until a rendered sample exists.
   sample_video_path: z.string(),
   revision_note: z.string().optional(),
 });
