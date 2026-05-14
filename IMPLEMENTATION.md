@@ -1222,9 +1222,9 @@ A vitest suite under `tests/content-fidelity/` greps the corresponding skill mar
 ## L-1 — Framework-smoke pipeline (no EP required)
 
 **Standard acceptance.**
-- [ ] Manifest < 30 lines: `slug: framework-smoke`, two stages (`research`, `script`), no orchestration block, no metadata, no EP file.
-- [ ] PIP-2 minimal-manifest path validates without error.
-- [ ] CI gate (D-9): `predit build framework-smoke/sample --sample` runs end-to-end in < 30s with zero API keys.
+- [x] Manifest < 30 lines: `slug: framework-smoke`, two stages (`research`, `script`), no orchestration block, no metadata, no EP file.
+- [x] PIP-2 minimal-manifest path validates without error.
+- [ ] CI gate (D-9): `predit build framework-smoke/sample --sample` runs end-to-end in < 30s with zero API keys. Blocked on Epic 9 runner integration.
 
 ## L-2 — Animated-explainer pipeline + director skills
 

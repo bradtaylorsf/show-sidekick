@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import YAML from "yaml";
 
 const repoRoot = process.cwd();
 const sourceArg = process.argv[2];
@@ -183,6 +184,14 @@ const rawCopies = [
   })),
 ];
 
+const pipelineCopies = [
+  {
+    source: "pipeline_defs/framework-smoke.yaml",
+    target: "bundled/pipelines/framework-smoke.yaml",
+    transform: normalizeFrameworkSmokePipeline,
+  },
+];
+
 const missing = [];
 let copied = 0;
 
@@ -204,6 +213,22 @@ for (const copy of skillCopies) {
 }
 
 for (const copy of rawCopies) {
+  const sourcePath = path.join(sourceRoot, copy.source);
+  const targetPath = path.join(repoRoot, copy.target);
+  let original;
+
+  try {
+    original = await readFile(sourcePath, "utf8");
+  } catch {
+    missing.push(copy.source);
+    continue;
+  }
+
+  await writeOutput(targetPath, copy.transform(original));
+  copied += 1;
+}
+
+for (const copy of pipelineCopies) {
   const sourcePath = path.join(sourceRoot, copy.source);
   const targetPath = path.join(repoRoot, copy.target);
   let original;
@@ -273,4 +298,54 @@ function normalizeRepoTerms(value) {
     .replaceAll("remotion-composer/", "src/remotion/")
     .replaceAll("hyperframes_compose", "hyperframes")
     .replaceAll("cost_tracker", "cost tracker");
+}
+
+function normalizeFrameworkSmokePipeline(yaml) {
+  const original = YAML.parse(yaml);
+  const slug = normalizeRepoTerms(String(original?.name ?? "framework-smoke"));
+  const stages = Array.isArray(original?.stages) ? original.stages : [];
+  const lines = [
+    `slug: ${slug}`,
+    `display_name: ${quoteYaml(titleize(slug))}`,
+    `description: ${quoteYaml(normalizeRepoTerms(String(original?.description ?? "")))}`,
+    `status: ${mapPipelineStatus(original?.stability)}`,
+    "master_clock: none",
+    "stages:",
+  ];
+
+  for (const stage of stages) {
+    const stageSlug = String(stage?.name ?? "");
+    const produces = firstString(stage?.produces) ?? `${stageSlug}_artifact`;
+    lines.push(
+      `  - slug: ${stageSlug}`,
+      `    skill: pipelines/${slug}/${stageSlug}-director.md`,
+      `    produces: ${produces}`,
+      "    success_criteria:",
+    );
+
+    const criteria = Array.isArray(stage?.success_criteria) ? stage.success_criteria : [];
+    for (const criterion of criteria) {
+      lines.push(`      - ${quoteYaml(normalizeRepoTerms(String(criterion)))}`);
+    }
+
+    lines.push("    human_approval: never");
+  }
+
+  return lines.join("\n");
+}
+
+function firstString(value) {
+  return Array.isArray(value) && typeof value[0] === "string" ? value[0] : undefined;
+}
+
+function mapPipelineStatus(value) {
+  return ["production", "beta", "experimental"].includes(value) ? value : "experimental";
+}
+
+function titleize(slug) {
+  return slug
+    .split(/[-_]/u)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }

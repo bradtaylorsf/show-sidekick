@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -71,6 +72,30 @@ describe("pipeline loader", () => {
     });
   });
 
+  it("loads the bundled framework-smoke manifest through the cached minimal-manifest path", async () => {
+    const root = await scratchProject();
+    await mkdir(path.join(root, ".predit", "pipelines"), { recursive: true });
+    await cp(bundledPipeline("framework-smoke"), path.join(root, ".predit", "pipelines", "framework-smoke.yaml"));
+
+    const pipeline = await loadPipeline(root, "framework-smoke");
+
+    expect(pipeline).toMatchObject({
+      slug: "framework-smoke",
+      stages: [
+        {
+          slug: "research",
+          produces: "research_brief",
+          human_approval: "never",
+        },
+        {
+          slug: "script",
+          produces: "script",
+          human_approval: "never",
+        },
+      ],
+    });
+  });
+
   it("accepts success criteria that reference declared stages", async () => {
     const root = await scratchProject();
     await writePipeline(root, "pipelines", "framework-smoke", "Framework Smoke", [
@@ -132,4 +157,8 @@ async function writePipeline(
     ].join("\n"),
     "utf8",
   );
+}
+
+function bundledPipeline(slug: string): string {
+  return fileURLToPath(new URL(`../../bundled/pipelines/${slug}.yaml`, import.meta.url));
 }

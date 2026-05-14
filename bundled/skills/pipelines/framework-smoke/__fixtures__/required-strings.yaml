@@ -1,0 +1,21 @@
+pipeline: framework-smoke
+required_sections:
+  - file: research-director.md
+    section: "## Purpose"
+  - file: research-director.md
+    section: "## Output Contract"
+  - file: script-director.md
+    section: "## Purpose"
+  - file: script-director.md
+    section: "## Output Contract"
+required_phrases:
+  - file: research-director.md
+    phrase: "schema-valid research_brief artifact"
+  - file: research-director.md
+    phrase: "zero API keys"
+  - file: script-director.md
+    phrase: "schema-valid script artifact"
+  - file: script-director.md
+    phrase: "zero API keys"
+required_numerics: []
+required_modules: []

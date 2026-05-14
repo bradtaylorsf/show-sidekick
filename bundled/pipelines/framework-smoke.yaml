@@ -1,0 +1,18 @@
+slug: framework-smoke
+display_name: "Framework Smoke"
+description: "Minimal pipeline manifest used to exercise the Phase 0 framework contracts."
+status: beta
+master_clock: none
+stages:
+  - slug: research
+    skill: pipelines/framework-smoke/research-director.md
+    produces: research_brief
+    success_criteria:
+      - "Produces a schema-valid research_brief artifact"
+    human_approval: never
+  - slug: script
+    skill: pipelines/framework-smoke/script-director.md
+    produces: script
+    success_criteria:
+      - "Produces a schema-valid script artifact"
+    human_approval: never
