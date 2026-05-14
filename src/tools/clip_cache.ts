@@ -8,6 +8,9 @@ const inputSchema = z
     prompt: z.string().min(1),
     provider: z.string().min(1),
     model: z.string().min(1),
+    image_url: z.string().min(1).optional(),
+    duration: z.number().positive().optional(),
+    aspect_ratio: z.string().min(1).optional(),
     video_path: z.string().min(1).optional(),
   })
   .superRefine((value, ctx) => {
@@ -33,7 +36,7 @@ export default defineTool({
   status: "beta",
   integration: { kind: "library", package: "node:crypto", install: "built into Node.js" },
   best_for: "Caching generated clips by prompt, provider, and model to avoid duplicate provider calls.",
-  supports: ["generated-clip-cache", "prompt-provider-model-key"],
+  supports: ["generated-clip-cache", "generation-input-key"],
   cost: { unit: "call", usd: 0 },
   input: inputSchema,
   output: outputSchema,
@@ -54,6 +57,9 @@ export default defineTool({
       prompt: input.prompt,
       provider: input.provider,
       model: input.model,
+      image_url: input.image_url,
+      duration: input.duration,
+      aspect_ratio: input.aspect_ratio,
       video_path: input.video_path ?? "",
     });
 

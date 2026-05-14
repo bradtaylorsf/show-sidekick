@@ -29,11 +29,21 @@ export type JsonPostSpec = {
   ctx: ToolContext;
   prompt?: string;
   model?: string;
+  image_url?: string;
+  duration?: number;
+  aspect_ratio?: string;
 };
 
 export async function postVideoGeneration(spec: JsonPostSpec): Promise<VideoProviderOutput> {
   const cacheKey = spec.prompt
-    ? { prompt: spec.prompt, provider: spec.provider, model: spec.model ?? inferModel(spec.body) ?? "default" }
+    ? {
+        prompt: spec.prompt,
+        provider: spec.provider,
+        model: spec.model ?? inferModel(spec.body) ?? "default",
+        image_url: spec.image_url ?? inferString(spec.body, ["image_url", "image", "promptImage", "first_frame_image"]),
+        duration: spec.duration ?? inferNumber(spec.body, ["duration", "durationSeconds"]),
+        aspect_ratio: spec.aspect_ratio ?? inferString(spec.body, ["aspect_ratio", "aspectRatio", "ratio"]),
+      }
     : undefined;
   const cached = cacheKey ? await lookupClipCache(spec.ctx, cacheKey) : undefined;
   if (cached) {
@@ -196,6 +206,50 @@ function inferModel(payload: unknown): string | undefined {
   for (const value of Object.values(payload)) {
     const nested = inferModel(value);
     if (nested) {
+      return nested;
+    }
+  }
+
+  return undefined;
+}
+
+function inferString(payload: unknown, keys: string[]): string | undefined {
+  if (!isRecord(payload)) {
+    return undefined;
+  }
+
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === "string" && value.length > 0) {
+      return value;
+    }
+  }
+
+  for (const value of Object.values(payload)) {
+    const nested = inferString(value, keys);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return undefined;
+}
+
+function inferNumber(payload: unknown, keys: string[]): number | undefined {
+  if (!isRecord(payload)) {
+    return undefined;
+  }
+
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+  }
+
+  for (const value of Object.values(payload)) {
+    const nested = inferNumber(value, keys);
+    if (nested !== undefined) {
       return nested;
     }
   }

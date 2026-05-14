@@ -3,9 +3,11 @@ import { z } from "zod";
 import { defineTool } from "../registry/define-tool.js";
 import type { ToolContext } from "../registry/tool.js";
 import { defaultRunCli } from "../tool-support/cli-runner.js";
+import { lookupClipCache, rememberClipCache } from "../tool-support/clip-cache.js";
 
 const HIGGSFIELD_COST_USD = 0.3;
 const KLING_IMAGE_TO_VIDEO_URL = "https://api.higgsfield.ai/kling-video/v2.1/pro/image-to-video";
+const MODEL = "kling-v2.1-pro";
 
 const durationSchema = z.union([z.literal(5), z.literal(10)]);
 
@@ -77,9 +79,27 @@ export default defineTool({
     const input = inputSchema.parse(params);
     const imageUrl = await resolveImageUrl(input, ctx);
     const request = buildWireRequest(input, imageUrl);
+    const cacheKey = {
+      prompt: input.prompt,
+      provider: "higgsfield",
+      model: MODEL,
+      image_url: imageUrl,
+      duration: input.duration,
+      aspect_ratio: "16:9",
+    };
+    const cached = await lookupClipCache(ctx, cacheKey);
+    if (cached) {
+      return outputSchema.parse({
+        video_path: cached.video_path,
+        cost_usd: 0,
+        request,
+      } satisfies HiggsfieldOutput);
+    }
+
     const result = await runHiggsfield(input, imageUrl, request, ctx);
     const videoPath = readVideoPath(result.stdout);
     const recordedRequest = readRecordedRequest(result.stdout) ?? request;
+    await rememberClipCache(ctx, { ...cacheKey, video_path: videoPath });
 
     return outputSchema.parse({
       video_path: videoPath,

@@ -54,10 +54,29 @@ describe("setup command", () => {
     await createSetupHandler(capture.io, {
       createRegistry: async () => registry,
       runInstall,
+      commandExists: async () => false,
       cwd: () => "/project",
     })("higgsfield", command());
 
     expect(runInstall).toHaveBeenCalledWith("npm i -g @higgsfield/cli && higgsfield login", { cwd: "/project" });
+    expect(capture.stdout()).toBe("setup higgsfield: completed\n");
+  });
+
+  it("refreshes CLI login without reinstalling when the binary is already present", async () => {
+    const capture = io();
+    const runInstall = vi.fn(async () => undefined);
+    const registry = new Registry({
+      tools: [tool("higgsfield", "npm i -g @higgsfield/cli && higgsfield login")],
+    });
+
+    await createSetupHandler(capture.io, {
+      createRegistry: async () => registry,
+      runInstall,
+      commandExists: async () => true,
+      cwd: () => "/project",
+    })("higgsfield", command());
+
+    expect(runInstall).toHaveBeenCalledWith("higgsfield login", { cwd: "/project" });
     expect(capture.stdout()).toBe("setup higgsfield: completed\n");
   });
 
@@ -68,6 +87,7 @@ describe("setup command", () => {
     await createSetupHandler(capture.io, {
       createRegistry: async () => registry,
       runInstall: async () => undefined,
+      commandExists: async () => false,
       cwd: () => "/project",
     })("higgsfield", command({ json: true }));
 

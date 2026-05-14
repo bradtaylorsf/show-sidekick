@@ -20,13 +20,21 @@ function context(projectRoot: string): ToolContext {
 }
 
 describe("clip_cache tool", () => {
-  it("stores generated clips by prompt-provider-model tuple and returns cache hits", async () => {
+  it("stores generated clips by identical generation inputs and returns cache hits", async () => {
     const projectRoot = await mkdtemp(join(tmpdir(), "predit-cache-"));
     const source = join(projectRoot, "generated.mp4");
     await writeFile(source, "fixture video");
 
     const lookupMiss = await clipCache.execute(
-      clipCache.input.parse({ mode: "lookup", prompt: "slow dolly", provider: "hunyuan", model: "hunyuan-video" }),
+      clipCache.input.parse({
+        mode: "lookup",
+        prompt: "slow dolly",
+        provider: "hunyuan",
+        model: "hunyuan-video",
+        image_url: "https://cdn.example.com/ref-a.png",
+        duration: 5,
+        aspect_ratio: "16:9",
+      }),
       context(projectRoot),
     );
     expect(lookupMiss).toMatchObject({ hit: false, cache_key: expect.any(String) });
@@ -37,6 +45,9 @@ describe("clip_cache tool", () => {
         prompt: "slow dolly",
         provider: "hunyuan",
         model: "hunyuan-video",
+        image_url: "https://cdn.example.com/ref-a.png",
+        duration: 5,
+        aspect_ratio: "16:9",
         video_path: source,
       }),
       context(projectRoot),
@@ -45,29 +56,100 @@ describe("clip_cache tool", () => {
     await expect(readFile(stored.video_path ?? "", "utf8")).resolves.toBe("fixture video");
 
     const lookupHit = await clipCache.execute(
-      clipCache.input.parse({ mode: "lookup", prompt: "slow dolly", provider: "hunyuan", model: "hunyuan-video" }),
+      clipCache.input.parse({
+        mode: "lookup",
+        prompt: "slow dolly",
+        provider: "hunyuan",
+        model: "hunyuan-video",
+        image_url: "https://cdn.example.com/ref-a.png",
+        duration: 5,
+        aspect_ratio: "16:9",
+      }),
       context(projectRoot),
     );
     expect(lookupHit).toEqual(stored);
   });
 
-  it("keeps cache keys stable and sensitive to model changes", async () => {
+  it("keeps cache keys stable and sensitive to model and input changes", async () => {
     const projectRoot = await mkdtemp(join(tmpdir(), "predit-cache-"));
     const first = await clipCache.execute(
-      clipCache.input.parse({ mode: "lookup", prompt: "same prompt", provider: "wan", model: "wan-2.1" }),
+      clipCache.input.parse({
+        mode: "lookup",
+        prompt: "same prompt",
+        provider: "wan",
+        model: "wan-2.1",
+        image_url: "https://cdn.example.com/ref-a.png",
+        duration: 5,
+        aspect_ratio: "16:9",
+      }),
       context(projectRoot),
     );
     const second = await clipCache.execute(
-      clipCache.input.parse({ mode: "lookup", prompt: "same prompt", provider: "wan", model: "wan-2.1" }),
+      clipCache.input.parse({
+        mode: "lookup",
+        prompt: "same prompt",
+        provider: "wan",
+        model: "wan-2.1",
+        image_url: "https://cdn.example.com/ref-a.png",
+        duration: 5,
+        aspect_ratio: "16:9",
+      }),
       context(projectRoot),
     );
     const differentModel = await clipCache.execute(
-      clipCache.input.parse({ mode: "lookup", prompt: "same prompt", provider: "wan", model: "wan-2.2" }),
+      clipCache.input.parse({
+        mode: "lookup",
+        prompt: "same prompt",
+        provider: "wan",
+        model: "wan-2.2",
+        image_url: "https://cdn.example.com/ref-a.png",
+        duration: 5,
+        aspect_ratio: "16:9",
+      }),
+      context(projectRoot),
+    );
+    const differentImage = await clipCache.execute(
+      clipCache.input.parse({
+        mode: "lookup",
+        prompt: "same prompt",
+        provider: "wan",
+        model: "wan-2.1",
+        image_url: "https://cdn.example.com/ref-b.png",
+        duration: 5,
+        aspect_ratio: "16:9",
+      }),
+      context(projectRoot),
+    );
+    const differentDuration = await clipCache.execute(
+      clipCache.input.parse({
+        mode: "lookup",
+        prompt: "same prompt",
+        provider: "wan",
+        model: "wan-2.1",
+        image_url: "https://cdn.example.com/ref-a.png",
+        duration: 10,
+        aspect_ratio: "16:9",
+      }),
+      context(projectRoot),
+    );
+    const differentAspectRatio = await clipCache.execute(
+      clipCache.input.parse({
+        mode: "lookup",
+        prompt: "same prompt",
+        provider: "wan",
+        model: "wan-2.1",
+        image_url: "https://cdn.example.com/ref-a.png",
+        duration: 5,
+        aspect_ratio: "9:16",
+      }),
       context(projectRoot),
     );
 
     expect(second.cache_key).toBe(first.cache_key);
     expect(differentModel.cache_key).not.toBe(first.cache_key);
+    expect(differentImage.cache_key).not.toBe(first.cache_key);
+    expect(differentDuration.cache_key).not.toBe(first.cache_key);
+    expect(differentAspectRatio.cache_key).not.toBe(first.cache_key);
   });
 
   it("requires video_path when storing", () => {

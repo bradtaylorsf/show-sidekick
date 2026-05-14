@@ -143,6 +143,48 @@ describe("higgsfield tool", () => {
     expect(result.request).toEqual(recordedRequest);
   });
 
+  it("serves repeated CLI generations from cache without colliding reference images", async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), "predit-higgsfield-cache-"));
+    const runCli = vi.fn(async () => {
+      const id = `higgsfield-${runCli.mock.calls.length}`;
+      return {
+        stdout: JSON.stringify({ video_path: `projects/show/episode/clips/${id}.mp4` }),
+        stderr: "",
+      };
+    });
+    const ctx = context({ projectRoot, runCli });
+
+    const first = await higgsfield.execute(
+      higgsfield.input.parse({
+        image_url: "https://cdn.example.com/reference-a.png",
+        prompt: "same prompt",
+        duration: 5,
+      }),
+      ctx,
+    );
+    const second = await higgsfield.execute(
+      higgsfield.input.parse({
+        image_url: "https://cdn.example.com/reference-a.png",
+        prompt: "same prompt",
+        duration: 5,
+      }),
+      ctx,
+    );
+    const differentImage = await higgsfield.execute(
+      higgsfield.input.parse({
+        image_url: "https://cdn.example.com/reference-b.png",
+        prompt: "same prompt",
+        duration: 5,
+      }),
+      ctx,
+    );
+
+    expect(runCli).toHaveBeenCalledTimes(2);
+    expect(first).toMatchObject({ video_path: "projects/show/episode/clips/higgsfield-1.mp4", cost_usd: 0.3 });
+    expect(second).toMatchObject({ video_path: "projects/show/episode/clips/higgsfield-1.mp4", cost_usd: 0 });
+    expect(differentImage).toMatchObject({ video_path: "projects/show/episode/clips/higgsfield-2.mp4", cost_usd: 0.3 });
+  });
+
   it("uploads local image paths through image hosting before building the request", async () => {
     const projectRoot = await mkdtemp(join(tmpdir(), "predit-higgsfield-"));
     await mkdir(join(projectRoot, "assets"), { recursive: true });
