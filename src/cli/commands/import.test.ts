@@ -1,13 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { afterEach, describe, expect, it } from "vitest";
 import { createProgram } from "../program.js";
 
 let scratchDirs: string[] = [];
 const originalCwd = process.cwd();
+const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
+const ingestWatchFixture = path.join(repoRoot, "bundled/fixtures/ingest-watch/thechaosfm-news/pilot");
 
 async function scratchProject(): Promise<string> {
   const root = path.join(tmpdir(), `predit-import-${randomUUID()}`);
@@ -175,10 +178,7 @@ async function writeShow(root: string, slug: string): Promise<void> {
 
 async function writeDropFixture(root: string): Promise<string> {
   const dropDir = path.join(root, "music_library", "thechaosfm-news", "pilot");
-  await mkdir(dropDir, { recursive: true });
-  await writeFile(path.join(dropDir, "track.mp3"), "audio", "utf8");
-  await writeFile(path.join(dropDir, "lyrics.txt"), "lyrics", "utf8");
-  await writeFile(path.join(dropDir, "sources.yaml"), "sources: []\n", "utf8");
-  await writeFile(path.join(dropDir, "reference.mp4"), "video", "utf8");
+  await mkdir(path.dirname(dropDir), { recursive: true });
+  await cp(ingestWatchFixture, dropDir, { recursive: true });
   return dropDir;
 }

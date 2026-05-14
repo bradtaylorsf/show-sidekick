@@ -1,0 +1,1 @@
+This is a fixture verse for the public-flip ingest smoke.
