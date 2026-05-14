@@ -38,7 +38,7 @@ Every command except `predit init` must run inside a predit project. The CLI det
 
 Build/run commands currently validate show, episode, pipeline, stage flags, reference inputs, resume checkpoints, approval checkpoints, audited final-review force approvals, revision notes, status state, and cost summaries. `build` runs the integrated Runner state machine: optional `--reference <url-or-path>` / `inputs.reference` video analysis before pipeline selection, registry preflight, stage dispatch, reviewer pass, checkpoint writes, approval gates, budget limits, configurable cost-drift review thresholds, and resumable state.
 
-Create/list commands scaffold project-local shows, episodes, pipelines, and playbooks, and list merged project-local plus `.predit` cache resources with JSON output for automation. `new playbook` uses the bundled playbook generator so the stub includes palette, typography, motion rules, audio mood, asset preferences, and quality rules.
+Create/list commands scaffold project-local shows, episodes, pipelines, and playbooks, and list merged project-local plus `.predit` cache resources with JSON output for automation. `predit ls starters` includes each bundled starter's description, declared pipelines, fixture size, and expected sample duration. `new playbook` uses the bundled playbook generator so the stub includes palette, typography, motion rules, audio mood, asset preferences, and quality rules.
 
 ## License
 

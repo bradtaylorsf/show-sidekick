@@ -43,7 +43,7 @@ predit approve <show>/<episode> --force "<reason>"  # audited force-approval for
 predit revise <show>/<episode> "<note>"  # loop the current stage with note
 
 # Inspect
-predit ls shows | episodes <show> | pipelines | playbooks | tools | decisions <show>/<episode>
+predit ls shows | episodes <show> | pipelines | playbooks | starters | tools | decisions <show>/<episode>
 predit show <show>/<episode>             # full state dump of an episode
 
 # Export (the differentiator)
@@ -112,3 +112,4 @@ The analysis writes `projects/<show>/<episode>/artifacts/video_analysis_brief.js
 - The path separator is `/`, mirroring filesystem layout.
 - `predit build music-videos/midnight-train` resolves `shows/music-videos/episodes/midnight-train.yaml`.
 - Listing forms drop the episode: `predit ls episodes music-videos`.
+- `predit ls starters` includes each starter's name, description, declared pipeline keys, fixture size, and expected sample duration so agents can choose a starter without opening every template.

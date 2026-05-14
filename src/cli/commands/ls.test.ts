@@ -57,6 +57,88 @@ describe("ls command", () => {
     expect(rows.map((row) => row.source)).toEqual(["bundled", "local"]);
   });
 
+  it("lists starter metadata from the bundled cache", async () => {
+    const root = await scratchProject();
+    await mkdir(path.join(root, ".predit", "starters", "news-song", "inputs", "sample-episode"), {
+      recursive: true,
+    });
+    await writeFile(path.join(root, ".predit", "starters", "news-song", "inputs", "sample-episode", "fixture.txt"), "ok\n");
+    await writeFile(
+      path.join(root, ".predit", "starters", "news-song", "show.yaml"),
+      [
+        "slug: news-song",
+        'display_name: "News Song"',
+        'description: "Audio-led news-song starter."',
+        "created: 2026-05-14",
+        "brand: ./brand/",
+        "characters: ./characters/",
+        "pipelines:",
+        "  news-song:",
+        "    playbook: news-song",
+        "defaults:",
+        "  pipeline: news-song",
+        "starter:",
+        "  expected_sample_duration_s: 15",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    process.chdir(root);
+
+    const { program, output } = captureProgram();
+    await program.parseAsync(["node", "predit", "--json", "ls", "starters"], { from: "node" });
+
+    const rows = parseLines(output().stdout);
+    expect(rows).toEqual([
+      expect.objectContaining({
+        event: "starter_listed",
+        kind: "starters",
+        name: "news-song",
+        description: "Audio-led news-song starter.",
+        pipelines: ["news-song"],
+        fixture_size: "3 B",
+        fixture_size_bytes: 3,
+        sample_duration_s: 15,
+      }),
+    ]);
+  });
+
+  it("uses starter metadata columns for human-readable starter lists", async () => {
+    const root = await scratchProject();
+    await mkdir(path.join(root, ".predit", "starters", "cinematic-trailer", "inputs"), { recursive: true });
+    await writeFile(
+      path.join(root, ".predit", "starters", "cinematic-trailer", "show.yaml"),
+      [
+        "slug: cinematic-trailer",
+        'display_name: "Cinematic Trailer"',
+        'description: "Reference-image trailer starter."',
+        "created: 2026-05-14",
+        "pipelines:",
+        "  cinematic:",
+        "    playbook: clean-professional",
+        "defaults:",
+        "  pipeline: cinematic",
+        "starter:",
+        "  fixture_size_bytes: 1602",
+        "  expected_sample_duration_s: 15",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    process.chdir(root);
+
+    const { program, output } = captureProgram();
+    await program.parseAsync(["node", "predit", "ls", "starters"], { from: "node" });
+
+    expect(output().stdout).toContain("name");
+    expect(output().stdout).toContain("description");
+    expect(output().stdout).toContain("pipelines");
+    expect(output().stdout).toContain("fixture_size");
+    expect(output().stdout).toContain("sample_duration_s");
+    expect(output().stdout).toContain("cinematic-trailer");
+    expect(output().stdout).toContain("1.6 KB");
+  });
+
   it("sorts tools by capability, provider, then name", async () => {
     const root = await scratchProject();
     const toolsDir = path.join(root, "empty-tools");
