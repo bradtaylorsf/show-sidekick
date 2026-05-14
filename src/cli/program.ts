@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { createApproveHandler } from "./commands/approve.js";
 import { createBuildHandler, type BuildHandlerOptions } from "./commands/build.js";
 import { createCuesheetHandler } from "./commands/cuesheet.js";
+import { createExportHandler } from "./commands/export.js";
 import { createInitHandler } from "./commands/init.js";
 import { createImportHandler } from "./commands/import.js";
 import { lsDecisions } from "./commands/ls-decisions.js";
@@ -210,9 +211,11 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
   program
     .command("export <target>")
     .description("export an editor handoff")
-    .option("--target <nle>", "premiere, capcut, or davinci")
+    .option("--target <nle>", "premiere or davinci")
     .option("--format <format>", "export format such as edl")
-    .action(createStubHandler("export", ["target"], io));
+    .option("--asset-link-mode <mode>", "copy, symlink, or reference")
+    .option("--out <dir>", "export root directory (defaults to exports/)")
+    .action(createExportHandler(io));
 
   program
     .command("import <path>")

@@ -11,6 +11,8 @@ predit export <show>/<episode> --target premiere     # Premiere XML + linked ass
 predit export <show>/<episode> --target capcut       # CapCut draft format
 predit export <show>/<episode> --target davinci      # DaVinci Resolve XML
 predit export <show>/<episode> --format edl          # raw EDL (CMX 3600)
+predit export <show>/<episode> --target premiere --asset-link-mode copy
+predit export <show>/<episode> --target premiere --out handoffs
 ```
 
 ## Source artifacts
@@ -38,6 +40,10 @@ exports/<show>__<episode>.<target>/
 │   └── word_timings.json
 └── README.md                    # how to open this in the target NLE
 ```
+
+`--out <dir>` changes the export root. When omitted, packages are written under `<project>/exports/`.
+
+Every export also writes `projects/<show>/<episode>/publish_log.json`, recording exported outputs, target, asset linkage mode, package path, source `asset_manifest`, captions path, and export timestamp.
 
 ## Pipeline declaration
 

@@ -83,7 +83,7 @@ predit build <show>/<episode> --sample     # 15–20s end-to-end sample run
 predit resume <show>/<episode>             # pick up at next checkpoint
 predit approve <show>/<episode>            # advance past awaiting_human (non-interactive)
 predit revise <show>/<episode> "<note>"    # loop the current stage with revision notes
-predit export <show>/<episode> --target capcut    # NLE handoff
+predit export <show>/<episode> --target premiere  # NLE handoff
 predit ls pipelines | playbooks | tools | starters | shows
 predit update                              # refresh .predit/ cache from the installed harness
 ```

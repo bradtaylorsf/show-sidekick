@@ -16,6 +16,7 @@ export * from "./final-review.js";
 export * from "./pose-library.js";
 export * from "./playbook.js";
 export * from "./proposal-packet.js";
+export * from "./publish-log.js";
 export * from "./research-brief.js";
 export * from "./render-report.js";
 export * from "./rig-plan.js";
