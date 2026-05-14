@@ -1,0 +1,20 @@
+slug: sample-episode
+title: "Sample AI Workflow Demo"
+created: 2026-05-14
+pipeline: screen-demo
+playbook: clean-professional
+runtime: remotion
+aspect: "16:9"
+budget_usd: 0.5
+inputs:
+  terminal_steps: shows/ai-workflow-demo/inputs/sample-episode/terminal-steps.yaml
+  narration: shows/ai-workflow-demo/inputs/sample-episode/narration.txt
+  notes: |
+    Fifteen-second screen-demo sample using synthetic_terminal mode instead of real screen capture.
+    Build as a zero-key sample with a clean terminal, timed command reveals, and concise narration.
+cast: []
+tags:
+  - ai-workflow-demo
+  - sample
+  - screen-demo
+  - specialty

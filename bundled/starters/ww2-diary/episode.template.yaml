@@ -1,0 +1,18 @@
+# Copy this file to episodes/<slug>.yaml and replace the title, inputs, and notes.
+slug: new-ww2-diary
+title: "New WW2 Diary"
+created: 2026-05-14
+pipeline: ww2-diary
+playbook: news-broadcast
+runtime: ffmpeg
+aspect: "16:9"
+budget_usd: 0.75
+inputs:
+  diary: shows/ww2-diary/inputs/sample-episode/diary.txt
+  reference_image: shows/ww2-diary/inputs/sample-episode/reference.jpg
+  notes: |
+    Replace with diary source context, historical caveats, and visual pacing.
+cast: []
+tags:
+  - ww2-diary
+  - specialty

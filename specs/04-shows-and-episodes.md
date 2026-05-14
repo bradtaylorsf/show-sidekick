@@ -166,7 +166,7 @@ Runtime state (current stage, last checkpoint, costs, decisions) lives in `proje
 
 ## Pipeline binding (multi-pipeline shows)
 
-A show declares the pipelines it uses in `show.pipelines: { <name>: { ... } }`. Each entry maps a pipeline name to its per-pipeline defaults (playbook, runtime, aspect, budget, playbook_overrides). The show owns brand, characters, and skills; the pipelines under it are the technical workflows that identity runs.
+A show declares the pipelines it uses in `show.pipelines: { <name>: { ... } }`. Each entry maps a pipeline name to its per-pipeline defaults (playbook, runtime, aspect, budget, playbook_overrides) and pipeline-specific mode flags such as `capture_mode`. The show owns brand, characters, and skills; the pipelines under it are the technical workflows that identity runs.
 
 **Validation rules:**
 
@@ -204,6 +204,7 @@ pipelines:
   screen-demo:
     playbook: clean-professional
     runtime: remotion
+    capture_mode: synthetic_terminal
   talking-head:
     playbook: clean-professional
     runtime: remotion
