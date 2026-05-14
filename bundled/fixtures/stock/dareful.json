@@ -1,0 +1,27 @@
+{
+  "clips": [
+    {
+      "title": "City skyline timelapse",
+      "tags": ["city", "skyline", "traffic"],
+      "video_url": "https://fixtures.predit.dev/stock/dareful/city-1.mp4",
+      "thumbnail_url": "https://fixtures.predit.dev/stock/dareful/city-1.jpg",
+      "duration": 8,
+      "width": 1920,
+      "height": 1080,
+      "author": "Dareful Fixture",
+      "source_url": "https://dareful.com/fixture-city-1"
+    },
+    {
+      "title": "City highway aerial",
+      "tags": ["city", "highway", "aerial"],
+      "video_url": "https://fixtures.predit.dev/stock/dareful/city-2.mp4",
+      "source_url": "https://dareful.com/fixture-city-2"
+    },
+    {
+      "title": "City bridge approach",
+      "tags": ["city", "bridge", "traffic"],
+      "video_url": "https://fixtures.predit.dev/stock/dareful/city-3.mp4",
+      "source_url": "https://dareful.com/fixture-city-3"
+    }
+  ]
+}

@@ -948,14 +948,14 @@ alpha-loop run --epic 10  # Delivery
 - [ ] `audio_energy` — covered by A-1; register as a discrete analysis tool here for capability discovery.
 - [ ] `frame_sampler` — uniform or scene-aware frame sampling. Samples N frames evenly from fixture clip. Consumed by FNL-2 (Epic 9).
 - [ ] `scene_detector` (PySceneDetect equivalent) — detects scene boundaries within 200ms of obvious cuts.
-- [ ] `face_tracker` — returns face bboxes per frame. Consumed by auto-reframe (G-4).
+- [ ] `face_tracker` — returns face bboxes per frame. Consumed by auto-reframe (G-4). Epic 6 ships a sidecar/fixture reader; Epic 7 upgrades this to real CV detection.
 
 ## S-2 — Transcribers + corpus tools
 
 **Sub-checklist.**
 - [ ] `transcriber` — capability-level registration covering whisper.cpp (Epic 4) + ElevenLabs Scribe alternative.
 - [ ] `transcript_fetcher` — pulls captions from YouTube/Vimeo (uses video-download). Returns parsed captions from a fixture URL.
-- [ ] `clip_embedder` — CLIP embeddings for similarity search (used by clip-search G-4). Embedding reproducible.
+- [ ] `clip_embedder` — CLIP embeddings for similarity search (used by clip-search G-4). Embedding reproducible. Epic 6 ships a deterministic local fixture embedder; Epic 7 upgrades this to a real CLIP backend.
 - [ ] `corpus_builder` — indexes a directory of clips/images for search. Indexes fixture directory.
 
 ## S-3 — Video understanding + source media review + visual QA + composition validator

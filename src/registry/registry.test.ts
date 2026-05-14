@@ -21,6 +21,7 @@ describe("Registry", () => {
 
     expect(registry.get("alpha")?.provider).toBe("acme");
     expect(registry.byCapability("tts").map((tool) => tool.name)).toEqual(["alpha", "gamma"]);
+    await expect(registry.listByCapability("tts")).resolves.toEqual(registry.byCapability("tts"));
     expect(registry.byProvider("bravo").map((tool) => tool.name)).toEqual(["beta", "gamma"]);
   });
 

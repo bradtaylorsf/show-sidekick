@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 export interface Tool<I = unknown, O = unknown> {
   name: string;                          // "higgsfield"
-  capability: Capability;                // "image_to_video" | "tts" | "music_generation" | ...
+  capability: Capability;                // "image_to_video" | "tts" | "music_generation" | "music_search" | ...
   provider: string;                      // "higgsfield" | "elevenlabs" | "ffmpeg"
   status: 'production' | 'beta' | 'experimental';
 

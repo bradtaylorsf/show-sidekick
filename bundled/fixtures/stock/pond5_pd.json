@@ -1,0 +1,27 @@
+{
+  "clips": [
+    {
+      "title": "City skyline archival",
+      "tags": ["city", "skyline", "archive"],
+      "video_url": "https://fixtures.predit.dev/stock/pond5/city-1.mp4",
+      "thumbnail_url": "https://fixtures.predit.dev/stock/pond5/city-1.jpg",
+      "duration": 8,
+      "width": 1920,
+      "height": 1080,
+      "author": "Pond5 Fixture",
+      "source_url": "https://www.pond5.com/public-domain/fixture-city-1"
+    },
+    {
+      "title": "City street archival",
+      "tags": ["city", "street", "archive"],
+      "video_url": "https://fixtures.predit.dev/stock/pond5/city-2.mp4",
+      "source_url": "https://www.pond5.com/public-domain/fixture-city-2"
+    },
+    {
+      "title": "City train archival",
+      "tags": ["city", "train", "archive"],
+      "video_url": "https://fixtures.predit.dev/stock/pond5/city-3.mp4",
+      "source_url": "https://www.pond5.com/public-domain/fixture-city-3"
+    }
+  ]
+}

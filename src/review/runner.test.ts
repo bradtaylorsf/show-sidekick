@@ -318,6 +318,20 @@ describe("runReview", () => {
     );
   });
 
+  it("flags audio-led proposal reviews without manually wiring audioLed", () => {
+    const review = runReview("proposal", validProposal, {
+      pipeline: { ...basePipeline, master_clock: "audio" },
+      decisionLog: [],
+    });
+
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Missing music_source decision for audio-led pipeline",
+      }),
+    );
+  });
+
   it("runs delivery promise validation for edit decisions", () => {
     const review = runReview(
       "edit",

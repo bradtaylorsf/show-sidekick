@@ -7,8 +7,10 @@ export type CostUnit = "clip" | "second" | "minute" | "token" | "image" | "call"
 
 export type KnownCapability =
   | "image_to_video"
+  | "text_to_video"
   | "tts"
   | "music_generation"
+  | "music_search"
   | "image_generation"
   | "image_hosting"
   | "video_compose"
@@ -22,7 +24,17 @@ export type KnownCapability =
   | "aubio"
   | "audio_energy"
   | "transcriber"
-  | "stock_image";
+  | "stock_image"
+  | "stock_video"
+  | "stock_cross_search"
+  | "clip_cache"
+  | "clip_search"
+  | "clip_embedder"
+  | "video_reframe"
+  | "auto_reframe"
+  | "face_tracker"
+  | "audio_processing"
+  | "subtitle_generation";
 
 export type Capability = KnownCapability | (string & {});
 
@@ -49,6 +61,20 @@ export interface ToolLogger {
   error(msg: string, meta?: unknown): void;
   debug(msg: string, meta?: unknown): void;
   event(name: string, payload?: unknown): void;
+}
+
+export type ToolCommandRunner = (
+  command: string,
+  args: string[],
+  options?: { cwd?: string; env?: NodeJS.ProcessEnv; input?: string },
+) => Promise<{ stdout: string; stderr: string }>;
+
+export interface ToolSelector {
+  select(
+    capability: Capability,
+    prefs?: { prefer?: string[]; runtime?: Integration["kind"]; context?: ToolAvailabilityContext },
+  ): Promise<Tool>;
+  listByCapability?(capability: Capability): Promise<Tool[]>;
 }
 
 export type ToolInteractionMode = "interactive" | "non_interactive" | { json: boolean };
@@ -101,6 +127,8 @@ export interface ToolExecutionPolicy {
 export interface ToolContext {
   projectRoot: string;
   logger: ToolLogger;
+  registry?: ToolSelector;
+  runCli?: ToolCommandRunner;
   execution?: ToolExecutionPolicy;
 }
 

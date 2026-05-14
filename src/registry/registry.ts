@@ -51,6 +51,10 @@ export class Registry {
     return this.discoveryOrder.filter((tool) => tool.capability === capability);
   }
 
+  async listByCapability(capability: Capability): Promise<Tool[]> {
+    return this.byCapability(capability);
+  }
+
   byProvider(provider: string): Tool[] {
     return this.discoveryOrder.filter((tool) => tool.provider === provider);
   }

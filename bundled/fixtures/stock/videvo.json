@@ -1,0 +1,30 @@
+{
+  "clips": [
+    {
+      "title": "City skyline timelapse",
+      "tags": ["city", "skyline", "traffic"],
+      "video_url": "https://fixtures.predit.dev/stock/videvo/city-1.mp4",
+      "thumbnail_url": "https://fixtures.predit.dev/stock/videvo/city-1.jpg",
+      "duration": 8,
+      "width": 1920,
+      "height": 1080,
+      "author": "Videvo Fixture",
+      "source_url": "https://www.videvo.net/video/fixture-city-1/",
+      "license": "Videvo Attribution License"
+    },
+    {
+      "title": "City street traffic",
+      "tags": ["city", "street", "traffic"],
+      "video_url": "https://fixtures.predit.dev/stock/videvo/city-2.mp4",
+      "source_url": "https://www.videvo.net/video/fixture-city-2/",
+      "license": "Videvo Attribution License"
+    },
+    {
+      "title": "City transit station",
+      "tags": ["city", "transit", "station"],
+      "video_url": "https://fixtures.predit.dev/stock/videvo/city-3.mp4",
+      "source_url": "https://www.videvo.net/video/fixture-city-3/",
+      "license": "Videvo Attribution License"
+    }
+  ]
+}
