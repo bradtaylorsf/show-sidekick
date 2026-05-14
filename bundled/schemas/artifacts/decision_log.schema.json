@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/decision_log",
+  "type": "array",
+  "items": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "predit://artifacts/decision_log.entry",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "stage": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "category": {
+        "type": "string",
+        "enum": [
+          "pipeline_selection",
+          "provider_selection",
+          "model_selection",
+          "renderer_family_selection",
+          "render_runtime_selection",
+          "playbook_selection",
+          "playbook_override",
+          "music_source",
+          "motion_commitment",
+          "voice_selection",
+          "concept_selection",
+          "fallback_decision",
+          "downgrade_approval",
+          "budget_tradeoff",
+          "capability_extension",
+          "visual_accuracy_check"
+        ]
+      },
+      "scope": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/decision_log.scope",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "capability": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          }
+        },
+        "required": []
+      },
+      "options_considered": {
+        "type": "array",
+        "minItems": 2,
+        "items": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "predit://artifacts/decision_log.option",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "rejected_because": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "label",
+            "rejected_because"
+          ]
+        }
+      },
+      "picked": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      },
+      "confidence": {
+        "type": "number",
+        "minimum": 0
+      },
+      "user_visible": {
+        "type": "boolean"
+      },
+      "supersedes": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "stage",
+      "timestamp",
+      "category",
+      "options_considered",
+      "picked",
+      "reason",
+      "confidence",
+      "user_visible",
+      "supersedes"
+    ]
+  }
+}

@@ -4,10 +4,14 @@ import path from "node:path";
 import YAML from "yaml";
 
 const repoRoot = process.cwd();
-const sourceArg = process.argv[2];
+const args = process.argv.slice(2);
+const force = args.includes("--force");
+const dryRun = args.includes("--dry-run");
+const positionalArgs = args.filter((arg) => arg !== "--force" && arg !== "--dry-run");
+const sourceArg = positionalArgs[0];
 
 if (!sourceArg) {
-  console.error("Usage: node scripts/port-bundled-content.mjs <reference-repo-root>");
+  console.error("Usage: node scripts/port-bundled-content.mjs [--dry-run] [--force] <reference-repo-root>");
   process.exit(1);
 }
 
@@ -163,6 +167,12 @@ const playbooks = [
   "thechaosfm-gta-political.yaml",
 ];
 
+const creativeReferences = [
+  "enhancement-strategy.md",
+  "video-gen-prompting.md",
+  "prompting/veo-prompting.md",
+];
+
 const rawCopies = [
   {
     source: "schemas/styles/playbook.schema.json",
@@ -182,6 +192,11 @@ const rawCopies = [
     target: `bundled/playbooks/${fileName}`,
     transform: normalizeRepoTerms,
   })),
+  ...creativeReferences.map((fileName) => ({
+    source: `skills/creative/${fileName}`,
+    target: `bundled/skills/creative/${fileName}`,
+    transform: normalizeRepoTerms,
+  })),
 ];
 
 const pipelineCopies = [
@@ -193,6 +208,8 @@ const pipelineCopies = [
 ];
 
 const missing = [];
+const conflicts = [];
+const wouldWrite = [];
 let copied = 0;
 
 for (const copy of skillCopies) {
@@ -245,15 +262,43 @@ for (const copy of pipelineCopies) {
 }
 
 console.log(`Copied ${copied} bundled content files from ${sourceRoot}.`);
+if (dryRun && wouldWrite.length > 0) {
+  console.log("Dry run would write:");
+  wouldWrite.forEach((entry) => console.log(`- ${entry}`));
+}
 if (missing.length > 0) {
   console.log("Missing source files:");
   missing.forEach((entry) => console.log(`- ${entry}`));
   process.exitCode = 1;
 }
+if (conflicts.length > 0) {
+  console.log("Refusing to overwrite edited files without --force:");
+  conflicts.forEach((entry) => console.log(`- ${entry}`));
+  process.exitCode = 1;
+}
 
 async function writeOutput(targetPath, content) {
+  const normalizedContent = content.endsWith("\n") ? content : `${content}\n`;
+
+  if (dryRun) {
+    wouldWrite.push(path.relative(repoRoot, targetPath));
+    return;
+  }
+
+  if (!force) {
+    try {
+      const existing = await readFile(targetPath, "utf8");
+      if (existing !== normalizedContent) {
+        conflicts.push(path.relative(repoRoot, targetPath));
+        return;
+      }
+    } catch {
+      // New files are safe to create without --force.
+    }
+  }
+
   await mkdir(path.dirname(targetPath), { recursive: true });
-  await writeFile(targetPath, content.endsWith("\n") ? content : `${content}\n`, "utf8");
+  await writeFile(targetPath, normalizedContent, "utf8");
 }
 
 function normalizeSkill(markdown, frontmatter) {
@@ -292,11 +337,18 @@ function normalizeRepoTerms(value) {
   return value
     .replaceAll(sourceBrand, "predit")
     .replaceAll(sourceBrand.toLowerCase(), "predit")
+    .replaceAll(".claude/skills/", ".predit/skills/agents/")
+    .replaceAll(".agents/skills/", ".predit/skills/agents/")
+    .replaceAll("skills/creative/", "bundled/skills/creative/")
     .replaceAll("skills/styles/", "bundled/playbooks/")
     .replaceAll("styles/", "playbooks/")
     .replaceAll("pipeline_defs/", "bundled/pipelines/")
+    .replaceAll("tools.tool_registry", "predit registry")
+    .replaceAll("tools.analysis.composition_validator", "src/tools/composition-validator")
+    .replaceAll("tools.analysis.audio_probe", "ffprobe or the audio metadata returned by predit audio tools")
+    .replaceAll("tools.audio.tts_selector", "the predit registry TTS selector")
+    .replaceAll("tools.audio.doubao_tts", "src/tools/doubao_tts")
     .replaceAll("remotion-composer/", "src/remotion/")
-    .replaceAll("hyperframes_compose", "hyperframes")
     .replaceAll("cost_tracker", "cost tracker");
 }
 

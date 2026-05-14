@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/rig_plan",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "character": {
+      "type": "string"
+    },
+    "joints": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/rig_plan.joint",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "parent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pivot": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "predit://artifacts/rig_plan.point",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "x",
+              "y"
+            ]
+          },
+          "default_rotation_deg": {
+            "type": "number"
+          },
+          "range_deg": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "predit://artifacts/rig_plan.range",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "min",
+              "max"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "parent",
+          "pivot",
+          "default_rotation_deg"
+        ]
+      }
+    },
+    "attachment_points": {
+      "type": "array",
+      "items": {}
+    }
+  },
+  "required": [
+    "character",
+    "joints"
+  ]
+}

@@ -4,13 +4,24 @@ import { StageSchema } from "./stage.js";
 
 export const PipelineStatusSchema = z.enum(["production", "beta", "experimental"]);
 export const MasterClockSchema = z.enum(["audio", "voiceover", "action_timeline", "none"]);
+export const StageOrderSchema = z.enum(["canonical", "manifest"]);
 
 const OrchestrationSchema = z
   .object({
+    mode: z.string().optional(),
+    skill: z.string().optional(),
     budget_default_usd: z.number().positive().default(3.0),
     max_revisions_per_stage: z.number().int().min(0).default(2),
     max_send_backs: z.number().int().min(0).default(3),
     max_wall_time_minutes: z.number().int().positive().default(30),
+  })
+  .default({});
+
+const CompatiblePlaybooksSchema = z
+  .object({
+    recommended: z.array(z.string()).default([]),
+    also_works: z.array(z.string()).default([]),
+    custom_allowed: z.boolean().optional(),
   })
   .default({});
 
@@ -21,7 +32,13 @@ export const PipelineManifestSchema = z
     description: z.string().optional(),
     status: PipelineStatusSchema.optional(),
     master_clock: MasterClockSchema.optional(),
+    stage_order: StageOrderSchema.optional(),
     defaults: z.record(z.string(), z.unknown()).optional(),
+    default_checkpoint_policy: z.string().optional(),
+    reference_input: z.record(z.string(), z.unknown()).optional(),
+    extensions: z.record(z.string(), z.unknown()).optional(),
+    required_skills: z.array(z.string()).optional(),
+    compatible_playbooks: CompatiblePlaybooksSchema.optional(),
     stages: z.array(StageSchema).min(1),
     export: z
       .object({
@@ -45,6 +62,8 @@ export const PipelineManifestSchema = z
     let buildStageIndex = -1;
     let previousCanonicalIndex = -1;
     let previousCanonicalSlug = "";
+
+    const enforceCanonicalOrder = (manifest.stage_order ?? "canonical") === "canonical";
 
     manifest.stages.forEach((stage, index) => {
       const priorIndex = seen.get(stage.slug);
@@ -78,17 +97,19 @@ export const PipelineManifestSchema = z
         });
       }
 
-      const currentCanonicalIndex = canonicalIndex(stage.slug);
-      if (currentCanonicalIndex !== -1) {
-        if (currentCanonicalIndex < previousCanonicalIndex) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["stages", index, "slug"],
-            message: `canonical stage '${stage.slug}' must not appear after '${previousCanonicalSlug}'`,
-          });
-        } else {
-          previousCanonicalIndex = currentCanonicalIndex;
-          previousCanonicalSlug = stage.slug;
+      if (enforceCanonicalOrder) {
+        const currentCanonicalIndex = canonicalIndex(stage.slug);
+        if (currentCanonicalIndex !== -1) {
+          if (currentCanonicalIndex < previousCanonicalIndex) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["stages", index, "slug"],
+              message: `canonical stage '${stage.slug}' must not appear after '${previousCanonicalSlug}'`,
+            });
+          } else {
+            previousCanonicalIndex = currentCanonicalIndex;
+            previousCanonicalSlug = stage.slug;
+          }
         }
       }
     });
@@ -108,5 +129,6 @@ export const PipelineManifestSchema = z
 
 export type PipelineStatus = z.infer<typeof PipelineStatusSchema>;
 export type MasterClock = z.infer<typeof MasterClockSchema>;
+export type StageOrder = z.infer<typeof StageOrderSchema>;
 export type PipelineManifest = z.infer<typeof PipelineManifestSchema>;
 export type Pipeline = PipelineManifest;

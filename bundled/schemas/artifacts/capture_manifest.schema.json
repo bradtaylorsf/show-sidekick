@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/capture_manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "screenshots": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/capture_manifest.screenshot",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "story_id": {
+            "type": "string"
+          },
+          "image_path": {
+            "type": "string"
+          },
+          "captured_at": {
+            "type": "string"
+          },
+          "viewport": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "$id": "predit://artifacts/viewport",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "width": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "height": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "width",
+                  "height"
+                ]
+              }
+            ]
+          },
+          "quality_flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "page_load_status": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "story_id",
+          "image_path"
+        ]
+      }
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/capture_manifest.failure",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "story_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "page_load_status": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "required": [
+          "story_id",
+          "reason"
+        ]
+      }
+    }
+  },
+  "required": [
+    "screenshots"
+  ]
+}

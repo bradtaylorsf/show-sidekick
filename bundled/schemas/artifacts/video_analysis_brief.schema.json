@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/video_analysis_brief",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "pacing_style": {
+      "type": "string"
+    },
+    "promise_elements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "approved_budget_usd": {
+      "type": "number",
+      "minimum": 0
+    },
+    "scenes": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/video_analysis_brief.scene",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "scene_ref": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subject_motion": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scene": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "spatial_framing": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "camera": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "motion_type": {
+            "type": "string",
+            "enum": [
+              "motion_clip",
+              "animated_still",
+              "static_image"
+            ]
+          },
+          "flow_variance": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "subject",
+          "subject_motion",
+          "scene",
+          "spatial_framing",
+          "camera",
+          "motion_type",
+          "flow_variance"
+        ]
+      }
+    }
+  },
+  "required": [
+    "scenes"
+  ]
+}

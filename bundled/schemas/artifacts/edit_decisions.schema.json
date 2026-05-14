@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/edit_decisions",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "cuts": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/edit_decisions.cut",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "start_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "asset_id": {
+            "type": "string"
+          },
+          "transition_in": {
+            "type": "string"
+          },
+          "transition_out": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_s",
+          "end_s",
+          "asset_id"
+        ]
+      }
+    },
+    "overlays": {
+      "type": "array",
+      "items": {}
+    },
+    "subtitles": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "predit://artifacts/edit_decisions.subtitles",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "audio": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "music": {},
+    "transitions": {
+      "type": "array",
+      "items": {}
+    },
+    "render_runtime": {
+      "type": "string",
+      "enum": [
+        "ffmpeg",
+        "remotion",
+        "hyperframes"
+      ]
+    },
+    "renderer_family": {
+      "type": "string",
+      "enum": [
+        "explainer-data",
+        "explainer-teacher",
+        "cinematic-trailer",
+        "documentary-montage",
+        "product-reveal",
+        "screen-demo",
+        "presenter",
+        "animation-first"
+      ]
+    },
+    "brand": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "predit://artifacts/edit_decisions.brand",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "name"
+      ]
+    }
+  },
+  "required": [
+    "cuts",
+    "render_runtime",
+    "renderer_family"
+  ]
+}

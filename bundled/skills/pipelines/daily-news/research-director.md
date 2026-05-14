@@ -13,12 +13,10 @@ candidate pool, not the final slate. The idea stage chooses and orders the
 
 ## Input Resolution
 
-Because predit's canonical order runs `research` before `idea`, resolve search
-inputs in this order:
-
-1. Episode inputs (`topic_scope`, `sources`, `recency_window`, `episode_date`).
-2. Show defaults for the active daily-news pipeline.
-3. A saved recurring-run config in the project workspace.
+Read `priorArtifacts.idea` first. The idea stage should already have locked
+`topic_scope`, `sources`, `recency_window`, `episode_date`, target platform,
+voice, and runtime. If anything is missing, fall back to episode inputs, show
+defaults, or a saved recurring-run config in the project workspace.
 
 If none of those provide enough scope, produce a blocking `research_brief`
 that asks the idea stage to collect sources and recency before retrying.

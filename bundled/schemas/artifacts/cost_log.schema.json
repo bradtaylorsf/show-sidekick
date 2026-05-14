@@ -1,12 +1,12 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://predit.dev/schemas/artifacts/cost_log.schema.json",
-  "title": "Cost Log",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/cost_log",
   "type": "array",
   "items": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "predit://artifacts/cost_log.entry",
     "type": "object",
     "additionalProperties": false,
-    "required": ["tool", "provider", "model", "units", "usd", "mode"],
     "properties": {
       "tool": {
         "type": "string"
@@ -27,8 +27,19 @@
       },
       "mode": {
         "type": "string",
-        "enum": ["sample", "full"]
+        "enum": [
+          "sample",
+          "full"
+        ]
       }
-    }
+    },
+    "required": [
+      "tool",
+      "provider",
+      "model",
+      "units",
+      "usd",
+      "mode"
+    ]
   }
 }

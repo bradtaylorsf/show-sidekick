@@ -161,7 +161,7 @@ When using the `color_grade` tool:
 1. **Select profile by content type** using the table above — don't default to `cinematic_warm` for everything
 2. **Set intensity to 0.8** as a starting point, not 1.0 — subtlety reads better on mobile screens
 3. **Test on a single frame first** before grading the full video — saves render time
-4. **Grade after face enhancement** — the enhancement chain order in `skills/creative/enhancement-strategy.md` is: subtitle → face → color → audio → final
+4. **Grade after face enhancement** — the enhancement chain order in `bundled/skills/creative/enhancement-strategy.md` is: subtitle → face → color → audio → final
 5. **Use the same profile across all clips in a video** — visual consistency is critical
 6. **For generated visuals** (image_selector, math_animate), apply a lighter grade (0.5-0.6) since they're already stylized
 7. **Use the Wong palette** for any generated graphics (diagrams, code snippets, overlays) to ensure colorblind accessibility

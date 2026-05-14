@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/script",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "sections": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/script-section",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "hook",
+              "setup",
+              "inciting_incident",
+              "rising_action",
+              "beat_drop",
+              "climax",
+              "falling_action",
+              "resolution",
+              "tag",
+              "transition"
+            ]
+          },
+          "start_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "narration": {
+            "type": "string"
+          },
+          "dialogue": {
+            "type": "array",
+            "items": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "$id": "predit://artifacts/dialogue-line",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "character": {
+                  "type": "string"
+                },
+                "line": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "character",
+                "line"
+              ]
+            }
+          },
+          "enhancement_cues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "slug",
+          "start_s",
+          "end_s"
+        ]
+      }
+    }
+  },
+  "required": [
+    "sections"
+  ]
+}

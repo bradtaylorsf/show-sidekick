@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/cuesheet",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "audio": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "predit://artifacts/cuesheet.audio",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "duration_s": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "sample_rate": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "channels": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "path",
+        "duration_s",
+        "sample_rate",
+        "channels"
+      ]
+    },
+    "master_clock": {
+      "type": "string",
+      "enum": [
+        "audio",
+        "voiceover"
+      ]
+    },
+    "bpm": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "words": {
+      "type": "array",
+      "items": {}
+    },
+    "segments": {
+      "type": "array",
+      "items": {}
+    },
+    "sections": {
+      "type": "array",
+      "items": {}
+    },
+    "beats": {
+      "type": "array",
+      "items": {}
+    },
+    "climax": {
+      "type": "array",
+      "items": {}
+    },
+    "scene_anchors": {
+      "type": "array",
+      "items": {}
+    }
+  },
+  "required": [
+    "audio",
+    "master_clock",
+    "segments",
+    "sections",
+    "beats",
+    "climax",
+    "scene_anchors"
+  ]
+}

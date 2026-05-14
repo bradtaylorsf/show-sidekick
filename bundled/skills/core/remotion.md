@@ -146,19 +146,23 @@ Remotion motion should be frame-derived from `useCurrentFrame()`.
 - Music shorter than video (silence at end)
 - Invalid cut timings (out ≤ in)
 
-```python
-from tools.analysis.composition_validator import CompositionValidator
-result = CompositionValidator().execute({
-    "composition_path": "path/to/composition.json",
-    "assets_root": "src/remotion/public",
-})
-# result.data["valid"] must be True before rendering
+```ts
+import compositionValidator from "../../src/tools/composition-validator.js";
+
+const result = await compositionValidator.execute(
+  {
+    composition_path: "path/to/composition.json",
+    assets_root: "src/remotion/public",
+  },
+  ctx,
+);
+// result.valid must be true before rendering
 ```
 
 **Audio duration alignment:**
 - After generating TTS narration, the tool returns `audio_duration_seconds`.
 - If narration exceeds video duration: shorten script and regenerate, OR extend the last scene.
-- Use `tools.analysis.audio_probe.probe_duration(path)` to check any audio file's duration.
+- Use `ffprobe` or the duration metadata returned by the predit audio tools to check any audio file's duration.
 - Music should be ≥ video duration; the player handles fade-out via `fadeOutSeconds`.
 
 ## Architecture

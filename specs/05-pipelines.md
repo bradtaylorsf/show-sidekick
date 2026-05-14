@@ -16,6 +16,8 @@ display_name: "Music Video"
 description: "Vertical music videos for AI-generated music tracks"
 status: production                       # production | beta | experimental
 master_clock: audio                      # audio | voiceover | none
+stage_order: canonical                   # canonical | manifest; defaults to canonical
+default_checkpoint_policy: guided
 
 defaults:
   aspect: "9:16"
@@ -23,11 +25,41 @@ defaults:
   max_scene_duration_s: 5
   render_runtime: hyperframes
 
+orchestration:
+  mode: executive-producer
+  skill: pipelines/music-video/executive-producer.md
+  budget_default_usd: 6.00
+  max_revisions_per_stage: 3
+  max_send_backs: 3
+  max_wall_time_minutes: 60
+
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+
+required_skills:
+  - pipelines/music-video/executive-producer.md
+  - pipelines/music-video/idea-director.md
+  - meta/reviewer
+
+compatible_playbooks:
+  recommended: [clean-professional]
+  also_works: [flat-motion-graphics]
+  custom_allowed: true
+
 stages:
   - slug: idea
     skill: pipelines/music-video/idea-director.md
     produces: brief
+    produces_artifacts: [brief, decision_log]
+    required_artifacts_in: []
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
     tools_available: [research, web_search]
+    checkpoint_required: true
     review_focus: [hook_strength, concept_clarity, track_understanding]
     success_criteria:
       - concept_count: ">= 4"
@@ -98,11 +130,18 @@ export:
 | `slug` | Stage identifier (used in CLI `--from`, `--to`, `--only`) |
 | `description` | Optional one-line documentation of the stage's intent |
 | `skill` | Path to the Markdown director skill the agent reads before executing the stage |
-| `produces` | Canonical artifact this stage outputs (validated against `schemas/artifacts/<name>.schema.json`) |
-| `tools_available` | Capability names the stage may use; resolved via the registry |
+| `produces` | Primary canonical artifact this stage outputs (validated against `schemas/artifacts/<name>.schema.json`) |
+| `produces_artifacts` | Full output artifact list when a source manifest emits multiple artifacts |
+| `required_artifacts_in` | Artifacts that must exist before the stage can run |
+| `optional_artifacts_in` | Artifacts the stage may use when present |
+| `required_tools` | Registry tool names or capability markers that are required for the stage |
+| `optional_tools` | Registry tool names or capability markers that improve the stage but are not blockers |
+| `tools_available` | Full list of registry tool names or capability markers the stage may use |
 | `review_focus` | Reviewer hints — what to scrutinize |
 | `success_criteria` | Predicates on the produced artifact |
 | `human_approval` | `required` (always prompt) / `optional` (prompt in interactive, skip in non-interactive) / `never` |
+| `human_approval_default` | Source-compatible boolean default preserved from migrated manifests; `human_approval` is the normalized predit policy |
+| `checkpoint_required` | Whether the source pipeline requires a checkpoint at this stage |
 | `audio_sync` | `build` (build the cuesheet here) / `required` (must exist before this stage) / `none` |
 | `sample_mode_supported` | Whether `--sample` is honored at this stage |
 | `estimated_cost` | `{ sample: { usd, comment }, full: { usd, comment } }` — used for proposal-time summaries |
@@ -116,11 +155,15 @@ Canonical stages and their relative order:
 research → idea → proposal → script → capture → cuesheet → character_design → rig_plan → scene_plan → assets → edit → compose → publish
 ```
 
-Pipelines declare any subset of canonical stages; the relative order of canonical stages they include is fixed. A pipeline may also declare additional stages by listing them in the manifest at the desired position. Examples:
+Pipelines declare any subset of canonical stages. By default, the relative order of canonical stages they include is fixed. A pipeline may also declare additional stages by listing them in the manifest at the desired position.
+
+Pipelines that must preserve a source harness order may set `stage_order: manifest`. This is intentionally explicit: the runner follows the manifest order exactly and reviewers can see that the pipeline is opting out of canonical sorting. Daily-news uses this to keep the OpenMontage `capture` before `script` flow, so narration is written against real source screenshots and capture failures.
+
+Examples:
 
 - `music-video`: `idea → proposal → script → cuesheet → scene_plan → assets → edit → compose`
 - `documentary-montage`: `idea → scene_plan → assets → edit → compose` (skips proposal, script, cuesheet)
-- `daily-news`: `research → idea → script → capture → scene_plan → assets → edit → compose → publish`
+- `daily-news`: `idea → research → capture → script → scene_plan → assets → edit → compose → publish` (`stage_order: manifest`)
 - `character-animation`: `research → proposal → script → character_design → rig_plan → scene_plan → assets → edit → compose → publish`
 - `framework-smoke`: `research → script` (test pipeline; minimal)
 
@@ -134,7 +177,11 @@ The manifest schema enforces these structural rules:
 - **`audio_sync: required` may not precede any `audio_sync: build` stage** in the declared order.
 - **`requires_runtime` is valid only on the `compose` stage.**
 - **Stage slugs are unique** within a manifest.
-- **Canonical stages declared by the manifest must follow the canonical relative order.** Additional (non-canonical) stages may sit between any two canonical stages.
+- **Canonical stages declared by the manifest must follow the canonical relative order unless `stage_order: manifest` is explicit.** Additional (non-canonical) stages may sit between any two canonical stages.
+
+## Tool-name compatibility
+
+Migrated manifests preserve OpenMontage tool names when those names were part of the upstream contract. predit registers compatibility names such as `scene_detect`, `tts_selector`, `image_selector`, `video_selector`, `web_search`, and `hyperframes_compose` so manifests do not silently drift from the originals. Selector entries are registry markers: concrete execution still routes through `registry.select(<capability>)` or a provider-specific tool.
 
 ## `metadata` block (open passthrough)
 
@@ -148,13 +195,15 @@ Each pipeline may declare per-pipeline orchestration limits:
 
 ```yaml
 orchestration:
+  mode: executive-producer             # explicit orchestration style
+  skill: pipelines/music-video/executive-producer.md
   budget_default_usd: 6.00            # used when episode does not override
   max_revisions_per_stage: 3          # reviewer rounds before pass_with_warnings
   max_send_backs: 3                   # total stage send-backs per run
   max_wall_time_minutes: 60           # hard ceiling
 ```
 
-Defaults (when omitted): `budget_default_usd: 3.00, max_revisions_per_stage: 2, max_send_backs: 3, max_wall_time_minutes: 30`. Daily-news, for example, runs with `max_revisions_per_stage: 2` and `max_send_backs: 1` to keep cadence tight.
+Defaults (when omitted): `budget_default_usd: 3.00, max_revisions_per_stage: 2, max_send_backs: 3, max_wall_time_minutes: 30`. If `mode: executive-producer` is present, `skill` must point to the EP skill explicitly; the runner should not guess. Daily-news, for example, runs with `max_revisions_per_stage: 2` and `max_send_backs: 1` to keep cadence tight.
 
 ## `sample` block (per-pipeline sample scope)
 
@@ -166,6 +215,16 @@ sample:
 ```
 
 Sample scope varies by pipeline: music-video samples are 10-18s (intro + first 4 verse lines); news-song samples 15-20s (no-caption PS2 preview); cinematic samples 10-15s (hook + one motion beat).
+
+## Artifact JSON schemas
+
+Bundled artifact schemas are generated into `bundled/schemas/artifacts/*.schema.json` from `src/artifacts/json-schema.ts`. When adding or renaming a canonical artifact, update the schema map and run:
+
+```bash
+pnpm generate:schemas
+```
+
+Director skills may cite `schemas/artifacts/<artifact>.schema.json`; those references must resolve for every artifact listed in `produces` or `produces_artifacts`.
 
 ## The harness runtime
 

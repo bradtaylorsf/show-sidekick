@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/proposal-packet",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "concept_options": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/concept-option",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "hook": {
+            "type": "string"
+          },
+          "treatment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "hook",
+          "treatment"
+        ]
+      }
+    },
+    "production_plan": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "predit://artifacts/production-plan",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "render_runtime": {
+          "type": "string",
+          "enum": [
+            "ffmpeg",
+            "remotion",
+            "hyperframes"
+          ]
+        },
+        "renderer_family": {
+          "type": "string",
+          "enum": [
+            "explainer-data",
+            "explainer-teacher",
+            "cinematic-trailer",
+            "documentary-montage",
+            "product-reveal",
+            "screen-demo",
+            "presenter",
+            "animation-first"
+          ]
+        },
+        "audio_architecture": {
+          "type": "string",
+          "enum": [
+            "single_narrator",
+            "character_dialogue",
+            "narrator_plus_characters",
+            "no_narration"
+          ]
+        },
+        "sample_required": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "render_runtime",
+        "renderer_family",
+        "audio_architecture"
+      ]
+    },
+    "delivery_promise": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "predit://artifacts/delivery-promise",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "motion_led": {
+          "type": "boolean"
+        },
+        "narration_present": {
+          "type": "boolean"
+        },
+        "music_present": {
+          "type": "boolean"
+        },
+        "reference_driven": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "motion_led",
+        "narration_present",
+        "music_present"
+      ]
+    },
+    "decision_log_ref": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "concept_options",
+    "production_plan",
+    "delivery_promise",
+    "decision_log_ref"
+  ]
+}

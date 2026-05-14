@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/audio_architecture",
+  "type": "string",
+  "enum": [
+    "single_narrator",
+    "character_dialogue",
+    "narrator_plus_characters",
+    "no_narration"
+  ]
+}

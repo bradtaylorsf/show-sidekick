@@ -99,7 +99,7 @@ comprehensive — the tools provide structure; your vision provides understandin
 
 ### 5-Aspect Structured Output (MANDATORY)
 
-The analyst's report MUST break down the reference video into the **five aspects** from the CMU/Harvard CHAI study (also the canonical structure used in `skills/creative/video-gen-prompting.md`). A narrative-only summary is no longer sufficient — downstream stages (proposal, script, scene-director) ingest the 5-aspect form directly without re-parsing prose.
+The analyst's report MUST break down the reference video into the **five aspects** from the CMU/Harvard CHAI study (also the canonical structure used in `bundled/skills/creative/video-gen-prompting.md`). A narrative-only summary is no longer sufficient — downstream stages (proposal, script, scene-director) ingest the 5-aspect form directly without re-parsing prose.
 
 **Decision-tree captioning policy.** For each detected shot, walk all five aspects in order:
 
@@ -111,16 +111,16 @@ The analyst's report MUST break down the reference video into the **five aspects
 >
 > **Mark any aspect explicitly as N/A** if it doesn't apply (e.g., "Subject: N/A — pure scenery shot," or "Scene overlays: N/A — no graphics"). **Silent omission is the most common analyst failure** and produces ambiguous downstream prompts.
 
-See `skills/creative/video-gen-prompting.md` for primitive definitions and the canonical vocabulary used at every aspect.
+See `bundled/skills/creative/video-gen-prompting.md` for primitive definitions and the canonical vocabulary used at every aspect.
 
 ### Step 2: Capability Audit
 
 Run standard preflight:
 
 ```bash
-python -c "from tools.tool_registry import registry; import json; registry.discover(); print(json.dumps(registry.support_envelope(), indent=2))"
-python -c "from tools.tool_registry import registry; import json; registry.discover(); print(json.dumps(registry.provider_menu(), indent=2))"
-python -c "from tools.tool_registry import registry; import json; registry.discover(); print(json.dumps(registry.capability_catalog(), indent=2))"
+predit --json ls tools
+predit tools <tool-name>
+predit setup <tool-name>
 ```
 
 Map the reference video's requirements against available capabilities:

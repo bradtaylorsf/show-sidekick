@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/scene-plan",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "scenes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/scene",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "start_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "narrative_role": {
+            "type": "string",
+            "enum": [
+              "hook",
+              "setup",
+              "inciting_incident",
+              "rising_action",
+              "beat_drop",
+              "climax",
+              "falling_action",
+              "resolution",
+              "tag",
+              "transition"
+            ]
+          },
+          "scene_anchor": {
+            "type": "string"
+          },
+          "hero_moment": {
+            "type": "boolean"
+          },
+          "texture_keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "character_actions": {
+            "type": "array",
+            "items": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "$id": "predit://artifacts/character-action",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "character": {
+                  "type": "string"
+                },
+                "action": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "character",
+                "action"
+              ]
+            }
+          },
+          "shot_language": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "predit://artifacts/shot-language",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "shot_size": {
+                "type": "string",
+                "enum": [
+                  "ECU",
+                  "CU",
+                  "MCU",
+                  "MS",
+                  "MLS",
+                  "LS",
+                  "WS",
+                  "EWS",
+                  "OTS",
+                  "POV"
+                ]
+              },
+              "camera_movement": {
+                "type": "string",
+                "enum": [
+                  "static",
+                  "pan_left",
+                  "pan_right",
+                  "tilt_up",
+                  "tilt_down",
+                  "dolly_in",
+                  "dolly_out",
+                  "truck_left",
+                  "truck_right",
+                  "crane_up",
+                  "crane_down",
+                  "orbit_cw",
+                  "orbit_ccw",
+                  "push_in",
+                  "pull_out",
+                  "handheld",
+                  "gimbal_walk",
+                  "whip_pan"
+                ]
+              },
+              "lighting_key": {
+                "type": "string",
+                "enum": [
+                  "high_key",
+                  "low_key",
+                  "natural",
+                  "golden_hour",
+                  "blue_hour",
+                  "neon",
+                  "practical",
+                  "motivated",
+                  "soft",
+                  "hard",
+                  "rim"
+                ]
+              },
+              "lens_mm": {
+                "type": "number",
+                "enum": [
+                  14,
+                  24,
+                  35,
+                  50,
+                  85,
+                  135,
+                  200
+                ]
+              },
+              "depth_of_field": {
+                "type": "string",
+                "enum": [
+                  "shallow",
+                  "deep",
+                  "rack_focus"
+                ]
+              },
+              "color_temperature": {
+                "type": "string",
+                "enum": [
+                  "tungsten",
+                  "daylight",
+                  "mixed",
+                  "monochrome"
+                ]
+              }
+            },
+            "required": [
+              "shot_size",
+              "camera_movement",
+              "lighting_key",
+              "lens_mm",
+              "depth_of_field",
+              "color_temperature"
+            ]
+          },
+          "required_assets": {
+            "type": "array",
+            "items": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "$id": "predit://artifacts/required-asset",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "generated",
+                    "stock",
+                    "captured",
+                    "supplied"
+                  ]
+                },
+                "notes": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "source"
+              ]
+            }
+          }
+        },
+        "required": [
+          "slug",
+          "order",
+          "start_s",
+          "end_s",
+          "narrative_role",
+          "scene_anchor",
+          "shot_language"
+        ]
+      }
+    }
+  },
+  "required": [
+    "scenes"
+  ]
+}

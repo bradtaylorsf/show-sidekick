@@ -32,13 +32,31 @@ describe("PipelineManifestSchema", () => {
       description: "Vertical music videos for AI-generated music tracks",
       status: "production",
       master_clock: "audio",
+      stage_order: "canonical",
       defaults: {
         aspect: "9:16",
         duration_strategy: "track_length",
         render_runtime: "hyperframes",
       },
+      default_checkpoint_policy: "guided",
+      reference_input: { supported: true },
+      extensions: {
+        custom_scripts: true,
+        custom_playbooks: true,
+        custom_skills: true,
+        custom_tools: false,
+      },
+      required_skills: ["pipelines/music-video/executive-producer.md", "meta/reviewer"],
+      compatible_playbooks: {
+        recommended: ["clean-professional"],
+        also_works: ["flat-motion-graphics"],
+        custom_allowed: true,
+      },
       stages: [
         stage("idea", {
+          produces_artifacts: ["brief", "decision_log"],
+          checkpoint_required: true,
+          human_approval_default: true,
           tools_available: ["research", "web_search"],
           review_focus: ["hook_strength", "concept_clarity"],
           success_criteria: [{ concept_count: ">= 4" }],
@@ -74,6 +92,8 @@ describe("PipelineManifestSchema", () => {
         notes: "edit_decisions + cuesheet contain everything needed for NLE export.",
       },
       orchestration: {
+        mode: "executive-producer",
+        skill: "pipelines/music-video/executive-producer.md",
         budget_default_usd: 6,
         max_revisions_per_stage: 3,
         max_send_backs: 3,
@@ -98,15 +118,16 @@ describe("PipelineManifestSchema", () => {
     ).not.toThrow();
   });
 
-  it("accepts daily-news with capture", () => {
+  it("accepts daily-news with manifest order when preserving source capture-before-script semantics", () => {
     expect(() =>
       PipelineManifestSchema.parse({
         slug: "daily-news",
+        stage_order: "manifest",
         stages: [
-          stage("research"),
           stage("idea"),
-          stage("script"),
+          stage("research"),
           stage("capture"),
+          stage("script"),
           stage("scene_plan"),
           stage("assets"),
           stage("edit"),
@@ -115,6 +136,15 @@ describe("PipelineManifestSchema", () => {
         ],
       }),
     ).not.toThrow();
+  });
+
+  it("still rejects source order overrides unless stage_order is explicit", () => {
+    expect(() =>
+      PipelineManifestSchema.parse({
+        slug: "daily-news",
+        stages: [stage("idea"), stage("research"), stage("capture"), stage("script")],
+      }),
+    ).toThrow("canonical stage 'research' must not appear after 'idea'");
   });
 
   it("accepts character-animation stages", () => {

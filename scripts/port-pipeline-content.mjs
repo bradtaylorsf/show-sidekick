@@ -4,15 +4,19 @@ import path from "node:path";
 import YAML from "yaml";
 
 const repoRoot = process.cwd();
-const sourceArg = process.argv[2];
+const args = process.argv.slice(2);
+const force = args.includes("--force");
+const dryRun = args.includes("--dry-run");
+const positionalArgs = args.filter((arg) => arg !== "--force" && arg !== "--dry-run");
+const sourceArg = positionalArgs[0];
 
 if (!sourceArg) {
-  console.error("Usage: node scripts/port-pipeline-content.mjs <reference-repo-root> [pipeline...]");
+  console.error("Usage: node scripts/port-pipeline-content.mjs [--dry-run] [--force] <reference-repo-root> [pipeline...]");
   process.exit(1);
 }
 
 const sourceRoot = path.resolve(repoRoot, sourceArg);
-const requestedPipelines = new Set(process.argv.slice(3));
+const requestedPipelines = new Set(positionalArgs.slice(1));
 const sourceBrand = process.env.PREDIT_REFERENCE_BRAND ?? ["Open", "Montage"].join("");
 
 const pipelineConfigs = {
@@ -21,6 +25,7 @@ const pipelineConfigs = {
     targetManifest: "bundled/pipelines/hybrid.yaml",
     sourceSkillsDir: "skills/pipelines/hybrid",
     targetSkillsDir: "bundled/skills/pipelines/hybrid",
+    extraRequiredSkills: ["pipelines/hybrid/source-review-director.md"],
     extraStages: [hybridSourceReviewStage()],
     extraSkills: [
       {
@@ -98,6 +103,7 @@ const pipelineConfigs = {
     targetManifest: "bundled/pipelines/localization-dub.yaml",
     sourceSkillsDir: "skills/pipelines/localization-dub",
     targetSkillsDir: "bundled/skills/pipelines/localization-dub",
+    extraRequiredSkills: ["pipelines/localization-dub/source-review-director.md"],
     extraStages: [localizationSourceReviewStage()],
     extraSkills: [
       {
@@ -175,6 +181,7 @@ const pipelineConfigs = {
     targetManifest: "bundled/pipelines/daily-news.yaml",
     sourceSkillsDir: "skills/pipelines/daily-news",
     targetSkillsDir: "bundled/skills/pipelines/daily-news",
+    stageOrder: "manifest",
     transformStages: dailyNewsStages,
     extraSkills: [
       {
@@ -258,6 +265,8 @@ const pipelineConfigs = {
 
 let copied = 0;
 const missing = [];
+const conflicts = [];
+const wouldWrite = [];
 
 for (const [slug, config] of Object.entries(pipelineConfigs)) {
   if (requestedPipelines.size > 0 && !requestedPipelines.has(slug)) {
@@ -298,9 +307,18 @@ for (const [slug, config] of Object.entries(pipelineConfigs)) {
 }
 
 console.log(`Copied ${copied} pipeline content files from ${sourceRoot}.`);
+if (dryRun && wouldWrite.length > 0) {
+  console.log("Dry run would write:");
+  wouldWrite.forEach((entry) => console.log(`- ${entry}`));
+}
 if (missing.length > 0) {
   console.log("Missing source files:");
   missing.forEach((entry) => console.log(`- ${entry}`));
+  process.exitCode = 1;
+}
+if (conflicts.length > 0) {
+  console.log("Refusing to overwrite edited files without --force:");
+  conflicts.forEach((entry) => console.log(`- ${entry}`));
   process.exitCode = 1;
 }
 
@@ -327,8 +345,27 @@ async function readMarkdownFiles(relativeDir) {
 }
 
 async function writeOutput(targetPath, content) {
+  const normalizedContent = content.endsWith("\n") ? content : `${content}\n`;
+
+  if (dryRun) {
+    wouldWrite.push(path.relative(repoRoot, targetPath));
+    return;
+  }
+
+  if (!force) {
+    try {
+      const existing = await readFile(targetPath, "utf8");
+      if (existing !== normalizedContent) {
+        conflicts.push(path.relative(repoRoot, targetPath));
+        return;
+      }
+    } catch {
+      // New files are safe to create without --force.
+    }
+  }
+
   await mkdir(path.dirname(targetPath), { recursive: true });
-  await writeFile(targetPath, content.endsWith("\n") ? content : `${content}\n`, "utf8");
+  await writeFile(targetPath, normalizedContent, "utf8");
 }
 
 function normalizePipelineManifest(slug, yaml, config) {
@@ -342,20 +379,34 @@ function normalizePipelineManifest(slug, yaml, config) {
     typeof config.transformStages === "function" ? config.transformStages(stages) : stages;
 
   return YAML.stringify(
-    {
+    compactObject({
       slug,
       display_name: titleize(slug),
       description: normalizeRepoTerms(String(original?.description ?? "")).replace(/\s+/gu, " ").trim(),
       status: mapPipelineStatus(original?.stability),
       master_clock: "none",
+      stage_order: config.stageOrder,
+      default_checkpoint_policy: original?.default_checkpoint_policy,
+      reference_input: normalizeUnknown(original?.reference_input),
+      extensions: normalizeUnknown(original?.extensions),
+      required_skills: uniqueStrings([
+        ...normalizeStringList(original?.required_skills).map(normalizeRequiredSkillPath),
+        ...(config.extraRequiredSkills ?? []),
+      ]),
+      compatible_playbooks: normalizeCompatiblePlaybooks(original?.compatible_playbooks),
       orchestration: {
+        mode: typeof orchestration.mode === "string" ? orchestration.mode : undefined,
+        skill:
+          typeof orchestration.skill === "string"
+            ? normalizeSkillPath(slug, orchestration.skill)
+            : `pipelines/${slug}/executive-producer.md`,
         budget_default_usd: numberOrDefault(orchestration.budget_default_usd, 3),
         max_revisions_per_stage: numberOrDefault(orchestration.max_revisions_per_stage, 2),
         max_send_backs: numberOrDefault(orchestration.max_send_backs, 3),
         max_wall_time_minutes: numberOrDefault(orchestration.max_wall_time_minutes, 30),
       },
       stages: transformedStages,
-    },
+    }),
     { lineWidth: 0 },
   );
 }
@@ -366,10 +417,18 @@ function normalizeStage(slug, stage) {
     slug: stageSlug,
     skill: normalizeSkillPath(slug, String(stage?.skill ?? `pipelines/${slug}/${stageSlug}-director`)),
     produces: firstString(stage?.produces) ?? `${stageSlug}_artifact`,
+    produces_artifacts: normalizeStringList(stage?.produces),
+    required_artifacts_in: normalizeStringList(stage?.required_artifacts_in),
+    optional_artifacts_in: normalizeStringList(stage?.optional_artifacts_in),
+    required_tools: normalizeToolNames(stage?.required_tools),
+    optional_tools: normalizeToolNames(stage?.optional_tools),
     tools_available: normalizeToolNames(stage?.tools_available),
     review_focus: normalizeStringList(stage?.review_focus),
     success_criteria: normalizeStringList(stage?.success_criteria),
     human_approval: stage?.human_approval_default === true ? "required" : "optional",
+    human_approval_default:
+      typeof stage?.human_approval_default === "boolean" ? stage.human_approval_default : undefined,
+    checkpoint_required: typeof stage?.checkpoint_required === "boolean" ? stage.checkpoint_required : undefined,
   });
 }
 
@@ -378,6 +437,7 @@ function hybridSourceReviewStage() {
     slug: "source_review",
     skill: "pipelines/hybrid/source-review-director.md",
     produces: "source_media_review",
+    produces_artifacts: ["source_media_review"],
     tools_available: ["source_media_review", "frame_sampler", "transcriber", "scene_detect", "video_understand"],
     review_focus: [
       "Supplied footage is probed before planning",
@@ -389,6 +449,7 @@ function hybridSourceReviewStage() {
       "Known source constraints are explicit before script",
     ],
     human_approval: "optional",
+    human_approval_default: false,
   };
 }
 
@@ -397,6 +458,7 @@ function localizationSourceReviewStage() {
     slug: "source_review",
     skill: "pipelines/localization-dub/source-review-director.md",
     produces: "source_media_review",
+    produces_artifacts: ["source_media_review"],
     tools_available: ["source_media_review", "transcriber", "frame_sampler", "scene_detect", "video_understand"],
     review_focus: [
       "Source video is probed before translation",
@@ -408,34 +470,22 @@ function localizationSourceReviewStage() {
       "Speech, subtitle, and on-screen text risks are ready for localization planning",
     ],
     human_approval: "optional",
+    human_approval_default: false,
   };
 }
 
 function dailyNewsStages(stages) {
   const bySlug = new Map(stages.map((stage) => [stage.slug, stage]));
-  const research = bySlug.get("research");
   const idea = bySlug.get("idea");
-  const script = bySlug.get("script");
+  const research = bySlug.get("research");
   const capture = bySlug.get("capture");
+  const script = bySlug.get("script");
   const scene = bySlug.get("scene_plan");
   const assets = bySlug.get("assets");
   const edit = bySlug.get("edit");
   const compose = bySlug.get("compose");
 
   return [
-    research && {
-      ...research,
-      review_focus: [
-        "At least 8-12 candidate headlines fetched before slate selection",
-        "Every headline has source URL, publisher, publish date, and brief summary",
-        "Recency window is honored and stale stories are dropped",
-      ],
-      success_criteria: [
-        "Schema-valid research_brief artifact",
-        "research_brief.headlines contains attributed, deduplicated candidates",
-      ],
-      human_approval: "required",
-    },
     idea && {
       ...idea,
       review_focus: [
@@ -449,6 +499,33 @@ function dailyNewsStages(stages) {
       ],
       human_approval: "required",
     },
+    research && {
+      ...research,
+      review_focus: [
+        "At least 8-12 candidate headlines fetched before slate selection",
+        "Every headline has source URL, publisher, publish date, and brief summary",
+        "Recency window is honored and stale stories are dropped",
+      ],
+      success_criteria: [
+        "Schema-valid research_brief artifact",
+        "research_brief.headlines contains attributed, deduplicated candidates",
+      ],
+      human_approval: "required",
+    },
+    capture && {
+      ...capture,
+      tools_available: ["playwright_recording"],
+      review_focus: [
+        "Captures are real source screenshots. Do not generate fake article pages.",
+        "Every selected story has an above-the-fold screenshot or explicit failure flag",
+        "Paywall, cookie banner, geo-block, and page-error issues are recorded",
+      ],
+      success_criteria: [
+        "Schema-valid capture_manifest artifact",
+        "All referenced screenshot files exist on disk",
+      ],
+      human_approval: "optional",
+    },
     script && {
       ...script,
       review_focus: [
@@ -461,20 +538,6 @@ function dailyNewsStages(stages) {
         "Script story count matches the selected story slate",
       ],
       human_approval: "required",
-    },
-    capture && {
-      ...capture,
-      tools_available: ["playwright_recording", "video_downloader"],
-      review_focus: [
-        "Captures are real source screenshots. Do not generate fake article pages.",
-        "Every selected story has an above-the-fold screenshot or explicit failure flag",
-        "Paywall, cookie banner, geo-block, and page-error issues are recorded",
-      ],
-      success_criteria: [
-        "Schema-valid capture_manifest artifact",
-        "All referenced screenshot files exist on disk",
-      ],
-      human_approval: "optional",
     },
     scene && {
       ...scene,
@@ -539,6 +602,10 @@ function dailyNewsPublishStage() {
     slug: "publish",
     skill: "pipelines/daily-news/publish-director.md",
     produces: "publish_log",
+    produces_artifacts: ["publish_log"],
+    required_artifacts_in: ["render_report", "final_review"],
+    optional_artifacts_in: ["brief", "script", "capture_manifest"],
+    checkpoint_required: true,
     review_focus: [
       "Rendered episode, source URLs, screenshots, and captions are packaged together",
       "Publisher attribution and episode date survive into delivery metadata",
@@ -549,6 +616,7 @@ function dailyNewsPublishStage() {
       "Export package contains rendered video, source manifest, screenshots, and metadata",
     ],
     human_approval: "required",
+    human_approval_default: true,
   };
 }
 
@@ -596,6 +664,42 @@ function normalizeStringList(value) {
   return Array.isArray(value) ? value.map((item) => normalizeRepoTerms(String(item))) : [];
 }
 
+function uniqueStrings(values) {
+  return [...new Set(values)];
+}
+
+function normalizeRequiredSkillPath(value) {
+  return normalizeRepoTerms(value).replace(/^pipelines\/([^/]+)\/([^/.]+)$/u, "pipelines/$1/$2.md");
+}
+
+function normalizeCompatiblePlaybooks(value) {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  return compactObject({
+    recommended: normalizeStringList(value.recommended),
+    also_works: normalizeStringList(value.also_works),
+    custom_allowed: typeof value.custom_allowed === "boolean" ? value.custom_allowed : undefined,
+  });
+}
+
+function normalizeUnknown(value) {
+  if (typeof value === "string") {
+    return normalizeRepoTerms(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(normalizeUnknown);
+  }
+
+  if (isRecord(value)) {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, normalizeUnknown(entry)]));
+  }
+
+  return value;
+}
+
 function normalizeRepoTerms(value) {
   return value
     .replaceAll(sourceBrand, "predit")
@@ -604,12 +708,14 @@ function normalizeRepoTerms(value) {
     .replaceAll("pipeline_defs/", "bundled/pipelines/")
     .replaceAll("skills/core/", "bundled/skills/core/")
     .replaceAll("skills/meta/", "bundled/skills/meta/")
+    .replaceAll(".claude/skills/", ".predit/skills/agents/")
+    .replaceAll(".agents/skills/", ".predit/skills/agents/")
     .replaceAll("docs/localization-dubbing-best-practices.md", "bundled/skills/agents/video-translate.md")
     .replaceAll("skills/creative/short-form.md", "bundled/skills/agents/video-edit.md")
     .replaceAll("skills/creative/long-form.md", "bundled/skills/agents/video-edit.md")
     .replaceAll("skills/creative/storytelling.md", "bundled/skills/meta/creative-intake.md")
     .replaceAll("skills/creative/video-editing.md", "bundled/skills/agents/video-edit.md")
-    .replaceAll("hyperframes_compose", "hyperframes");
+    .replaceAll("skills/creative/", "bundled/skills/creative/");
 }
 
 function firstString(value) {
@@ -630,8 +736,26 @@ function quoteYaml(value) {
 
 function compactObject(value) {
   return Object.fromEntries(
-    Object.entries(value).filter(([, entryValue]) => !(Array.isArray(entryValue) && entryValue.length === 0)),
+    Object.entries(value).filter(([, entryValue]) => {
+      if (entryValue === undefined) {
+        return false;
+      }
+
+      if (Array.isArray(entryValue) && entryValue.length === 0) {
+        return false;
+      }
+
+      if (isRecord(entryValue) && Object.keys(entryValue).length === 0) {
+        return false;
+      }
+
+      return true;
+    }),
   );
+}
+
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function titleize(slug) {

@@ -29,7 +29,7 @@ The `playwright_recording` tool was designed for video capture, but works for
 single-frame screenshots: capture a 1-sec recording, extract the first frame
 via ffmpeg.
 
-For each `brief.selected_stories[i]` or `script.stories[i]`:
+For each `research_brief.selected_stories[i]`:
 
 1. Call `playwright_recording` with:
    - `url: <story.url>`

@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/review",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "stage": {
+      "type": "string"
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "revise",
+        "pass_with_warnings"
+      ]
+    },
+    "findings": {
+      "type": "array",
+      "items": {}
+    },
+    "summary": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "predit://artifacts/review.summary",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "critical": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "suggestions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nitpicks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "investigations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "success_criteria_met": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "success_criteria_total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "critical",
+        "suggestions",
+        "nitpicks",
+        "investigations",
+        "success_criteria_met",
+        "success_criteria_total"
+      ]
+    }
+  },
+  "required": [
+    "stage",
+    "round",
+    "decision",
+    "summary"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/action_timeline",
+  "type": "object",
+  "additionalProperties": {
+    "type": "array",
+    "items": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "predit://artifacts/action_timeline.entry",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "time_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "pose": {
+          "type": "string"
+        },
+        "transition_frames": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ease": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "time_s",
+        "pose",
+        "transition_frames",
+        "ease"
+      ]
+    }
+  }
+}

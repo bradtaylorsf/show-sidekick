@@ -3,7 +3,33 @@ display_name: Localization Dub
 description: Transcript-first localization pipeline for producing translated subtitles, dubbed audio, and optional lip-synced language variants from an existing source video. EP orchestration adds quality gates for translation accuracy, timing preservation, and per-locale consistency.
 status: beta
 master_clock: none
+default_checkpoint_policy: guided
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/localization-dub/executive-producer.md
+  - pipelines/localization-dub/source-review-director.md
+  - pipelines/localization-dub/idea-director.md
+  - pipelines/localization-dub/script-director.md
+  - pipelines/localization-dub/scene-director.md
+  - pipelines/localization-dub/asset-director.md
+  - pipelines/localization-dub/edit-director.md
+  - pipelines/localization-dub/compose-director.md
+  - pipelines/localization-dub/publish-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+compatible_playbooks:
+  recommended:
+    - clean-professional
+    - flat-motion-graphics
+  also_works: []
+  custom_allowed: true
 orchestration:
+  mode: executive-producer
+  skill: pipelines/localization-dub/executive-producer.md
   budget_default_usd: 3
   max_revisions_per_stage: 3
   max_send_backs: 3
@@ -12,6 +38,8 @@ stages:
   - slug: source_review
     skill: pipelines/localization-dub/source-review-director.md
     produces: source_media_review
+    produces_artifacts:
+      - source_media_review
     tools_available:
       - source_media_review
       - transcriber
@@ -26,9 +54,16 @@ stages:
       - Schema-valid source_media_review artifact for the source video
       - Speech, subtitle, and on-screen text risks are ready for localization planning
     human_approval: optional
+    human_approval_default: false
   - slug: idea
     skill: pipelines/localization-dub/idea-director.md
     produces: brief
+    produces_artifacts:
+      - brief
+      - decision_log
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
     review_focus:
       - Source language and target languages are explicit
       - Deliverable mode is clear per language
@@ -36,12 +71,22 @@ stages:
     success_criteria:
       - Schema-valid brief artifact
       - Brief records localization scope and dub mode
-    human_approval: required
   - slug: script
     skill: pipelines/localization-dub/script-director.md
     produces: script
+    produces_artifacts:
+      - script
+    required_artifacts_in:
+      - brief
+    optional_artifacts_in:
+      - source_media_review
+    required_tools:
+      - transcriber
     tools_available:
       - transcriber
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
     review_focus:
       - Transcript truth is strong enough for downstream localization
       - Glossary and protected terms are preserved
@@ -49,13 +94,24 @@ stages:
     success_criteria:
       - Schema-valid script artifact
       - Script contains source transcript structure and translated sections
-    human_approval: required
   - slug: scene_plan
     skill: pipelines/localization-dub/scene-director.md
     produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - script
+    optional_artifacts_in:
+      - brief
+    optional_tools:
+      - frame_sampler
+      - scene_detect
     tools_available:
       - frame_sampler
       - scene_detect
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
     review_focus:
       - Dub mode is chosen realistically for each deliverable
       - Timing drift and on-screen text risks are mapped
@@ -63,16 +119,31 @@ stages:
     success_criteria:
       - Schema-valid scene_plan artifact
       - Every deliverable has a defined localization treatment
-    human_approval: required
   - slug: assets
     skill: pipelines/localization-dub/asset-director.md
     produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - scene_plan
+      - script
+    optional_artifacts_in:
+      - brief
+    required_tools:
+      - tts_selector
+      - subtitle_gen
+    optional_tools:
+      - lip_sync
+      - audio_enhance
     tools_available:
       - tts_selector
       - subtitle_gen
       - lip_sync
       - heygen_video
       - audio_enhance
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
     review_focus:
       - Subtitle and dubbed-audio assets exist for each language
       - Timing and pronunciation risks are recorded
@@ -80,10 +151,19 @@ stages:
     success_criteria:
       - Schema-valid asset_manifest artifact
       - All referenced asset files exist on disk
-    human_approval: optional
   - slug: edit
     skill: pipelines/localization-dub/edit-director.md
     produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - scene_plan
+      - asset_manifest
+    optional_artifacts_in:
+      - script
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
     review_focus:
       - Source structure is preserved unless localization timing forces change
       - CTA and legal copy survive translation cleanly
@@ -91,15 +171,31 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - Edit decisions cover all planned language outputs
-    human_approval: optional
   - slug: compose
     skill: pipelines/localization-dub/compose-director.md
     produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+    optional_artifacts_in:
+      - scene_plan
+    required_tools:
+      - video_compose
+      - audio_mixer
+    optional_tools:
+      - video_trimmer
+      - audio_enhance
     tools_available:
       - video_compose
       - audio_mixer
       - video_trimmer
       - audio_enhance
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
     review_focus:
       - Each language output is intelligible and correctly timed
       - Subtitle and dub timing match the chosen treatment
@@ -107,10 +203,20 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output file exists and passes ffprobe validation
-    human_approval: optional
   - slug: publish
     skill: pipelines/localization-dub/publish-director.md
     produces: publish_log
+    produces_artifacts:
+      - publish_log
+    required_artifacts_in:
+      - render_report
+      - final_review
+    optional_artifacts_in:
+      - brief
+      - script
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
     review_focus:
       - Every language package contains the right assets and metadata
       - Locale labels and titles are consistent
@@ -118,4 +224,3 @@ stages:
     success_criteria:
       - Schema-valid publish_log artifact
       - Export package contains localized video and metadata outputs
-    human_approval: required

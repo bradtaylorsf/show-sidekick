@@ -1,0 +1,478 @@
+import {
+  AUDIO_ARCHITECTURE,
+  RENDER_RUNTIME,
+  RENDERER_FAMILY,
+  type RenderRuntime,
+} from "./enums.js";
+import { CreativeArtifactJsonSchemas, type JsonSchema } from "./creative-json-schema.js";
+import { DECISION_CATEGORY } from "./decision-log.js";
+import { FINAL_REVIEW_THRESHOLDS } from "./final-review.js";
+
+const stringJson = { type: "string" } as const satisfies JsonSchema;
+const booleanJson = { type: "boolean" } as const satisfies JsonSchema;
+const numberJson = { type: "number" } as const satisfies JsonSchema;
+const nonNegativeNumberJson = { type: "number", minimum: 0 } as const satisfies JsonSchema;
+const positiveNumberJson = { type: "number", exclusiveMinimum: 0 } as const satisfies JsonSchema;
+const nonNegativeIntegerJson = { type: "integer", minimum: 0 } as const satisfies JsonSchema;
+const stringArrayJson = { type: "array", items: stringJson } as const satisfies JsonSchema;
+const unknownJson = {} as const satisfies JsonSchema;
+const unknownArrayJson = { type: "array", items: unknownJson } as const satisfies JsonSchema;
+const unknownRecordJson = { type: "object", additionalProperties: true } as const satisfies JsonSchema;
+
+function withMeta(id: string, schema: JsonSchema): JsonSchema {
+  return {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $id: `predit://artifacts/${id}`,
+    ...schema,
+  };
+}
+
+function objectJson(
+  id: string,
+  properties: { readonly [key: string]: JsonSchema },
+  required: readonly string[],
+  additionalProperties: boolean | JsonSchema = false,
+): JsonSchema {
+  return withMeta(id, {
+    type: "object",
+    additionalProperties,
+    properties,
+    required,
+  });
+}
+
+const resolutionJson = objectJson(
+  "resolution",
+  {
+    width: { type: "integer", exclusiveMinimum: 0 },
+    height: { type: "integer", exclusiveMinimum: 0 },
+  },
+  ["width", "height"],
+);
+
+const viewportJson = objectJson(
+  "viewport",
+  {
+    width: { type: "integer", exclusiveMinimum: 0 },
+    height: { type: "integer", exclusiveMinimum: 0 },
+  },
+  ["width", "height"],
+);
+
+const renderRuntimeJson = { type: "string", enum: RENDER_RUNTIME } as const satisfies JsonSchema;
+const rendererFamilyJson = { type: "string", enum: RENDERER_FAMILY } as const satisfies JsonSchema;
+
+export const CaptureManifestJsonSchema = objectJson(
+  "capture_manifest",
+  {
+    screenshots: {
+      type: "array",
+      items: objectJson(
+        "capture_manifest.screenshot",
+        {
+          story_id: stringJson,
+          image_path: stringJson,
+          captured_at: stringJson,
+          viewport: { anyOf: [stringJson, viewportJson] },
+          quality_flags: stringArrayJson,
+          page_load_status: { anyOf: [nonNegativeIntegerJson, stringJson] },
+          url: stringJson,
+          publisher: stringJson,
+        },
+        ["story_id", "image_path"],
+      ),
+    },
+    failures: {
+      type: "array",
+      items: objectJson(
+        "capture_manifest.failure",
+        {
+          story_id: stringJson,
+          url: stringJson,
+          reason: stringJson,
+          page_load_status: { anyOf: [nonNegativeIntegerJson, stringJson] },
+        },
+        ["story_id", "reason"],
+      ),
+    },
+  },
+  ["screenshots"],
+);
+
+export const CuesheetJsonSchema = objectJson(
+  "cuesheet",
+  {
+    audio: objectJson(
+      "cuesheet.audio",
+      {
+        path: stringJson,
+        duration_s: positiveNumberJson,
+        sample_rate: { type: "integer", exclusiveMinimum: 0 },
+        channels: { type: "integer", exclusiveMinimum: 0 },
+      },
+      ["path", "duration_s", "sample_rate", "channels"],
+    ),
+    master_clock: { type: "string", enum: ["audio", "voiceover"] },
+    bpm: positiveNumberJson,
+    words: unknownArrayJson,
+    segments: unknownArrayJson,
+    sections: unknownArrayJson,
+    beats: unknownArrayJson,
+    climax: unknownArrayJson,
+    scene_anchors: unknownArrayJson,
+  },
+  ["audio", "master_clock", "segments", "sections", "beats", "climax", "scene_anchors"],
+  true,
+);
+
+export const CostLogJsonSchema = withMeta("cost_log", {
+  type: "array",
+  items: objectJson(
+    "cost_log.entry",
+    {
+      tool: stringJson,
+      provider: stringJson,
+      model: stringJson,
+      units: nonNegativeNumberJson,
+      usd: nonNegativeNumberJson,
+      mode: { type: "string", enum: ["sample", "full"] },
+    },
+    ["tool", "provider", "model", "units", "usd", "mode"],
+  ),
+});
+
+export const DecisionLogJsonSchema = withMeta("decision_log", {
+  type: "array",
+  items: objectJson(
+    "decision_log.entry",
+    {
+      id: stringJson,
+      stage: stringJson,
+      timestamp: stringJson,
+      category: { type: "string", enum: DECISION_CATEGORY },
+      scope: objectJson(
+        "decision_log.scope",
+        {
+          capability: stringJson,
+          provider: stringJson,
+        },
+        [],
+      ),
+      options_considered: {
+        type: "array",
+        minItems: 2,
+        items: objectJson(
+          "decision_log.option",
+          {
+            label: stringJson,
+            rejected_because: { type: ["string", "null"] },
+            notes: { type: ["string", "null"] },
+          },
+          ["label", "rejected_because"],
+        ),
+      },
+      picked: stringJson,
+      reason: stringJson,
+      confidence: { type: "number", minimum: 0 },
+      user_visible: booleanJson,
+      supersedes: { type: ["string", "null"] },
+    },
+    ["id", "stage", "timestamp", "category", "options_considered", "picked", "reason", "confidence", "user_visible", "supersedes"],
+  ),
+});
+
+export const EditDecisionsJsonSchema = objectJson(
+  "edit_decisions",
+  {
+    cuts: {
+      type: "array",
+      items: objectJson(
+        "edit_decisions.cut",
+        {
+          start_s: nonNegativeNumberJson,
+          end_s: nonNegativeNumberJson,
+          asset_id: stringJson,
+          transition_in: stringJson,
+          transition_out: stringJson,
+          provider: stringJson,
+        },
+        ["start_s", "end_s", "asset_id"],
+      ),
+    },
+    overlays: unknownArrayJson,
+    subtitles: objectJson(
+      "edit_decisions.subtitles",
+      {
+        enabled: booleanJson,
+        source: stringJson,
+      },
+      [],
+    ),
+    audio: unknownRecordJson,
+    music: unknownJson,
+    transitions: unknownArrayJson,
+    render_runtime: renderRuntimeJson,
+    renderer_family: rendererFamilyJson,
+    brand: objectJson("edit_decisions.brand", { slug: stringJson, name: stringJson }, ["slug", "name"]),
+  },
+  ["cuts", "render_runtime", "renderer_family"],
+);
+
+export const FinalReviewJsonSchema = objectJson(
+  "final_review",
+  {
+    status: { type: "string", enum: ["pass", "revise", "fail"] },
+    recommended_action: { type: "string", enum: ["present_to_user", "re_render", "revise_edit", "revise_assets", "block"] },
+    checks: objectJson(
+      "final_review.checks",
+      {
+        technical_probe: unknownRecordJson,
+        visual_spotcheck: unknownRecordJson,
+        audio_spotcheck: unknownRecordJson,
+        promise_preservation: unknownRecordJson,
+        subtitle_check: unknownRecordJson,
+        transcript_comparison: unknownRecordJson,
+      },
+      ["technical_probe", "visual_spotcheck", "audio_spotcheck", "promise_preservation", "subtitle_check"],
+    ),
+    issues_found: unknownArrayJson,
+    thresholds: objectJson(
+      "final_review.thresholds",
+      Object.fromEntries(
+        Object.entries(FINAL_REVIEW_THRESHOLDS).map(([key, value]) => [
+          key,
+          Number.isInteger(value) ? nonNegativeIntegerJson : nonNegativeNumberJson,
+        ]),
+      ),
+      [],
+    ),
+  },
+  ["status", "recommended_action", "checks"],
+);
+
+export const PublishLogJsonSchema = objectJson(
+  "publish_log",
+  {
+    outputs: {
+      type: "array",
+      items: objectJson(
+        "publish_log.output",
+        {
+          path: stringJson,
+          kind: stringJson,
+          platform: stringJson,
+          notes: stringJson,
+        },
+        ["path"],
+      ),
+    },
+    metadata: unknownRecordJson,
+    source_manifest_path: stringJson,
+    captions_path: stringJson,
+    notes: stringArrayJson,
+  },
+  ["outputs"],
+  true,
+);
+
+export const RenderReportJsonSchema = objectJson(
+  "render_report",
+  {
+    output_path: stringJson,
+    encoding_profile: stringJson,
+    duration_s: nonNegativeNumberJson,
+    resolution: resolutionJson,
+    framerate: positiveNumberJson,
+    runtime_used: renderRuntimeJson,
+    asset_count: nonNegativeIntegerJson,
+    warnings: stringArrayJson,
+    validation_steps: {
+      type: "array",
+      items: objectJson(
+        "render_report.validation_step",
+        {
+          name: stringJson,
+          status: { type: "string", enum: ["pass", "warn", "fail"] },
+          notes: stringJson,
+        },
+        ["name", "status"],
+      ),
+    },
+  },
+  ["output_path", "encoding_profile", "duration_s", "resolution", "framerate", "runtime_used", "asset_count"],
+);
+
+export const ReviewJsonSchema = objectJson(
+  "review",
+  {
+    stage: stringJson,
+    round: nonNegativeIntegerJson,
+    decision: { type: "string", enum: ["pass", "revise", "pass_with_warnings"] },
+    findings: unknownArrayJson,
+    summary: objectJson(
+      "review.summary",
+      {
+        critical: nonNegativeIntegerJson,
+        suggestions: nonNegativeIntegerJson,
+        nitpicks: nonNegativeIntegerJson,
+        investigations: nonNegativeIntegerJson,
+        success_criteria_met: nonNegativeIntegerJson,
+        success_criteria_total: nonNegativeIntegerJson,
+      },
+      ["critical", "suggestions", "nitpicks", "investigations", "success_criteria_met", "success_criteria_total"],
+    ),
+  },
+  ["stage", "round", "decision", "summary"],
+);
+
+export const SourceMediaReviewJsonSchema = objectJson(
+  "source_media_review",
+  {
+    files: {
+      type: "array",
+      minItems: 1,
+      items: objectJson(
+        "source_media_review.file",
+        {
+          path: stringJson,
+          reviewed: booleanJson,
+          technical_probe: unknownRecordJson,
+          content_summary: stringJson,
+          planning_implications: stringArrayJson,
+        },
+        ["path", "reviewed", "technical_probe", "content_summary"],
+      ),
+    },
+  },
+  ["files"],
+);
+
+export const VideoAnalysisBriefJsonSchema = objectJson(
+  "video_analysis_brief",
+  {
+    pacing_style: stringJson,
+    promise_elements: stringArrayJson,
+    approved_budget_usd: nonNegativeNumberJson,
+    scenes: {
+      type: "array",
+      items: objectJson(
+        "video_analysis_brief.scene",
+        {
+          scene_ref: stringJson,
+          subject: stringArrayJson,
+          subject_motion: stringArrayJson,
+          scene: stringArrayJson,
+          spatial_framing: stringArrayJson,
+          camera: stringArrayJson,
+          motion_type: { type: "string", enum: ["motion_clip", "animated_still", "static_image"] },
+          flow_variance: numberJson,
+        },
+        ["subject", "subject_motion", "scene", "spatial_framing", "camera", "motion_type", "flow_variance"],
+      ),
+    },
+  },
+  ["scenes"],
+);
+
+export const ActionTimelineJsonSchema = withMeta("action_timeline", {
+  type: "object",
+  additionalProperties: {
+    type: "array",
+    items: objectJson(
+      "action_timeline.entry",
+      {
+        time_s: nonNegativeNumberJson,
+        pose: stringJson,
+        transition_frames: nonNegativeIntegerJson,
+        ease: stringJson,
+      },
+      ["time_s", "pose", "transition_frames", "ease"],
+    ),
+  },
+});
+
+export const CharacterDesignJsonSchema = objectJson(
+  "character_design",
+  {
+    slug: stringJson,
+    required_actions: stringArrayJson,
+    required_emotions: stringArrayJson,
+    visual_description: stringJson,
+    references: unknownArrayJson,
+  },
+  ["slug", "visual_description"],
+);
+
+export const CharacterQaReportJsonSchema = objectJson(
+  "character_qa_report",
+  {
+    findings: unknownArrayJson,
+    summary: objectJson(
+      "character_qa_report.summary",
+      {
+        characters_reviewed: nonNegativeIntegerJson,
+        critical: nonNegativeIntegerJson,
+        suggestions: nonNegativeIntegerJson,
+      },
+      ["characters_reviewed", "critical", "suggestions"],
+    ),
+  },
+  ["summary"],
+);
+
+export const PoseLibraryJsonSchema = objectJson(
+  "pose_library",
+  {
+    poses: unknownRecordJson,
+    expressions: unknownRecordJson,
+  },
+  ["poses", "expressions"],
+);
+
+export const RigPlanJsonSchema = objectJson(
+  "rig_plan",
+  {
+    character: stringJson,
+    joints: {
+      type: "array",
+      minItems: 1,
+      items: objectJson(
+        "rig_plan.joint",
+        {
+          id: stringJson,
+          parent: { type: ["string", "null"] },
+          pivot: objectJson("rig_plan.point", { x: numberJson, y: numberJson }, ["x", "y"]),
+          default_rotation_deg: numberJson,
+          range_deg: objectJson("rig_plan.range", { min: numberJson, max: numberJson }, ["min", "max"]),
+        },
+        ["id", "parent", "pivot", "default_rotation_deg"],
+      ),
+    },
+    attachment_points: unknownArrayJson,
+  },
+  ["character", "joints"],
+);
+
+export const ArtifactJsonSchemas = {
+  ...CreativeArtifactJsonSchemas,
+  action_timeline: ActionTimelineJsonSchema,
+  capture_manifest: CaptureManifestJsonSchema,
+  character_design: CharacterDesignJsonSchema,
+  character_qa_report: CharacterQaReportJsonSchema,
+  cost_log: CostLogJsonSchema,
+  cuesheet: CuesheetJsonSchema,
+  decision_log: DecisionLogJsonSchema,
+  edit_decisions: EditDecisionsJsonSchema,
+  final_review: FinalReviewJsonSchema,
+  pose_library: PoseLibraryJsonSchema,
+  publish_log: PublishLogJsonSchema,
+  render_report: RenderReportJsonSchema,
+  review: ReviewJsonSchema,
+  rig_plan: RigPlanJsonSchema,
+  source_media_review: SourceMediaReviewJsonSchema,
+  video_analysis_brief: VideoAnalysisBriefJsonSchema,
+  audio_architecture: withMeta("audio_architecture", { type: "string", enum: AUDIO_ARCHITECTURE }),
+  render_runtime: withMeta("render_runtime", { type: "string", enum: RENDER_RUNTIME satisfies readonly RenderRuntime[] }),
+} as const;
+
+export type ArtifactJsonSchemaName = keyof typeof ArtifactJsonSchemas;

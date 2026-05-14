@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/end-tag-plan",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "overlay",
+        "concat"
+      ]
+    },
+    "text": {
+      "type": "string"
+    },
+    "placement_seconds_from_end": {
+      "type": "number",
+      "minimum": 0
+    },
+    "style_ref": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "mode",
+    "text",
+    "placement_seconds_from_end"
+  ]
+}

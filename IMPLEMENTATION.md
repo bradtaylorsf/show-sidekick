@@ -22,14 +22,14 @@ Phase B — Parallel epics (6–7 alpha-loops on different work trees)
   Epic 5   Composition + Visual Tools              10 issues, 4 batches
   Epic 6   Video + Audio Generation Tools           9 issues, 3 batches
   Epic 7   Analysis + Specialty Tools               7 issues, 3 batches
-  Epic 8   Bundled Content                         32 issues, 6 batches
+  Epic 8   Bundled Content                         33 issues, 7 batches
 
 Phase C — Integration (after Phase B)
   Epic 9   Runner Integration + Reference + Cost    5 issues, 2 batches
   Epic 10  User Project + Starters + Delivery      11 issues, 4 batches
 
                                                  ────────────
-                                                 115 issues
+                                                 116 issues
 ```
 
 ## Cross-epic dependency map
@@ -1438,6 +1438,17 @@ A vitest suite under `tests/content-fidelity/` greps the corresponding skill mar
   - `_COLOR_TEMP_PHRASES` (4 entries).
 
 **Cross-references.** audit C-6, L2P-COMMON-4.
+
+## Batch 8.G — OpenMontage migration hardening
+
+**Standard acceptance.**
+- [x] Broken `skills/creative/*` references resolve through bundled creative skills or inlined prose.
+- [x] Python-era registry/tool snippets in migrated skills are rewritten for predit's TypeScript harness.
+- [x] Migrated manifests preserve OpenMontage-required semantics: explicit EP skill, `required_tools`, `optional_tools`, artifact inputs, checkpoint flags, compatible playbooks, and extension flags.
+- [x] OpenMontage tool names remain first-class registry names (`scene_detect`, `tts_selector`, `image_selector`, `video_selector`, `web_search`, `hyperframes_compose`) instead of being silently rewritten away.
+- [x] Daily-news preserves OpenMontage capture-before-script ordering via explicit `stage_order: manifest`.
+- [x] `schemas/artifacts/*.schema.json` is generated from `src/artifacts/json-schema.ts`.
+- [x] Porter scripts default to dry-run/force-aware clobber protection so AI second-pass edits are not overwritten accidentally.
 
 ---
 

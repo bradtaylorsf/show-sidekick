@@ -12,6 +12,7 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "generate:schemas": "pnpm build && node scripts/generate-artifact-schemas.mjs",
     "dev": "tsx watch src/cli/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",

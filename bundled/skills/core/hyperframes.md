@@ -125,9 +125,10 @@ projects/<project-name>/
     └── final.mp4
 ```
 
-The workspace is generated at compose time by `hyperframes` from
-`edit_decisions` + `asset_manifest` + the active playbook. It's regenerable
-and gitignored along with the rest of `projects/`.
+The workspace is generated at compose time by `hyperframes_compose` from
+`edit_decisions` + `asset_manifest` + the active playbook. predit also keeps
+the `hyperframes` runtime tool name for internal routing. The workspace is
+regenerable and gitignored along with the rest of `projects/`.
 
 ### Why a dedicated workspace per project
 
@@ -157,9 +158,10 @@ predit artifacts into HyperFrames project files:
 | Selected playbook (`flat-motion-graphics`, `clean-professional`, etc.) | `:root` CSS custom properties + `DESIGN.md`. See `src/compose/hyperframes-style-bridge.ts`. |
 | `renderer_family` | Controls which top-level HTML template is used and which registry blocks are pre-installed |
 
-The concrete rendering is: `hyperframes` writes files into the
+The concrete rendering is: `hyperframes_compose` writes files into the
 workspace, runs `lint → validate → render`, and returns a `render_report`
-with the path to the generated MP4. See `src/tools/hyperframes.ts`.
+with the path to the generated MP4. See `src/tools/hyperframes.ts` and the
+`hyperframes_compose` compatibility registration.
 
 ### Workspace-local authoring artifacts
 
@@ -171,7 +173,7 @@ replace its canonical artifact contracts with these — `brief`, `script`,
 written into the HyperFrames workspace so the runtime workflow feels natural:
 
 - `DESIGN.md` — derived from the selected playbook, written by
-  `hyperframes` or `src/compose/hyperframes-style-bridge.ts`. Safe to use as
+  `hyperframes_compose` or `src/compose/hyperframes-style-bridge.ts`. Safe to use as
   a working brief in the workspace.
 - `SCRIPT.md` — optional narration copy for human review. Canonical script
   stays in `artifacts/script.json`.
@@ -193,7 +195,7 @@ artifact wins.
    user explicitly approves installing it.
 3. **Edit stage** carries `render_runtime` forward unchanged.
 4. **Compose stage** reads `edit_decisions.render_runtime` and routes via
-   `video_compose` → `hyperframes` (for HyperFrames) or the existing
+   `video_compose` → `hyperframes_compose` (for HyperFrames) or the existing
    Remotion path (for Remotion). Compose may not swap runtime without a new
    `render_runtime_selection` decision.
 5. **Final review** records `render_runtime_used` and sets

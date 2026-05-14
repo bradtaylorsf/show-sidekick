@@ -13,7 +13,7 @@ Write the narration. Newsreader tone, neutral, authoritative. No opinion.
 
 | Layer | Resource | Purpose |
 |-------|----------|---------|
-| Prior artifacts | `priorArtifacts.idea`, `priorArtifacts.research` | Approved story slate and source facts |
+| Prior artifacts | `priorArtifacts.research`, `priorArtifacts.capture` | Selected story facts and real capture quality flags |
 | Policy | `bundled/skills/meta/reviewer.md` | Two-round review limit and source-attribution checks |
 
 ## Per-story narration block
@@ -74,19 +74,18 @@ outro:
 total_estimated_duration_seconds: <sum>
 ```
 
-## Capture Handoff
+## Capture-Aware Writing
 
-In this repo, `capture` runs after `script`, so do not assume screenshot quality
-flags are already known. Instead:
+`capture` runs before `script` in this pipeline. Use `priorArtifacts.capture`
+as a constraint, not a decoration:
 
-- include the source URL and publisher for every story so capture can find the
-  real page,
-- write attribution that remains honest if a page later proves paywalled,
-- leave a `capture_notes` or `source_access_notes` field when a URL already
-  looks risky from research,
-- if capture later returns `page_load_status != 200` or a hard paywall, use the
-  single allowed send-back (`max_send_backs: 1`) only when the story must be
-  replaced or materially rewritten.
+- write only against stories with usable real screenshots, unless the EP has
+  accepted a warning for a blocked or partial page,
+- mention paywall, login, geo-block, or source-access limitations when they
+  affect attribution or what the viewer will see,
+- avoid promising a visual detail that is not visible in the captured page,
+- use the single allowed send-back (`max_send_backs: 1`) only when a failed
+  capture requires replacing a story or materially rewriting the slate.
 
 ## Approval gate (LIGHT)
 

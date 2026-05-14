@@ -4,10 +4,14 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 
 const repoRoot = process.cwd();
-const sourceArg = process.argv[2];
+const args = process.argv.slice(2);
+const force = args.includes("--force");
+const dryRun = args.includes("--dry-run");
+const positionalArgs = args.filter((arg) => arg !== "--force" && arg !== "--dry-run");
+const sourceArg = positionalArgs[0];
 
 if (!sourceArg) {
-  console.error("Usage: node scripts/port-agent-skills.mjs <reference-repo-root>");
+  console.error("Usage: node scripts/port-agent-skills.mjs [--dry-run] [--force] <reference-repo-root>");
   process.exit(1);
 }
 
@@ -373,6 +377,8 @@ const criticalGuidance = {
 };
 
 const missing = [];
+const conflicts = [];
+const wouldWrite = [];
 let copied = 0;
 let synthesized = 0;
 
@@ -431,9 +437,18 @@ for (const synthetic of syntheticSkills) {
 
 console.log(`Copied ${copied} agent skills from ${sourceRoot}.`);
 console.log(`Synthesized ${synthesized} companion agent skills from source notes and tool metadata.`);
+if (dryRun && wouldWrite.length > 0) {
+  console.log("Dry run would write:");
+  wouldWrite.forEach((entry) => console.log(`- ${entry}`));
+}
 if (missing.length > 0) {
   console.log("Missing source skills:");
   missing.forEach((entry) => console.log(`- ${entry}`));
+  process.exitCode = 1;
+}
+if (conflicts.length > 0) {
+  console.log("Refusing to overwrite edited files without --force:");
+  conflicts.forEach((entry) => console.log(`- ${entry}`));
   process.exitCode = 1;
 }
 
@@ -554,8 +569,12 @@ function criticalContract(name) {
 }
 
 async function copyResources(sourceDir, targetDir, skillName) {
-  await rm(targetDir, { recursive: true, force: true });
-  await mkdir(targetDir, { recursive: true });
+  if (!dryRun) {
+    if (force) {
+      await rm(targetDir, { recursive: true, force: true });
+    }
+    await mkdir(targetDir, { recursive: true });
+  }
 
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
     if (copiedResourceSkips.has(entry.name)) {
@@ -572,7 +591,9 @@ async function copyResourceEntry(sourcePath, targetPath, entry, skillName, depth
       return;
     }
 
-    await mkdir(targetPath, { recursive: true });
+    if (!dryRun) {
+      await mkdir(targetPath, { recursive: true });
+    }
     for (const child of await readdir(sourcePath, { withFileTypes: true })) {
       if (copiedResourceSkips.has(child.name)) {
         continue;
@@ -586,12 +607,14 @@ async function copyResourceEntry(sourcePath, targetPath, entry, skillName, depth
     return;
   }
 
-  await mkdir(path.dirname(targetPath), { recursive: true });
+  if (!dryRun) {
+    await mkdir(path.dirname(targetPath), { recursive: true });
+  }
   if (isTextPath(sourcePath)) {
     const normalized = normalizeResourceSkillLinks(normalizeRepoTerms(await readFile(sourcePath, "utf8")), skillName, depth);
     await writeOutput(targetPath, normalized);
   } else {
-    await copyFile(sourcePath, targetPath);
+    await copyFileOutput(sourcePath, targetPath);
   }
 }
 
@@ -681,8 +704,49 @@ function quoteYaml(value) {
 }
 
 async function writeOutput(targetPath, content) {
+  const normalizedContent = content.endsWith("\n") ? content : `${content}\n`;
+
+  if (dryRun) {
+    wouldWrite.push(path.relative(repoRoot, targetPath));
+    return;
+  }
+
+  if (!force) {
+    try {
+      const existing = await readFile(targetPath, "utf8");
+      if (existing !== normalizedContent) {
+        conflicts.push(path.relative(repoRoot, targetPath));
+        return;
+      }
+    } catch {
+      // New files are safe to create without --force.
+    }
+  }
+
   await mkdir(path.dirname(targetPath), { recursive: true });
-  await writeFile(targetPath, content.endsWith("\n") ? content : `${content}\n`, "utf8");
+  await writeFile(targetPath, normalizedContent, "utf8");
+}
+
+async function copyFileOutput(sourcePath, targetPath) {
+  if (dryRun) {
+    wouldWrite.push(path.relative(repoRoot, targetPath));
+    return;
+  }
+
+  if (!force) {
+    try {
+      const [existing, next] = await Promise.all([readFile(targetPath), readFile(sourcePath)]);
+      if (!existing.equals(next)) {
+        conflicts.push(path.relative(repoRoot, targetPath));
+        return;
+      }
+    } catch {
+      // New files are safe to create without --force.
+    }
+  }
+
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  await copyFile(sourcePath, targetPath);
 }
 
 function normalizeRepoTerms(value) {
@@ -691,6 +755,8 @@ function normalizeRepoTerms(value) {
     .replaceAll(sourceBrand.toLowerCase(), "predit")
     .replaceAll(".claude/skills/", ".predit/skills/agents/")
     .replaceAll(".agents/skills/", ".predit/skills/agents/")
+    .replaceAll("skills/creative/", "bundled/skills/creative/")
+    .replaceAll("creative/prompting/", "bundled/skills/creative/prompting/")
     .replace(/(?<!\.predit\/)skills\/agents\//gu, ".predit/skills/agents/")
     .replaceAll(".predit/.predit/", ".predit/")
     .replace(
@@ -706,6 +772,10 @@ function normalizeRepoTerms(value) {
     .replaceAll("C:/Users/ishan/Documents/hyperframes/skills/", "hyperframes-skills/")
     .replaceAll(".predit/skills/agents/remotion-official/", ".predit/skills/agents/remotion-best-practices/")
     .replaceAll("tools.tool_registry", "predit registry")
+    .replaceAll("tools.analysis.composition_validator", "src/tools/composition-validator")
+    .replaceAll("tools.analysis.audio_probe", "ffprobe or the audio metadata returned by predit audio tools")
+    .replaceAll("tools.audio.tts_selector", "the predit registry TTS selector")
+    .replaceAll("tools.audio.doubao_tts", "src/tools/doubao_tts")
     .replaceAll("tools/", "src/tools/")
     .replaceAll("lib/components", "src/remotion/components")
     .replaceAll("lib/transitions", "src/remotion/transitions")

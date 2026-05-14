@@ -10,6 +10,7 @@ describe("tool discovery", () => {
     expect(registry.get("audio_energy")?.capability).toBe("audio_energy");
     expect(registry.get("frame_sampler")?.capability).toBe("frame_sampling");
     expect(registry.get("scene_detector")?.capability).toBe("scene_detection");
+    expect(registry.get("scene_detect")?.capability).toBe("scene_detection");
     expect(registry.get("face_tracker")?.capability).toBe("face_tracking");
     expect(registry.get("transcriber")?.capability).toBe("transcriber");
     expect(registry.get("transcript_fetcher")?.capability).toBe("transcript_fetch");
@@ -35,5 +36,10 @@ describe("tool discovery", () => {
     expect(registry.get("screen_recorder")?.capability).toBe("screen_capture");
     expect(registry.get("screen_capture_selector")?.capability).toBe("screen_capture");
     expect(registry.get("playwright_recording")?.capability).toBe("screen_capture");
+    expect(registry.get("tts_selector")?.capability).toBe("tts");
+    expect(registry.get("image_selector")?.capability).toBe("image_generation");
+    expect(registry.get("video_selector")?.capability).toBe("image_to_video");
+    expect(registry.get("web_search")?.capability).toBe("web_search");
+    expect(registry.get("hyperframes_compose")?.capability).toBe("video_compose");
   });
 });

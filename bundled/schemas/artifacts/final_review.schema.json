@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/final_review",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "revise",
+        "fail"
+      ]
+    },
+    "recommended_action": {
+      "type": "string",
+      "enum": [
+        "present_to_user",
+        "re_render",
+        "revise_edit",
+        "revise_assets",
+        "block"
+      ]
+    },
+    "checks": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "predit://artifacts/final_review.checks",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "technical_probe": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "visual_spotcheck": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "audio_spotcheck": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "promise_preservation": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "subtitle_check": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "transcript_comparison": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "technical_probe",
+        "visual_spotcheck",
+        "audio_spotcheck",
+        "promise_preservation",
+        "subtitle_check"
+      ]
+    },
+    "issues_found": {
+      "type": "array",
+      "items": {}
+    },
+    "thresholds": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "predit://artifacts/final_review.thresholds",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "visual_frames_sampled_min": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "caption_sync_accuracy_pass": {
+          "type": "number",
+          "minimum": 0
+        },
+        "caption_sync_accuracy_critical_below": {
+          "type": "number",
+          "minimum": 0
+        },
+        "subtitle_accuracy_pass": {
+          "type": "number",
+          "minimum": 0
+        },
+        "subtitle_accuracy_critical_below": {
+          "type": "number",
+          "minimum": 0
+        },
+        "motion_ratio_pass": {
+          "type": "number",
+          "minimum": 0
+        },
+        "motion_ratio_critical_below": {
+          "type": "number",
+          "minimum": 0
+        },
+        "word_accuracy_pass": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": []
+    }
+  },
+  "required": [
+    "status",
+    "recommended_action",
+    "checks"
+  ]
+}
