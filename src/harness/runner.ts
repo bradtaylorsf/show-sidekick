@@ -1,3 +1,7 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { AbortedByUser, AwaitingHuman } from "../announce/index.js";
+import { FinalReviewSchema, type FinalReview } from "../artifacts/final-review.js";
 import type { DecisionEntry, DecisionLog } from "../artifacts/decision-log.js";
 import { ReviewSchema, type Review } from "../artifacts/review.js";
 import {
@@ -11,11 +15,14 @@ import {
   type PipelineState,
 } from "../checkpoints/index.js";
 import type { CliIo } from "../cli/commands/stub.js";
-import { readDecisionLog, recordDecision } from "../decisions/store.js";
+import { projectDir } from "../checkpoints/paths.js";
+import { readCostLog, recordCost } from "../cost/tracker.js";
+import { currentDecisions, readDecisionLog, recordDecision } from "../decisions/store.js";
 import type { PipelineManifest, Stage } from "../pipelines/index.js";
 import type { Registry } from "../registry/index.js";
-import type { Availability } from "../registry/tool.js";
+import type { Availability, ToolExecutionPolicy, ToolExecutionState, ToolInteractionIO } from "../registry/tool.js";
 import { runReview, type ReviewContext } from "../review/runner.js";
+import { haltOnFinalReviewFail } from "../review/final-review.js";
 import { PlaybookSchema } from "../shows/playbook.js";
 import type { LoadedEpisode, LoadedShow } from "../shows/index.js";
 import { writeApprovalBlock, type ApprovalAction, type ApprovalContext } from "./approval.js";
@@ -123,7 +130,7 @@ export class Runner {
         const gate = await handleApprovalGate({
           opts,
           checkpoint,
-          approvalCtx: buildApprovalContext(checkpoint, budget, plannedStages[index + 1]),
+          approvalCtx: buildApprovalContext(checkpoint, budget, plannedStages[index + 1], plannedStages.slice(index + 1)),
           revisionNotes,
           cumulativeCost,
           decisions,
@@ -160,6 +167,7 @@ export class Runner {
         opts,
         stage,
         nextStage: plannedStages[index + 1],
+        remainingStages: plannedStages.slice(index + 1),
         priorArtifacts,
         revisionNotes,
         cumulativeCost,
@@ -242,6 +250,7 @@ async function runStage(input: {
   opts: RunnerOptions;
   stage: Stage;
   nextStage?: Stage;
+  remainingStages: Stage[];
   priorArtifacts: Record<string, unknown>;
   revisionNotes: Record<string, string[]>;
   cumulativeCost: number;
@@ -258,10 +267,13 @@ async function runStage(input: {
   let stageCostUsd = 0;
   let sendBacks = input.sendBacks;
   const priorReviews: Review[] = [];
+  const toolPolicyDecisions: DecisionEntry[] = [];
 
   await writeInProgressCheckpoint(opts, stage, input.revisionNotes, now);
 
   while (true) {
+    const costLog = await readCostLog(opts.projectRoot, opts.show.slug, opts.episode.slug);
+    const decisionLog = await readDecisionLog({ show: opts.show.slug, episode: opts.episode.slug }, { root: opts.projectRoot });
     const ctx = createStageContext({
       show: opts.show,
       episode: opts.episode,
@@ -272,6 +284,17 @@ async function runStage(input: {
       registry: opts.registry,
       cuesheet: opts.cuesheet,
       runOptions: opts.runOptions,
+      toolPolicy: buildToolPolicy({
+        opts,
+        stage,
+        costLog,
+        decisionLog,
+        budget: input.budget,
+        cumulativeCost: roundUsd(input.cumulativeCost + stageCostUsd),
+        priorArtifacts: input.priorArtifacts,
+        decisions: toolPolicyDecisions,
+        now,
+      }),
       revisionNotes: input.revisionNotes[stage.slug] ?? [],
     });
 
@@ -281,8 +304,38 @@ async function runStage(input: {
     try {
       result = await opts.dispatcher(ctx);
       stageCostUsd = roundUsd(stageCostUsd + result.cost_used.stage_cost_usd);
-      review = await runStageReview(opts, input.reviewer, stage, result, round, priorReviews);
-    } catch {
+      await recordStageCosts(opts, result);
+      review = await runStageReview(opts, input.reviewer, stage, result, round, priorReviews, {
+        cumulativeActualUsd: roundUsd(input.cumulativeCost + stageCostUsd),
+        cumulativeEstimatedUsd: cumulativeEstimatedCost(opts.pipeline, stage.slug, opts.runOptions),
+      });
+    } catch (error) {
+      if (error instanceof AwaitingHuman) {
+        return {
+          kind: "halt",
+          result: {
+            status: "awaiting_human",
+            lastStage: stage.slug,
+            totalCostUsd: roundUsd(input.cumulativeCost + stageCostUsd),
+            decisions: [...input.decisions, ...toolPolicyDecisions],
+            warnings: input.warnings,
+          },
+        };
+      }
+
+      if (error instanceof AbortedByUser) {
+        return {
+          kind: "halt",
+          result: {
+            status: "aborted",
+            lastStage: stage.slug,
+            totalCostUsd: roundUsd(input.cumulativeCost + stageCostUsd),
+            decisions: [...input.decisions, ...toolPolicyDecisions],
+            warnings: input.warnings,
+          },
+        };
+      }
+
       return failFromError({
         stage,
         cumulativeCost: roundUsd(input.cumulativeCost + stageCostUsd),
@@ -291,6 +344,38 @@ async function runStage(input: {
     }
 
     priorReviews.push(review);
+
+    const finalReview = finalReviewFromStageResult(stage, result);
+    if (finalReview?.status === "fail") {
+      const totalCostUsd = roundUsd(input.cumulativeCost + stageCostUsd);
+      const stageDecisions = [...toolPolicyDecisions, ...(await recordStageDecisions(opts, result.decisions))];
+      const preservedPath = preserveFailedRender(opts, result, finalReview);
+      const checkpoint = checkpointForStage({
+        stage,
+        status: "failed",
+        artifact: result.artifact,
+        review,
+        stageCostUsd,
+        totalCostUsd,
+        budget: input.budget,
+        skillsRead: ctx.skills_read,
+        playbook: opts.playbook,
+        toolInvocations: result.cost_entries ?? [],
+        now,
+      });
+      await writeCompletedCheckpointAndState(opts, checkpoint, totalCostUsd, input.revisionNotes);
+      emitFinalReviewFailed(opts, stage.slug, preservedPath);
+      return {
+        kind: "halt",
+        result: {
+          status: "failed",
+          lastStage: stage.slug,
+          totalCostUsd,
+          decisions: [...input.decisions, ...stageDecisions],
+          warnings: input.warnings,
+        },
+      };
+    }
 
     if (review.decision === "revise") {
       if (round >= opts.pipeline.orchestration.max_revisions_per_stage) {
@@ -305,6 +390,7 @@ async function runStage(input: {
           budget: input.budget,
           skillsRead: ctx.skills_read,
           playbook: opts.playbook,
+          toolInvocations: result.cost_entries ?? [],
           now,
         });
         await writeCompletedCheckpointAndState(opts, checkpoint, totalCostUsd, input.revisionNotes);
@@ -314,7 +400,7 @@ async function runStage(input: {
             status: "failed",
             lastStage: stage.slug,
             totalCostUsd,
-            decisions: input.decisions,
+            decisions: [...input.decisions, ...toolPolicyDecisions],
             warnings: input.warnings,
           },
         };
@@ -334,10 +420,11 @@ async function runStage(input: {
           budget: input.budget,
           skillsRead: ctx.skills_read,
           playbook: opts.playbook,
+          toolInvocations: result.cost_entries ?? [],
           now,
         });
         await writeCompletedCheckpointAndState(opts, checkpoint, totalCostUsd, input.revisionNotes);
-        return limitsExceeded(opts, stage.slug, totalCostUsd, input.decisions, input.warnings);
+        return limitsExceeded(opts, stage.slug, totalCostUsd, [...input.decisions, ...toolPolicyDecisions], input.warnings);
       }
 
       round += 1;
@@ -357,9 +444,10 @@ async function runStage(input: {
       budget: input.budget,
       skillsRead: ctx.skills_read,
       playbook: opts.playbook,
+      toolInvocations: result.cost_entries ?? [],
       now,
     });
-    const stageDecisions = await recordStageDecisions(opts, result.decisions);
+    const stageDecisions = [...toolPolicyDecisions, ...(await recordStageDecisions(opts, result.decisions))];
 
     await writeCompletedCheckpointAndState(opts, checkpoint, totalCostUsd, input.revisionNotes);
 
@@ -385,7 +473,7 @@ async function runStage(input: {
       const gate = await handleApprovalGate({
         opts,
         checkpoint,
-        approvalCtx: buildApprovalContext(checkpoint, input.budget, input.nextStage),
+        approvalCtx: buildApprovalContext(checkpoint, input.budget, input.nextStage, input.remainingStages),
         revisionNotes: input.revisionNotes,
         cumulativeCost: totalCostUsd,
         decisions: [...input.decisions, ...stageDecisions],
@@ -427,6 +515,7 @@ async function runStageReview(
   result: StageResult,
   round: number,
   priorReviews: Review[],
+  cumulative: { cumulativeActualUsd: number; cumulativeEstimatedUsd: number },
 ): Promise<Review> {
   const existingDecisionLog = await readDecisionLog({ show: opts.show.slug, episode: opts.episode.slug }, { root: opts.projectRoot });
   const decisionLog: DecisionLog = [...existingDecisionLog, ...result.decisions];
@@ -439,6 +528,8 @@ async function runStageReview(
     audioLed: opts.pipeline.master_clock !== undefined && opts.pipeline.master_clock !== "none",
     pipelineSlug: opts.pipeline.slug,
     estimatedCostUsd: estimatedStageCost(stage, opts.runOptions),
+    cumulativeEstimatedUsd: cumulative.cumulativeEstimatedUsd,
+    cumulativeActualUsd: cumulative.cumulativeActualUsd,
     show: opts.show.slug,
     episode: opts.episode.slug,
     projectRoot: opts.projectRoot,
@@ -607,6 +698,7 @@ function checkpointForStage(input: {
   budget: number;
   skillsRead: string[];
   playbook: unknown;
+  toolInvocations?: Checkpoint["tool_invocations"];
   now: () => Date;
 }): Checkpoint {
   return {
@@ -627,7 +719,7 @@ function checkpointForStage(input: {
       total_so_far_usd: input.totalCostUsd,
       budget_remaining_usd: roundUsd(input.budget - input.totalCostUsd),
     },
-    tool_invocations: [],
+    tool_invocations: input.toolInvocations ?? [],
     style_playbook: input.playbook,
     skills_read: input.skillsRead,
   };
@@ -657,6 +749,97 @@ async function recordStageDecisions(opts: RunnerOptions, decisions: DecisionEntr
   }
 
   return decisions;
+}
+
+async function recordStageCosts(opts: RunnerOptions, result: StageResult): Promise<void> {
+  for (const entry of result.cost_entries ?? []) {
+    await recordCost(opts.projectRoot, opts.show.slug, opts.episode.slug, entry);
+  }
+}
+
+function buildToolPolicy(input: {
+  opts: RunnerOptions;
+  stage: Stage;
+  costLog: Awaited<ReturnType<typeof readCostLog>>;
+  decisionLog: DecisionLog;
+  budget: number;
+  cumulativeCost: number;
+  priorArtifacts: Record<string, unknown>;
+  decisions: DecisionEntry[];
+  now: () => Date;
+}): ToolExecutionPolicy {
+  const previous = majorChangePreviousState(input.decisionLog, input.priorArtifacts, input.opts.runOptions);
+
+  return {
+    sampleOrBatch: input.opts.runOptions.sample ? "sample" : "batch",
+    budgetUsd: input.budget,
+    budgetRemainingUsd: budgetRemainingFromCostLog(input.budget, input.costLog, input.cumulativeCost),
+    costLog: input.costLog,
+    showEpisode: { show: input.opts.show.slug, episode: input.opts.episode.slug },
+    mode: toolInteractionMode(input.opts),
+    io: toolInteractionIo(input.opts.io),
+    majorChange: {
+      previous,
+      next: previous,
+      decisionLog: input.decisionLog,
+      stage: input.stage.slug,
+      timestamp: input.now().toISOString(),
+      recordDecision: async (entry) => {
+        input.decisions.push(entry);
+        return await recordDecision({ show: input.opts.show.slug, episode: input.opts.episode.slug }, entry, {
+          root: input.opts.projectRoot,
+        });
+      },
+    },
+  };
+}
+
+function budgetRemainingFromCostLog(budget: number, costLog: Awaited<ReturnType<typeof readCostLog>>, fallbackCost: number): number {
+  const loggedCost = costLog.reduce((sum, entry) => sum + entry.usd, 0);
+  return roundUsd(budget - Math.max(loggedCost, fallbackCost));
+}
+
+function toolInteractionMode(opts: RunnerOptions): ToolExecutionPolicy["mode"] {
+  if (opts.json === true) {
+    return { json: true };
+  }
+
+  return opts.runOptions.nonInteractive === true ? "non_interactive" : "interactive";
+}
+
+function toolInteractionIo(io: CliIo): ToolInteractionIO {
+  return {
+    write(message) {
+      io.stderr.write(`${message}\n`);
+    },
+    event(event, payload) {
+      io.stdout.write(`${JSON.stringify({ event, ...objectPayload(payload) })}\n`);
+    },
+  };
+}
+
+function majorChangePreviousState(
+  decisionLog: DecisionLog,
+  priorArtifacts: Record<string, unknown>,
+  runOptions: StageRunOptions,
+): ToolExecutionState {
+  const decisions = currentDecisions(decisionLog);
+  const proposal = recordValue(priorArtifacts.proposal);
+  const deliveryPromise = recordValue(proposal?.delivery_promise);
+  const productionPlan = recordValue(proposal?.production_plan);
+
+  return {
+    provider: latestPicked(decisions, "provider_selection"),
+    model: latestPicked(decisions, "model_selection"),
+    runtime: latestPicked(decisions, "render_runtime_selection") ?? stringValue(productionPlan?.render_runtime),
+    narrationPresent: booleanValue(deliveryPromise?.narration_present),
+    musicPresent: booleanValue(deliveryPromise?.music_present),
+    sampleOrBatch: runOptions.sample ? "sample" : undefined,
+  };
+}
+
+function latestPicked(decisions: DecisionEntry[], category: DecisionEntry["category"]): string | undefined {
+  return decisions.filter((decision) => decision.category === category).at(-1)?.picked;
 }
 
 async function completedStageSlugs(opts: RunnerOptions): Promise<Set<string>> {
@@ -691,13 +874,19 @@ function checkpointStatusForStage(stage: Stage, overBudget: boolean): Checkpoint
   return "awaiting_human";
 }
 
-function buildApprovalContext(checkpoint: Checkpoint, budget: number, nextStage: Stage | undefined): ApprovalContext {
+function buildApprovalContext(
+  checkpoint: Checkpoint,
+  budget: number,
+  nextStage: Stage | undefined,
+  remainingStages: readonly Stage[] = [],
+): ApprovalContext {
   const snapshot = checkpoint.cost_snapshot ?? ZERO_COST;
   return {
     stageCost: snapshot.stage_cost_usd,
     totalSoFar: snapshot.total_so_far_usd,
     budgetRemaining: snapshot.budget_remaining_usd,
     projectedNextStage: projectedNextStage(nextStage),
+    projectedRemainingTotals: projectedRemainingTotals(remainingStages),
     artifactSummary: summarizeArtifact(checkpoint.artifact),
   };
 }
@@ -712,6 +901,86 @@ function projectedNextStage(stage: Stage | undefined): ApprovalContext["projecte
     sample: stage.estimated_cost.sample.usd,
     full: stage.estimated_cost.full.usd,
   };
+}
+
+function projectedRemainingTotals(stages: readonly Stage[]): ApprovalContext["projectedRemainingTotals"] | undefined {
+  const totals = stages.reduce(
+    (sum, stage) => {
+      if (stage.estimated_cost === undefined) {
+        return sum;
+      }
+
+      return {
+        sample: roundUsd(sum.sample + stage.estimated_cost.sample.usd),
+        full: roundUsd(sum.full + stage.estimated_cost.full.usd),
+      };
+    },
+    { sample: 0, full: 0 },
+  );
+
+  return totals.sample > 0 || totals.full > 0 ? totals : undefined;
+}
+
+function finalReviewFromStageResult(stage: Stage, result: StageResult): FinalReview | undefined {
+  if (stage.slug !== "compose" && stage.slug !== "final_review") {
+    return undefined;
+  }
+
+  const direct = FinalReviewSchema.safeParse(result.artifact);
+  if (direct.success) {
+    return direct.data;
+  }
+
+  const artifact = recordValue(result.artifact);
+  const nested = FinalReviewSchema.safeParse(artifact?.final_review);
+  return nested.success ? nested.data : undefined;
+}
+
+function preserveFailedRender(opts: RunnerOptions, result: StageResult, finalReview: FinalReview): string {
+  const renderPath = renderPathFromArtifact(opts, result.artifact);
+  return haltOnFinalReviewFail(finalReview, {
+    show: opts.show.slug,
+    episode: opts.episode.slug,
+    root: opts.projectRoot,
+    renderPath: renderPath !== undefined && existsSync(renderPath) ? renderPath : undefined,
+  }).preservedPath;
+}
+
+function renderPathFromArtifact(opts: RunnerOptions, artifact: unknown): string | undefined {
+  const artifactRecord = recordValue(artifact);
+  const renderReport = recordValue(artifactRecord?.render_report);
+  const candidate =
+    stringValue(artifactRecord?.render_path) ??
+    stringValue(artifactRecord?.video_path) ??
+    stringValue(artifactRecord?.output_path) ??
+    stringValue(renderReport?.output_path);
+
+  if (candidate === undefined) {
+    return undefined;
+  }
+
+  if (path.isAbsolute(candidate)) {
+    return candidate;
+  }
+
+  if (candidate === "projects" || candidate.startsWith("projects/")) {
+    return path.resolve(opts.projectRoot, candidate);
+  }
+
+  return path.join(projectDir(opts.projectRoot, opts.show.slug, opts.episode.slug), candidate);
+}
+
+function emitFinalReviewFailed(opts: RunnerOptions, stage: string, preservedPath: string): void {
+  opts.io.stdout.write(
+    `${JSON.stringify({
+      event: "final_review_failed",
+      show: opts.show.slug,
+      episode: opts.episode.slug,
+      stage,
+      preserved_path: preservedPath,
+      cta: "predit approve --force <reason>",
+    })}\n`,
+  );
 }
 
 function summarizeArtifact(artifact: unknown): string[] {
@@ -804,6 +1073,20 @@ function estimatedStageCost(stage: Stage, runOptions: StageRunOptions): number |
   return runOptions.sample ? stage.estimated_cost.sample.usd : stage.estimated_cost.full.usd;
 }
 
+function cumulativeEstimatedCost(pipeline: PipelineManifest, stageSlug: string, runOptions: StageRunOptions): number {
+  let total = 0;
+
+  for (const stage of pipeline.stages) {
+    total = roundUsd(total + (estimatedStageCost(stage, runOptions) ?? 0));
+
+    if (stage.slug === stageSlug) {
+      break;
+    }
+  }
+
+  return total;
+}
+
 function reviewPlaybook(playbook: unknown): ReviewContext["playbook"] {
   const parsed = PlaybookSchema.safeParse(playbook);
   return parsed.success ? parsed.data : undefined;
@@ -831,6 +1114,22 @@ function emitBudgetWarning(opts: RunnerOptions, totalCostUsd: number, budget: nu
 
 function roundUsd(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000;
+}
+
+function objectPayload(payload: unknown): Record<string, unknown> {
+  return isRecord(payload) ? payload : { payload };
+}
+
+function recordValue(value: unknown): Record<string, unknown> | undefined {
+  return isRecord(value) ? value : undefined;
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function booleanValue(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

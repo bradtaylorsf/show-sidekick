@@ -1,6 +1,7 @@
 import { listCheckpoints, readCheckpoint } from "../checkpoints/index.js";
 import type { PipelineManifest, Stage } from "../pipelines/index.js";
 import type { Registry } from "../registry/index.js";
+import type { ToolExecutionPolicy } from "../registry/tool.js";
 import type { LoadedEpisode, LoadedShow } from "../shows/index.js";
 
 export type StageRunOptions = {
@@ -23,6 +24,7 @@ export type StageContext = {
   registry: Registry;
   cuesheet?: unknown;
   runOptions: StageRunOptions;
+  toolPolicy?: ToolExecutionPolicy;
   revision_notes: string[];
   skills_read: string[];
   markSkillRead(name: string): void;
@@ -38,6 +40,7 @@ export type CreateStageContextOptions = {
   registry: Registry;
   cuesheet?: unknown;
   runOptions?: Partial<StageRunOptions>;
+  toolPolicy?: ToolExecutionPolicy;
   revisionNotes?: string[];
   skillsRead?: string[];
 };
@@ -61,6 +64,7 @@ export function createStageContext(options: CreateStageContextOptions): StageCon
       sample: false,
       ...options.runOptions,
     },
+    toolPolicy: options.toolPolicy,
     revision_notes: [...(options.revisionNotes ?? [])],
     skills_read: skillsRead,
     markSkillRead(name: string): void {

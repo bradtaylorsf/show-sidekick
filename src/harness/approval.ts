@@ -12,6 +12,10 @@ export type ApprovalContext = {
     full?: number;
     stage?: string;
   };
+  projectedRemainingTotals?: {
+    sample: number;
+    full: number;
+  };
   actions?: ReadonlyArray<ApprovalAction>;
   artifactSummary?: string[];
 };
@@ -53,6 +57,7 @@ export type ApprovalEvent =
       total_so_far_usd: number;
       budget_remaining_usd: number;
       projected_next_stage?: ApprovalContext["projectedNextStage"];
+      projected_remaining_totals?: ApprovalContext["projectedRemainingTotals"];
     }
   | {
       event: "action_options";
@@ -106,6 +111,7 @@ export function formatApprovalEvents(checkpoint: Checkpoint, ctx: ApprovalContex
       total_so_far_usd: ctx.totalSoFar,
       budget_remaining_usd: ctx.budgetRemaining,
       projected_next_stage: ctx.projectedNextStage,
+      projected_remaining_totals: ctx.projectedRemainingTotals,
     },
     {
       event: "action_options",
@@ -189,9 +195,10 @@ function formatCriticalFinding(finding: ApprovalCriticalFinding): string {
 function formatCostLine(ctx: ApprovalContext): string {
   const totalBudget = ctx.totalSoFar + ctx.budgetRemaining;
   const projection = formatProjection(ctx.projectedNextStage);
+  const projectedRemaining = formatProjectedRemainingTotals(ctx.projectedRemainingTotals);
   return `${formatUsd(ctx.totalSoFar)} of ${formatUsd(totalBudget)} budget (${formatUsd(
     ctx.budgetRemaining,
-  )} remaining). This stage: ${formatUsd(ctx.stageCost)}.${projection}`;
+  )} remaining). This stage: ${formatUsd(ctx.stageCost)}.${projection}${projectedRemaining}`;
 }
 
 function formatProjection(projectedNextStage: ApprovalContext["projectedNextStage"]): string {
@@ -211,6 +218,14 @@ function formatProjection(projectedNextStage: ApprovalContext["projectedNextStag
   }
 
   return ` Next stage (${projectedNextStage.stage ?? "next"}) estimates ${estimates.join(" / ")}.`;
+}
+
+function formatProjectedRemainingTotals(totals: ApprovalContext["projectedRemainingTotals"]): string {
+  if (totals === undefined) {
+    return "";
+  }
+
+  return ` Projected remaining: ${formatUsd(totals.full)} full / ${formatUsd(totals.sample)} sample.`;
 }
 
 function formatUsd(value: number): string {

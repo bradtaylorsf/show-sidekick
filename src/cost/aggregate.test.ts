@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CostLog } from "../artifacts/cost-log.js";
-import { aggregateCosts } from "./aggregate.js";
+import { aggregateCosts, cumulativeCostDrift } from "./aggregate.js";
 
 describe("aggregateCosts", () => {
   it("separates sample totals from full totals", () => {
@@ -48,6 +48,23 @@ describe("aggregateCosts", () => {
       by_capability: {},
       by_provider: {},
     });
+  });
+});
+
+describe("cumulativeCostDrift", () => {
+  it("returns a critical finding when actual cost exceeds the drift threshold", () => {
+    expect(cumulativeCostDrift({ actual: 1.31, estimated: 1, threshold: 1.3 })).toEqual([
+      expect.objectContaining({
+        severity: "critical",
+        title: "Cumulative cost drift exceeded estimate",
+        location: "cost_log.cumulative_actual_usd",
+      }),
+    ]);
+  });
+
+  it("does not flag costs at the threshold or when no estimate exists", () => {
+    expect(cumulativeCostDrift({ actual: 1.3, estimated: 1, threshold: 1.3 })).toEqual([]);
+    expect(cumulativeCostDrift({ actual: 0.5, estimated: 0, threshold: 1.3 })).toEqual([]);
   });
 });
 

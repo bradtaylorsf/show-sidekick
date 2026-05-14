@@ -4,10 +4,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { readCheckpoint, readState } from "../checkpoints/index.js";
+import { readCostLog } from "../cost/tracker.js";
 import { readDecisionLog, type DecisionEntry } from "../decisions/index.js";
 import { loadPipeline } from "../pipelines/load.js";
 import type { PipelineManifest, Stage } from "../pipelines/index.js";
-import { Registry, type Tool } from "../registry/index.js";
+import { defineTool, Registry, type Tool } from "../registry/index.js";
 import type { LoadedEpisode, LoadedShow } from "../shows/index.js";
 import { createProgram } from "../cli/program.js";
 import { loadRunTarget } from "../cli/commands/run-target.js";
@@ -107,6 +108,154 @@ describe("Runner", () => {
       cost_total_usd: 0.3,
     });
     await expect(readDecisionLog({ show: "show", episode: "episode" }, { root })).resolves.toEqual([decision]);
+  });
+
+  it("records stage cost entries to the episode cost log", async () => {
+    const root = await scratchProject();
+    const pipeline = pipelineManifest([stage("assets")]);
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: scriptedDispatcher([], {
+        assets: {
+          ...stageResult({ ok: true }, 0.44),
+          cost_entries: [
+            {
+              tool: "image_generation",
+              provider: "openai",
+              model: "gpt-image-1",
+              units: 2,
+              usd: 0.08,
+              mode: "full",
+            },
+            {
+              tool: "image_to_video",
+              provider: "kling",
+              model: "kling-v2.1-pro",
+              units: 1,
+              usd: 0.36,
+              mode: "full",
+            },
+          ],
+        },
+      }),
+      reviewer: passReviewer,
+      runOptions: { sample: false },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    await expect(readCostLog(root, "show", "episode")).resolves.toEqual([
+      {
+        tool: "image_generation",
+        provider: "openai",
+        model: "gpt-image-1",
+        units: 2,
+        usd: 0.08,
+        mode: "full",
+      },
+      {
+        tool: "image_to_video",
+        provider: "kling",
+        model: "kling-v2.1-pro",
+        units: 1,
+        usd: 0.36,
+        mode: "full",
+      },
+    ]);
+    await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
+      tool_invocations: [
+        {
+          tool: "image_generation",
+          provider: "openai",
+          model: "gpt-image-1",
+          units: 2,
+          usd: 0.08,
+        },
+        {
+          tool: "image_to_video",
+          provider: "kling",
+          model: "kling-v2.1-pro",
+          units: 1,
+          usd: 0.36,
+        },
+      ],
+    });
+  });
+
+  it("threads the runner tool policy into paid tool announce execution", async () => {
+    const root = await scratchProject();
+    const pipeline = pipelineManifest([stage("assets")]);
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+    const output = captureIo();
+    const calls: string[] = [];
+    const paidTool = defineTool({
+      name: "paid_image",
+      capability: "image_generation",
+      provider: "openai",
+      status: "beta",
+      integration: { kind: "library", package: "test", install: "none" },
+      best_for: "test image generation",
+      cost: { unit: "image", usd: 0.04 },
+      input: z.object({ prompt: z.string(), count: z.number() }),
+      output: z.object({ image_path: z.string(), cost_usd: z.number() }),
+      execute: async () => {
+        calls.push("execute");
+        return { image_path: "assets/hero.png", cost_usd: 0.08 };
+      },
+    });
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [paidTool] }),
+      dispatcher: async (ctx) => {
+        await paidTool.execute(
+          { prompt: "hero", count: 2 },
+          {
+            projectRoot: root,
+            logger: logger(),
+            registry: ctx.registry,
+            execution: ctx.toolPolicy,
+          },
+        );
+        return {
+          ...stageResult({ ok: true }, 0.08),
+          cost_entries: [
+            {
+              tool: "paid_image",
+              provider: "openai",
+              model: "gpt-image-1",
+              units: 2,
+              usd: 0.08,
+              mode: "full",
+            },
+          ],
+        };
+      },
+      reviewer: passReviewer,
+      runOptions: { sample: false, nonInteractive: true },
+      io: output.io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(calls).toEqual(["execute"]);
+    expect(output.stdout()).toContain('"event":"announce"');
+    expect(output.stdout()).toContain('"tool":"paid_image"');
+    expect(output.stdout()).toContain('"estimate_usd":0.08');
   });
 
   it("dispatches only the planned stages for --only", async () => {
@@ -428,6 +577,162 @@ describe("Runner", () => {
     expect(dispatched).toEqual(["idea", "script"]);
   });
 
+  it("shows projected remaining sample and full estimated costs in approval blocks", async () => {
+    const root = await scratchProject();
+    const pipeline = pipelineManifest([
+      stage("proposal", { human_approval: "required" }),
+      stage("assets", {
+        estimated_cost: {
+          sample: { usd: 0.4 },
+          full: { usd: 2.4 },
+        },
+      }),
+      stage("compose", {
+        estimated_cost: {
+          sample: { usd: 0.1 },
+          full: { usd: 0.6 },
+        },
+      }),
+    ]);
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+    const output = captureIo();
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: scriptedDispatcher([], {
+        proposal: stageResult({ ok: true }, 0.1),
+      }),
+      reviewer: passReviewer,
+      runOptions: { sample: false, nonInteractive: true },
+      io: output.io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("awaiting_human");
+    expect(output.stdout()).toContain("Next stage (assets) estimates $2.40 full / $0.40 sample.");
+    expect(output.stdout()).toContain("Projected remaining: $3.00 full / $0.50 sample.");
+  });
+
+  it("adds a cost-drift finding when cumulative actual cost exceeds estimated cost by 30 percent", async () => {
+    const root = await scratchProject();
+    const pipeline = pipelineManifest(
+      [
+        stage("assets", {
+          produces: "unknown_artifact",
+          estimated_cost: {
+            sample: { usd: 0.5 },
+            full: { usd: 1 },
+          },
+        }),
+      ],
+      { max_revisions_per_stage: 0 },
+    );
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: scriptedDispatcher([], {
+        assets: stageResult({ ok: true }, 1.31),
+      }),
+      runOptions: { sample: false },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("failed");
+    const checkpoint = await readCheckpoint(root, "show", "episode", "assets");
+    expect(checkpoint).toMatchObject({
+      status: "failed",
+      review_summary: {
+        critical: 1,
+      },
+    });
+    expect(checkpoint.review_summary?.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Cumulative cost drift exceeded estimate",
+      }),
+    );
+  });
+
+  it("halts compose when final_review fails, preserves the render, and allows force approval", async () => {
+    const root = await scratchProject();
+    await writePipeline(root, "demo", ["compose"]);
+    await writeShowAndEpisode(root, "demo");
+    const pipeline = pipelineManifest([stage("compose", { produces: "unknown_artifact" })]);
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+    const output = captureIo();
+    const sourceRenderPath = path.join(root, "projects", "show", "episode", "renders", "final.mp4");
+    await mkdir(path.dirname(sourceRenderPath), { recursive: true });
+    await writeFile(sourceRenderPath, "failed render", "utf8");
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: scriptedDispatcher([], {
+        compose: stageResult(
+          {
+            output_path: "renders/final.mp4",
+            final_review: failedFinalReview(),
+          },
+          0,
+        ),
+      }),
+      reviewer: passReviewer,
+      runOptions: { sample: false },
+      io: output.io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("failed");
+    expect(output.stdout()).toContain('"event":"final_review_failed"');
+    expect(output.stdout()).toContain('"cta":"predit approve --force <reason>"');
+    await expect(readFile(path.join(root, "projects", "show", "episode", "renders", "final-failed.mp4"), "utf8")).resolves.toBe(
+      "failed render",
+    );
+    await expect(readCheckpoint(root, "show", "episode", "compose")).resolves.toMatchObject({
+      status: "failed",
+      artifact: {
+        final_review: {
+          status: "fail",
+        },
+      },
+    });
+
+    process.chdir(root);
+    const approvalProgram = captureProgram();
+    await approvalProgram.program.parseAsync(
+      ["node", "predit", "--json", "approve", "show/episode", "--force", "User inspected final-failed.mp4."],
+      { from: "node" },
+    );
+
+    expect(JSON.parse(approvalProgram.output.stdout().trim())).toMatchObject({ event: "stage_force_approved", stage: "compose" });
+    await expect(readCheckpoint(root, "show", "episode", "compose")).resolves.toMatchObject({ status: "completed" });
+    await expect(readDecisionLog("show/episode", { root })).resolves.toEqual([
+      expect.objectContaining({
+        category: "downgrade_approval",
+        picked: "force_approval",
+      }),
+    ]);
+  });
+
   it("surfaces registry availability warnings without halting the run", async () => {
     const root = await scratchProject();
     const pipeline = pipelineManifest([stage("research")]);
@@ -531,6 +836,30 @@ async function writeShowAndEpisode(root: string, pipeline: string): Promise<void
   await writeFile(
     path.join(showDir, "episodes", "episode.yaml"),
     ["slug: episode", 'title: "Episode"', "created: 2026-05-12", `pipeline: ${pipeline}`, ""].join("\n"),
+    "utf8",
+  );
+}
+
+async function writePipeline(root: string, slug: string, stages: string[]): Promise<void> {
+  await writeFile(
+    path.join(root, ".predit", "pipelines", `${slug}.yaml`),
+    [
+      `slug: ${slug}`,
+      "stage_order: manifest",
+      "orchestration:",
+      "  max_revisions_per_stage: 1",
+      "  max_send_backs: 3",
+      "  max_wall_time_minutes: 30",
+      "  budget_default_usd: 3",
+      "stages:",
+      ...stages.flatMap((stageSlug) => [
+        `  - slug: ${stageSlug}`,
+        `    skill: pipelines/${slug}/${stageSlug}.md`,
+        "    produces: unknown_artifact",
+        "    human_approval: never",
+      ]),
+      "",
+    ].join("\n"),
     "utf8",
   );
 }
@@ -700,6 +1029,53 @@ function decisionEntry(id: string, stageSlug: string): DecisionEntry {
   };
 }
 
+function failedFinalReview() {
+  return {
+    status: "fail",
+    recommended_action: "block",
+    checks: {
+      technical_probe: {
+        container: "mp4",
+        duration_s: 12,
+        duration_promised_s: 12,
+        width: 1920,
+        height: 1080,
+        framerate: 30,
+        video_codec: "h264",
+        audio_codec: "aac",
+        audio_channels: 2,
+        bitrate_kbps: 6200,
+        verdict: "pass",
+      },
+      visual_spotcheck: {
+        frames_sampled: 4,
+        sample_points_pct: [10, 35, 65, 90],
+        findings: [],
+      },
+      audio_spotcheck: {
+        narration_present: false,
+        music_present: true,
+        caption_sync_accuracy: 0.98,
+        findings: [],
+      },
+      promise_preservation: {
+        delivery_promise_honored: false,
+        silent_downgrade_detected: true,
+        runtime_swap_detected: false,
+        runtime_swap_check: "ok",
+        motion_ratio_actual: 0.2,
+        render_runtime_used: "remotion",
+        findings: [],
+      },
+      subtitle_check: {
+        present: true,
+        accuracy_within_150ms: 0.98,
+      },
+    },
+    issues_found: [],
+  };
+}
+
 function fixedNow(): Date {
   return new Date("2026-05-12T15:42:00.000Z");
 }
@@ -732,6 +1108,16 @@ function captureProgram() {
   return {
     program: createProgram(output.io),
     output,
+  };
+}
+
+function logger() {
+  return {
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+    debug: () => undefined,
+    event: () => undefined,
   };
 }
 
