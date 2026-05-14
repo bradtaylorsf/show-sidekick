@@ -1,0 +1,31 @@
+pipeline: localization-dub
+required_sections:
+  - file: executive-producer.md
+    section: "### After SOURCE_REVIEW stage:"
+  - file: source-review-director.md
+    section: "### 4. Handoff To IDEA And SCRIPT"
+  - file: script-director.md
+    section: "### 2b. Translation Workflow And Provider Handoff"
+  - file: script-director.md
+    section: "### 5. Quality Gate"
+required_phrases:
+  - file: script-director.md
+    phrase: "Use this translation workflow for every locale"
+  - file: script-director.md
+    phrase: "Use HeyGen video-translate through `bundled/skills/agents/video-translate.md`"
+  - file: script-director.md
+    phrase: "target-language voice casting"
+  - file: script-director.md
+    phrase: "locale-aware subtitle rendering"
+  - file: asset-director.md
+    phrase: "mode: \"video_translate\""
+  - file: source-review-director.md
+    phrase: "no target-language script or HeyGen video-translate job starts from an unreviewed source"
+required_numerics:
+  - file: executive-producer.md
+    numeric: "timing_drift_tolerance: 0.5"
+  - file: executive-producer.md
+    numeric: "Max total wall-time | 15 minutes"
+required_modules:
+  - file: executive-producer.md
+    module: "Quality Gates Summary"

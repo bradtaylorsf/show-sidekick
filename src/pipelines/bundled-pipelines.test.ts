@@ -66,6 +66,50 @@ describe("bundled pipeline manifests", () => {
     expect(existsSync(path.join(hybridSkillsDir, "executive-producer.md"))).toBe(true);
     expect(existsSync(path.join(hybridSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
   });
+
+  it("ships the localization-dub manifest with eight directors plus an executive producer", async () => {
+    const manifest = await loadBundledManifest("localization-dub");
+    const localizationSkillsDir = path.join(bundledPipelineSkillsDir, "localization-dub");
+    const directorFiles = [
+      "source-review-director.md",
+      "idea-director.md",
+      "script-director.md",
+      "scene-director.md",
+      "asset-director.md",
+      "edit-director.md",
+      "compose-director.md",
+      "publish-director.md",
+    ];
+
+    expect(manifest).toMatchObject({
+      slug: "localization-dub",
+      status: "beta",
+      master_clock: "none",
+      orchestration: {
+        budget_default_usd: 3,
+        max_revisions_per_stage: 3,
+        max_send_backs: 3,
+        max_wall_time_minutes: 15,
+      },
+    });
+    expect(manifest.stages.map((stage) => stage.slug)).toEqual([
+      "source_review",
+      "idea",
+      "script",
+      "scene_plan",
+      "assets",
+      "edit",
+      "compose",
+      "publish",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "assets")?.tools_available).toContain("heygen_video");
+
+    for (const fileName of directorFiles) {
+      expect(existsSync(path.join(localizationSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
+    }
+    expect(existsSync(path.join(localizationSkillsDir, "executive-producer.md"))).toBe(true);
+    expect(existsSync(path.join(localizationSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+  });
 });
 
 async function loadBundledManifest(slug: string) {

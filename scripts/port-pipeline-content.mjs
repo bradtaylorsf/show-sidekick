@@ -93,6 +93,83 @@ const pipelineConfigs = {
       },
     },
   },
+  "localization-dub": {
+    sourceManifest: "pipeline_defs/localization-dub.yaml",
+    targetManifest: "bundled/pipelines/localization-dub.yaml",
+    sourceSkillsDir: "skills/pipelines/localization-dub",
+    targetSkillsDir: "bundled/skills/pipelines/localization-dub",
+    extraStages: [localizationSourceReviewStage()],
+    extraSkills: [
+      {
+        fileName: "source-review-director.md",
+        content: localizationSourceReviewDirector(),
+      },
+    ],
+    frontmatter: {
+      "source-review-director.md": {
+        name: "localization-dub-source-review-director",
+        description: "Inspect source video before localization planning and translation.",
+        applies_to: "pipelines/localization-dub",
+        stage: "source_review",
+        produces: "source_media_review",
+      },
+      "idea-director.md": {
+        name: "localization-dub-idea-director",
+        description: "Define localization scope, target languages, dub modes, and runtime constraints.",
+        applies_to: "pipelines/localization-dub",
+        stage: "idea",
+        produces: "brief",
+      },
+      "script-director.md": {
+        name: "localization-dub-script-director",
+        description: "Create transcript-backed, reviewable target-language scripts before dubbing.",
+        applies_to: "pipelines/localization-dub",
+        stage: "script",
+        produces: "script",
+      },
+      "scene-director.md": {
+        name: "localization-dub-scene-director",
+        description: "Plan timing, visible speech, subtitles, and on-screen text per locale.",
+        applies_to: "pipelines/localization-dub",
+        stage: "scene_plan",
+        produces: "scene_plan",
+      },
+      "asset-director.md": {
+        name: "localization-dub-asset-director",
+        description: "Prepare translated subtitles, dubbed audio, and optional lip-sync assets.",
+        applies_to: "pipelines/localization-dub",
+        stage: "assets",
+        produces: "asset_manifest",
+      },
+      "edit-director.md": {
+        name: "localization-dub-edit-director",
+        description: "Convert localization plans into per-locale edit decisions.",
+        applies_to: "pipelines/localization-dub",
+        stage: "edit",
+        produces: "edit_decisions",
+      },
+      "compose-director.md": {
+        name: "localization-dub-compose-director",
+        description: "Render localized outputs with timing, subtitles, and labels intact.",
+        applies_to: "pipelines/localization-dub",
+        stage: "compose",
+        produces: "render_report",
+      },
+      "publish-director.md": {
+        name: "localization-dub-publish-director",
+        description: "Package per-locale localized videos, subtitles, scripts, and review notes.",
+        applies_to: "pipelines/localization-dub",
+        stage: "publish",
+        produces: "publish_log",
+      },
+      "executive-producer.md": {
+        name: "localization-dub-executive-producer",
+        description: "Orchestrate translation accuracy, timing preservation, lip-sync quality, and locale consistency.",
+        applies_to: "pipelines/localization-dub",
+        role: "executive-producer",
+      },
+    },
+  },
 };
 
 let copied = 0;
@@ -229,6 +306,25 @@ function hybridSourceReviewStage() {
   };
 }
 
+function localizationSourceReviewStage() {
+  return {
+    slug: "source_review",
+    skill: "pipelines/localization-dub/source-review-director.md",
+    produces: "source_media_review",
+    tools_available: ["source_media_review", "transcriber", "frame_sampler", "scene_detect", "video_understand"],
+    review_focus: [
+      "Source video is probed before translation",
+      "Speech-bearing sections and on-screen text are identified",
+      "Localization constraints are explicit before script",
+    ],
+    success_criteria: [
+      "Schema-valid source_media_review artifact for the source video",
+      "Speech, subtitle, and on-screen text risks are ready for localization planning",
+    ],
+    human_approval: "optional",
+  };
+}
+
 function normalizeSkill(markdown, frontmatter) {
   const body = stripFrontmatter(markdown);
   return `${formatFrontmatter(frontmatter)}\n${normalizeRepoTerms(body)}`;
@@ -281,6 +377,9 @@ function normalizeRepoTerms(value) {
     .replaceAll("pipeline_defs/", "bundled/pipelines/")
     .replaceAll("skills/core/", "bundled/skills/core/")
     .replaceAll("skills/meta/", "bundled/skills/meta/")
+    .replaceAll("docs/localization-dubbing-best-practices.md", "bundled/skills/agents/video-translate.md")
+    .replaceAll("skills/creative/short-form.md", "bundled/skills/agents/video-edit.md")
+    .replaceAll("skills/creative/long-form.md", "bundled/skills/agents/video-edit.md")
     .replaceAll("skills/creative/storytelling.md", "bundled/skills/meta/creative-intake.md")
     .replaceAll("skills/creative/video-editing.md", "bundled/skills/agents/video-edit.md")
     .replaceAll("hyperframes_compose", "hyperframes");
@@ -347,5 +446,45 @@ Record anchor media, constraints, standout moments, unusable sections, and risks
 - summaries are grounded in probe data,
 - source constraints are ready for source-vs-generated decisioning,
 - no generated support need is proposed before the source evidence is understood.
+`;
+}
+
+function localizationSourceReviewDirector() {
+  return `# Source Review Director - Localization Dub Pipeline
+
+## When To Use
+
+Run this first for the existing source video. Localization quality depends on knowing what speech, on-screen text, music, and visible-mouth sections are actually present before translation starts.
+
+## Process
+
+### 1. Probe The Source Video
+
+Use the registry tool \`source_media_review\` for the source video. Add transcription, frame sampling, or scene detection when it helps identify speech-bearing sections, baked-in captions, or visible-mouth shots.
+
+### 2. Ground The Source Summary
+
+Each summary must cite technical probe fields such as duration_seconds, resolution, codec, audio streams, or frame-rate details. Do not infer speaker count, dialogue density, or subtitle timing without evidence.
+
+### 3. Identify Localization Risks
+
+Record:
+
+- source language and likely target-language needs,
+- visible-mouth sections that may need lip sync or coverage,
+- on-screen text, captions, lower thirds, charts, or UI that may need replacement,
+- music or effects that should remain under dubbed audio,
+- any sections unsuitable for automated video translation.
+
+### 4. Handoff To IDEA And SCRIPT
+
+Give downstream stages a grounded source inventory, transcript confidence notes, timing risks, and protected source elements so translation decisions do not drift away from the actual video.
+
+## Quality Gate
+
+- source video is reviewed before target-language planning,
+- summaries cite probe data,
+- visible speech and on-screen text risks are explicit,
+- no target-language script or HeyGen video-translate job starts from an unreviewed source.
 `;
 }

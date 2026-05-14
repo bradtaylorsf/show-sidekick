@@ -1309,8 +1309,8 @@ A vitest suite under `tests/content-fidelity/` greps the corresponding skill mar
 ## L-11 — Localization-dub pipeline + director skills
 
 **Standard acceptance.**
-- [ ] Pipeline + 8 director skills + EP + fixture.
-- [ ] **Content-fidelity**: script-director includes translation workflow; uses heygen video-translate; target-language voice casting; locale-aware subtitle rendering.
+- [x] Pipeline + 8 director skills + EP + fixture.
+- [x] **Content-fidelity**: script-director includes translation workflow; uses heygen video-translate; target-language voice casting; locale-aware subtitle rendering.
 
 ## L-12 — Daily-news pipeline + director skills
 
