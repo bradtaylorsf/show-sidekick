@@ -1,0 +1,844 @@
+import type { DecisionEntry, DecisionLog } from "../artifacts/decision-log.js";
+import { ReviewSchema, type Review } from "../artifacts/review.js";
+import {
+  listCheckpoints,
+  readCheckpoint,
+  readState,
+  updateState,
+  writeCheckpoint,
+  type Checkpoint,
+  type CheckpointStatus,
+  type PipelineState,
+} from "../checkpoints/index.js";
+import type { CliIo } from "../cli/commands/stub.js";
+import { readDecisionLog, recordDecision } from "../decisions/store.js";
+import type { PipelineManifest, Stage } from "../pipelines/index.js";
+import type { Registry } from "../registry/index.js";
+import type { Availability } from "../registry/tool.js";
+import { runReview, type ReviewContext } from "../review/runner.js";
+import { PlaybookSchema } from "../shows/playbook.js";
+import type { LoadedEpisode, LoadedShow } from "../shows/index.js";
+import { writeApprovalBlock, type ApprovalAction, type ApprovalContext } from "./approval.js";
+import { createStageContext, loadPriorArtifacts, type StageRunOptions } from "./context.js";
+import type { Dispatcher } from "./dispatcher.js";
+import type { StageResult } from "./result.js";
+import { planStages } from "./plan.js";
+
+export type RunnerStatus =
+  | "completed"
+  | "awaiting_human"
+  | "failed"
+  | "aborted"
+  | "budget_exceeded"
+  | "limits_exceeded";
+
+export type RegistryWarning = {
+  tool: string;
+  reason: string;
+  fix?: string;
+};
+
+export type StageReviewer = (stageSlug: string, artifact: unknown, ctx: ReviewContext) => Review | Promise<Review>;
+
+export type ApprovalPromptResult = ApprovalAction | { action: ApprovalAction; note?: string };
+
+export type RunnerOptions = {
+  projectRoot: string;
+  show: LoadedShow;
+  episode: LoadedEpisode;
+  pipeline: PipelineManifest;
+  pipelineName: string;
+  playbook?: unknown;
+  registry: Registry;
+  dispatcher: Dispatcher;
+  reviewer?: StageReviewer;
+  runOptions: StageRunOptions;
+  io: CliIo;
+  json?: boolean;
+  now?: () => Date;
+  cuesheet?: unknown;
+  prompt?: (checkpoint: Checkpoint, approvalCtx: ApprovalContext) => Promise<ApprovalPromptResult>;
+};
+
+export type RunnerResult = {
+  status: RunnerStatus;
+  lastStage?: string;
+  totalCostUsd: number;
+  decisions: DecisionEntry[];
+  warnings: RegistryWarning[];
+};
+
+type CheckpointStatusMap = Map<string, CheckpointStatus>;
+
+type StageExecutionOutcome =
+  | { kind: "continue"; stage: string; totalCostUsd: number; decisions: DecisionEntry[]; artifact: unknown; sendBacks: number }
+  | { kind: "rerun"; stage: string; totalCostUsd: number; decisions: DecisionEntry[]; sendBacks: number }
+  | { kind: "halt"; result: RunnerResult };
+
+type ExistingApprovalOutcome =
+  | { kind: "continue"; artifact: unknown }
+  | { kind: "rerun" }
+  | { kind: "halt"; result: RunnerResult };
+
+const ZERO_COST = {
+  stage_cost_usd: 0,
+  total_so_far_usd: 0,
+  budget_remaining_usd: 0,
+};
+
+export class Runner {
+  static async run(opts: RunnerOptions): Promise<RunnerResult> {
+    const now = opts.now ?? (() => new Date());
+    const reviewer = opts.reviewer ?? runReview;
+    const warnings = await refreshRegistryAndWarn(opts);
+    const state = await readState(opts.projectRoot, opts.show.slug, opts.episode.slug);
+    const revisionNotes = cloneRevisionNotes(state?.revision_notes);
+    const completedStages = await completedStageSlugs(opts);
+    const checkpointStatuses = await checkpointStatusMap(opts);
+    let priorArtifacts = await loadPriorArtifacts(opts.projectRoot, opts.show, opts.episode, opts.pipeline);
+    let plannedStages = planStages(opts.pipeline, opts.runOptions, { completedStages });
+    let cumulativeCost = state?.cost_total_usd ?? 0;
+    const budget = resolveBudget(opts);
+    const decisions: DecisionEntry[] = [];
+    let sendBacks = 0;
+    let lastStage: string | undefined;
+    const startMs = now().getTime();
+
+    if (shouldResume(opts.runOptions)) {
+      plannedStages = plannedStages.filter((stage) => checkpointStatuses.get(stage.slug) !== "completed");
+    }
+
+    for (let index = 0; index < plannedStages.length; ) {
+      const stage = plannedStages[index];
+      if (stage === undefined) {
+        break;
+      }
+
+      lastStage = stage.slug;
+      const existingStatus = checkpointStatuses.get(stage.slug);
+      const queuedRevision = queuedRevisionForStage(state, stage.slug);
+
+      if (existingStatus === "awaiting_human" && shouldResume(opts.runOptions) && queuedRevision === undefined) {
+        const checkpoint = await readCheckpoint(opts.projectRoot, opts.show.slug, opts.episode.slug, stage.slug);
+        const gate = await handleApprovalGate({
+          opts,
+          checkpoint,
+          approvalCtx: buildApprovalContext(checkpoint, budget, plannedStages[index + 1]),
+          revisionNotes,
+          cumulativeCost,
+          decisions,
+          warnings,
+          sendBacks,
+          now,
+        });
+        sendBacks = gate.sendBacks;
+
+        if (gate.outcome.kind === "halt") {
+          return gate.outcome.result;
+        }
+        if (gate.outcome.kind === "rerun") {
+          await clearQueuedRevision(opts);
+        } else {
+          priorArtifacts = { ...priorArtifacts, [stage.slug]: gate.outcome.artifact };
+          checkpointStatuses.set(stage.slug, "completed");
+          index += 1;
+          continue;
+        }
+      }
+
+      if (existingStatus === "failed" && shouldResume(opts.runOptions) && queuedRevision === undefined) {
+        return {
+          status: "failed",
+          lastStage: stage.slug,
+          totalCostUsd: cumulativeCost,
+          decisions,
+          warnings,
+        };
+      }
+
+      const outcome = await runStage({
+        opts,
+        stage,
+        nextStage: plannedStages[index + 1],
+        priorArtifacts,
+        revisionNotes,
+        cumulativeCost,
+        budget,
+        reviewer,
+        decisions,
+        warnings,
+        sendBacks,
+        startMs,
+        now,
+      });
+
+      if (outcome.kind === "halt") {
+        return outcome.result;
+      }
+
+      sendBacks = outcome.sendBacks;
+      cumulativeCost = outcome.totalCostUsd;
+      decisions.push(...outcome.decisions);
+      await clearQueuedRevision(opts);
+
+      if (outcome.kind === "rerun") {
+        continue;
+      }
+
+      priorArtifacts = { ...priorArtifacts, [stage.slug]: outcome.artifact };
+      checkpointStatuses.set(stage.slug, "completed");
+      index += 1;
+    }
+
+    return {
+      status: "completed",
+      lastStage,
+      totalCostUsd: cumulativeCost,
+      decisions,
+      warnings,
+    };
+  }
+}
+
+async function refreshRegistryAndWarn(opts: RunnerOptions): Promise<RegistryWarning[]> {
+  await opts.registry.refreshAvailability({ context: { projectRoot: opts.projectRoot } });
+
+  const warnings = opts.registry.all().flatMap((tool) => {
+    const availability = opts.registry.getAvailability(tool.name);
+    return availability?.available === false ? [registryWarning(tool.name, availability)] : [];
+  });
+
+  if (warnings.length === 0) {
+    return [];
+  }
+
+  if (opts.json === true) {
+    opts.io.stdout.write(`${JSON.stringify({ event: "registry_warnings", warnings })}\n`);
+    return warnings;
+  }
+
+  opts.io.stdout.write(
+    [
+      "Registry warnings:",
+      ...warnings.map((warning) => {
+        const fix = warning.fix ? ` (${warning.fix})` : "";
+        return `- ${warning.tool}: ${warning.reason}${fix}`;
+      }),
+      "",
+    ].join("\n"),
+  );
+  return warnings;
+}
+
+function registryWarning(tool: string, availability: Extract<Availability, { available: false }>): RegistryWarning {
+  return {
+    tool,
+    reason: availability.reason,
+    fix: availability.fix,
+  };
+}
+
+async function runStage(input: {
+  opts: RunnerOptions;
+  stage: Stage;
+  nextStage?: Stage;
+  priorArtifacts: Record<string, unknown>;
+  revisionNotes: Record<string, string[]>;
+  cumulativeCost: number;
+  budget: number;
+  reviewer: StageReviewer;
+  decisions: DecisionEntry[];
+  warnings: RegistryWarning[];
+  sendBacks: number;
+  startMs: number;
+  now: () => Date;
+}): Promise<StageExecutionOutcome> {
+  const { opts, stage, now } = input;
+  let round = 0;
+  let stageCostUsd = 0;
+  let sendBacks = input.sendBacks;
+  const priorReviews: Review[] = [];
+
+  await writeInProgressCheckpoint(opts, stage, input.revisionNotes, now);
+
+  while (true) {
+    const ctx = createStageContext({
+      show: opts.show,
+      episode: opts.episode,
+      pipeline: opts.pipeline,
+      stage,
+      playbook: opts.playbook,
+      priorArtifacts: input.priorArtifacts,
+      registry: opts.registry,
+      cuesheet: opts.cuesheet,
+      runOptions: opts.runOptions,
+      revisionNotes: input.revisionNotes[stage.slug] ?? [],
+    });
+
+    let result: StageResult;
+    let review: Review;
+
+    try {
+      result = await opts.dispatcher(ctx);
+      stageCostUsd = roundUsd(stageCostUsd + result.cost_used.stage_cost_usd);
+      review = await runStageReview(opts, input.reviewer, stage, result, round, priorReviews);
+    } catch (error) {
+      return failFromError({
+        opts,
+        stage,
+        error,
+        cumulativeCost: roundUsd(input.cumulativeCost + stageCostUsd),
+        warnings: input.warnings,
+        now,
+      });
+    }
+
+    priorReviews.push(review);
+
+    if (review.decision === "revise") {
+      if (round >= opts.pipeline.orchestration.max_revisions_per_stage) {
+        const totalCostUsd = roundUsd(input.cumulativeCost + stageCostUsd);
+        const checkpoint = checkpointForStage({
+          stage,
+          status: "failed",
+          artifact: result.artifact,
+          review,
+          stageCostUsd,
+          totalCostUsd,
+          budget: input.budget,
+          skillsRead: ctx.skills_read,
+          playbook: opts.playbook,
+          now,
+        });
+        await writeCompletedCheckpointAndState(opts, checkpoint, totalCostUsd, input.revisionNotes);
+        return {
+          kind: "halt",
+          result: {
+            status: "failed",
+            lastStage: stage.slug,
+            totalCostUsd,
+            decisions: input.decisions,
+            warnings: input.warnings,
+          },
+        };
+      }
+
+      appendRevisionNote(input.revisionNotes, stage.slug, reviewRevisionNote(review));
+      sendBacks += 1;
+      if (sendBacks > opts.pipeline.orchestration.max_send_backs) {
+        const totalCostUsd = roundUsd(input.cumulativeCost + stageCostUsd);
+        const checkpoint = checkpointForStage({
+          stage,
+          status: "failed",
+          artifact: result.artifact,
+          review,
+          stageCostUsd,
+          totalCostUsd,
+          budget: input.budget,
+          skillsRead: ctx.skills_read,
+          playbook: opts.playbook,
+          now,
+        });
+        await writeCompletedCheckpointAndState(opts, checkpoint, totalCostUsd, input.revisionNotes);
+        return limitsExceeded(opts, stage.slug, totalCostUsd, input.decisions, input.warnings);
+      }
+
+      round += 1;
+      continue;
+    }
+
+    const totalCostUsd = roundUsd(input.cumulativeCost + stageCostUsd);
+    const overBudget = totalCostUsd > input.budget;
+    const status = checkpointStatusForStage(stage, opts.runOptions, overBudget);
+    const checkpoint = checkpointForStage({
+      stage,
+      status,
+      artifact: result.artifact,
+      review,
+      stageCostUsd,
+      totalCostUsd,
+      budget: input.budget,
+      skillsRead: ctx.skills_read,
+      playbook: opts.playbook,
+      now,
+    });
+    const stageDecisions = await recordStageDecisions(opts, result.decisions);
+
+    await writeCompletedCheckpointAndState(opts, checkpoint, totalCostUsd, input.revisionNotes);
+
+    if (overBudget) {
+      emitBudgetWarning(opts, totalCostUsd, input.budget);
+      return {
+        kind: "halt",
+        result: {
+          status: "budget_exceeded",
+          lastStage: stage.slug,
+          totalCostUsd,
+          decisions: [...input.decisions, ...stageDecisions],
+          warnings: input.warnings,
+        },
+      };
+    }
+
+    if (wallTimeExceeded(opts.pipeline, input.startMs, now)) {
+      return limitsExceeded(opts, stage.slug, totalCostUsd, [...input.decisions, ...stageDecisions], input.warnings);
+    }
+
+    if (checkpoint.status === "awaiting_human") {
+      const gate = await handleApprovalGate({
+        opts,
+        checkpoint,
+        approvalCtx: buildApprovalContext(checkpoint, input.budget, input.nextStage),
+        revisionNotes: input.revisionNotes,
+        cumulativeCost: totalCostUsd,
+        decisions: [...input.decisions, ...stageDecisions],
+        warnings: input.warnings,
+        sendBacks,
+        now,
+      });
+      sendBacks = gate.sendBacks;
+
+      if (gate.outcome.kind === "halt") {
+        return gate.outcome;
+      }
+      if (gate.outcome.kind === "rerun") {
+        return {
+          kind: "rerun",
+          stage: stage.slug,
+          totalCostUsd,
+          decisions: stageDecisions,
+          sendBacks,
+        };
+      }
+    }
+
+    return {
+      kind: "continue",
+      stage: stage.slug,
+      totalCostUsd,
+      decisions: stageDecisions,
+      artifact: result.artifact,
+      sendBacks,
+    };
+  }
+}
+
+async function runStageReview(
+  opts: RunnerOptions,
+  reviewer: StageReviewer,
+  stage: Stage,
+  result: StageResult,
+  round: number,
+  priorReviews: Review[],
+): Promise<Review> {
+  const existingDecisionLog = await readDecisionLog({ show: opts.show.slug, episode: opts.episode.slug }, { root: opts.projectRoot });
+  const decisionLog: DecisionLog = [...existingDecisionLog, ...result.decisions];
+  const review = await reviewer(stage.slug, result.artifact, {
+    pipeline: opts.pipeline,
+    round,
+    priorReviews,
+    decisionLog,
+    cuesheet: opts.cuesheet,
+    audioLed: opts.pipeline.master_clock !== undefined && opts.pipeline.master_clock !== "none",
+    pipelineSlug: opts.pipeline.slug,
+    estimatedCostUsd: estimatedStageCost(stage, opts.runOptions),
+    show: opts.show.slug,
+    episode: opts.episode.slug,
+    projectRoot: opts.projectRoot,
+    playbook: reviewPlaybook(opts.playbook),
+  });
+
+  return ReviewSchema.parse(review);
+}
+
+function failFromError(input: {
+  opts: RunnerOptions;
+  stage: Stage;
+  error: unknown;
+  cumulativeCost: number;
+  warnings: RegistryWarning[];
+  now: () => Date;
+}): StageExecutionOutcome {
+  return {
+    kind: "halt",
+    result: {
+      status: "failed",
+      lastStage: input.stage.slug,
+      totalCostUsd: input.cumulativeCost,
+      decisions: [],
+      warnings: input.warnings,
+    },
+  };
+}
+
+async function handleApprovalGate(input: {
+  opts: RunnerOptions;
+  checkpoint: Checkpoint;
+  approvalCtx: ApprovalContext;
+  revisionNotes: Record<string, string[]>;
+  cumulativeCost: number;
+  decisions: DecisionEntry[];
+  warnings: RegistryWarning[];
+  sendBacks: number;
+  now: () => Date;
+}): Promise<{ outcome: ExistingApprovalOutcome; sendBacks: number }> {
+  writeApprovalBlock(input.opts.io, input.checkpoint, input.approvalCtx, { json: input.opts.json === true });
+
+  if (input.opts.runOptions.nonInteractive === true || input.opts.prompt === undefined) {
+    return {
+      sendBacks: input.sendBacks,
+      outcome: {
+        kind: "halt",
+        result: {
+          status: "awaiting_human",
+          lastStage: input.checkpoint.stage,
+          totalCostUsd: input.cumulativeCost,
+          decisions: input.decisions,
+          warnings: input.warnings,
+        },
+      },
+    };
+  }
+
+  const action = normalizeApprovalPromptResult(await input.opts.prompt(input.checkpoint, input.approvalCtx));
+  if (action.action === "abort") {
+    return {
+      sendBacks: input.sendBacks,
+      outcome: {
+        kind: "halt",
+        result: {
+          status: "aborted",
+          lastStage: input.checkpoint.stage,
+          totalCostUsd: input.cumulativeCost,
+          decisions: input.decisions,
+          warnings: input.warnings,
+        },
+      },
+    };
+  }
+
+  if (action.action === "revise") {
+    const sendBacks = input.sendBacks + 1;
+    appendRevisionNote(input.revisionNotes, input.checkpoint.stage, action.note ?? "Human requested revision.");
+    await updateState(input.opts.projectRoot, input.opts.show.slug, input.opts.episode.slug, {
+      pipeline: input.opts.pipelineName,
+      current_stage: input.checkpoint.stage,
+      last_status: "awaiting_human",
+      cost_total_usd: input.cumulativeCost,
+      revision_notes: input.revisionNotes,
+      queued_stage_revision: undefined,
+    });
+
+    if (sendBacks > input.opts.pipeline.orchestration.max_send_backs) {
+      return {
+        sendBacks,
+        outcome: limitsExceeded(input.opts, input.checkpoint.stage, input.cumulativeCost, input.decisions, input.warnings),
+      };
+    }
+
+    return { sendBacks, outcome: { kind: "rerun" } };
+  }
+
+  const approvedCheckpoint = {
+    ...input.checkpoint,
+    status: "completed" as const,
+    timestamp: input.now().toISOString(),
+  };
+  await writeCheckpoint(input.opts.projectRoot, input.opts.show.slug, input.opts.episode.slug, input.checkpoint.stage, approvedCheckpoint);
+  await updateState(input.opts.projectRoot, input.opts.show.slug, input.opts.episode.slug, {
+    pipeline: input.opts.pipelineName,
+    current_stage: input.checkpoint.stage,
+    last_status: "completed",
+    last_checkpoint_at: approvedCheckpoint.timestamp,
+    cost_total_usd: input.cumulativeCost,
+    revision_notes: input.revisionNotes,
+    queued_stage_revision: undefined,
+  });
+
+  return {
+    sendBacks: input.sendBacks,
+    outcome: { kind: "continue", artifact: input.checkpoint.artifact },
+  };
+}
+
+function limitsExceeded(
+  opts: RunnerOptions,
+  stage: string,
+  totalCostUsd: number,
+  decisions: DecisionEntry[],
+  warnings: RegistryWarning[],
+): { kind: "halt"; result: RunnerResult } {
+  return {
+    kind: "halt",
+    result: {
+      status: "limits_exceeded",
+      lastStage: stage,
+      totalCostUsd,
+      decisions,
+      warnings,
+    },
+  };
+}
+
+async function writeInProgressCheckpoint(
+  opts: RunnerOptions,
+  stage: Stage,
+  revisionNotes: Record<string, string[]>,
+  now: () => Date,
+): Promise<void> {
+  const timestamp = now().toISOString();
+  await writeCheckpoint(opts.projectRoot, opts.show.slug, opts.episode.slug, stage.slug, {
+    stage: stage.slug,
+    status: "in_progress",
+    timestamp,
+    artifact: null,
+    tool_invocations: [],
+  });
+  await updateState(opts.projectRoot, opts.show.slug, opts.episode.slug, {
+    pipeline: opts.pipelineName,
+    current_stage: stage.slug,
+    last_status: "in_progress",
+    last_checkpoint_at: timestamp,
+    revision_notes: revisionNotes,
+  });
+}
+
+function checkpointForStage(input: {
+  stage: Stage;
+  status: CheckpointStatus;
+  artifact: unknown;
+  review: Review;
+  stageCostUsd: number;
+  totalCostUsd: number;
+  budget: number;
+  skillsRead: string[];
+  playbook: unknown;
+  now: () => Date;
+}): Checkpoint {
+  return {
+    stage: input.stage.slug,
+    status: input.status,
+    timestamp: input.now().toISOString(),
+    artifact: input.artifact,
+    review_summary: {
+      decision: input.review.decision,
+      rounds: input.review.round + 1,
+      critical: input.review.summary.critical,
+      suggestions: input.review.summary.suggestions,
+      nitpicks: input.review.summary.nitpicks,
+      findings: input.review.findings,
+    },
+    cost_snapshot: {
+      stage_cost_usd: input.stageCostUsd,
+      total_so_far_usd: input.totalCostUsd,
+      budget_remaining_usd: roundUsd(input.budget - input.totalCostUsd),
+    },
+    tool_invocations: [],
+    style_playbook: input.playbook,
+    skills_read: input.skillsRead,
+  };
+}
+
+async function writeCompletedCheckpointAndState(
+  opts: RunnerOptions,
+  checkpoint: Checkpoint,
+  totalCostUsd: number,
+  revisionNotes: Record<string, string[]>,
+): Promise<void> {
+  await writeCheckpoint(opts.projectRoot, opts.show.slug, opts.episode.slug, checkpoint.stage, checkpoint);
+  await updateState(opts.projectRoot, opts.show.slug, opts.episode.slug, {
+    pipeline: opts.pipelineName,
+    current_stage: checkpoint.stage,
+    last_status: checkpoint.status,
+    last_checkpoint_at: checkpoint.timestamp,
+    cost_total_usd: totalCostUsd,
+    revision_notes: revisionNotes,
+    queued_stage_revision: undefined,
+  });
+}
+
+async function recordStageDecisions(opts: RunnerOptions, decisions: DecisionEntry[]): Promise<DecisionEntry[]> {
+  for (const decision of decisions) {
+    await recordDecision({ show: opts.show.slug, episode: opts.episode.slug }, decision, { root: opts.projectRoot });
+  }
+
+  return decisions;
+}
+
+async function completedStageSlugs(opts: RunnerOptions): Promise<Set<string>> {
+  const completed = new Set<string>();
+
+  for (const stageSlug of await listCheckpoints(opts.projectRoot, opts.show.slug, opts.episode.slug)) {
+    const checkpoint = await readCheckpoint(opts.projectRoot, opts.show.slug, opts.episode.slug, stageSlug);
+    if (checkpoint.status === "completed") {
+      completed.add(stageSlug);
+    }
+  }
+
+  return completed;
+}
+
+async function checkpointStatusMap(opts: RunnerOptions): Promise<CheckpointStatusMap> {
+  const statuses: CheckpointStatusMap = new Map();
+
+  for (const stageSlug of await listCheckpoints(opts.projectRoot, opts.show.slug, opts.episode.slug)) {
+    const checkpoint = await readCheckpoint(opts.projectRoot, opts.show.slug, opts.episode.slug, stageSlug);
+    statuses.set(stageSlug, checkpoint.status);
+  }
+
+  return statuses;
+}
+
+function checkpointStatusForStage(stage: Stage, runOptions: StageRunOptions, overBudget: boolean): CheckpointStatus {
+  if (overBudget || stage.human_approval !== "required") {
+    return "completed";
+  }
+
+  return runOptions.nonInteractive === true ? "awaiting_human" : "awaiting_human";
+}
+
+function buildApprovalContext(checkpoint: Checkpoint, budget: number, nextStage: Stage | undefined): ApprovalContext {
+  const snapshot = checkpoint.cost_snapshot ?? ZERO_COST;
+  return {
+    stageCost: snapshot.stage_cost_usd,
+    totalSoFar: snapshot.total_so_far_usd,
+    budgetRemaining: snapshot.budget_remaining_usd,
+    projectedNextStage: projectedNextStage(nextStage),
+    artifactSummary: summarizeArtifact(checkpoint.artifact),
+  };
+}
+
+function projectedNextStage(stage: Stage | undefined): ApprovalContext["projectedNextStage"] {
+  if (stage?.estimated_cost === undefined) {
+    return undefined;
+  }
+
+  return {
+    stage: stage.slug,
+    sample: stage.estimated_cost.sample.usd,
+    full: stage.estimated_cost.full.usd,
+  };
+}
+
+function summarizeArtifact(artifact: unknown): string[] {
+  if (Array.isArray(artifact)) {
+    return [`${artifact.length} array item${artifact.length === 1 ? "" : "s"}`];
+  }
+
+  if (!isRecord(artifact)) {
+    return [String(artifact)];
+  }
+
+  const preferred = ["title", "summary", "description", "hook", "topic_exploration"]
+    .map((key) => artifact[key])
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+  if (preferred.length > 0) {
+    return preferred;
+  }
+
+  return Object.entries(artifact)
+    .slice(0, 5)
+    .map(([key, value]) => `${key}: ${summaryValue(value)}`);
+}
+
+function summaryValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `${value.length} item${value.length === 1 ? "" : "s"}`;
+  }
+  if (isRecord(value)) {
+    return `${Object.keys(value).length} field${Object.keys(value).length === 1 ? "" : "s"}`;
+  }
+  if (typeof value === "string") {
+    return value.length > 120 ? `${value.slice(0, 117)}...` : value;
+  }
+  return String(value);
+}
+
+function reviewRevisionNote(review: Review): string {
+  const critical = review.findings.filter((finding) => finding.severity === "critical");
+  if (critical.length === 0) {
+    return `Reviewer requested revision on round ${review.round + 1}.`;
+  }
+
+  return critical.map((finding) => `${finding.title}: ${finding.proposed_fix ?? finding.description}`).join("\n");
+}
+
+function appendRevisionNote(revisionNotes: Record<string, string[]>, stage: string, note: string): void {
+  revisionNotes[stage] = [...(revisionNotes[stage] ?? []), note];
+}
+
+function normalizeApprovalPromptResult(result: ApprovalPromptResult): { action: ApprovalAction; note?: string } {
+  if (typeof result === "string") {
+    return { action: result };
+  }
+
+  return result;
+}
+
+function shouldResume(runOptions: StageRunOptions): boolean {
+  return runOptions.from === undefined && runOptions.only === undefined;
+}
+
+function queuedRevisionForStage(state: PipelineState | undefined, stage: string): string | undefined {
+  return state?.queued_stage_revision?.stage === stage ? state.queued_stage_revision.note : undefined;
+}
+
+async function clearQueuedRevision(opts: RunnerOptions): Promise<void> {
+  await updateState(opts.projectRoot, opts.show.slug, opts.episode.slug, {
+    queued_stage_revision: undefined,
+  });
+}
+
+function cloneRevisionNotes(value: PipelineState["revision_notes"]): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(value ?? {}).map(([stage, notes]) => [stage, [...notes]]));
+}
+
+function resolveBudget(opts: RunnerOptions): number {
+  return (
+    opts.runOptions.budget_usd ??
+    opts.episode.budget_usd ??
+    opts.show.pipelines[opts.pipelineName]?.budget_usd ??
+    opts.pipeline.orchestration.budget_default_usd
+  );
+}
+
+function estimatedStageCost(stage: Stage, runOptions: StageRunOptions): number | undefined {
+  if (stage.estimated_cost === undefined) {
+    return undefined;
+  }
+
+  return runOptions.sample ? stage.estimated_cost.sample.usd : stage.estimated_cost.full.usd;
+}
+
+function reviewPlaybook(playbook: unknown): ReviewContext["playbook"] {
+  const parsed = PlaybookSchema.safeParse(playbook);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function wallTimeExceeded(pipeline: PipelineManifest, startMs: number, now: () => Date): boolean {
+  const maxMs = pipeline.orchestration.max_wall_time_minutes * 60_000;
+  return now().getTime() - startMs > maxMs;
+}
+
+function emitBudgetWarning(opts: RunnerOptions, totalCostUsd: number, budget: number): void {
+  const payload = {
+    event: "budget_exceeded",
+    total_cost_usd: totalCostUsd,
+    budget_usd: budget,
+  };
+
+  if (opts.json === true) {
+    opts.io.stdout.write(`${JSON.stringify(payload)}\n`);
+    return;
+  }
+
+  opts.io.stdout.write(`budget exceeded: $${totalCostUsd.toFixed(2)} of $${budget.toFixed(2)}\n`);
+}
+
+function roundUsd(value: number): number {
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
