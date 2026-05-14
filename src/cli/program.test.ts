@@ -65,6 +65,15 @@ describe("createProgram", () => {
     expect(update?.options.map((option) => option.long)).toEqual(expect.arrayContaining(["--check"]));
   });
 
+  it("defines export package options", () => {
+    const { program } = captureProgram();
+    const exportCommand = program.commands.find((command) => command.name() === "export");
+
+    expect(exportCommand?.options.map((option) => option.long)).toEqual(
+      expect.arrayContaining(["--target", "--format", "--asset-link-mode", "--out"]),
+    );
+  });
+
   it("emits parseable NDJSON for remaining stub commands in json mode", async () => {
     const root = await scratchCurrentProject();
     process.chdir(root);

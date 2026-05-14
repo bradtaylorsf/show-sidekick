@@ -35,6 +35,11 @@ orchestration:
   max_revisions_per_stage: 3
   max_send_backs: 3
   max_wall_time_minutes: 12
+export:
+  supported_targets: [premiere, davinci]
+  default_target: premiere
+  notes: |
+    FCP7 XML export packages include cut timing, linked assets, narration/music audio, and word timing captions.
 stages:
   - slug: source_review
     skill: pipelines/hybrid/source-review-director.md
