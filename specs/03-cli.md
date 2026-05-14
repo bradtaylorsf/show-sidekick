@@ -14,7 +14,11 @@
 ```bash
 # Project lifecycle
 predit init                              # scaffold a new predit project in cwd
+predit init --git                        # scaffold, git init, add, and commit
+predit init --starter music-video        # scaffold and clone a bundled starter show
 predit doctor                            # registry + tool preflight (capability menu)
+predit update                            # refresh .predit/ from the installed harness
+predit update --check                    # verify .predit/ without writing
 
 # Create
 predit new show <slug>                   # scaffold shows/<slug>/

@@ -8,6 +8,16 @@ export class ProjectRootNotFoundError extends Error {
   }
 }
 
+export class ProjectAlreadyInitializedError extends Error {
+  readonly projectRoot: string;
+
+  constructor(projectRoot: string) {
+    super(`Refusing to initialize an existing predit project at ${projectRoot}. Run 'predit update' to refresh it.`);
+    this.name = "ProjectAlreadyInitializedError";
+    this.projectRoot = projectRoot;
+  }
+}
+
 export class MissingEnvError extends Error {
   readonly envName: string;
 
