@@ -1,0 +1,68 @@
+{
+  "audio": {
+    "path": "music_library/fixture.wav",
+    "duration_s": 10,
+    "sample_rate": 48000,
+    "channels": 2
+  },
+  "master_clock": "audio",
+  "bpm": 120,
+  "words": [
+    {
+      "text": "hello",
+      "start_s": 0,
+      "end_s": 0.5,
+      "confidence": 0.99
+    }
+  ],
+  "segments": [
+    {
+      "start_s": 0,
+      "end_s": 5,
+      "text": "hello",
+      "words": [
+        {
+          "text": "hello",
+          "start_s": 0,
+          "end_s": 0.5,
+          "confidence": 0.99
+        }
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "label": "intro",
+      "start_s": 0,
+      "end_s": 5,
+      "kind": "vocal",
+      "energy": 0.5
+    }
+  ],
+  "beats": [
+    {
+      "time_s": 0,
+      "strength": 1,
+      "is_downbeat": true
+    }
+  ],
+  "climax": [
+    {
+      "time_s": 8,
+      "type": "peak",
+      "intensity": 0.9,
+      "source": "agent"
+    }
+  ],
+  "scene_anchors": [
+    {
+      "scene_id": "scene-1",
+      "start_s": 0,
+      "end_s": 5,
+      "snapped_to": "section_start",
+      "source": {
+        "section": "intro"
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "slug": "host",
+  "required_actions": ["pointing"],
+  "required_emotions": ["confident"],
+  "visual_description": "A clean line-art presenter with a navy jacket.",
+  "references": [
+    {
+      "path": "characters/host/reference.png",
+      "role": "style"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "tool": "fixture_tool",
+    "provider": "fixture",
+    "model": "fixture-model",
+    "units": 1,
+    "usd": 0,
+    "mode": "sample"
+  }
+]

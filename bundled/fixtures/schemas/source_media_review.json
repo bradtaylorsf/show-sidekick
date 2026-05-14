@@ -1,0 +1,15 @@
+{
+  "files": [
+    {
+      "path": "music_library/reference.mp4",
+      "reviewed": true,
+      "technical_probe": {
+        "duration_s": 10,
+        "width": 1920,
+        "height": 1080
+      },
+      "content_summary": "The duration_s and width fields show this is a short 16:9 reference.",
+      "planning_implications": ["Use a 16:9 layout"]
+    }
+  ]
+}

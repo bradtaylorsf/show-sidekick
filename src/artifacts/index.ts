@@ -1,6 +1,7 @@
 export * from "./action-timeline.js";
 export * from "./asset-manifest.js";
 export * from "./brief.js";
+export * from "./capture-manifest.js";
 export * from "./character-design.js";
 export * from "./character-animation-validators.js";
 export * from "./character-qa-report.js";

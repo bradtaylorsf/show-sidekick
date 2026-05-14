@@ -1,0 +1,10 @@
+{
+  "title": "Fixture Brief",
+  "audience": "Harness contributors",
+  "platform": "web",
+  "tone": "clear",
+  "duration_s": 30,
+  "hook": "A short fixture validates the schema.",
+  "key_points": ["Schema fixtures are committed", "Round trips stay stable"],
+  "notes": "Used by the schema gate."
+}

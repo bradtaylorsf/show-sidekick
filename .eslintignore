@@ -1,0 +1,11 @@
+dist/
+node_modules/
+bundled/schemas/
+pnpm-lock.yaml
+.alpha-loop/
+.agents/
+.claude/
+.migration/
+projects/
+.worktrees/
+bundled/skills/agents/
