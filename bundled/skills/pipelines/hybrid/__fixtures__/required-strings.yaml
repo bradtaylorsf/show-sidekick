@@ -1,0 +1,29 @@
+pipeline: hybrid
+required_sections:
+  - file: executive-producer.md
+    section: "## EP-Specific Cross-Stage Checks"
+  - file: executive-producer.md
+    section: "### After SOURCE_REVIEW stage:"
+  - file: source-review-director.md
+    section: "### 4. Handoff To IDEA And SCRIPT"
+  - file: scene-director.md
+    section: "### 0. Source vs Generated Decisioning"
+required_phrases:
+  - file: scene-director.md
+    phrase: "source-vs-generated decisioning is explicit for every scene"
+  - file: scene-director.md
+    phrase: "the handoff between captured material and generated support visuals is clear"
+  - file: scene-director.md
+    phrase: "Do not use generated inserts to replace source evidence"
+  - file: source-review-director.md
+    phrase: "source constraints are ready for source-vs-generated decisioning"
+  - file: compose-director.md
+    phrase: "Silent runtime swap is a CRITICAL governance violation"
+required_numerics:
+  - file: executive-producer.md
+    numeric: "Max revisions per stage | 3"
+  - file: executive-producer.md
+    numeric: "Max total wall-time | 12 minutes"
+required_modules:
+  - file: executive-producer.md
+    module: "Quality Gates Summary"

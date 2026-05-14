@@ -1267,8 +1267,8 @@ A vitest suite under `tests/content-fidelity/` greps the corresponding skill mar
 ## L-6 — Hybrid pipeline + director skills
 
 **Standard acceptance.**
-- [ ] Pipeline + 8 director skills + EP + fixture.
-- [ ] **Content-fidelity**: scene-director includes source-vs-generated decisioning; clear handoff between captured material and generated support visuals.
+- [x] Pipeline + 8 director skills + EP + fixture.
+- [x] **Content-fidelity**: scene-director includes source-vs-generated decisioning; clear handoff between captured material and generated support visuals.
 
 ## L-7 — Clip-factory pipeline + director skills
 

@@ -1,0 +1,131 @@
+slug: hybrid
+display_name: Hybrid
+description: "Hybrid pipeline for videos that combine source footage with designed or generated support assets: interviews plus diagrams, product footage plus overlays, screen recordings plus companion graphics, or montage edits with support inserts. EP orchestration adds quality gates for source/support balance, overlay density, and cross-medium coherence."
+status: production
+master_clock: none
+orchestration:
+  budget_default_usd: 2
+  max_revisions_per_stage: 3
+  max_send_backs: 3
+  max_wall_time_minutes: 12
+stages:
+  - slug: source_review
+    skill: pipelines/hybrid/source-review-director.md
+    produces: source_media_review
+    tools_available:
+      - source_media_review
+      - frame_sampler
+      - transcriber
+      - scene_detect
+      - video_understand
+    review_focus:
+      - Supplied footage is probed before planning
+      - Content summary is grounded in technical probe fields
+      - Reusable source moments are identified for the script and scene plan
+    success_criteria:
+      - Schema-valid source_media_review artifact when user media is supplied
+      - Known source constraints are explicit before script
+    human_approval: optional
+  - slug: idea
+    skill: pipelines/hybrid/idea-director.md
+    produces: brief
+    review_focus:
+      - Anchor medium is clearly identified
+      - Support layers are justified and realistic
+      - Output mix matches the source inventory
+    success_criteria:
+      - Schema-valid brief artifact
+      - Brief distinguishes source-led and support-led elements
+    human_approval: required
+  - slug: script
+    skill: pipelines/hybrid/script-director.md
+    produces: script
+    tools_available:
+      - transcriber
+      - scene_detect
+      - audio_enhance
+    review_focus:
+      - Source-led beats and support-led beats are clearly separated
+      - Narration or dialogue plan is realistic
+      - The script does not rely on unsupported assets without stating it
+    success_criteria:
+      - Schema-valid script artifact
+      - Script sections map to a feasible hybrid structure
+    human_approval: required
+  - slug: scene_plan
+    skill: pipelines/hybrid/scene-director.md
+    produces: scene_plan
+    tools_available:
+      - frame_sampler
+      - scene_detect
+    review_focus:
+      - Source content remains visually primary where intended
+      - Overlay and support layers do not overload the frame
+      - Platform or aspect-ratio variants are planned deliberately
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Every scene has a defined source/support treatment
+    human_approval: required
+  - slug: assets
+    skill: pipelines/hybrid/asset-director.md
+    produces: asset_manifest
+    tools_available:
+      - subtitle_gen
+      - tts_selector
+      - image_selector
+      - video_selector
+      - diagram_gen
+      - code_snippet
+      - music_gen
+      - audio_enhance
+    review_focus:
+      - Support assets clearly map to real narrative gaps
+      - Shared template assets are reused
+      - Optional generated inserts do not eclipse source truth
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - All referenced asset files exist on disk
+    human_approval: optional
+  - slug: edit
+    skill: pipelines/hybrid/edit-director.md
+    produces: edit_decisions
+    review_focus:
+      - Anchor cut is coherent before support layers are added
+      - Support visuals clarify rather than distract
+      - Variant logic is consistent across deliverables
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - Edit decisions cover the planned deliverables
+    human_approval: optional
+  - slug: compose
+    skill: pipelines/hybrid/compose-director.md
+    produces: render_report
+    tools_available:
+      - video_compose
+      - hyperframes
+      - audio_mixer
+      - video_stitch
+      - video_trimmer
+      - color_grade
+      - audio_enhance
+    review_focus:
+      - Source and support layers remain balanced
+      - Aspect-ratio variants preserve readability
+      - Audio stays coherent across footage and generated elements
+      - render_runtime in edit_decisions matches proposal_packet — silent swap is a CRITICAL governance violation
+      - Hybrid typically uses render_runtime='remotion' so source footage and React support overlays compose in one pass; pick 'hyperframes' only when support layers are HTML/GSAP-native
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output file exists and passes ffprobe validation
+    human_approval: optional
+  - slug: publish
+    skill: pipelines/hybrid/publish-director.md
+    produces: publish_log
+    review_focus:
+      - Hero cut and derivative cuts are clearly organized
+      - Metadata reflects the actual source mix
+      - Export package is usable without manual cleanup
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Export package contains video and metadata outputs
+    human_approval: required
