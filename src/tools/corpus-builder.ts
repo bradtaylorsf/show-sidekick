@@ -4,7 +4,7 @@ import { basename, dirname, extname, join } from "node:path";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
 import type { Tool, ToolContext } from "../registry/index.js";
-import { resolveProjectPath } from "../tool-support/paths.js";
+import { resolveProjectPath, resolveProjectReadPath } from "../tool-support/paths.js";
 import clipEmbedder from "./clip-embedder.js";
 
 const defaultGlob = "**/*.{png,jpg,jpeg,mp4,mov}";
@@ -148,7 +148,7 @@ const corpusBuilder = defineTool({
   isAvailable: async () => ({ available: true }),
   async execute(params: CorpusBuilderInput, ctx: ToolContext) {
     const input = inputSchema.parse(params);
-    const inputDir = resolveProjectPath(input.dir, ctx.projectRoot);
+    const inputDir = resolveProjectReadPath(input.dir, ctx.projectRoot);
     const outputPath = resolveProjectPath(input.output_path, ctx.projectRoot);
     const files = await enumerateCorpusFiles(inputDir, input.glob);
     const frameDir = join(dirname(outputPath), ".predit-corpus-frames");

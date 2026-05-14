@@ -58,6 +58,24 @@ describe("auto_reframe tool", () => {
     });
   });
 
+  it("allows source clips outside the project root", async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), "predit-reframe-"));
+    const sourceRoot = await mkdtemp(join(tmpdir(), "predit-source-video-"));
+    const sourcePath = join(sourceRoot, "outside.mp4");
+    const faceTracker = {
+      execute: vi.fn(async () => ({
+        frames: [{ time_s: 0, faces: [{ x: 200, y: 40, w: 120, h: 120, score: 1 }] }],
+      })),
+    } as unknown as Tool;
+    const ctx = context(projectRoot, { registry: { select: vi.fn(async () => faceTracker) } });
+
+    await autoReframe.execute(autoReframe.input.parse({ video_path: sourcePath, target_aspect: "9:16" }), ctx);
+
+    const runCli = vi.mocked(ctx.runCli);
+    expect(faceTracker.execute).toHaveBeenCalledWith({ path: sourcePath }, ctx);
+    expect(runCli.mock.calls[0]?.[1]).toContain(sourcePath);
+  });
+
   it("throws when no face tracker is registered unless center fallback is explicit", async () => {
     const projectRoot = await mkdtemp(join(tmpdir(), "predit-reframe-"));
     const ctx = context(projectRoot);

@@ -5,7 +5,7 @@ import { defineTool } from "../registry/define-tool.js";
 import type { ToolContext } from "../registry/tool.js";
 import { defaultRunCli } from "../tool-support/cli-runner.js";
 import { errorWithInstallHint } from "../tool-support/errors.js";
-import { resolveProjectPath } from "../tool-support/paths.js";
+import { resolveProjectPath, resolveProjectReadPath } from "../tool-support/paths.js";
 
 const INSTALL = "brew install ffmpeg";
 
@@ -47,7 +47,7 @@ export default defineTool({
   output: outputSchema,
   async execute(params, ctx) {
     const input = inputSchema.parse(params);
-    const inputPath = resolveProjectPath(input.video_path, ctx.projectRoot);
+    const inputPath = resolveProjectReadPath(input.video_path, ctx.projectRoot);
     const outputPath = resolveOutputPath(input.output_path, inputPath, input.target_aspect, ctx.projectRoot);
     await mkdir(dirname(outputPath), { recursive: true });
 

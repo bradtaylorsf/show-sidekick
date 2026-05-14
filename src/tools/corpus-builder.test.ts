@@ -1,7 +1,8 @@
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { Tool, ToolContext } from "../registry/index.js";
 import corpusBuilder, { buildCorpusIndex, enumerateCorpusFiles, extensionsFromGlob, isVideoPath } from "./corpus-builder.js";
 
 describe("corpus_builder", () => {
@@ -42,6 +43,35 @@ describe("corpus_builder", () => {
         { path: "/tmp/a.png", vector: [1, 0] },
         { path: "/tmp/b.jpg", vector: [0, 1] },
       ],
+    });
+  });
+
+  it("allows a source corpus directory outside the project root", async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), "predit-project-"));
+    const sourceRoot = await mkdtemp(join(tmpdir(), "predit-source-corpus-"));
+    await writeFile(join(sourceRoot, "clip.png"), "image");
+    const embedder = {
+      execute: vi.fn(async () => ({ model_id: "mock-clip", vector: [1, 0, 0] })),
+    };
+    const ctx: ToolContext = {
+      projectRoot,
+      logger: {
+        info: () => undefined,
+        warn: () => undefined,
+        error: () => undefined,
+        debug: () => undefined,
+        event: () => undefined,
+      },
+      registry: { select: vi.fn(async () => embedder as unknown as Tool) },
+    };
+
+    const result = await corpusBuilder.execute({ dir: sourceRoot, output_path: "indexes/corpus.json" }, ctx);
+
+    expect(embedder.execute).toHaveBeenCalledWith({ path: join(sourceRoot, "clip.png"), modality: "image" }, ctx);
+    expect(result.index_path).toBe(join(projectRoot, "indexes", "corpus.json"));
+    expect(JSON.parse(await readFile(result.index_path, "utf8"))).toEqual({
+      model_id: "mock-clip",
+      items: [{ path: join(sourceRoot, "clip.png"), vector: [1, 0, 0] }],
     });
   });
 });
