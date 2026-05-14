@@ -205,7 +205,7 @@ async function normalizeStarterShow(filePath: string, slug: string): Promise<voi
   await atomicWrite(filePath, YAML.stringify(show));
 }
 
-async function assertMissing(targetPath: string, label: string): Promise<void> {
+export async function assertMissing(targetPath: string, label: string): Promise<void> {
   if (await exists(targetPath)) {
     throw new Error(`refuses to clobber existing ${label} at ${targetPath}`);
   }
@@ -233,7 +233,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function today(): string {
+export function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
@@ -241,7 +241,7 @@ function defaultEpisodeSlug(): string {
   return `${today()}-${randomUUID().slice(0, 8)}`;
 }
 
-function titleize(slug: string): string {
+export function titleize(slug: string): string {
   return slug
     .split(/[-_]/u)
     .filter(Boolean)

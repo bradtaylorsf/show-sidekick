@@ -32,6 +32,8 @@ Global flags: `--json`, `--dry-run`, `--verbose`, `--no-color`, `--config <path>
 
 `predit update` refreshes `.predit/` from the installed harness and rewrites `.predit/version.json`. `predit update --check` verifies the cache without writing and exits non-zero when stale. Commands warn when the cache version is stale and refuse to run across incompatible major versions.
 
+`predit import <path> --as <show>/<episode>` matches a dropped file or folder against that show's `ingest.watch[]` rules, detects the target pipeline and sibling inputs, and writes a new episode YAML without clobbering an existing one. `predit watch` monitors all configured show ingest paths and prints the matching `predit import` command within two seconds of a detected drop.
+
 Build/run commands currently validate show, episode, pipeline, stage flags, reference inputs, resume checkpoints, approval checkpoints, audited final-review force approvals, revision notes, status state, and cost summaries. `build` runs the integrated Runner state machine: optional `--reference <url-or-path>` / `inputs.reference` video analysis before pipeline selection, registry preflight, stage dispatch, reviewer pass, checkpoint writes, approval gates, budget limits, configurable cost-drift review thresholds, and resumable state.
 
 Create/list commands scaffold project-local shows, episodes, pipelines, and playbooks, and list merged project-local plus `.predit` cache resources with JSON output for automation. `new playbook` uses the bundled playbook generator so the stub includes palette, typography, motion rules, audio mood, asset preferences, and quality rules.
