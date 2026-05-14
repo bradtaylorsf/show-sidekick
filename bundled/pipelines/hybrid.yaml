@@ -36,10 +36,10 @@ orchestration:
   max_send_backs: 3
   max_wall_time_minutes: 12
 export:
-  supported_targets: [premiere, davinci]
+  supported_targets: [premiere, davinci, capcut, edl]
   default_target: premiere
   notes: |
-    FCP7 XML export packages include cut timing, linked assets, narration/music audio, and word timing captions.
+    Export packages include cut timing, linked assets, narration/music audio, and word timing captions where the target supports them.
 stages:
   - slug: source_review
     skill: pipelines/hybrid/source-review-director.md

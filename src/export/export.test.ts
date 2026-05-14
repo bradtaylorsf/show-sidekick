@@ -8,6 +8,8 @@ import { readPublishLog } from "../artifacts/index.js";
 import { PipelineManifestSchema, type Pipeline } from "../pipelines/index.js";
 import type { LoadedShow } from "../shows/index.js";
 import { createProgram } from "../cli/program.js";
+import { exportCapcut } from "./capcut.js";
+import { buildEdl, exportEdl } from "./edl.js";
 import { buildFcp7Xml } from "./fcp7-xml.js";
 import { linkAsset } from "./asset-linkage.js";
 import { assembleExportPackage } from "./package.js";
@@ -100,6 +102,108 @@ describe("buildFcp7Xml", () => {
   });
 });
 
+describe("exportCapcut", () => {
+  it("writes a draft with materials, cut segments, audio, and captions", async () => {
+    const root = await scratchProject();
+    const packageDir = path.join(root, "capcut-package");
+
+    const result = await exportCapcut({
+      packageDir,
+      projectName: "show/episode",
+      editDecisions: {
+        ...editDecisions(),
+        cuts: [
+          { start_s: 2, end_s: 4, asset_id: "chart" },
+          { start_s: 0, end_s: 2, asset_id: "hero" },
+        ],
+      },
+      cuesheet: cuesheet(),
+      renderReport: renderReport(),
+      assets: linkedTimelineAssets(root),
+      audioTracks: linkedAudioTracks(root),
+    });
+
+    const draft = JSON.parse(await readFile(result.timelinePath, "utf8")) as {
+      materials: {
+        videos: Array<Record<string, unknown>>;
+        images: Array<Record<string, unknown>>;
+        audios: Array<Record<string, unknown>>;
+        captions: Array<Record<string, unknown>>;
+      };
+      tracks: Array<{ type: string; segments: Array<Record<string, unknown>> }>;
+    };
+    const videoTrack = draft.tracks.find((track) => track.type === "video");
+    const captionTrack = draft.tracks.find((track) => track.type === "text");
+
+    expect(path.basename(result.timelinePath)).toBe("draft.json");
+    expect(draft.materials.videos[0]).toMatchObject({
+      id: "asset-hero",
+      path: path.join(root, "assets", "01_hero_clip.mov"),
+    });
+    expect(draft.materials.images[0]).toMatchObject({
+      id: "asset-chart",
+      path: path.join(root, "assets", "02_chart.png"),
+    });
+    expect(draft.materials.audios.map((material) => material.name)).toEqual(["cuesheet-audio"]);
+    expect(videoTrack?.segments.map((segment) => segment.material_id)).toEqual(["asset-hero", "asset-chart"]);
+    expect(videoTrack?.segments[0]).toMatchObject({
+      source_timerange_us: { start_us: 0, duration_us: 2_000_000 },
+      target_timerange_us: { start_us: 0, duration_us: 2_000_000 },
+    });
+    expect(captionTrack?.segments.map((segment) => segment.text)).toEqual(["Hello", "world"]);
+    expect(draft.materials.captions.map((material) => material.text)).toEqual(["Hello", "world"]);
+    expect(await readFile(result.readmePath, "utf8")).toContain("CapCut Draft");
+  });
+});
+
+describe("buildEdl", () => {
+  it.each([
+    { framerate: 24, fcm: "FCM: NON-DROP FRAME", expectedOut: "00:00:01:12" },
+    { framerate: 30, fcm: "FCM: NON-DROP FRAME", expectedOut: "00:00:01:15" },
+    { framerate: 23.976, fcm: "FCM: DROP FRAME", expectedOut: "00:00:01:12" },
+  ])("builds CMX 3600 SMPTE timecode at $framerate fps", ({ framerate, fcm, expectedOut }) => {
+    const root = "/project";
+    const edl = buildEdl({
+      packageDir: root,
+      projectName: "show/episode",
+      editDecisions: {
+        ...editDecisions(),
+        cuts: [{ start_s: 0, end_s: 1.5, asset_id: "hero" }],
+      },
+      cuesheet: cuesheet(),
+      renderReport: { ...renderReport(), duration_s: 1.5, framerate },
+      assets: linkedTimelineAssets(root),
+      audioTracks: linkedAudioTracks(root),
+    });
+
+    expect(edl).toContain("TITLE: show/episode");
+    expect(edl).toContain(fcm);
+    expect(edl).toMatch(
+      new RegExp(`001\\s+AX001\\s+V\\s+C\\s+00:00:00:00\\s+${expectedOut}\\s+00:00:00:00\\s+${expectedOut}`),
+    );
+    expect(edl).toMatch(/002\s+AX002\s+A\s+C/);
+  });
+});
+
+describe("exportEdl", () => {
+  it("writes timeline.edl and a CMX 3600 README", async () => {
+    const root = await scratchProject();
+    const result = await exportEdl({
+      packageDir: path.join(root, "edl-package"),
+      projectName: "show/episode",
+      editDecisions: editDecisions(),
+      cuesheet: cuesheet(),
+      renderReport: renderReport(),
+      assets: linkedTimelineAssets(root),
+      audioTracks: linkedAudioTracks(root),
+    });
+
+    expect(path.basename(result.timelinePath)).toBe("timeline.edl");
+    expect(await readFile(result.timelinePath, "utf8")).toContain("FCM: NON-DROP FRAME");
+    expect(await readFile(result.readmePath, "utf8")).toContain("CMX 3600");
+  });
+});
+
 describe("assembleExportPackage", () => {
   it.each(["copy", "symlink", "reference"] as const)("assembles a %s Premiere export package", async (mode) => {
     const root = await scratchProject();
@@ -148,6 +252,47 @@ describe("assembleExportPackage", () => {
 
     expect(path.basename(result.packageDir)).toBe("show__episode.davinci");
     expect(await readFile(result.readmePath, "utf8")).toContain("DaVinci Resolve");
+  });
+
+  it.each([
+    { target: "capcut", timelineName: "draft.json", outputKind: "capcut_draft" },
+    { target: "edl", timelineName: "timeline.edl", outputKind: "edl" },
+  ])("assembles a $target export package", async ({ target, timelineName, outputKind }) => {
+    const root = await scratchProject();
+    await writeExportWorkspace(root);
+
+    const result = await assembleExportPackage({
+      projectRoot: root,
+      show: loadedShow(root),
+      showSlug: "show",
+      episodeSlug: "episode",
+      pipeline: pipeline({ supportedTargets: ["premiere", "davinci", "capcut", "edl"] }),
+      target,
+      assetLinkMode: "copy",
+      now: new Date("2026-05-14T12:00:00.000Z"),
+    });
+
+    expect(path.basename(result.packageDir)).toBe(`show__episode.${target}`);
+    expect(path.basename(result.timelinePath)).toBe(timelineName);
+    expect(result.publishLog.outputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: result.timelinePath,
+          kind: outputKind,
+          platform: target,
+        }),
+      ]),
+    );
+    expect(result.publishLog.metadata).toMatchObject({
+      exported_at: "2026-05-14T12:00:00.000Z",
+      target,
+      asset_link_mode: "copy",
+    });
+    if (target === "edl") {
+      const edl = await readFile(result.timelinePath, "utf8");
+      expect(edl).toMatch(/003\s+AX003\s+A\s+C/);
+      expect(edl).toMatch(/004\s+AX004\s+A\s+C/);
+    }
   });
 
   it("rejects targets not declared by the selected pipeline", async () => {
@@ -200,6 +345,52 @@ describe("predit export", () => {
     });
     expect(existsSync(path.join(expectedPackagePath, "timeline.xml"))).toBe(true);
   });
+
+  it("accepts --target capcut through the CLI", async () => {
+    const root = await scratchProject();
+    await writeProjectFiles(root);
+    await writeExportWorkspace(root);
+    process.chdir(root);
+    const { program, output } = captureProgram();
+
+    await program.parseAsync(["node", "predit", "--json", "export", "show/episode", "--target", "capcut", "--out", "handoffs"], {
+      from: "node",
+    });
+
+    const event = JSON.parse(output().stdout.trim()) as Record<string, unknown>;
+    const resolvedRoot = await realpath(root);
+    const expectedPackagePath = path.join(resolvedRoot, "handoffs", "show__episode.capcut");
+
+    expect(event).toMatchObject({
+      event: "exported",
+      target: "capcut",
+    });
+    expect(event.package_path).toBe(expectedPackagePath);
+    expect(existsSync(path.join(expectedPackagePath, "draft.json"))).toBe(true);
+  });
+
+  it("accepts --format edl through the CLI", async () => {
+    const root = await scratchProject();
+    await writeProjectFiles(root);
+    await writeExportWorkspace(root);
+    process.chdir(root);
+    const { program, output } = captureProgram();
+
+    await program.parseAsync(["node", "predit", "--json", "export", "show/episode", "--format", "edl", "--out", "handoffs"], {
+      from: "node",
+    });
+
+    const event = JSON.parse(output().stdout.trim()) as Record<string, unknown>;
+    const resolvedRoot = await realpath(root);
+    const expectedPackagePath = path.join(resolvedRoot, "handoffs", "show__episode.edl");
+
+    expect(event).toMatchObject({
+      event: "exported",
+      target: "edl",
+    });
+    expect(event.package_path).toBe(expectedPackagePath);
+    expect(existsSync(path.join(expectedPackagePath, "timeline.edl"))).toBe(true);
+  });
 });
 
 async function scratchProject(): Promise<string> {
@@ -218,7 +409,7 @@ async function writeProjectFiles(root: string): Promise<void> {
     [
       "slug: xml-pipe",
       "export:",
-      "  supported_targets: [premiere, davinci]",
+      "  supported_targets: [premiere, davinci, capcut, edl]",
       "  default_target: premiere",
       "stages:",
       "  - slug: edit",
@@ -286,6 +477,26 @@ function assetManifest() {
       { id: "chart", kind: "image", path: "media/chart.png" },
     ],
   };
+}
+
+function linkedTimelineAssets(root: string) {
+  return [
+    { id: "hero", kind: "video", path: "media/hero clip.mov", linked_path: path.join(root, "assets", "01_hero_clip.mov") },
+    { id: "chart", kind: "image", path: "media/chart.png", linked_path: path.join(root, "assets", "02_chart.png") },
+  ];
+}
+
+function linkedAudioTracks(root: string) {
+  return [
+    {
+      id: "cuesheet-audio",
+      name: "cuesheet-audio",
+      linked_path: path.join(root, "assets", "audio_01_narration.wav"),
+      duration_s: 4,
+      sample_rate: 48000,
+      channels: 2,
+    },
+  ];
 }
 
 function editDecisions() {

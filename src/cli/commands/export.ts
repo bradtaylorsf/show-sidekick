@@ -94,7 +94,7 @@ function formatToTarget(format: string | undefined): string | undefined {
     return "edl";
   }
 
-  throw new Error(`unsupported export format '${format}'; use --target premiere, --target davinci, or --format edl`);
+  throw new Error(`unsupported export format '${format}'; use --target premiere|davinci|capcut|edl or --format edl`);
 }
 
 function exportEvent(runTarget: LoadedRunTarget, result: AssembleExportPackageResult, publishLogPath: string): Record<string, unknown> {

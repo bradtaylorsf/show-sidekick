@@ -1,5 +1,7 @@
 export * from "./asset-linkage.js";
+export * from "./capcut.js";
 export * from "./davinci.js";
+export * from "./edl.js";
 export * from "./fcp7-xml.js";
 export * from "./load-artifacts.js";
 export * from "./package.js";

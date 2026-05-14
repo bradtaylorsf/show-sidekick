@@ -211,7 +211,7 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
   program
     .command("export <target>")
     .description("export an editor handoff")
-    .option("--target <nle>", "premiere or davinci")
+    .option("--target <nle>", "premiere, davinci, capcut, or edl")
     .option("--format <format>", "export format such as edl")
     .option("--asset-link-mode <mode>", "copy, symlink, or reference")
     .option("--out <dir>", "export root directory (defaults to exports/)")

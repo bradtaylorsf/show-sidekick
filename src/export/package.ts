@@ -5,14 +5,18 @@ import { atomicWrite } from "../checkpoints/io.js";
 import type { Pipeline } from "../pipelines/index.js";
 import type { LoadedShow } from "../shows/index.js";
 import { linkAsset, parseAssetLinkMode, resolveAssetSourcePath, type AssetLinkMode } from "./asset-linkage.js";
+import { exportCapcut } from "./capcut.js";
 import { exportDavinci } from "./davinci.js";
+import { exportEdl } from "./edl.js";
 import type { LinkedAudioTrack, LinkedTimelineAsset } from "./fcp7-xml.js";
 import { loadExportArtifacts } from "./load-artifacts.js";
 import { exportPremiere } from "./premiere.js";
 
-export const XML_EXPORT_TARGETS = ["premiere", "davinci"] as const;
+export const EXPORT_TARGETS = ["premiere", "davinci", "capcut", "edl"] as const;
+export const XML_EXPORT_TARGETS = EXPORT_TARGETS;
 
-export type XmlExportTarget = (typeof XML_EXPORT_TARGETS)[number];
+export type ExportTarget = (typeof EXPORT_TARGETS)[number];
+export type XmlExportTarget = ExportTarget;
 
 export type AssembleExportPackageOptions = {
   projectRoot: string;
@@ -27,7 +31,7 @@ export type AssembleExportPackageOptions = {
 };
 
 export type AssembleExportPackageResult = {
-  target: XmlExportTarget;
+  target: ExportTarget;
   assetLinkMode: AssetLinkMode;
   packageDir: string;
   timelinePath: string;
@@ -40,7 +44,7 @@ export async function assembleExportPackage(
   options: AssembleExportPackageOptions,
 ): Promise<AssembleExportPackageResult> {
   validatePipelineSupportsTarget(options.pipeline, options.target);
-  const target = parseXmlExportTarget(options.target);
+  const target = parseExportTarget(options.target);
   const assetLinkMode = resolvePackageAssetLinkMode(options.assetLinkMode, options.show);
   const artifacts = await loadExportArtifacts(options.projectRoot, options.showSlug, options.episodeSlug);
   const packageDir = packageDirectory(options.projectRoot, options.outDir, options.showSlug, options.episodeSlug, target);
@@ -77,8 +81,7 @@ export async function assembleExportPackage(
     assets: linkedAssets,
     audioTracks,
   };
-  const exported =
-    target === "premiere" ? await exportPremiere(exporterOptions) : await exportDavinci(exporterOptions);
+  const exported = await exportForTarget(target, exporterOptions);
   const publishLog = buildPublishLog({
     target,
     assetLinkMode,
@@ -118,12 +121,16 @@ export function validatePipelineSupportsTarget(pipeline: Pipeline, target: strin
   }
 }
 
-export function parseXmlExportTarget(target: string): XmlExportTarget {
-  if (XML_EXPORT_TARGETS.includes(target as XmlExportTarget)) {
-    return target as XmlExportTarget;
+export function parseExportTarget(target: string): ExportTarget {
+  if (EXPORT_TARGETS.includes(target as ExportTarget)) {
+    return target as ExportTarget;
   }
 
-  throw new Error(`export target '${target}' is not implemented yet; implemented targets: ${XML_EXPORT_TARGETS.join(", ")}`);
+  throw new Error(`export target '${target}' is not implemented yet; implemented targets: ${EXPORT_TARGETS.join(", ")}`);
+}
+
+export function parseXmlExportTarget(target: string): ExportTarget {
+  return parseExportTarget(target);
 }
 
 export function resolvePackageAssetLinkMode(cliValue: string | undefined, show: LoadedShow): AssetLinkMode {
@@ -135,7 +142,7 @@ function packageDirectory(
   outDir: string | undefined,
   show: string,
   episode: string,
-  target: XmlExportTarget,
+  target: ExportTarget,
 ): string {
   const root = outDir === undefined ? path.join(projectRoot, "exports") : path.resolve(projectRoot, outDir);
   return path.join(root, `${show}__${episode}.${target}`);
@@ -239,7 +246,7 @@ function cuesheetWords(cuesheet: { words?: unknown[]; segments: Array<{ words: u
 }
 
 function buildPublishLog(input: {
-  target: XmlExportTarget;
+  target: ExportTarget;
   assetLinkMode: AssetLinkMode;
   show: string;
   episode: string;
@@ -263,7 +270,7 @@ function buildPublishLog(input: {
     },
     {
       path: input.timelinePath,
-      kind: "fcp7_xml",
+      kind: timelineOutputKind(input.target),
       platform: input.target,
     },
     {
@@ -295,8 +302,48 @@ function buildPublishLog(input: {
     },
     source_manifest_path: input.sourceManifestPath,
     captions_path: input.captionsPath,
-    notes: [`Exported ${input.target} FCP7 XML package.`],
+    notes: [`Exported ${input.target} ${timelineOutputLabel(input.target)} package.`],
   };
+}
+
+async function exportForTarget(
+  target: ExportTarget,
+  options: Parameters<typeof exportPremiere>[0],
+): Promise<{ timelinePath: string; readmePath: string }> {
+  switch (target) {
+    case "premiere":
+      return exportPremiere(options);
+    case "davinci":
+      return exportDavinci(options);
+    case "capcut":
+      return exportCapcut(options);
+    case "edl":
+      return exportEdl(options);
+  }
+}
+
+function timelineOutputKind(target: ExportTarget): string {
+  switch (target) {
+    case "premiere":
+    case "davinci":
+      return "fcp7_xml";
+    case "capcut":
+      return "capcut_draft";
+    case "edl":
+      return "edl";
+  }
+}
+
+function timelineOutputLabel(target: ExportTarget): string {
+  switch (target) {
+    case "premiere":
+    case "davinci":
+      return "FCP7 XML";
+    case "capcut":
+      return "CapCut draft";
+    case "edl":
+      return "CMX 3600 EDL";
+  }
 }
 
 function packageAssetFileName(index: number, label: string, sourcePath: string): string {
