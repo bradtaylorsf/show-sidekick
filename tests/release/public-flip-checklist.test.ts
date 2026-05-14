@@ -20,6 +20,7 @@ const checkIds: readonly PublicFlipCheck["id"][] = [
 ];
 
 const resultPromise = runPublicFlipChecklist({
+  allowLocalMigrationBridge: true,
   repoRoot,
   skipBuild: true,
   skipE2E: true,

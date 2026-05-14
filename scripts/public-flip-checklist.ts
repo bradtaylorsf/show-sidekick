@@ -50,6 +50,7 @@ export type RunShell = (
 
 export type PublicFlipChecklistOptions = {
   readonly repoRoot?: string;
+  readonly allowLocalMigrationBridge?: boolean;
   readonly runShell?: RunShell;
   readonly skipBuild?: boolean;
   readonly skipE2E?: boolean;
@@ -65,6 +66,7 @@ export async function runPublicFlipChecklist(
   options: PublicFlipChecklistOptions = {},
 ): Promise<PublicFlipChecklistResult> {
   const repoRoot = path.resolve(options.repoRoot ?? process.cwd());
+  const allowLocalMigrationBridge = options.allowLocalMigrationBridge ?? false;
   const runShell = options.runShell ?? defaultRunShell;
   const skipBuild = options.skipBuild ?? true;
   const skipE2E = options.skipE2E ?? true;
@@ -73,7 +75,7 @@ export async function runPublicFlipChecklist(
     {
       id: "migration-removed",
       label: ".migration removed",
-      run: () => checkMigrationRemoved(repoRoot, runShell),
+      run: () => checkMigrationRemoved(repoRoot, runShell, allowLocalMigrationBridge),
     },
     {
       id: "no-sibling-paths",
@@ -144,13 +146,22 @@ export async function runPublicFlipChecklist(
   };
 }
 
-async function checkMigrationRemoved(repoRoot: string, runShell: RunShell): Promise<CheckResult> {
+async function checkMigrationRemoved(
+  repoRoot: string,
+  runShell: RunShell,
+  allowLocalMigrationBridge: boolean,
+): Promise<CheckResult> {
   const failures: string[] = [];
+  const localBridgePaths: string[] = [];
 
   for (const forbiddenPath of FORBIDDEN_TRACKED_PATHS) {
     const normalizedPath = forbiddenPath.replace(/\/+$/u, "");
     if (await exists(path.join(repoRoot, normalizedPath))) {
-      failures.push(`${forbiddenPath} exists on disk`);
+      if (allowLocalMigrationBridge) {
+        localBridgePaths.push(forbiddenPath);
+      } else {
+        failures.push(`${forbiddenPath} exists on disk`);
+      }
     }
 
     const tracked = await runGit(runShell, repoRoot, ["ls-files", "--", normalizedPath]);
@@ -166,6 +177,10 @@ async function checkMigrationRemoved(repoRoot: string, runShell: RunShell): Prom
 
   if (failures.length > 0) {
     return fail(failures.join("; "));
+  }
+
+  if (localBridgePaths.length > 0) {
+    return pass(`${localBridgePaths.join(", ")} exists locally but is untracked; release:check remains strict`);
   }
 
   return pass(`${FORBIDDEN_TRACKED_PATHS.join(", ")} absent on disk and not tracked`);
