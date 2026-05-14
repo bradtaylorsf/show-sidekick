@@ -30,6 +30,8 @@ Global flags: `--json`, `--dry-run`, `--verbose`, `--no-color`, `--config <path>
 
 `predit init` now scaffolds a user project in the current directory, including `CLAUDE.md`, `AGENTS.md`, `.gitignore`, empty `shows/`, gitignored `projects/` and `music_library/`, and a versioned `.predit/` cache copied from the installed harness. `predit init --git` initializes and commits the scaffold. `predit init --starter <name>` also clones a bundled starter show into `shows/<name>/`.
 
+Every command except `predit init` must run inside a predit project. The CLI detects the project root by walking upward until it finds `CLAUDE.md` and `.predit/`, and points to `predit init` when those markers are missing.
+
 `predit update` refreshes `.predit/` from the installed harness and rewrites `.predit/version.json`. `predit update --check` verifies the cache without writing and exits non-zero when stale. Commands warn when the cache version is stale and refuse to run across incompatible major versions.
 
 `predit import <path> --as <show>/<episode>` matches a dropped file or folder against that show's `ingest.watch[]` rules, detects the target pipeline and sibling inputs, and writes a new episode YAML without clobbering an existing one. `predit watch` monitors all configured show ingest paths and prints the matching `predit import` command within two seconds of a detected drop.

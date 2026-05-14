@@ -80,7 +80,9 @@ export function createProgram(input: CliIo | ProgramOptions = defaultIo): Comman
       color: options.color !== false,
     });
 
-    await checkProjectCache(actionCommand, io);
+    const commandName = topLevelCommandName(actionCommand);
+    const projectRoot = requireProjectRoot(commandName);
+    await checkProjectCache(commandName, projectRoot, io);
   });
 
   registerUnknownCommandSuggestion(program);
@@ -240,13 +242,7 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
     .action(createUpdateHandler(io));
 }
 
-async function checkProjectCache(actionCommand: Command, io: CliIo): Promise<void> {
-  const commandName = topLevelCommandName(actionCommand);
-  if (commandName === "init") {
-    return;
-  }
-
-  const projectRoot = findProjectRootIfPresent();
+async function checkProjectCache(commandName: string, projectRoot: string | null, io: CliIo): Promise<void> {
   if (projectRoot === null) {
     return;
   }
@@ -292,12 +288,16 @@ async function checkProjectCache(actionCommand: Command, io: CliIo): Promise<voi
   throw new Error(message);
 }
 
-function findProjectRootIfPresent(): string | null {
+function requireProjectRoot(commandName: string): string | null {
+  if (commandName === "init") {
+    return null;
+  }
+
   try {
     return findProjectRoot();
   } catch (error) {
     if (error instanceof ProjectRootNotFoundError) {
-      return null;
+      throw new Error(error.message);
     }
     throw error;
   }

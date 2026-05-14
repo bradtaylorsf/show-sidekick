@@ -2,7 +2,9 @@ export class ProjectRootNotFoundError extends Error {
   readonly cwd: string;
 
   constructor(cwd: string) {
-    super(`Could not find a predit project root from ${cwd}`);
+    super(
+      `Not inside a predit project (no CLAUDE.md + .predit/ found from ${cwd}). Run 'predit init' to scaffold one.`,
+    );
     this.name = "ProjectRootNotFoundError";
     this.cwd = cwd;
   }

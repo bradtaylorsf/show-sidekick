@@ -45,6 +45,7 @@ describe("project paths", () => {
     const root = await scratchProject(false);
 
     expect(() => findProjectRoot(root)).toThrow(ProjectRootNotFoundError);
+    expect(() => findProjectRoot(root)).toThrow("predit init");
   });
 
   it("returns absolute project paths", async () => {

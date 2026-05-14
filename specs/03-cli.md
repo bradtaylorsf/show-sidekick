@@ -72,6 +72,10 @@ predit tools <name>                      # tool detail (CLI vs API, env vars, co
 | `--no-color` | Strip ANSI color codes |
 | `--config <path>` | Override `show.yaml` location |
 
+## Project root requirement
+
+Every command except `predit init` must run inside a predit user project, detected by walking upward from the current directory until both `CLAUDE.md` and `.predit/` are found. When no project root is found, the CLI errors before command execution and points the user to `predit init`.
+
 ## Cwd-aware shortcuts
 
 ```bash
