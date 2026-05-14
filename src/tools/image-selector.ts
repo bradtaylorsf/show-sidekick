@@ -3,6 +3,6 @@ import { providerSelectionMarker } from "../tool-support/provider-selection-mark
 export default providerSelectionMarker({
   name: "image_selector",
   capability: "image_generation",
-  best_for: "OpenMontage-compatible image provider selection for still assets and support graphics",
-  supports: ["image-generation", "still-assets", "openmontage-tool-name"],
+  best_for: "Provider-selection marker for choosing a concrete image-generation tool at runtime",
+  supports: ["image-generation", "still-assets", "compat-alias"],
 });

@@ -3,6 +3,6 @@ import { providerSelectionMarker } from "../tool-support/provider-selection-mark
 export default providerSelectionMarker({
   name: "tts_selector",
   capability: "tts",
-  best_for: "OpenMontage-compatible TTS provider selection before generating narration audio",
-  supports: ["tts", "narration-audio", "openmontage-tool-name"],
+  best_for: "Provider-selection marker for choosing a concrete TTS tool at runtime",
+  supports: ["tts", "narration-audio", "compat-alias"],
 });

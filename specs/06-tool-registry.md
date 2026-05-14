@@ -125,6 +125,12 @@ Routing across providers for a capability (TTS, image, video, music, capture) is
 
 Some capabilities also expose a `predit` provider-selection marker tool for discovery when no concrete provider is bundled yet, or when a manifest needs a stable capability entry. Marker tools use `supports: ['provider-selection']` and throw a clear error if executed directly. When concrete providers exist for the same capability, `registry.select()` ignores the marker and ranks only executable providers.
 
+Runner preflight treats marker tools as presence-only entries. It may validate
+that the marker is registered and that `isAvailable()` reports true, but it
+must not call `execute({})` as a health probe. Direct execution is reserved for
+concrete provider tools; markers exist to keep manifests declarative while the
+agent or runner selects the real provider for the stage.
+
 ## Setup UX
 
 - `predit setup <tool>` reads the tool's setup metadata and shells out to the tool's own login/install commands. For `cli-login` tools whose binary is already installed, setup may run the login refresh command directly instead of repeating the install step.

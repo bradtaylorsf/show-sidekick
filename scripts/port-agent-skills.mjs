@@ -382,7 +382,9 @@ const wouldWrite = [];
 let copied = 0;
 let synthesized = 0;
 
-await mkdir(agentsTargetDir, { recursive: true });
+if (!dryRun) {
+  await mkdir(agentsTargetDir, { recursive: true });
+}
 
 for (const copy of skillCopies) {
   const result = await resolveSource(copy);
@@ -402,7 +404,7 @@ for (const copy of skillCopies) {
 
   if (sourceDir !== undefined) {
     await copyResources(sourceDir, resourceDir, copy.name);
-  } else {
+  } else if (!dryRun) {
     await rm(resourceDir, { recursive: true, force: true });
   }
 
@@ -415,13 +417,14 @@ for (const copy of skillCopies) {
     sourcePath,
   });
 
-  await writeOutput(path.join(agentsTargetDir, `${copy.name}.md`), content);
-  copied += 1;
+  if (await writeOutput(path.join(agentsTargetDir, `${copy.name}.md`), content)) {
+    copied += 1;
+  }
 }
 
 for (const synthetic of syntheticSkills) {
   const target = path.join(agentsTargetDir, `${synthetic.name}.md`);
-  await writeOutput(
+  if (await writeOutput(
     target,
     composeAgentSkill({
       name: synthetic.name,
@@ -431,8 +434,9 @@ for (const synthetic of syntheticSkills) {
       critical: criticalSkills.has(synthetic.name),
       sourcePath: synthetic.sourcePath,
     }),
-  );
-  synthesized += 1;
+  )) {
+    synthesized += 1;
+  }
 }
 
 console.log(`Copied ${copied} agent skills from ${sourceRoot}.`);
@@ -705,48 +709,59 @@ function quoteYaml(value) {
 
 async function writeOutput(targetPath, content) {
   const normalizedContent = content.endsWith("\n") ? content : `${content}\n`;
+  const relativePath = path.relative(repoRoot, targetPath);
+  let isEdited = false;
 
-  if (dryRun) {
-    wouldWrite.push(path.relative(repoRoot, targetPath));
-    return;
+  try {
+    const existing = await readFile(targetPath, "utf8");
+    isEdited = existing !== normalizedContent;
+  } catch {
+    // New files are safe to create without --force.
   }
 
-  if (!force) {
-    try {
-      const existing = await readFile(targetPath, "utf8");
-      if (existing !== normalizedContent) {
-        conflicts.push(path.relative(repoRoot, targetPath));
-        return;
-      }
-    } catch {
-      // New files are safe to create without --force.
+  if (isEdited && !force) {
+    conflicts.push(relativePath);
+    if (!dryRun) {
+      return false;
     }
+  }
+
+  if (dryRun) {
+    wouldWrite.push(relativePath);
+    return false;
   }
 
   await mkdir(path.dirname(targetPath), { recursive: true });
   await writeFile(targetPath, normalizedContent, "utf8");
+  return true;
 }
 
 async function copyFileOutput(sourcePath, targetPath) {
-  if (dryRun) {
-    wouldWrite.push(path.relative(repoRoot, targetPath));
-    return;
+  const relativePath = path.relative(repoRoot, targetPath);
+  let isEdited = false;
+
+  try {
+    const [existing, next] = await Promise.all([readFile(targetPath), readFile(sourcePath)]);
+    isEdited = !existing.equals(next);
+  } catch {
+    // New files are safe to create without --force.
   }
 
-  if (!force) {
-    try {
-      const [existing, next] = await Promise.all([readFile(targetPath), readFile(sourcePath)]);
-      if (!existing.equals(next)) {
-        conflicts.push(path.relative(repoRoot, targetPath));
-        return;
-      }
-    } catch {
-      // New files are safe to create without --force.
+  if (isEdited && !force) {
+    conflicts.push(relativePath);
+    if (!dryRun) {
+      return false;
     }
+  }
+
+  if (dryRun) {
+    wouldWrite.push(relativePath);
+    return false;
   }
 
   await mkdir(path.dirname(targetPath), { recursive: true });
   await copyFile(sourcePath, targetPath);
+  return true;
 }
 
 function normalizeRepoTerms(value) {

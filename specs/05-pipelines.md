@@ -157,7 +157,7 @@ research → idea → proposal → script → capture → cuesheet → character
 
 Pipelines declare any subset of canonical stages. By default, the relative order of canonical stages they include is fixed. A pipeline may also declare additional stages by listing them in the manifest at the desired position.
 
-Pipelines that must preserve a source harness order may set `stage_order: manifest`. This is intentionally explicit: the runner follows the manifest order exactly and reviewers can see that the pipeline is opting out of canonical sorting. Daily-news uses this to keep the OpenMontage `capture` before `script` flow, so narration is written against real source screenshots and capture failures.
+Pipelines that must preserve a source-harness order may set `stage_order: manifest`. This is intentionally explicit: the runner follows the manifest order exactly and reviewers can see that the pipeline is opting out of canonical sorting. Daily-news uses this to keep the `capture` before `script` flow, so narration is written against real source screenshots and capture failures.
 
 Examples:
 
@@ -181,7 +181,7 @@ The manifest schema enforces these structural rules:
 
 ## Tool-name compatibility
 
-Migrated manifests preserve OpenMontage tool names when those names were part of the upstream contract. predit registers compatibility names such as `scene_detect`, `tts_selector`, `image_selector`, `video_selector`, `web_search`, and `hyperframes_compose` so manifests do not silently drift from the originals. Selector entries are registry markers: concrete execution still routes through `registry.select(<capability>)` or a provider-specific tool.
+Migrated manifests may preserve source-harness tool names when those names are part of the pipeline contract. predit registers compatibility names such as `scene_detect`, `tts_selector`, `image_selector`, `video_selector`, `web_search`, and `hyperframes_compose` so manifests do not silently drift from their source semantics. Selector entries are registry markers: concrete execution still routes through `registry.select(<capability>)` or a provider-specific tool.
 
 ## `metadata` block (open passthrough)
 

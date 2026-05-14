@@ -278,8 +278,9 @@ for (const [slug, config] of Object.entries(pipelineConfigs)) {
     continue;
   }
 
-  await writeOutput(path.join(repoRoot, config.targetManifest), normalizePipelineManifest(slug, manifest, config));
-  copied += 1;
+  if (await writeOutput(path.join(repoRoot, config.targetManifest), normalizePipelineManifest(slug, manifest, config))) {
+    copied += 1;
+  }
 
   const skillFiles = await readMarkdownFiles(config.sourceSkillsDir);
   for (const fileName of skillFiles) {
@@ -289,20 +290,22 @@ for (const [slug, config] of Object.entries(pipelineConfigs)) {
     }
 
     const frontmatter = config.frontmatter[fileName];
-    await writeOutput(
+    if (await writeOutput(
       path.join(repoRoot, config.targetSkillsDir, fileName),
       normalizeSkill(original, frontmatter ?? fallbackFrontmatter(slug, fileName)),
-    );
-    copied += 1;
+    )) {
+      copied += 1;
+    }
   }
 
   for (const skill of config.extraSkills) {
     const frontmatter = config.frontmatter[skill.fileName];
-    await writeOutput(
+    if (await writeOutput(
       path.join(repoRoot, config.targetSkillsDir, skill.fileName),
       normalizeSkill(skill.content, frontmatter ?? fallbackFrontmatter(slug, skill.fileName)),
-    );
-    copied += 1;
+    )) {
+      copied += 1;
+    }
   }
 }
 
@@ -346,26 +349,31 @@ async function readMarkdownFiles(relativeDir) {
 
 async function writeOutput(targetPath, content) {
   const normalizedContent = content.endsWith("\n") ? content : `${content}\n`;
+  const relativePath = path.relative(repoRoot, targetPath);
+  let isEdited = false;
 
-  if (dryRun) {
-    wouldWrite.push(path.relative(repoRoot, targetPath));
-    return;
+  try {
+    const existing = await readFile(targetPath, "utf8");
+    isEdited = existing !== normalizedContent;
+  } catch {
+    // New files are safe to create without --force.
   }
 
-  if (!force) {
-    try {
-      const existing = await readFile(targetPath, "utf8");
-      if (existing !== normalizedContent) {
-        conflicts.push(path.relative(repoRoot, targetPath));
-        return;
-      }
-    } catch {
-      // New files are safe to create without --force.
+  if (isEdited && !force) {
+    conflicts.push(relativePath);
+    if (!dryRun) {
+      return false;
     }
+  }
+
+  if (dryRun) {
+    wouldWrite.push(relativePath);
+    return false;
   }
 
   await mkdir(path.dirname(targetPath), { recursive: true });
   await writeFile(targetPath, normalizedContent, "utf8");
+  return true;
 }
 
 function normalizePipelineManifest(slug, yaml, config) {

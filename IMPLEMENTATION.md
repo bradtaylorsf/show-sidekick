@@ -1439,14 +1439,14 @@ A vitest suite under `tests/content-fidelity/` greps the corresponding skill mar
 
 **Cross-references.** audit C-6, L2P-COMMON-4.
 
-## Batch 8.G — OpenMontage migration hardening
+## Batch 8.G — Migration hardening
 
 **Standard acceptance.**
 - [x] Broken `skills/creative/*` references resolve through bundled creative skills or inlined prose.
 - [x] Python-era registry/tool snippets in migrated skills are rewritten for predit's TypeScript harness.
-- [x] Migrated manifests preserve OpenMontage-required semantics: explicit EP skill, `required_tools`, `optional_tools`, artifact inputs, checkpoint flags, compatible playbooks, and extension flags.
-- [x] OpenMontage tool names remain first-class registry names (`scene_detect`, `tts_selector`, `image_selector`, `video_selector`, `web_search`, `hyperframes_compose`) instead of being silently rewritten away.
-- [x] Daily-news preserves OpenMontage capture-before-script ordering via explicit `stage_order: manifest`.
+- [x] Migrated manifests preserve source-required semantics: explicit EP skill, `required_tools`, `optional_tools`, artifact inputs, checkpoint flags, compatible playbooks, and extension flags.
+- [x] Source-harness tool names remain first-class registry names (`scene_detect`, `tts_selector`, `image_selector`, `video_selector`, `web_search`, `hyperframes_compose`) instead of being silently rewritten away.
+- [x] Daily-news preserves capture-before-script ordering via explicit `stage_order: manifest`.
 - [x] `schemas/artifacts/*.schema.json` is generated from `src/artifacts/json-schema.ts`.
 - [x] Porter scripts default to dry-run/force-aware clobber protection so AI second-pass edits are not overwritten accidentally.
 

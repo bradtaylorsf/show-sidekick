@@ -225,8 +225,9 @@ for (const copy of skillCopies) {
   }
 
   const normalized = normalizeSkill(original, copy.frontmatter);
-  await writeOutput(targetPath, normalized);
-  copied += 1;
+  if (await writeOutput(targetPath, normalized)) {
+    copied += 1;
+  }
 }
 
 for (const copy of rawCopies) {
@@ -241,8 +242,9 @@ for (const copy of rawCopies) {
     continue;
   }
 
-  await writeOutput(targetPath, copy.transform(original));
-  copied += 1;
+  if (await writeOutput(targetPath, copy.transform(original))) {
+    copied += 1;
+  }
 }
 
 for (const copy of pipelineCopies) {
@@ -257,8 +259,9 @@ for (const copy of pipelineCopies) {
     continue;
   }
 
-  await writeOutput(targetPath, copy.transform(original));
-  copied += 1;
+  if (await writeOutput(targetPath, copy.transform(original))) {
+    copied += 1;
+  }
 }
 
 console.log(`Copied ${copied} bundled content files from ${sourceRoot}.`);
@@ -279,26 +282,31 @@ if (conflicts.length > 0) {
 
 async function writeOutput(targetPath, content) {
   const normalizedContent = content.endsWith("\n") ? content : `${content}\n`;
+  const relativePath = path.relative(repoRoot, targetPath);
+  let isEdited = false;
 
-  if (dryRun) {
-    wouldWrite.push(path.relative(repoRoot, targetPath));
-    return;
+  try {
+    const existing = await readFile(targetPath, "utf8");
+    isEdited = existing !== normalizedContent;
+  } catch {
+    // New files are safe to create without --force.
   }
 
-  if (!force) {
-    try {
-      const existing = await readFile(targetPath, "utf8");
-      if (existing !== normalizedContent) {
-        conflicts.push(path.relative(repoRoot, targetPath));
-        return;
-      }
-    } catch {
-      // New files are safe to create without --force.
+  if (isEdited && !force) {
+    conflicts.push(relativePath);
+    if (!dryRun) {
+      return false;
     }
+  }
+
+  if (dryRun) {
+    wouldWrite.push(relativePath);
+    return false;
   }
 
   await mkdir(path.dirname(targetPath), { recursive: true });
   await writeFile(targetPath, normalizedContent, "utf8");
+  return true;
 }
 
 function normalizeSkill(markdown, frontmatter) {

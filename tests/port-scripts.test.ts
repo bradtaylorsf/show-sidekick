@@ -43,14 +43,37 @@ describe("porter script overwrite safety", () => {
     const cwd = await scratchProject();
     const sourceRoot = path.join(cwd, "reference");
     const targetPath = path.join(cwd, "bundled/pipelines/hybrid.yaml");
+    const extraSkillPath = path.join(cwd, "bundled/skills/pipelines/hybrid/source-review-director.md");
     await writeHybridSource(sourceRoot);
     await mkdir(path.dirname(targetPath), { recursive: true });
+    await mkdir(path.dirname(extraSkillPath), { recursive: true });
     await writeFile(targetPath, "human second pass\n", "utf8");
+    await writeFile(extraSkillPath, "human source review polish\n", "utf8");
 
     const result = await runNode(portPipelineScript, ["reference", "hybrid"], cwd);
 
     expect(result.code).toBe(1);
+    expect(result.stdout).toContain("Copied 0 pipeline content files");
     expect(result.stdout).toContain("Refusing to overwrite edited files without --force");
+    await expect(readFile(targetPath, "utf8")).resolves.toBe("human second pass\n");
+    await expect(readFile(extraSkillPath, "utf8")).resolves.toBe("human source review polish\n");
+  });
+
+  it("surfaces conflicts during a dry run", async () => {
+    const cwd = await scratchProject();
+    const sourceRoot = path.join(cwd, "reference");
+    const targetPath = path.join(cwd, "bundled/pipelines/hybrid.yaml");
+    await writeHybridSource(sourceRoot);
+    await mkdir(path.dirname(targetPath), { recursive: true });
+    await writeFile(targetPath, "human second pass\n", "utf8");
+
+    const result = await runNode(portPipelineScript, ["--dry-run", "reference", "hybrid"], cwd);
+
+    expect(result.code).toBe(1);
+    expect(result.stdout).toContain("Copied 0 pipeline content files");
+    expect(result.stdout).toContain("Dry run would write:");
+    expect(result.stdout).toContain("Refusing to overwrite edited files without --force");
+    expect(result.stdout).toContain("bundled/pipelines/hybrid.yaml");
     await expect(readFile(targetPath, "utf8")).resolves.toBe("human second pass\n");
   });
 

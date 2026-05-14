@@ -14,11 +14,12 @@ source pages, script narration against those real captures, and produce a 5-15 m
 
 `idea → research → capture → script → scene_plan → assets → edit → compose → publish`
 
-Read the corresponding director skill (`bundled/skills/pipelines/daily-news/<stage>-director.md`)
-before starting each stage. This pipeline declares `stage_order: manifest`
-because daily-news needs the OpenMontage capture-before-script flow: narration
-should know which real source pages loaded, which pages were blocked, and which
-screenshots are actually usable before it commits to visual beats.
+Read the corresponding director skill
+(`bundled/skills/pipelines/daily-news/<stage>-director.md`) before starting
+each stage. This pipeline declares `stage_order: manifest` because daily-news
+needs the capture-before-script flow: narration should know which real source
+pages loaded, which pages were blocked, and which screenshots are actually
+usable before it commits to visual beats.
 
 ## Orchestration Limits
 
@@ -66,7 +67,6 @@ episode workspace for that date automatically.
 
 - **Idea:** confirm scope, sources, recency window, voice id, platform, and runtime.
 - **Research:** gather candidate headlines from configured or supplied sources.
-- **Capture:** capture real source screenshots and flag blocked or unusable pages.
 - **Script:** confirm narration draft before TTS spend (LIGHT — quick read-through)
 - **Compose:** final delivery review.
 - **Publish:** package source manifest, screenshots, captions, and final video.

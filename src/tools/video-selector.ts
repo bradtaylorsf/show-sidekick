@@ -3,6 +3,6 @@ import { providerSelectionMarker } from "../tool-support/provider-selection-mark
 export default providerSelectionMarker({
   name: "video_selector",
   capability: "image_to_video",
-  best_for: "OpenMontage-compatible video provider selection for generated motion clips",
-  supports: ["image-to-video", "motion-clips", "openmontage-tool-name"],
+  best_for: "Provider-selection marker for choosing a concrete image-to-video tool at runtime",
+  supports: ["image-to-video", "motion-clips", "compat-alias"],
 });
