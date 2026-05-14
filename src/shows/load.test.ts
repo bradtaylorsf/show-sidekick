@@ -92,6 +92,19 @@ describe("show and episode loaders", () => {
     });
   });
 
+  it("leaves inputs.reference unresolved for the reference workflow", async () => {
+    const root = await scratchProject();
+    await writeShow(root, "music-videos");
+    await writeEpisode(root, "music-videos", "reference-file", {
+      reference: "reference.mp4",
+    });
+
+    const show = await loadShow(root, "music-videos");
+    const episode = await loadEpisode(show, "reference-file");
+
+    expect(episode.inputs.reference).toBe("reference.mp4");
+  });
+
   it("throws with the expected episode.yaml path when an episode is missing", async () => {
     const root = await scratchProject();
     await writeShow(root, "music-videos");

@@ -1,9 +1,11 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { AbortedByUser, AwaitingHuman } from "../announce/index.js";
+import type { CostLog } from "../artifacts/cost-log.js";
 import { FinalReviewSchema, type FinalReview } from "../artifacts/final-review.js";
 import type { DecisionEntry, DecisionLog } from "../artifacts/decision-log.js";
 import { ReviewSchema, type Review } from "../artifacts/review.js";
+import type { VideoAnalysisBrief } from "../artifacts/video-analysis-brief.js";
 import {
   listCheckpoints,
   readCheckpoint,
@@ -64,6 +66,7 @@ export type RunnerOptions = {
   json?: boolean;
   now?: () => Date;
   cuesheet?: unknown;
+  videoAnalysisBrief?: VideoAnalysisBrief;
   prompt?: (checkpoint: Checkpoint, approvalCtx: ApprovalContext) => Promise<ApprovalPromptResult>;
 };
 
@@ -103,6 +106,9 @@ export class Runner {
     const completedStages = await completedStageSlugs(opts);
     const checkpointStatuses = await checkpointStatusMap(opts);
     let priorArtifacts = await loadPriorArtifacts(opts.projectRoot, opts.show, opts.episode, opts.pipeline);
+    if (opts.videoAnalysisBrief !== undefined) {
+      priorArtifacts = { ...priorArtifacts, video_analysis_brief: opts.videoAnalysisBrief };
+    }
     let plannedStages = planStages(opts.pipeline, opts.runOptions, { completedStages });
     let cumulativeCost = state?.cost_total_usd ?? 0;
     const budget = resolveBudget(opts);
@@ -308,6 +314,7 @@ async function runStage(input: {
       review = await runStageReview(opts, input.reviewer, stage, result, round, priorReviews, {
         cumulativeActualUsd: roundUsd(input.cumulativeCost + stageCostUsd),
         cumulativeEstimatedUsd: cumulativeEstimatedCost(opts.pipeline, stage.slug, opts.runOptions),
+        costLog,
       });
     } catch (error) {
       if (error instanceof AwaitingHuman) {
@@ -515,7 +522,7 @@ async function runStageReview(
   result: StageResult,
   round: number,
   priorReviews: Review[],
-  cumulative: { cumulativeActualUsd: number; cumulativeEstimatedUsd: number },
+  cumulative: { cumulativeActualUsd: number; cumulativeEstimatedUsd: number; costLog?: CostLog },
 ): Promise<Review> {
   const existingDecisionLog = await readDecisionLog({ show: opts.show.slug, episode: opts.episode.slug }, { root: opts.projectRoot });
   const decisionLog: DecisionLog = [...existingDecisionLog, ...result.decisions];
@@ -530,6 +537,10 @@ async function runStageReview(
     estimatedCostUsd: estimatedStageCost(stage, opts.runOptions),
     cumulativeEstimatedUsd: cumulative.cumulativeEstimatedUsd,
     cumulativeActualUsd: cumulative.cumulativeActualUsd,
+    costLog: cumulative.costLog,
+    referenceBrief: opts.videoAnalysisBrief,
+    videoAnalysisBrief: opts.videoAnalysisBrief,
+    referenceDriven: opts.videoAnalysisBrief !== undefined,
     show: opts.show.slug,
     episode: opts.episode.slug,
     projectRoot: opts.projectRoot,

@@ -3,13 +3,17 @@ import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import type { Command } from "commander";
 import { z } from "zod";
+import type { VideoAnalysisBrief } from "../../artifacts/index.js";
 import { loadYaml } from "../../config/loader.js";
 import {
+  analyzeReference,
   awaitStageEvent,
   createExternalAgentDispatcher,
+  resolveReferenceSource,
   Runner,
   type ApprovalPromptResult,
   type Dispatcher,
+  type ReferenceSource,
   type RunnerOptions,
   type RunnerResult,
 } from "../../harness/index.js";
@@ -36,6 +40,14 @@ type BuildFinishedEvent = {
 
 export type BuildHandlerOptions = {
   registryFactory?: (loaded: LoadedRunTarget) => Registry | Promise<Registry>;
+  referenceResolver?: (input: {
+    source: ReferenceSource;
+    loaded: LoadedRunTarget;
+    registry: Registry;
+    io: CliIo;
+    json: boolean;
+    now?: () => Date;
+  }) => VideoAnalysisBrief | Promise<VideoAnalysisBrief>;
   dispatcherFactory?: (input: {
     loaded: LoadedRunTarget;
     registry: Registry;
@@ -56,6 +68,21 @@ export function createBuildHandler(io: CliIo, handlerOptions: BuildHandlerOption
     const loaded = await loadRunTarget(target);
     const runOptions = parseStageRunOptions(options, loaded.pipeline);
     const registry = await (handlerOptions.registryFactory ?? defaultRegistryFactory)(loaded);
+    const referenceSource = resolveReferenceSource(referenceValue(options, loaded), {
+      projectRoot: loaded.projectRoot,
+      cwd: process.cwd(),
+    });
+    const videoAnalysisBrief =
+      referenceSource === undefined
+        ? undefined
+        : await (handlerOptions.referenceResolver ?? defaultReferenceResolver)({
+            source: referenceSource,
+            loaded,
+            registry,
+            io,
+            json: options.json === true,
+            now: handlerOptions.now,
+          });
     const dispatcher = await (handlerOptions.dispatcherFactory ?? defaultDispatcherFactory)({
       loaded,
       registry,
@@ -81,6 +108,7 @@ export function createBuildHandler(io: CliIo, handlerOptions: BuildHandlerOption
       json: options.json === true,
       now: handlerOptions.now,
       prompt,
+      videoAnalysisBrief,
     });
 
     emitBuildFinished(io, options, target, loaded, result);
@@ -91,6 +119,26 @@ async function defaultRegistryFactory(): Promise<Registry> {
   const registry = new Registry();
   await registry.discover();
   return registry;
+}
+
+async function defaultReferenceResolver(input: {
+  source: ReferenceSource;
+  loaded: LoadedRunTarget;
+  registry: Registry;
+  io: CliIo;
+  json: boolean;
+  now?: () => Date;
+}): Promise<VideoAnalysisBrief> {
+  return analyzeReference({
+    source: input.source,
+    registry: input.registry,
+    projectRoot: input.loaded.projectRoot,
+    show: input.loaded.show,
+    episode: input.loaded.episode,
+    io: input.io,
+    json: input.json,
+    now: input.now,
+  });
 }
 
 function defaultDispatcherFactory(input: {
@@ -107,6 +155,15 @@ function defaultDispatcherFactory(input: {
       return awaitStageEvent(process.stdin, predicate);
     },
   });
+}
+
+function referenceValue(options: StageFlagOptions, loaded: LoadedRunTarget): string | undefined {
+  if (options.reference !== undefined) {
+    return options.reference;
+  }
+
+  const episodeReference = loaded.episode.inputs.reference;
+  return typeof episodeReference === "string" ? episodeReference : undefined;
 }
 
 async function resolvePlaybook(loaded: LoadedRunTarget): Promise<unknown> {

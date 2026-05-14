@@ -22,6 +22,7 @@ export type StageFlagOptions = GlobalOptions & {
   to?: string;
   only?: string;
   budget?: string;
+  reference?: string;
   nonInteractive?: boolean;
 };
 
