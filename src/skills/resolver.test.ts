@@ -102,6 +102,20 @@ describe("skill resolver", () => {
     });
   });
 
+  it("uses show-scoped project skills before project-local agent skills", async () => {
+    const root = await scratchProject();
+    const show = await writeAndLoadShow(root, "music-videos");
+    await writeSkill(show.skillsDir!, "custom-vendor.md", "show scoped vendor instructions");
+    await writeSkill(path.join(root, "skills", "agents"), "custom-vendor.md", "project vendor instructions");
+    await writeSkill(path.join(root, ".predit", "skills", "agents"), "custom-vendor.md", "bundled vendor instructions");
+
+    await expect(resolveSkill("agent", "custom-vendor", { projectRoot: root, show })).resolves.toEqual({
+      path: path.join(show.skillsDir!, "custom-vendor.md"),
+      content: "show scoped vendor instructions",
+      tier: "show",
+    });
+  });
+
   it("returns cached content for repeated resolutions of the same file", async () => {
     const root = await scratchProject();
     const show = await writeAndLoadShow(root, "music-videos");

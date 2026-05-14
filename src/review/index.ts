@@ -12,6 +12,7 @@ export * from "./sample-first.js";
 export * from "./scene-pacing.js";
 export * from "./scene-variation.js";
 export * from "./schema-validate.js";
+export * from "./script-modification.js";
 export * from "./scoring.js";
 export * from "./skill-compliance.js";
 export * from "./slideshow-risk.js";

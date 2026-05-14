@@ -18,6 +18,7 @@ import {
   type RunnerResult,
 } from "../../harness/index.js";
 import { resolve as resolveProjectResource } from "../../paths/project.js";
+import { loadProjectPlaybook } from "../../playbooks/project-loader.js";
 import { Registry } from "../../registry/index.js";
 import { deepMerge } from "../../shows/deep-merge.js";
 import { PlaybookSchema } from "../../shows/playbook.js";
@@ -115,9 +116,10 @@ export function createBuildHandler(io: CliIo, handlerOptions: BuildHandlerOption
   };
 }
 
-async function defaultRegistryFactory(): Promise<Registry> {
+async function defaultRegistryFactory(loaded: LoadedRunTarget): Promise<Registry> {
   const registry = new Registry();
   await registry.discover();
+  await registry.registerProjectTools(loaded.projectRoot, loaded.showSlug, loaded.episodeSlug);
   return registry;
 }
 
@@ -174,12 +176,13 @@ async function resolvePlaybook(loaded: LoadedRunTarget): Promise<unknown> {
     return undefined;
   }
 
+  const projectPlaybook = await loadProjectPlaybook(loaded.projectRoot, playbookName);
   const playbookPath = resolveProjectResource("playbooks", playbookName, loaded.projectRoot);
-  if (!existsSync(playbookPath)) {
+  if (projectPlaybook === undefined && !existsSync(playbookPath)) {
     return undefined;
   }
 
-  let playbook = await loadYaml(playbookPath, PlaybookSchema);
+  let playbook: unknown = projectPlaybook ?? (await loadYaml(playbookPath, PlaybookSchema));
   if (pipelineConfig?.playbook_overrides !== undefined) {
     const overridesPath = path.resolve(loaded.show.rootDir, pipelineConfig.playbook_overrides);
     const overrides = await loadYaml(overridesPath, z.unknown());

@@ -115,6 +115,13 @@ export type ToolExecutionState = {
   sampleOrBatch?: "sample" | "batch";
 };
 
+export type FirstPaidCallApprovalInput = {
+  tool: Tool;
+  reason?: string;
+  stage?: string;
+  timestamp?: string;
+};
+
 export interface ToolExecutionPolicy {
   reason?: string;
   sampleOrBatch?: "sample" | "batch";
@@ -143,6 +150,7 @@ export interface ToolExecutionPolicy {
     lockedRuntime?: RenderRuntime;
     decisionLog?: DecisionLog;
   };
+  firstPaidCallApproval?: (input: FirstPaidCallApprovalInput) => void | Promise<void>;
 }
 
 export interface ToolContext {
@@ -160,6 +168,8 @@ export interface Tool<I = unknown, O = unknown> {
   capability: Capability;
   provider: string;
   status: ToolStatus;
+  source?: "bundled" | "project";
+  requires_first_call_approval?: boolean;
   integration: Integration;
   best_for: string;
   supports?: string[];

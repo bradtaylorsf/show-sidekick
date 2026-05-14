@@ -30,6 +30,7 @@ import { findSameClassInstances } from "./pattern-match.js";
 import { crossCheckAgainstPlaybook } from "./playbook-check.js";
 import { checkReferenceAlignment } from "./reference-alignment.js";
 import { validateArtifactAgainstSchema } from "./schema-validate.js";
+import { checkScriptModification } from "./script-modification.js";
 import { enforceCHAI, type CHAIEnforcementEvent } from "./specificity.js";
 import { checkSkillCompliance } from "./skill-compliance.js";
 import { checkSourceMediaEnforcement, type UserSuppliedMedia } from "./source-media-enforcement.js";
@@ -152,6 +153,7 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
       decisionLog: ctx.decisionLog,
     }),
   );
+  rawFindings.push(...checkScriptModification(stageSlug, artifact, ctx));
   rawFindings.push(
     ...checkCreativeDifferentiation(stageSlug, artifact, {
       scenes: ctx.scenes,

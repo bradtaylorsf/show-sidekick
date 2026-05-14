@@ -1,3 +1,4 @@
+import type { Dirent } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -39,8 +40,33 @@ export class Registry {
       }
 
       const defaultExport = readDefaultExport(imported, file);
-      this.register(defaultExport, file);
+      this.register(defaultExport, file, { source: "bundled" });
     }
+  }
+
+  async registerProjectTools(projectRoot: string, show: string | { slug: string }, episode: string | { slug: string }): Promise<Tool[]> {
+    const toolsDir = join(resolve(projectRoot), "projects", slugOf(show), slugOf(episode), "tools");
+    const files = await listToolFiles(toolsDir, { optional: true });
+    const registered: Tool[] = [];
+
+    for (const file of files) {
+      let imported: unknown;
+
+      try {
+        imported = await import(pathToFileURL(file).href);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new RegistryError("project-tool-failed", `Failed to import project tool ${file}: ${message}`, file);
+      }
+
+      const defaultExport = readDefaultExport(imported, file);
+      const tool = this.register(defaultExport, file, { source: "project" });
+      if (tool !== undefined) {
+        registered.push(tool);
+      }
+    }
+
+    return registered;
   }
 
   get<I = unknown, O = unknown>(name: string): Tool<I, O> | undefined {
@@ -123,11 +149,16 @@ export class Registry {
     );
   }
 
-  private register(candidate: unknown, sourcePath: string): void {
+  private register(candidate: unknown, sourcePath: string, options: { source?: Tool["source"] } = {}): Tool | undefined {
     const tool = validateToolShape(candidate, sourcePath);
+    tagToolSource(tool, options.source);
     const existingSource = this.sourcePaths.get(tool.name);
 
     if (existingSource) {
+      if (sameSource(existingSource, sourcePath)) {
+        return undefined;
+      }
+
       throw new RegistryError(
         "duplicate-tool",
         `Duplicate tool name "${tool.name}" in ${sourcePath}; already registered from ${existingSource}`,
@@ -138,6 +169,7 @@ export class Registry {
     this.tools.set(tool.name, tool);
     this.sourcePaths.set(tool.name, sourcePath);
     this.discoveryOrder.push(tool);
+    return tool;
   }
 }
 
@@ -166,11 +198,21 @@ function defaultToolsDir(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), "../tools");
 }
 
-async function listToolFiles(root: string): Promise<string[]> {
+async function listToolFiles(root: string, options: { optional?: boolean } = {}): Promise<string[]> {
   const files: string[] = [];
 
   async function walk(dir: string): Promise<void> {
-    const entries = await readdir(dir, { withFileTypes: true });
+    let entries: Dirent[];
+
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch (error) {
+      if (options.optional === true && isNodeError(error) && error.code === "ENOENT") {
+        return;
+      }
+
+      throw error;
+    }
 
     for (const entry of entries) {
       const absolutePath = join(dir, entry.name);
@@ -191,11 +233,23 @@ async function listToolFiles(root: string): Promise<string[]> {
 }
 
 function isToolModule(name: string): boolean {
+  if (name.startsWith("_")) {
+    return false;
+  }
+
   if (!(name.endsWith(".ts") || name.endsWith(".js"))) {
     return false;
   }
 
-  return !name.endsWith(".d.ts") && !name.endsWith(".test.ts") && name !== "index.ts" && name !== "index.js";
+  return (
+    !name.endsWith(".d.ts") &&
+    !name.endsWith(".test.ts") &&
+    !name.endsWith(".test.js") &&
+    !name.endsWith(".spec.ts") &&
+    !name.endsWith(".spec.js") &&
+    name !== "index.ts" &&
+    name !== "index.js"
+  );
 }
 
 function readDefaultExport(imported: unknown, sourcePath: string): unknown {
@@ -224,6 +278,8 @@ function validateToolShape(candidate: unknown, sourcePath: string): Tool {
   optionalStringArray(candidate, "supports", sourcePath);
   optionalStringArray(candidate, "agent_skills", sourcePath);
   optionalCost(candidate, sourcePath);
+  optionalSource(candidate, sourcePath);
+  optionalBoolean(candidate, "requires_first_call_approval", sourcePath);
 
   return candidate as unknown as Tool;
 }
@@ -354,6 +410,53 @@ function optionalCost(candidate: Record<string, unknown>, sourcePath: string): v
   if (typeof cost.usd !== "number") {
     invalid(sourcePath, "cost.usd", "expected number");
   }
+}
+
+function optionalSource(candidate: Record<string, unknown>, sourcePath: string): void {
+  if (candidate.source !== undefined && candidate.source !== "bundled" && candidate.source !== "project") {
+    invalid(sourcePath, "source", "expected bundled or project");
+  }
+}
+
+function optionalBoolean(candidate: Record<string, unknown>, field: string, sourcePath: string): void {
+  if (candidate[field] !== undefined && typeof candidate[field] !== "boolean") {
+    invalid(sourcePath, field, "expected boolean");
+  }
+}
+
+function tagToolSource(tool: Tool, source: Tool["source"] | undefined): void {
+  if (source === undefined) {
+    return;
+  }
+
+  tool.source = source;
+  if (source === "project" && isPaidApiTool(tool)) {
+    tool.requires_first_call_approval ??= true;
+  }
+}
+
+function isPaidApiTool(tool: Tool): boolean {
+  return tool.integration.kind === "api" && tool.cost !== undefined && tool.cost.usd > 0;
+}
+
+function sameSource(left: string, right: string): boolean {
+  if (left === right) {
+    return true;
+  }
+
+  if (left.startsWith("<") || right.startsWith("<")) {
+    return false;
+  }
+
+  return resolve(left) === resolve(right);
+}
+
+function slugOf(value: string | { slug: string }): string {
+  return typeof value === "string" ? value : value.slug;
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error;
 }
 
 function invalid(sourcePath: string, field: string, message: string): never {

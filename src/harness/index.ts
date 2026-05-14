@@ -1,4 +1,5 @@
 export * from "./approval.js";
+export * from "./capability-extension.js";
 export * from "./context.js";
 export * from "./dispatcher.js";
 export * from "./events.js";
