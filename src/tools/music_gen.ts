@@ -40,7 +40,7 @@ export default defineTool({
   async execute(params, ctx) {
     const input = inputSchema.parse(params);
     const tools = await listMusicProviders(ctx);
-    const selected = await firstAvailableTool(rankTools(filterTools(tools, input), input));
+    const selected = await firstAvailableTool(rankTools(filterTools(tools, input), input), ctx);
 
     if (!selected) {
       throw new Error(
@@ -58,7 +58,11 @@ async function listMusicProviders(ctx: ToolContext): Promise<Tool[]> {
     throw new Error("music_gen requires ctx.registry.listByCapability");
   }
 
-  return ctx.registry.listByCapability("music_generation");
+  const [generation, search] = await Promise.all([
+    ctx.registry.listByCapability("music_generation"),
+    ctx.registry.listByCapability("music_search"),
+  ]);
+  return [...generation, ...search];
 }
 
 function filterTools(tools: Tool[], input: MusicGenSelectorInput): Tool[] {
@@ -70,15 +74,9 @@ function rankTools(tools: Tool[], input: MusicGenSelectorInput): Tool[] {
   return [...tools].sort((left, right) => preferenceRank(left.name, input.prefer) - preferenceRank(right.name, input.prefer));
 }
 
-async function firstAvailableTool(tools: Tool[]): Promise<Tool | undefined> {
-  for (const tool of tools) {
-    const availability = await tool.isAvailable();
-    if (availability.available) {
-      return tool;
-    }
-  }
-
-  return undefined;
+async function firstAvailableTool(tools: Tool[], ctx: ToolContext): Promise<Tool | undefined> {
+  const availability = await Promise.all(tools.map((tool) => tool.isAvailable({ projectRoot: ctx.projectRoot })));
+  return tools.find((_tool, index) => availability[index]?.available === true);
 }
 
 function preferenceRank(name: string, prefer: string[] | undefined): number {

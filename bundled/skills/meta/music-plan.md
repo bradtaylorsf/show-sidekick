@@ -12,7 +12,7 @@ Use this meta skill during proposal for any pipeline whose `master_clock` is not
 
 1. check `music_library/` for any user-provided tracks matching mood/tempo;
 2. try generation APIs via `registry.select('music_generation')`;
-3. try royalty-free sources (freesound, pixabay_music);
+3. try royalty-free sources via `registry.select('music_search')` (freesound, pixabay_music);
 4. if no clear winner, present the user explicit choices with at least two ranked options;
 5. record the choice as a `music_source` entry in the decision log with options_considered.length ≥ 2 and a concrete reason.
 

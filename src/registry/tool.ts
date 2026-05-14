@@ -10,6 +10,7 @@ export type KnownCapability =
   | "text_to_video"
   | "tts"
   | "music_generation"
+  | "music_search"
   | "image_generation"
   | "image_hosting"
   | "video_compose"
@@ -28,7 +29,10 @@ export type KnownCapability =
   | "stock_cross_search"
   | "clip_cache"
   | "clip_search"
+  | "clip_embedder"
   | "video_reframe"
+  | "auto_reframe"
+  | "face_tracker"
   | "audio_processing"
   | "subtitle_generation";
 

@@ -25,13 +25,14 @@ export default defineTool({
   agent_skills: ["stock-video", "esa"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
-  async execute(params) {
+  async execute(params, ctx) {
     const input = stockVideoInputSchema.parse(params);
 
     return fetchStockVideo({
       provider: "esa",
       url: buildUrl(ENDPOINT, { q: input.query, type: "video", limit: input.per_page }),
       input,
+      ctx,
       map: mapEsa,
     });
   },

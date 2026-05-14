@@ -58,8 +58,9 @@ export type FetchStockVideoSpec = {
   url: string;
   headers?: Record<string, string>;
   input: StockVideoInput;
-  map(payload: unknown): StockVideoMatch[];
+  map(payload: unknown): StockVideoMatch[] | Promise<StockVideoMatch[]>;
   costUsd?: number;
+  ctx?: ToolContext;
 };
 
 export type ManifestStockVideoSpec = {
@@ -91,8 +92,13 @@ export async function fetchStockVideo(spec: FetchStockVideoSpec): Promise<StockV
 
   const payload: unknown = await response.json();
 
+  const mapped = await spec.map(payload);
+  if (mapped.length === 0 && hasLikelyResultItems(payload)) {
+    spec.ctx?.logger.warn(`${spec.provider} stock video response mapped to zero playable matches`);
+  }
+
   return stockVideoOutputSchema.parse({
-    matches: filterStockVideoMatches(spec.map(payload), spec.input),
+    matches: filterStockVideoMatches(mapped, spec.input),
     cost_usd: spec.costUsd ?? 0,
   });
 }
@@ -275,6 +281,28 @@ function manifestItems(payload: unknown): Record<string, unknown>[] {
   }
 
   return [];
+}
+
+function hasLikelyResultItems(payload: unknown): boolean {
+  if (Array.isArray(payload)) {
+    return payload.length > 0;
+  }
+
+  if (!isRecord(payload)) {
+    return false;
+  }
+
+  for (const key of ["clips", "videos", "items", "results", "matches", "hits", "docs"]) {
+    const value = payload[key];
+    if (Array.isArray(value) && value.length > 0) {
+      return true;
+    }
+    if (isRecord(value) && hasLikelyResultItems(value)) {
+      return true;
+    }
+  }
+
+  return Object.values(payload).some((value) => isRecord(value) && hasLikelyResultItems(value));
 }
 
 function manifestItemMatchesQuery(item: Record<string, unknown>, query: string): boolean {

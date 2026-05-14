@@ -76,8 +76,17 @@ const providers = [
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
+
+function stubTtsEnv(): void {
+  vi.stubEnv("ELEVENLABS_API_KEY", "elevenlabs-token");
+  vi.stubEnv("OPENAI_API_KEY", "openai-token");
+  vi.stubEnv("GOOGLE_API_KEY", "google-token");
+  vi.stubEnv("DOUBAO_API_KEY", "doubao-token");
+  vi.stubEnv("DOUBAO_APP_ID", "doubao-app");
+}
 
 describe("TTS provider tools", () => {
   it("declares TTS metadata, integration, costs, and Layer 3 skills", () => {
@@ -106,6 +115,7 @@ describe("TTS provider tools", () => {
   });
 
   it("posts ElevenLabs, OpenAI, and Doubao documented request shapes", async () => {
+    stubTtsEnv();
     const fetchMock = vi.fn(async () => {
       return new Response(JSON.stringify({ id: "audio-request-1", audio_path: "projects/show/episode/audio/out.mp3" }), {
         status: 200,
@@ -121,7 +131,7 @@ describe("TTS provider tools", () => {
     let [url, options] = fetchMock.mock.calls[0] as FetchCall;
     expect(url).toBe("https://api.elevenlabs.io/v1/text-to-speech/voice-123");
     expect(options.method).toBe("POST");
-    expect(options.headers).toEqual(expect.objectContaining({ "xi-api-key": "<ELEVENLABS_API_KEY>" }));
+    expect(options.headers).toEqual(expect.objectContaining({ "xi-api-key": "elevenlabs-token" }));
     expect(JSON.parse(options.body ?? "{}")).toMatchObject({
       text: "fixture narration",
       model_id: "eleven_multilingual_v2",
@@ -132,7 +142,7 @@ describe("TTS provider tools", () => {
     await openaiTts.execute(openaiTts.input.parse({ text: "fixture narration", voice_id: "alloy" }), context());
     [url, options] = fetchMock.mock.calls[0] as FetchCall;
     expect(url).toBe("https://api.openai.com/v1/audio/speech");
-    expect(options.headers).toEqual(expect.objectContaining({ Authorization: "Bearer <OPENAI_API_KEY>" }));
+    expect(options.headers).toEqual(expect.objectContaining({ Authorization: "Bearer openai-token" }));
     expect(JSON.parse(options.body ?? "{}")).toMatchObject({
       model: "gpt-4o-mini-tts",
       voice: "alloy",
@@ -146,8 +156,8 @@ describe("TTS provider tools", () => {
     expect(url).toBe("https://openspeech.bytedance.com/api/v1/tts");
     expect(options.headers).toEqual(
       expect.objectContaining({
-        Authorization: "Bearer <DOUBAO_API_KEY>",
-        "X-Api-App-Id": "<DOUBAO_APP_ID>",
+        Authorization: "Bearer doubao-token",
+        "X-Api-App-Id": "doubao-app",
       }),
     );
     expect(JSON.parse(options.body ?? "{}")).toMatchObject({
@@ -157,6 +167,7 @@ describe("TTS provider tools", () => {
   });
 
   it("resolves ElevenLabs voice IDs from character voice_id.txt files", async () => {
+    stubTtsEnv();
     const projectRoot = await mkdtemp(join(tmpdir(), "predit-elevenlabs-"));
     await mkdir(join(projectRoot, "characters", "narrator"), { recursive: true });
     await writeFile(join(projectRoot, "characters", "narrator", "voice_id.txt"), "character-voice\n");
@@ -174,6 +185,7 @@ describe("TTS provider tools", () => {
   });
 
   it("decodes Google TTS audioContent into narration audio", async () => {
+    stubTtsEnv();
     const projectRoot = await mkdtemp(join(tmpdir(), "predit-google-tts-"));
     const fetchMock = vi.fn(async () => {
       return new Response(JSON.stringify({ name: "google-request-1", audioContent: Buffer.from("audio bytes").toString("base64") }), {
@@ -188,7 +200,7 @@ describe("TTS provider tools", () => {
 
     expect(url).toBe("https://texttospeech.googleapis.com/v1/text:synthesize");
     expect(options.method).toBe("POST");
-    expect(options.headers).toEqual(expect.objectContaining({ "x-goog-api-key": "<GOOGLE_API_KEY>" }));
+    expect(options.headers).toEqual(expect.objectContaining({ "x-goog-api-key": "google-token" }));
     expect(JSON.parse(options.body ?? "{}")).toMatchObject({
       input: { text: "fixture narration" },
       voice: { name: "en-US-Chirp3-HD-Charon", languageCode: "en-US" },
@@ -250,6 +262,7 @@ describe("TTS provider tools", () => {
   });
 
   it("surfaces non-2xx provider responses with the response body", async () => {
+    stubTtsEnv();
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response("bad request", { status: 400 })),
@@ -258,5 +271,16 @@ describe("TTS provider tools", () => {
     await expect(openaiTts.execute(openaiTts.input.parse({ text: "fixture" }), context())).rejects.toThrow(
       "openai TTS request failed (400): bad request",
     );
+  });
+
+  it("fails before fetch when required provider env vars are missing", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("OPENAI_API_KEY", "");
+
+    await expect(openaiTts.execute(openaiTts.input.parse({ text: "fixture" }), context())).rejects.toThrow(
+      "missing env: OPENAI_API_KEY",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

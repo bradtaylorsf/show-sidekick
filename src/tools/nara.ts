@@ -25,13 +25,14 @@ export default defineTool({
   agent_skills: ["stock-video", "nara"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
-  async execute(params) {
+  async execute(params, ctx) {
     const input = stockVideoInputSchema.parse(params);
 
     return fetchStockVideo({
       provider: "nara",
       url: buildUrl(ENDPOINT, { q: input.query, recordType: "Video", rows: input.per_page }),
       input,
+      ctx,
       map: mapNara,
     });
   },

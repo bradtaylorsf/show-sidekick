@@ -25,13 +25,14 @@ export default defineTool({
   agent_skills: ["stock-video", "pixabay"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
-  async execute(params) {
+  async execute(params, ctx) {
     const input = stockVideoInputSchema.parse(params);
 
     return fetchStockVideo({
       provider: "pixabay",
       url: buildUrl(ENDPOINT, { key: envValue("PIXABAY_API_KEY"), q: input.query, per_page: input.per_page }),
       input,
+      ctx,
       map: mapPixabay,
     });
   },

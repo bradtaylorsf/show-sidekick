@@ -3,6 +3,7 @@ import { envValue, postVideoGeneration, videoProviderInputSchema, videoProviderO
 
 const COST_USD = 0.5;
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-001:predict";
+const MODEL = "veo-2.0-generate-001";
 const inputSchema = videoProviderInputSchema.omit({ image_url: true }).strict();
 
 export default defineTool({
@@ -33,8 +34,10 @@ export default defineTool({
           aspectRatio: input.aspect_ratio ?? "16:9",
         },
       },
-      costUsd: COST_USD,
+      costUsd: (input.duration ?? 5) * COST_USD,
       ctx,
+      prompt: input.prompt,
+      model: MODEL,
     });
   },
 });

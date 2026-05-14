@@ -68,7 +68,7 @@ const apiProviderSpecs = [
       collection: {
         items: [
           {
-            href: "https://images-assets.nasa.gov/video/apollo/apollo~orig.mp4",
+            href: "https://images-assets.nasa.gov/asset/apollo/collection.json",
             data: [{ nasa_id: "apollo", center: "NASA", title: "Apollo landing" }],
             links: [{ href: "https://images-assets.nasa.gov/image/apollo/apollo~thumb.jpg" }],
           },
@@ -267,7 +267,18 @@ describe("public-domain and government stock tools", () => {
 
   it("queries API-backed sources and normalizes attributed matches", async () => {
     for (const spec of apiProviderSpecs) {
-      const fetchMock = vi.fn(async () => {
+      if (spec.tool.name === "unsplash") {
+        vi.stubEnv("UNSPLASH_ACCESS_KEY", "unsplash-key");
+      }
+
+      const fetchMock = vi.fn(async (url: string) => {
+        if (spec.tool.name === "nasa" && url === "https://images-assets.nasa.gov/asset/apollo/collection.json") {
+          return new Response(JSON.stringify(["https://images-assets.nasa.gov/video/apollo/apollo~orig.mp4"]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
         return new Response(JSON.stringify(spec.response), { status: 200, headers: { "Content-Type": "application/json" } });
       });
       vi.stubGlobal("fetch", fetchMock);
@@ -282,9 +293,10 @@ describe("public-domain and government stock tools", () => {
       expect(result.matches[0]).toEqual(spec.expected);
 
       if (spec.tool.name === "unsplash") {
-        expect(options?.headers).toEqual({ Authorization: "Client-ID <UNSPLASH_ACCESS_KEY>" });
+        expect(options?.headers).toEqual({ Authorization: "Client-ID unsplash-key" });
       }
 
+      vi.unstubAllEnvs();
       vi.unstubAllGlobals();
     }
   });

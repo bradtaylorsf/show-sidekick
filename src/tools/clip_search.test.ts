@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it, vi } from "vitest";
 import type { Tool, ToolContext } from "../registry/tool.js";
+import clipEmbedder from "./clip_embedder.js";
 import clipSearch from "./clip_search.js";
 
 function noopLogger(): ToolContext["logger"] {
@@ -68,6 +69,25 @@ describe("clip_search tool", () => {
         { projectRoot: "/tmp/project", logger: noopLogger() },
       ),
     ).rejects.toThrow("clip_embedder capability required (S-2)");
+  });
+
+  it("can search a fixture corpus with the bundled local clip_embedder", async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), "predit-search-real-"));
+    const corpusDir = join(projectRoot, "corpus");
+    await mkdir(corpusDir, { recursive: true });
+    const city = join(corpusDir, "city-skyline.mp4");
+    const forest = join(corpusDir, "quiet-forest.mp4");
+    await writeFile(city, "city skyline timelapse traffic");
+    await writeFile(forest, "quiet forest trees");
+    const registry = { select: vi.fn(async () => clipEmbedder as unknown as Tool) };
+
+    const result = await clipSearch.execute(
+      clipSearch.input.parse({ query: "city skyline", corpus_dir: corpusDir, top_k: 1 }),
+      context(projectRoot, registry),
+    );
+
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0]?.video_path).toBe(city);
   });
 });
 

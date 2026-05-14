@@ -25,7 +25,7 @@ export default defineTool({
   agent_skills: ["stock-video", "pexels"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
-  async execute(params) {
+  async execute(params, ctx) {
     const input = stockVideoInputSchema.parse(params);
 
     return fetchStockVideo({
@@ -33,6 +33,7 @@ export default defineTool({
       url: buildUrl(ENDPOINT, { query: input.query, per_page: input.per_page }),
       headers: { Authorization: envValue("PEXELS_API_KEY") },
       input,
+      ctx,
       map: mapPexels,
     });
   },

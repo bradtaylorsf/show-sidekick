@@ -15,7 +15,7 @@ const ENDPOINT = "https://freesound.org/apiv2/search/text/";
 
 export default defineTool({
   name: "freesound_music",
-  capability: "music_generation",
+  capability: "music_search",
   provider: "freesound",
   status: "beta",
   integration: { kind: "api", env: ["FREESOUND_API_KEY"], install: "set FREESOUND_API_KEY (token-based, free)" },

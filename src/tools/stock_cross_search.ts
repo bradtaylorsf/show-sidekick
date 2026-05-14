@@ -106,6 +106,12 @@ async function listSourceTools(input: StockCrossSearchInput, ctx: ToolContext): 
         continue;
       }
 
+      const availability = await tool.isAvailable({ projectRoot: ctx.projectRoot });
+      if (!availability.available) {
+        ctx.logger.warn("stock source unavailable; skipping", { tool: tool.name, reason: availability.reason });
+        continue;
+      }
+
       sourceTools.push({ capability: group.capability, tool, priority });
       priority += 1;
     }

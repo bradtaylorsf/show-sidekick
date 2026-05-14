@@ -72,6 +72,27 @@ function failingTool(): Tool {
   });
 }
 
+function unavailableTool(): { tool: Tool; execute: ReturnType<typeof vi.fn> } {
+  const execute = vi.fn(async () => ({
+    matches: [{ video_url: "https://unavailable.example.com/a.mp4", attribution: { source: "unavailable", license: "test" } }],
+    cost_usd: 0,
+  }));
+  return {
+    execute,
+    tool: defineTool({
+    name: "unavailable_stock",
+    capability: "stock_video",
+    provider: "unavailable",
+    status: "beta",
+    integration: { kind: "api", env: ["UNAVAILABLE_STOCK_KEY"], install: "set env" },
+    best_for: "cross-search test unavailable source",
+    input: stockVideoInputSchema,
+    output: stockVideoOutputSchema,
+    execute,
+    }),
+  };
+}
+
 describe("stock_cross_search", () => {
   it("fans out by configured capabilities, caps each source, and returns ranked aggregated matches", async () => {
     const videoA = stockVideoTool("nasa", "nasa", [
@@ -144,6 +165,26 @@ describe("stock_cross_search", () => {
     expect(logger.warn).toHaveBeenCalledWith("stock source search failed", {
       tool: "failing_stock",
       error: "source unavailable",
+    });
+  });
+
+  it("skips unavailable sources before execute", async () => {
+    const logger = { ...noopLogger(), warn: vi.fn() };
+    const unavailable = unavailableTool();
+    const nasa = stockVideoTool("nasa", "nasa", [
+      { video_url: "https://nasa.example.com/a.mp4", attribution: { source: "nasa", license: "Public Domain (NASA)" } },
+    ]);
+
+    const result = await stockCrossSearch.execute(
+      stockCrossSearch.input.parse({ query: "moon" }),
+      context({ stock_video: [unavailable.tool, nasa], stock_image: [] }, logger),
+    );
+
+    expect(result.matches.map((match) => match.source)).toEqual(["nasa"]);
+    expect(unavailable.execute).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith("stock source unavailable; skipping", {
+      tool: "unavailable_stock",
+      reason: "missing env: UNAVAILABLE_STOCK_KEY",
     });
   });
 

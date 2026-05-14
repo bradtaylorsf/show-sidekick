@@ -22,13 +22,24 @@ const wordSchema = z
   .object({
     start_s: z.number().nonnegative(),
     end_s: z.number().nonnegative(),
-    word: z.string().min(1),
+    text: z.string().min(1).optional(),
+    word: z.string().min(1).optional(),
   })
-  .refine((word) => word.end_s >= word.start_s, { message: "word end_s must be greater than or equal to start_s" });
+  .refine((word) => word.end_s >= word.start_s, { message: "word end_s must be greater than or equal to start_s" })
+  .refine((word) => word.text !== undefined || word.word !== undefined, { message: "word requires text or word" })
+  .transform((word) => ({
+    start_s: word.start_s,
+    end_s: word.end_s,
+    text: word.text ?? word.word ?? "",
+  }));
+
+const cuesheetArtifactSchema = z.object({
+  segments: z.array(cueSchema).min(1),
+});
 
 const inputSchema = z
   .object({
-    cuesheet: z.array(cueSchema).min(1).optional(),
+    cuesheet: z.union([z.array(cueSchema).min(1), cuesheetArtifactSchema]).optional(),
     words: z.array(wordSchema).min(1).optional(),
     max_chars_per_line: z.number().int().positive().default(42),
     format: z.enum(["srt", "vtt"]).default("srt"),
@@ -66,7 +77,7 @@ export default defineTool({
   output: outputSchema,
   async execute(params, ctx) {
     const input = inputSchema.parse(params);
-    const cues = input.cuesheet ?? groupWords(input.words ?? [], input.max_chars_per_line);
+    const cues = resolveCues(input);
     const outputPath = resolveSubtitlePath(input.output_path, input.format, ctx.projectRoot);
     const content = input.format === "srt" ? renderSrt(cues) : renderVtt(cues);
 
@@ -82,18 +93,30 @@ export default defineTool({
   },
 });
 
+function resolveCues(input: z.infer<typeof inputSchema>): Cue[] {
+  if (Array.isArray(input.cuesheet)) {
+    return input.cuesheet;
+  }
+
+  if (input.cuesheet) {
+    return input.cuesheet.segments;
+  }
+
+  return groupWords(input.words ?? [], input.max_chars_per_line);
+}
+
 function groupWords(words: Word[], maxCharsPerLine: number): Cue[] {
   const cues: Cue[] = [];
   let current: Word[] = [];
   let currentText = "";
 
   for (const word of words) {
-    const nextText = currentText ? `${currentText} ${word.word}` : word.word;
+    const nextText = currentText ? `${currentText} ${word.text}` : word.text;
 
     if (current.length > 0 && nextText.length > maxCharsPerLine) {
       cues.push(wordsToCue(current));
       current = [word];
-      currentText = word.word;
+      currentText = word.text;
       continue;
     }
 
@@ -119,7 +142,7 @@ function wordsToCue(words: Word[]): Cue {
   return {
     start_s: first.start_s,
     end_s: last.end_s,
-    text: words.map((word) => word.word).join(" "),
+    text: words.map((word) => word.text).join(" "),
   };
 }
 

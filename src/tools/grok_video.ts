@@ -35,6 +35,8 @@ export default defineTool({
       },
       costUsd: COST_USD,
       ctx,
+      prompt: input.prompt,
+      model: MODEL,
     });
   },
 });

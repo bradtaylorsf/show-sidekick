@@ -3,6 +3,7 @@ import { envValue, postVideoGeneration, videoProviderInputSchema, videoProviderO
 
 const COST_USD = 0.5;
 const ENDPOINT = "https://api.minimax.io/v1/video_generation";
+const MODEL = "video-01";
 
 export default defineTool({
   name: "minimax_video",
@@ -26,7 +27,7 @@ export default defineTool({
         Authorization: `Bearer ${envValue("MINIMAX_API_KEY")}`,
       },
       body: {
-        model: "video-01",
+        model: MODEL,
         prompt: input.prompt,
         first_frame_image: input.image_url,
         duration: input.duration ?? 5,
@@ -34,6 +35,8 @@ export default defineTool({
       },
       costUsd: COST_USD,
       ctx,
+      prompt: input.prompt,
+      model: MODEL,
     });
   },
 });

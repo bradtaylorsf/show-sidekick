@@ -12,6 +12,7 @@ import { ReviewSchema, type Finding, type Review } from "../artifacts/review.js"
 import type { SourceMediaReview } from "../artifacts/source-media-review.js";
 import type { VideoAnalysisBrief } from "../artifacts/video-analysis-brief.js";
 import { auditBoilerplateReason, auditConfidence, auditRequiredCategories } from "../decisions/audit.js";
+import { reviewProposalForMusicSource } from "../decisions/proposal-review.js";
 import type { PipelineManifest } from "../pipelines/manifest.js";
 import type { Playbook } from "../shows/playbook.js";
 import { validateComposition } from "./composition-validator.js";
@@ -40,7 +41,7 @@ import { detectEditRegression, scoreSlideshowRisk } from "./slideshow-risk.js";
 type UnknownRecord = Record<string, unknown>;
 
 export type ReviewContext = {
-  pipeline: Pick<PipelineManifest, "stages">;
+  pipeline: Pick<PipelineManifest, "stages" | "master_clock">;
   round?: number;
   playbook?: Playbook;
   priorReviews?: Review[];
@@ -121,9 +122,10 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
   }
 
   if (ctx.decisionLog !== undefined) {
+    const proposalMusicHelper = shouldUseProposalMusicHelper(stageSlug, ctx);
     rawFindings.push(
       ...auditRequiredCategories(stageSlug, ctx.decisionLog, {
-        audioLed: ctx.audioLed,
+        audioLed: proposalMusicHelper ? false : ctx.audioLed ?? isAudioLedPipeline(ctx.pipeline),
         narrationInScope: ctx.narrationInScope ?? ctx.narrationRequired,
         deviatesFromScenePlan: ctx.deviatesFromScenePlan,
         substituted: ctx.substituted,
@@ -133,6 +135,9 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
       ...auditConfidence(ctx.decisionLog),
       ...auditBoilerplateReason(ctx.decisionLog),
     );
+    if (proposalMusicHelper) {
+      rawFindings.push(...reviewProposalForMusicSource({ manifest: ctx.pipeline, decisions: ctx.decisionLog }));
+    }
   }
 
   rawFindings.push(
@@ -284,6 +289,20 @@ function checkRenderReportValidation(stageSlug: string, renderReport: RenderRepo
     proposed_fix: "Run HyperFrames lint and validate before render, and include passing lint/validate entries in render_report.validation_steps[].",
     status: "pending",
   }));
+}
+
+function shouldUseProposalMusicHelper(stageSlug: string, ctx: ReviewContext): boolean {
+  return (
+    normalizeStage(stageSlug) === "proposal" &&
+    ctx.decisionLog !== undefined &&
+    ctx.audioLed === undefined &&
+    ctx.pipeline.master_clock !== undefined &&
+    ctx.pipeline.master_clock !== "none"
+  );
+}
+
+function isAudioLedPipeline(pipeline: Pick<PipelineManifest, "master_clock">): boolean {
+  return pipeline.master_clock !== undefined && pipeline.master_clock !== "none";
 }
 
 function summarizeFindings(findings: Finding[], successCriteriaMet: number, successCriteriaTotal: number): Review["summary"] {

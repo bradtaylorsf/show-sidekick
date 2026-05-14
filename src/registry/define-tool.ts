@@ -54,6 +54,13 @@ export function defineTool<IS extends ZodTypeAny, OS extends ZodTypeAny>(
       });
     }
 
+    if (tool.integration.kind === "api" && tool.cost !== undefined && tool.cost.usd > 0) {
+      const availability = await (tool as DefinedTool<IS, OS>).isAvailable({ projectRoot: ctx.projectRoot });
+      if (!availability.available) {
+        throw new Error(`${tool.name} unavailable: ${availability.reason}. Install: ${tool.integration.install}`);
+      }
+    }
+
     return await announceBeforeExecute(
       {
         tool: tool as DefinedTool<IS, OS>,

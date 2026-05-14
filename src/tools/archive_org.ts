@@ -25,13 +25,14 @@ export default defineTool({
   agent_skills: ["stock-video", "archive-org"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
-  async execute(params) {
+  async execute(params, ctx) {
     const input = stockVideoInputSchema.parse(params);
 
     return fetchStockVideo({
       provider: "archive_org",
       url: archiveSearchUrl(input),
       input,
+      ctx,
       map: mapArchiveOrg,
     });
   },

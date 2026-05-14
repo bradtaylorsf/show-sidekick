@@ -7,6 +7,7 @@ import { createLsHandler } from "./commands/ls.js";
 import { createNewHandlers } from "./commands/new.js";
 import { createResumeHandler } from "./commands/resume.js";
 import { createReviseHandler } from "./commands/revise.js";
+import { createSetupHandler } from "./commands/setup.js";
 import { createStatusHandler } from "./commands/status.js";
 import { type CliIo, createStubHandler, defaultIo, type GlobalOptions } from "./commands/stub.js";
 import { suggest } from "./fuzzy.js";
@@ -205,7 +206,7 @@ function registerCommands(program: Command, io: CliIo): void {
   program
     .command("setup <tool>")
     .description("run tool native login or install")
-    .action(createStubHandler("setup", ["tool"], io));
+    .action(createSetupHandler(io));
 
   program
     .command("tools <name>")

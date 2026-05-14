@@ -26,13 +26,14 @@ export default defineTool({
   agent_skills: ["stock-video", "loc"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
-  async execute(params) {
+  async execute(params, ctx) {
     const input = stockVideoInputSchema.parse(params);
 
     return fetchStockVideo({
       provider: "loc",
       url: buildUrl(ENDPOINT, { q: input.query, fo: "json", fa: "original-format:film,+video" }),
       input,
+      ctx,
       map: mapLoc,
     });
   },

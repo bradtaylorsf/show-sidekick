@@ -166,5 +166,12 @@ function duckingConfig(ducking: Ducking | undefined): DuckingConfig | undefined 
 }
 
 function compressionRatio(reductionDb: number): number {
-  return Math.max(1, Math.abs(reductionDb));
+  const targetReduction = Math.abs(reductionDb);
+  if (targetReduction === 0) {
+    return 1;
+  }
+
+  // sidechaincompress accepts a compression ratio, not a target dB reduction.
+  // Use reduction_db as intent and map it onto a bounded, musical ratio.
+  return Math.min(8, 1 + targetReduction / 6);
 }

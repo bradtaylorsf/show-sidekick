@@ -2,6 +2,7 @@ import { defineTool } from "../registry/define-tool.js";
 import { envValue, postVideoGeneration, videoProviderInputSchema, videoProviderOutputSchema } from "../tool-support/video-provider.js";
 
 const COST_USD = 0.15;
+const MODEL = "ltx-modal";
 
 export default defineTool({
   name: "ltx_video_modal",
@@ -37,6 +38,8 @@ export default defineTool({
       },
       costUsd: COST_USD,
       ctx,
+      prompt: input.prompt,
+      model: MODEL,
     });
   },
 });

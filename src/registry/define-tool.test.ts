@@ -63,6 +63,7 @@ describe("defineTool", () => {
   });
 
   it("announces non-zero-cost tool execution before running the implementation", async () => {
+    vi.stubEnv("SAMPLE_KEY", "present");
     const events: Array<{ event: string; payload: unknown }> = [];
     const calls: string[] = [];
     const tool = defineTool({

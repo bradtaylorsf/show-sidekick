@@ -97,6 +97,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function stubProviderEnv(): void {
+  vi.stubEnv("REPLICATE_API_TOKEN", "replicate-token");
+  vi.stubEnv("MODAL_TOKEN_ID", "modal-id");
+  vi.stubEnv("MODAL_TOKEN_SECRET", "modal-secret");
+  vi.stubEnv("MODAL_LTX_URL", "https://modal.example.com/ltx");
+  vi.stubEnv("XAI_API_KEY", "xai-token");
+}
+
 describe("open video provider tools", () => {
   it("declares metadata, auth integration, costs, and Layer 3 skills", () => {
     for (const spec of providers) {
@@ -141,7 +149,7 @@ describe("open video provider tools", () => {
   });
 
   it("posts each API provider's documented request shape and returns tracked default cost", async () => {
-    vi.stubEnv("MODAL_LTX_URL", "https://modal.example.com/ltx");
+    stubProviderEnv();
     const fetchMock = vi.fn(async () => {
       return new Response(JSON.stringify({ id: "provider-request-1", video_path: "projects/show/episode/clips/out.mp4" }), {
         status: 200,
@@ -174,8 +182,8 @@ describe("open video provider tools", () => {
       if (spec.name === "ltx_video_modal") {
         expect(options.headers).toEqual(
           expect.objectContaining({
-            "Modal-Key": "<MODAL_TOKEN_ID>",
-            "Modal-Secret": "<MODAL_TOKEN_SECRET>",
+            "Modal-Key": "modal-id",
+            "Modal-Secret": "modal-secret",
           }),
         );
         expect(body).toMatchObject({
@@ -185,7 +193,7 @@ describe("open video provider tools", () => {
           aspect_ratio: "16:9",
         });
       } else if (spec.name === "grok_video") {
-        expect(options.headers?.Authorization).toBe("Bearer <XAI_API_KEY>");
+        expect(options.headers?.Authorization).toBe("Bearer xai-token");
         expect(body).toMatchObject({
           model: "grok-video-1",
           prompt: "fixture camera move",
@@ -193,7 +201,7 @@ describe("open video provider tools", () => {
           aspect_ratio: "16:9",
         });
       } else {
-        expect(options.headers).toEqual(expect.objectContaining({ Authorization: "Bearer <REPLICATE_API_TOKEN>", Prefer: "wait" }));
+        expect(options.headers).toEqual(expect.objectContaining({ Authorization: "Bearer replicate-token", Prefer: "wait" }));
         expect(body).toMatchObject({
           model: spec.model,
           input: {
@@ -208,6 +216,7 @@ describe("open video provider tools", () => {
   });
 
   it("surfaces non-2xx provider responses with the response body", async () => {
+    stubProviderEnv();
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response("bad request", { status: 400 })),
@@ -216,6 +225,17 @@ describe("open video provider tools", () => {
     await expect(
       hunyuanVideo.execute(hunyuanVideo.input.parse({ prompt: "fixture", image_url: "https://cdn.example.com/ref.png" }), context()),
     ).rejects.toThrow("hunyuan video request failed (400): bad request");
+  });
+
+  it("fails before fetch when required provider env vars are missing", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("REPLICATE_API_TOKEN", "");
+
+    await expect(
+      hunyuanVideo.execute(hunyuanVideo.input.parse({ prompt: "fixture", image_url: "https://cdn.example.com/ref.png" }), context()),
+    ).rejects.toThrow("missing env: REPLICATE_API_TOKEN");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("runs local LTX through the CLI with resolved image and output paths", async () => {

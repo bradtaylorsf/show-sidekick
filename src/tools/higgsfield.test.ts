@@ -1,5 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
-import type { Tool, ToolContext } from "../registry/tool.js";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ToolContext } from "../registry/tool.js";
+import catboxHost from "./catbox-host.js";
 import higgsfield from "./higgsfield.js";
 
 function noopLogger(): ToolContext["logger"] {
@@ -11,6 +15,10 @@ function noopLogger(): ToolContext["logger"] {
     event: () => undefined,
   };
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 function context(overrides: Partial<ToolContext> = {}): ToolContext {
   return {
@@ -136,10 +144,13 @@ describe("higgsfield tool", () => {
   });
 
   it("uploads local image paths through image hosting before building the request", async () => {
-    const imageHostExecute = vi.fn(async () => ({ url: "https://assets.example.com/hosted-reference.png" }));
-    const imageHost = { execute: imageHostExecute } as unknown as Tool;
-    const select = vi.fn(async () => imageHost);
-    const ctx = context({ registry: { select } });
+    const projectRoot = await mkdtemp(join(tmpdir(), "predit-higgsfield-"));
+    await mkdir(join(projectRoot, "assets"), { recursive: true });
+    await writeFile(join(projectRoot, "assets", "reference.png"), "image-bytes");
+    const fetchMock = vi.fn(async () => new Response("https://assets.example.com/hosted-reference.png", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const select = vi.fn(async () => catboxHost);
+    const ctx = context({ projectRoot, registry: { select } });
 
     const result = await higgsfield.execute(
       higgsfield.input.parse({
@@ -150,7 +161,10 @@ describe("higgsfield tool", () => {
     );
 
     expect(select).toHaveBeenCalledWith("image_hosting");
-    expect(imageHostExecute).toHaveBeenCalledWith({ image_path: "/project/assets/reference.png" }, ctx);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://catbox.moe/user/api.php",
+      expect.objectContaining({ method: "POST", body: expect.any(FormData) }),
+    );
     expect(result.request.body.image_url).toBe("https://assets.example.com/hosted-reference.png");
   });
 });

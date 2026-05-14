@@ -15,7 +15,7 @@ const ENDPOINT = "https://pixabay.com/api/audio/";
 
 export default defineTool({
   name: "pixabay_music",
-  capability: "music_generation",
+  capability: "music_search",
   provider: "pixabay",
   status: "beta",
   integration: { kind: "api", env: ["PIXABAY_API_KEY"], install: "set PIXABAY_API_KEY" },

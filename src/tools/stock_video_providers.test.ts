@@ -1,6 +1,7 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ToolContext } from "../registry/tool.js";
 import coverr from "./coverr.js";
@@ -87,6 +88,14 @@ const manifestProviders = [
   { tool: videvo, env: "VIDEVO_FEED_URL", source: "videvo", license: "Videvo License" },
 ] as const;
 
+const bundledFixtureProviders = [
+  { tool: mixkit, env: "MIXKIT_FEED_URL", fixture: "mixkit.json" },
+  { tool: coverr, env: "COVERR_FEED_URL", fixture: "coverr.json" },
+  { tool: dareful, env: "DAREFUL_FEED_URL", fixture: "dareful.json" },
+  { tool: pond5Pd, env: "POND5_PD_FEED_URL", fixture: "pond5_pd.json" },
+  { tool: videvo, env: "VIDEVO_FEED_URL", fixture: "videvo.json" },
+] as const;
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
@@ -123,6 +132,7 @@ describe("stock video provider tools", () => {
   });
 
   it("queries Pexels and normalizes video matches with attribution metadata", async () => {
+    vi.stubEnv("PEXELS_API_KEY", "pexels-key");
     const fetchMock = vi.fn(async () => {
       return new Response(
         JSON.stringify({
@@ -149,7 +159,7 @@ describe("stock video provider tools", () => {
 
     expect(url).toBe("https://api.pexels.com/videos/search?query=city+skyline&per_page=3");
     expect(options?.method).toBe("GET");
-    expect(options?.headers).toEqual({ Authorization: "<PEXELS_API_KEY>" });
+    expect(options?.headers).toEqual({ Authorization: "pexels-key" });
     expect(result).toEqual({
       matches: [
         {
@@ -171,6 +181,7 @@ describe("stock video provider tools", () => {
   });
 
   it("queries Pixabay and normalizes video matches with attribution metadata", async () => {
+    vi.stubEnv("PIXABAY_API_KEY", "pixabay-key");
     const fetchMock = vi.fn(async () => {
       return new Response(
         JSON.stringify({
@@ -198,7 +209,7 @@ describe("stock video provider tools", () => {
     const result = await pixabayVideo.execute(pixabayVideo.input.parse({ query: "ocean wave", per_page: 4 }), context());
     const [url, options] = fetchMock.mock.calls[0] as FetchCall;
 
-    expect(url).toBe("https://pixabay.com/api/videos/?key=%3CPIXABAY_API_KEY%3E&q=ocean+wave&per_page=4");
+    expect(url).toBe("https://pixabay.com/api/videos/?key=pixabay-key&q=ocean+wave&per_page=4");
     expect(options?.method).toBe("GET");
     expect(result.matches).toEqual([
       {
@@ -295,7 +306,20 @@ describe("stock video provider tools", () => {
     expect(result.matches[0]?.attribution.license).toBe("CC0");
   });
 
+  it("ships canonical fixture manifests for manifest-backed providers", async () => {
+    for (const spec of bundledFixtureProviders) {
+      vi.stubEnv(spec.env, bundledFixturePath(spec.fixture));
+
+      const result = await spec.tool.execute(spec.tool.input.parse({ query: "city", per_page: 3 }), context());
+
+      expect(result.matches).toHaveLength(3);
+      expect(result.matches.every((match) => match.attribution.source.length > 0 && match.attribution.license.length > 0)).toBe(true);
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("surfaces non-2xx stock provider responses with the response body", async () => {
+    vi.stubEnv("PEXELS_API_KEY", "pexels-key");
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response("bad request", { status: 400 })),
@@ -305,4 +329,19 @@ describe("stock video provider tools", () => {
       "pexels stock video request failed (400): bad request",
     );
   });
+
+  it("fails before fetch when required stock-provider env vars are missing", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("PEXELS_API_KEY", "");
+
+    await expect(pexelsVideo.execute(pexelsVideo.input.parse({ query: "fixture" }), context())).rejects.toThrow(
+      "missing env: PEXELS_API_KEY",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
+
+function bundledFixturePath(fileName: string): string {
+  return fileURLToPath(new URL(`../../bundled/fixtures/stock/${fileName}`, import.meta.url));
+}

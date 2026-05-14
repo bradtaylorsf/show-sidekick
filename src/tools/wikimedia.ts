@@ -25,13 +25,14 @@ export default defineTool({
   agent_skills: ["stock-video", "wikimedia"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
-  async execute(params) {
+  async execute(params, ctx) {
     const input = stockVideoInputSchema.parse(params);
 
     return fetchStockVideo({
       provider: "wikimedia",
       url: wikimediaSearchUrl(input),
       input,
+      ctx,
       map: mapWikimedia,
     });
   },

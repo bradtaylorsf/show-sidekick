@@ -1,0 +1,27 @@
+{
+  "clips": [
+    {
+      "title": "City skyline timelapse",
+      "tags": ["city", "skyline", "traffic"],
+      "video_url": "https://fixtures.predit.dev/stock/mixkit/city-1.mp4",
+      "thumbnail_url": "https://fixtures.predit.dev/stock/mixkit/city-1.jpg",
+      "duration": 8,
+      "width": 1920,
+      "height": 1080,
+      "author": "Mixkit Fixture",
+      "source_url": "https://mixkit.co/free-stock-video/city-fixture-1/"
+    },
+    {
+      "title": "City crosswalk crowd",
+      "tags": ["city", "people", "street"],
+      "video_url": "https://fixtures.predit.dev/stock/mixkit/city-2.mp4",
+      "source_url": "https://mixkit.co/free-stock-video/city-fixture-2/"
+    },
+    {
+      "title": "Night city traffic",
+      "tags": ["city", "night", "cars"],
+      "video_url": "https://fixtures.predit.dev/stock/mixkit/city-3.mp4",
+      "source_url": "https://mixkit.co/free-stock-video/city-fixture-3/"
+    }
+  ]
+}

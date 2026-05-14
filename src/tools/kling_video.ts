@@ -3,6 +3,7 @@ import { envValue, postVideoGeneration, videoProviderInputSchema, videoProviderO
 
 const COST_USD = 0.3;
 const ENDPOINT = "https://api.klingai.com/kling-video/v2.1/pro/image-to-video";
+const MODEL = "kling-v2.1-pro";
 
 export default defineTool({
   name: "kling_video",
@@ -37,6 +38,8 @@ export default defineTool({
       },
       costUsd: COST_USD,
       ctx,
+      prompt: input.prompt,
+      model: MODEL,
     });
   },
 });

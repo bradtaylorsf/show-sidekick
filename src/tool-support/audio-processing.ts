@@ -1,5 +1,5 @@
 import { mkdir } from "node:fs/promises";
-import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { DuckingSchema } from "../artifacts/edit-decisions.js";
 import type { Ducking } from "../artifacts/edit-decisions.js";
 import { defaultRunCli } from "./cli-runner.js";
@@ -8,7 +8,13 @@ export { DuckingSchema, defaultRunCli };
 export type { Ducking };
 
 export function resolveProjectPath(path: string, projectRoot: string): string {
-  return isAbsolute(path) ? path : resolve(projectRoot, path);
+  const root = resolve(projectRoot);
+  const resolved = isAbsolute(path) ? resolve(path) : resolve(root, path);
+  if (!isInside(resolved, root)) {
+    throw new Error(`path is outside project root: ${path}`);
+  }
+
+  return resolved;
 }
 
 export function resolveOutputPath(
@@ -84,4 +90,9 @@ function normalizeExtension(extension: string): string {
 function sanitizeFileStem(value: string): string {
   const sanitized = value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
   return sanitized || "audio";
+}
+
+function isInside(child: string, parent: string): boolean {
+  const rel = relative(parent, child);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }

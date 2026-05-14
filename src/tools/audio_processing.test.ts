@@ -89,6 +89,14 @@ describe("audio processing tools", () => {
     });
   });
 
+  it("rejects audio inputs that traverse outside the project root", async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), "predit-audio-safe-path-"));
+
+    await expect(
+      audioEnhance.execute(audioEnhance.input.parse({ audio_path: "../outside.wav" }), context(projectRoot)),
+    ).rejects.toThrow("path is outside project root");
+  });
+
   it("mixes narration and music with boolean ducking through sidechaincompress", async () => {
     const projectRoot = await mkdtemp(join(tmpdir(), "predit-audio-mixer-"));
     const ctx = context(projectRoot);
@@ -107,7 +115,7 @@ describe("audio processing tools", () => {
 
     expect(graph).toContain("sidechaincompress");
     expect(graph).toContain("threshold=-24dB");
-    expect(graph).toContain("ratio=12");
+    expect(graph).toContain("ratio=3");
     expect(graph).toContain("amix=inputs=2");
   });
 
@@ -135,7 +143,7 @@ describe("audio processing tools", () => {
     const graph = args[args.indexOf("-filter_complex") + 1];
 
     expect(graph).toContain("threshold=-18dB");
-    expect(graph).toContain("ratio=8");
+    expect(graph).toContain("ratio=2.333333");
     expect(graph).toContain("attack=15");
     expect(graph).toContain("release=250");
     expect(graph).toContain("adelay=1250|1250");
@@ -208,6 +216,31 @@ describe("audio processing tools", () => {
     expect(text).toContain("WEBVTT");
     expect(text).toContain("00:00:00.000 --> 00:00:00.700\nA tight line");
     expect(text).toContain("00:00:00.800 --> 00:00:01.500\nbreaks here");
+  });
+
+  it("accepts canonical cuesheet segment and word text shapes", async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), "predit-subtitles-"));
+    const fromCuesheet = await subtitleGen.execute(
+      subtitleGen.input.parse({
+        cuesheet: {
+          segments: [{ start_s: 1, end_s: 2, text: "Canonical segment.", words: [] }],
+        },
+      }),
+      context(projectRoot),
+    );
+    await expect(readFile(fromCuesheet.subtitle_path, "utf8")).resolves.toContain("Canonical segment.");
+
+    const fromWords = await subtitleGen.execute(
+      subtitleGen.input.parse({
+        words: [
+          { start_s: 0, end_s: 0.25, text: "Real", confidence: 0.91 },
+          { start_s: 0.3, end_s: 0.6, text: "cuesheet", confidence: 0.9 },
+        ],
+        output_path: "projects/_tool_runs/subtitles/words.srt",
+      }),
+      context(projectRoot),
+    );
+    await expect(readFile(fromWords.subtitle_path, "utf8")).resolves.toContain("Real cuesheet");
   });
 
   it("cuts detected silences and returns duration reduction metrics", async () => {

@@ -104,7 +104,7 @@ async function resolveImageUrl(input: HiggsfieldInput, ctx: ToolContext): Promis
 
   const imageHostingTool = await ctx.registry.select("image_hosting");
   const imagePath = isAbsolute(input.image_path) ? input.image_path : resolve(ctx.projectRoot, input.image_path);
-  const hosted = await imageHostingTool.execute({ image_path: imagePath }, ctx);
+  const hosted = await imageHostingTool.execute({ local_path: imagePath }, ctx);
 
   return readHostedUrl(hosted);
 }

@@ -21,6 +21,7 @@ const inputSchema = z.object({
   video_path: z.string().min(1),
   target_aspect: z.string().min(1).default("9:16"),
   output_path: z.string().min(1).optional(),
+  allow_center_fallback: z.boolean().default(false),
 });
 
 const outputSchema = z.object({
@@ -46,9 +47,10 @@ export default defineTool({
     const outputPath = resolveOutputPath(input.output_path, inputPath, input.target_aspect, ctx.projectRoot);
     await mkdir(dirname(outputPath), { recursive: true });
 
-    const track = await loadTrack(inputPath, ctx);
-    const subjectCenterX = track.length > 0 ? String(average(smoothedCenters(track))) : "iw/2";
-    const filter = buildFilter(input.target_aspect, subjectCenterX);
+    const track = await loadTrack(inputPath, ctx, input.allow_center_fallback);
+    const subjectCenterX = track.length > 0 ? String(average(smoothedCenters(track, "x"))) : "iw/2";
+    const subjectCenterY = track.length > 0 ? String(average(smoothedCenters(track, "y"))) : "ih/2";
+    const filter = buildFilter(input.target_aspect, subjectCenterX, subjectCenterY);
     const runner = ctx.runCli ?? defaultRunCli;
 
     await runner(
@@ -61,20 +63,32 @@ export default defineTool({
   },
 });
 
-async function loadTrack(videoPath: string, ctx: ToolContext): Promise<TrackFrame[]> {
+async function loadTrack(videoPath: string, ctx: ToolContext, allowCenterFallback: boolean): Promise<TrackFrame[]> {
   if (!ctx.registry) {
-    ctx.logger.warn("face_tracker capability unavailable; using center crop fallback");
-    return [];
+    return fallbackOrThrow("face_tracker capability required for auto_reframe smart crop", ctx, allowCenterFallback);
   }
 
   try {
     const faceTracker = await ctx.registry.select("face_tracker");
-    return readTrack(await faceTracker.execute({ video_path: videoPath }, ctx));
+    const track = readTrack(await faceTracker.execute({ video_path: videoPath }, ctx));
+    if (track.length === 0) {
+      throw new Error("face_tracker returned no usable bboxes");
+    }
+
+    return track;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    ctx.logger.warn("face_tracker capability unavailable; using center crop fallback", { error: message });
-    return [];
+    return fallbackOrThrow(`face_tracker capability required for auto_reframe smart crop: ${message}`, ctx, allowCenterFallback);
   }
+}
+
+function fallbackOrThrow(message: string, ctx: ToolContext, allowCenterFallback: boolean): TrackFrame[] {
+  if (!allowCenterFallback) {
+    throw new Error(message);
+  }
+
+  ctx.logger.warn("face_tracker capability unavailable; using center crop fallback", { error: message });
+  return [];
 }
 
 function readTrack(output: unknown): TrackFrame[] {
@@ -117,8 +131,10 @@ function readBBox(value: unknown): BBox | undefined {
   return undefined;
 }
 
-function smoothedCenters(track: TrackFrame[]): number[] {
-  const centers = track.map((frame) => frame.bbox.x + frame.bbox.width / 2);
+function smoothedCenters(track: TrackFrame[], axis: "x" | "y"): number[] {
+  const centers = track.map((frame) => {
+    return axis === "x" ? frame.bbox.x + frame.bbox.width / 2 : frame.bbox.y + frame.bbox.height / 2;
+  });
 
   return centers.map((_center, index) => {
     const window = centers.slice(Math.max(0, index - 1), Math.min(centers.length, index + 2));
@@ -126,18 +142,19 @@ function smoothedCenters(track: TrackFrame[]): number[] {
   });
 }
 
-function buildFilter(targetAspect: string, subjectCenterX: string): string {
+function buildFilter(targetAspect: string, subjectCenterX: string, subjectCenterY: string): string {
   const aspect = parseAspect(targetAspect);
   const ratioExpression = `${aspect.width}/${aspect.height}`;
 
   if (aspect.ratio <= 1) {
     const cropWidth = `ih*${ratioExpression}`;
+    // ffmpeg needs these quotes so commas inside min(max(...)) are not parsed as filter separators.
     const x = `min(max(0,${subjectCenterX}-(${cropWidth})/2),iw-(${cropWidth}))`;
     return `crop=${cropWidth}:ih:'${x}':0,scale=${scaleWidth(aspect.ratio)}:${scaleHeight(aspect.ratio)}`;
   }
 
   const cropHeight = `iw/${ratioExpression}`;
-  const y = `min(max(0,ih/2-(${cropHeight})/2),ih-(${cropHeight}))`;
+  const y = `min(max(0,${subjectCenterY}-(${cropHeight})/2),ih-(${cropHeight}))`;
   return `crop=iw:${cropHeight}:0:'${y}',scale=${scaleWidth(aspect.ratio)}:${scaleHeight(aspect.ratio)}`;
 }
 

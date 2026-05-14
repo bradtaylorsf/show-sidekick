@@ -3,6 +3,7 @@ import { envValue, postVideoGeneration, videoProviderInputSchema, videoProviderO
 
 const COST_USD = 0.05;
 const ENDPOINT = "https://api.runwayml.com/v1/image_to_video";
+const MODEL = "gen3a_turbo";
 
 export default defineTool({
   name: "runway_video",
@@ -27,14 +28,16 @@ export default defineTool({
         "X-Runway-Version": "2024-11-06",
       },
       body: {
-        model: "gen3a_turbo",
+        model: MODEL,
         promptText: input.prompt,
         promptImage: input.image_url,
         duration: input.duration ?? 5,
         ratio: input.aspect_ratio ?? "16:9",
       },
-      costUsd: COST_USD,
+      costUsd: (input.duration ?? 5) * COST_USD,
       ctx,
+      prompt: input.prompt,
+      model: MODEL,
     });
   },
 });

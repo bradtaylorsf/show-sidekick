@@ -1,3 +1,6 @@
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ToolContext } from "../registry/tool.js";
 import klingVideo from "./kling_video.js";
@@ -17,8 +20,8 @@ function noopLogger(): ToolContext["logger"] {
   };
 }
 
-function context(): ToolContext {
-  return { projectRoot: "/project", logger: noopLogger(), execution: { mode: "non_interactive" } };
+function context(projectRoot = "/project"): ToolContext {
+  return { projectRoot, logger: noopLogger(), execution: { mode: "non_interactive" } };
 }
 
 type FetchCall = [string, { method?: string; headers?: Record<string, string>; body?: string }];
@@ -97,6 +100,20 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function stubProviderEnv(): void {
+  vi.stubEnv("KLING_ACCESS_KEY", "kling-access");
+  vi.stubEnv("KLING_SECRET_KEY", "kling-secret");
+  vi.stubEnv("REPLICATE_API_TOKEN", "replicate-token");
+  vi.stubEnv("BYTEDANCE_API_KEY", "bytedance-token");
+  vi.stubEnv("RUNWAY_API_KEY", "runway-token");
+  vi.stubEnv("GOOGLE_API_KEY", "google-token");
+  vi.stubEnv("MINIMAX_API_KEY", "minimax-token");
+}
+
+function expectedCost(spec: (typeof providers)[number], duration: number): number {
+  return spec.cost.unit === "second" ? spec.cost.usd * duration : spec.cost.usd;
+}
+
 describe("premium video provider tools", () => {
   it("declares metadata, auth integration, costs, and Layer 3 skills", () => {
     for (const spec of providers) {
@@ -125,6 +142,7 @@ describe("premium video provider tools", () => {
   });
 
   it("posts each provider's documented request shape and returns the tracked default cost", async () => {
+    stubProviderEnv();
     const fetchMock = vi.fn(async () => {
       return new Response(JSON.stringify({ id: "provider-request-1", video_path: "projects/show/episode/clips/out.mp4" }), {
         status: 200,
@@ -153,18 +171,19 @@ describe("premium video provider tools", () => {
       if (spec.authPrefix) {
         expect(options.headers?.Authorization).toEqual(expect.stringContaining(spec.authPrefix));
       } else {
-        expect(options.headers?.["x-goog-api-key"]).toBe("<GOOGLE_API_KEY>");
+        expect(options.headers?.["x-goog-api-key"]).toBe("google-token");
       }
       expect(JSON.stringify(body)).toContain("fixture camera move");
       expect(result).toEqual({
         video_path: "projects/show/episode/clips/out.mp4",
-        cost_usd: spec.cost.usd,
+        cost_usd: expectedCost(spec, 5),
         provider_request_id: "provider-request-1",
       });
     }
   });
 
   it("uses provider-specific body fields for the main video request", async () => {
+    stubProviderEnv();
     const fetchMock = vi.fn(async () => {
       return new Response(JSON.stringify({ video_path: "projects/show/episode/clips/out.mp4" }), { status: 200 });
     });
@@ -215,6 +234,7 @@ describe("premium video provider tools", () => {
   });
 
   it("surfaces non-2xx provider responses with the response body", async () => {
+    stubProviderEnv();
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response("bad request", { status: 400 })),
@@ -223,5 +243,73 @@ describe("premium video provider tools", () => {
     await expect(
       runwayVideo.execute(runwayVideo.input.parse({ prompt: "fixture", image_url: "https://cdn.example.com/ref.png" }), context()),
     ).rejects.toThrow("runway video request failed (400): bad request");
+  });
+
+  it("records actual spend for per-second providers", async () => {
+    stubProviderEnv();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(JSON.stringify({ id: "provider-request-1", video_path: "projects/show/episode/clips/out.mp4" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+
+    await expect(
+      runwayVideo.execute(
+        runwayVideo.input.parse({ prompt: "runway cost", image_url: "https://cdn.example.com/ref.png", duration: 10 }),
+        context(),
+      ),
+    ).resolves.toMatchObject({ cost_usd: 0.5 });
+    await expect(veoVideo.execute(veoVideo.input.parse({ prompt: "veo cost", duration: 10 }), context())).resolves.toMatchObject({
+      cost_usd: 5,
+    });
+    await expect(
+      seedanceReplicate.execute(
+        seedanceReplicate.input.parse({ prompt: "seedance cost", image_url: "https://cdn.example.com/ref.png", duration: 10 }),
+        context(),
+      ),
+    ).resolves.toMatchObject({ cost_usd: 0.5 });
+  });
+
+  it("serves repeated generation requests from the clip cache", async () => {
+    stubProviderEnv();
+    const projectRoot = await mkdtemp(join(tmpdir(), "predit-video-cache-"));
+    const fetchMock = vi.fn(async () => {
+      return new Response(JSON.stringify({ id: "provider-request-1", video_path: "projects/show/episode/clips/out.mp4" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const params = klingVideo.input.parse({
+      prompt: "cached prompt",
+      image_url: "https://cdn.example.com/ref.png",
+      duration: 5,
+    });
+    const first = await klingVideo.execute(params, context(projectRoot));
+    const second = await klingVideo.execute(params, context(projectRoot));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(first).toMatchObject({ video_path: "projects/show/episode/clips/out.mp4", cost_usd: 0.3 });
+    expect(second).toMatchObject({
+      video_path: "projects/show/episode/clips/out.mp4",
+      cost_usd: 0,
+      provider_request_id: expect.stringMatching(/^clip_cache:/),
+    });
+  });
+
+  it("fails before fetch when required provider env vars are missing", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("RUNWAY_API_KEY", "");
+
+    await expect(
+      runwayVideo.execute(runwayVideo.input.parse({ prompt: "fixture", image_url: "https://cdn.example.com/ref.png" }), context()),
+    ).rejects.toThrow("missing env: RUNWAY_API_KEY");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

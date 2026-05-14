@@ -26,6 +26,7 @@ const providers = [
   {
     tool: sunoMusic,
     name: "suno_music",
+    capability: "music_generation",
     provider: "suno",
     integration: { kind: "api", env: ["SUNO_API_KEY"] },
     skills: ["music", "suno"],
@@ -34,6 +35,7 @@ const providers = [
   {
     tool: freesoundMusic,
     name: "freesound_music",
+    capability: "music_search",
     provider: "freesound",
     integration: { kind: "api", env: ["FREESOUND_API_KEY"] },
     skills: ["music", "freesound"],
@@ -42,6 +44,7 @@ const providers = [
   {
     tool: pixabayMusic,
     name: "pixabay_music",
+    capability: "music_search",
     provider: "pixabay",
     integration: { kind: "api", env: ["PIXABAY_API_KEY"] },
     skills: ["music", "pixabay"],
@@ -50,6 +53,7 @@ const providers = [
   {
     tool: musicGen,
     name: "music_gen",
+    capability: "music_generation",
     provider: "local",
     integration: { kind: "library", package: "node:fetch" },
     skills: ["music-plan"],
@@ -59,15 +63,22 @@ const providers = [
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
+
+function stubMusicEnv(): void {
+  vi.stubEnv("SUNO_API_KEY", "suno-token");
+  vi.stubEnv("FREESOUND_API_KEY", "freesound-token");
+  vi.stubEnv("PIXABAY_API_KEY", "pixabay-token");
+}
 
 describe("music generation provider tools", () => {
   it("declares music_generation metadata, setup integration, costs, and skills", () => {
     for (const spec of providers) {
       expect(spec.tool).toMatchObject({
         name: spec.name,
-        capability: "music_generation",
+        capability: spec.capability,
         provider: spec.provider,
         integration: spec.integration,
         cost: spec.cost,
@@ -92,6 +103,7 @@ describe("music generation provider tools", () => {
   });
 
   it("posts Suno's documented generation request shape and returns generated audio", async () => {
+    stubMusicEnv();
     const fetchMock = vi.fn(async () => {
       return new Response(JSON.stringify({ id: "suno-request-1", audio_path: "projects/show/episode/music/suno.mp3" }), {
         status: 200,
@@ -105,7 +117,7 @@ describe("music generation provider tools", () => {
 
     expect(url).toBe("https://api.suno.ai/v1/generate");
     expect(options?.method).toBe("POST");
-    expect(options?.headers).toEqual(expect.objectContaining({ Authorization: "Bearer <SUNO_API_KEY>" }));
+    expect(options?.headers).toEqual(expect.objectContaining({ Authorization: "Bearer suno-token" }));
     expect(JSON.parse(options?.body ?? "{}")).toEqual({
       prompt: "lo-fi beats, 80 bpm",
       duration: 20,
@@ -119,6 +131,7 @@ describe("music generation provider tools", () => {
   });
 
   it("queries Freesound and normalizes music matches with attribution", async () => {
+    stubMusicEnv();
     const fetchMock = vi.fn(async () => {
       return new Response(
         JSON.stringify({
@@ -142,7 +155,7 @@ describe("music generation provider tools", () => {
     const [url, options] = fetchMock.mock.calls[0] as FetchCall;
 
     expect(url).toBe(
-      "https://freesound.org/apiv2/search/text/?query=lo-fi+beats&token=%3CFREESOUND_API_KEY%3E&fields=id%2Cname%2Cduration%2Cpreviews%2Clicense%2Cusername%2Curl&filter=type%3Awav+OR+type%3Amp3&page_size=3",
+      "https://freesound.org/apiv2/search/text/?query=lo-fi+beats&token=freesound-token&fields=id%2Cname%2Cduration%2Cpreviews%2Clicense%2Cusername%2Curl&filter=type%3Awav+OR+type%3Amp3&page_size=3",
     );
     expect(options?.method).toBe("GET");
     expect(result).toEqual({
@@ -164,6 +177,7 @@ describe("music generation provider tools", () => {
   });
 
   it("queries Pixabay music and normalizes matches with attribution", async () => {
+    stubMusicEnv();
     const fetchMock = vi.fn(async () => {
       return new Response(
         JSON.stringify({
@@ -186,7 +200,7 @@ describe("music generation provider tools", () => {
     const result = await pixabayMusic.execute(pixabayMusic.input.parse({ query: "lo-fi beats", per_page: 2 }), context());
     const [url, options] = fetchMock.mock.calls[0] as FetchCall;
 
-    expect(url).toBe("https://pixabay.com/api/audio/?key=%3CPIXABAY_API_KEY%3E&q=lo-fi+beats&per_page=2");
+    expect(url).toBe("https://pixabay.com/api/audio/?key=pixabay-token&q=lo-fi+beats&per_page=2");
     expect(options?.method).toBe("GET");
     expect(result.matches).toEqual([
       {
@@ -205,6 +219,7 @@ describe("music generation provider tools", () => {
   });
 
   it("wires registry music_generation providers and routes music_gen to preferred available provider", async () => {
+    stubMusicEnv();
     const registry = new Registry({ tools: [musicGen, sunoMusic, freesoundMusic, pixabayMusic] });
     const originals = new Map(providers.map((spec) => [spec.tool.name, spec.tool.isAvailable]));
     const fetchMock = vi.fn(async () => {
@@ -220,12 +235,8 @@ describe("music generation provider tools", () => {
       freesoundMusic.isAvailable = async () => ({ available: false, reason: "missing env", fix: "env" });
       pixabayMusic.isAvailable = async () => ({ available: false, reason: "missing env", fix: "env" });
 
-      expect(registry.byCapability("music_generation").map((tool) => tool.name)).toEqual([
-        "music_gen",
-        "suno_music",
-        "freesound_music",
-        "pixabay_music",
-      ]);
+      expect(registry.byCapability("music_generation").map((tool) => tool.name)).toEqual(["music_gen", "suno_music"]);
+      expect(registry.byCapability("music_search").map((tool) => tool.name)).toEqual(["freesound_music", "pixabay_music"]);
 
       const result = await musicGen.execute(
         musicGen.input.parse({ prompt: "jazz", prefer: ["suno_music"] }),
@@ -254,6 +265,7 @@ describe("music generation provider tools", () => {
   });
 
   it("surfaces non-2xx music provider responses with the response body", async () => {
+    stubMusicEnv();
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response("bad request", { status: 400 })),
@@ -262,5 +274,16 @@ describe("music generation provider tools", () => {
     await expect(freesoundMusic.execute(freesoundMusic.input.parse({ query: "fixture" }), context())).rejects.toThrow(
       "freesound music request failed (400): bad request",
     );
+  });
+
+  it("fails before fetch when required provider env vars are missing", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("SUNO_API_KEY", "");
+
+    await expect(sunoMusic.execute(sunoMusic.input.parse({ prompt: "fixture" }), context())).rejects.toThrow(
+      "missing env: SUNO_API_KEY",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import type { ToolContext } from "../registry/tool.js";
+import { lookupClipCache, rememberClipCache } from "./clip-cache.js";
 
 export const videoProviderInputSchema = z.object({
   prompt: z.string().min(1),
@@ -26,9 +27,23 @@ export type JsonPostSpec = {
   body: unknown;
   costUsd: number;
   ctx: ToolContext;
+  prompt?: string;
+  model?: string;
 };
 
 export async function postVideoGeneration(spec: JsonPostSpec): Promise<VideoProviderOutput> {
+  const cacheKey = spec.prompt
+    ? { prompt: spec.prompt, provider: spec.provider, model: spec.model ?? inferModel(spec.body) ?? "default" }
+    : undefined;
+  const cached = cacheKey ? await lookupClipCache(spec.ctx, cacheKey) : undefined;
+  if (cached) {
+    return videoProviderOutputSchema.parse({
+      video_path: cached.video_path,
+      cost_usd: 0,
+      provider_request_id: `clip_cache:${cached.cache_key}`,
+    });
+  }
+
   const response = await fetch(spec.url, {
     method: "POST",
     headers: {
@@ -46,16 +61,26 @@ export async function postVideoGeneration(spec: JsonPostSpec): Promise<VideoProv
   const providerRequestId = findStringValue(payload, ["id", "request_id", "task_id", "prediction_id"]);
   const videoPath = await resolveVideoPath(payload, spec.ctx, spec.provider, providerRequestId);
 
-  return videoProviderOutputSchema.parse({
+  const output = videoProviderOutputSchema.parse({
     video_path: videoPath,
     cost_usd: spec.costUsd,
     provider_request_id: providerRequestId,
   });
+
+  if (cacheKey) {
+    await rememberClipCache(spec.ctx, { ...cacheKey, video_path: output.video_path });
+  }
+
+  return output;
 }
 
 export function envValue(name: string): string {
   const value = process.env[name];
-  return value && value.trim() !== "" ? value : `<${name}>`;
+  if (value === undefined || value.trim() === "") {
+    throw new Error(`missing env: ${name}`);
+  }
+
+  return value;
 }
 
 async function resolveVideoPath(
@@ -148,6 +173,28 @@ function findOutputUrl(payload: unknown): string | undefined {
 
   for (const value of Object.values(payload)) {
     const nested = findOutputUrl(value);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return undefined;
+}
+
+function inferModel(payload: unknown): string | undefined {
+  if (!isRecord(payload)) {
+    return undefined;
+  }
+
+  for (const key of ["model", "model_id", "modelId", "variant"]) {
+    const value = payload[key];
+    if (typeof value === "string" && value.length > 0) {
+      return value;
+    }
+  }
+
+  for (const value of Object.values(payload)) {
+    const nested = inferModel(value);
     if (nested) {
       return nested;
     }

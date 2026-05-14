@@ -1,0 +1,27 @@
+{
+  "clips": [
+    {
+      "title": "City skyline timelapse",
+      "tags": ["city", "skyline", "traffic"],
+      "video_url": "https://fixtures.predit.dev/stock/coverr/city-1.mp4",
+      "thumbnail_url": "https://fixtures.predit.dev/stock/coverr/city-1.jpg",
+      "duration": 8,
+      "width": 1920,
+      "height": 1080,
+      "author": "Coverr Fixture",
+      "source_url": "https://coverr.co/videos/city-fixture-1"
+    },
+    {
+      "title": "City office windows",
+      "tags": ["city", "office", "night"],
+      "video_url": "https://fixtures.predit.dev/stock/coverr/city-2.mp4",
+      "source_url": "https://coverr.co/videos/city-fixture-2"
+    },
+    {
+      "title": "City street detail",
+      "tags": ["city", "street", "detail"],
+      "video_url": "https://fixtures.predit.dev/stock/coverr/city-3.mp4",
+      "source_url": "https://coverr.co/videos/city-fixture-3"
+    }
+  ]
+}

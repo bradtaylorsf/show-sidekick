@@ -35,8 +35,10 @@ export default defineTool({
           aspect_ratio: input.aspect_ratio ?? "16:9",
         },
       },
-      costUsd: COST_USD,
+      costUsd: (input.duration ?? 5) * COST_USD,
       ctx,
+      prompt: input.prompt,
+      model: "bytedance/seedance-2-0",
     });
   },
 });

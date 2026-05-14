@@ -3,6 +3,7 @@ import { envValue, postVideoGeneration, videoProviderInputSchema, videoProviderO
 
 const COST_USD = 0.4;
 const ENDPOINT = "https://api.bytedance.com/video/seedance/v1/image-to-video";
+const MODEL = "seedance-2-0";
 
 export default defineTool({
   name: "seedance_video",
@@ -26,7 +27,7 @@ export default defineTool({
         Authorization: `Bearer ${envValue("BYTEDANCE_API_KEY")}`,
       },
       body: {
-        model: "seedance-2-0",
+        model: MODEL,
         prompt: input.prompt,
         image_url: input.image_url,
         duration: input.duration ?? 5,
@@ -34,6 +35,8 @@ export default defineTool({
       },
       costUsd: COST_USD,
       ctx,
+      prompt: input.prompt,
+      model: MODEL,
     });
   },
 });
