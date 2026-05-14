@@ -282,14 +282,11 @@ async function runStage(input: {
       result = await opts.dispatcher(ctx);
       stageCostUsd = roundUsd(stageCostUsd + result.cost_used.stage_cost_usd);
       review = await runStageReview(opts, input.reviewer, stage, result, round, priorReviews);
-    } catch (error) {
+    } catch {
       return failFromError({
-        opts,
         stage,
-        error,
         cumulativeCost: roundUsd(input.cumulativeCost + stageCostUsd),
         warnings: input.warnings,
-        now,
       });
     }
 
@@ -349,7 +346,7 @@ async function runStage(input: {
 
     const totalCostUsd = roundUsd(input.cumulativeCost + stageCostUsd);
     const overBudget = totalCostUsd > input.budget;
-    const status = checkpointStatusForStage(stage, opts.runOptions, overBudget);
+    const status = checkpointStatusForStage(stage, overBudget);
     const checkpoint = checkpointForStage({
       stage,
       status,
@@ -452,12 +449,9 @@ async function runStageReview(
 }
 
 function failFromError(input: {
-  opts: RunnerOptions;
   stage: Stage;
-  error: unknown;
   cumulativeCost: number;
   warnings: RegistryWarning[];
-  now: () => Date;
 }): StageExecutionOutcome {
   return {
     kind: "halt",
@@ -689,12 +683,12 @@ async function checkpointStatusMap(opts: RunnerOptions): Promise<CheckpointStatu
   return statuses;
 }
 
-function checkpointStatusForStage(stage: Stage, runOptions: StageRunOptions, overBudget: boolean): CheckpointStatus {
+function checkpointStatusForStage(stage: Stage, overBudget: boolean): CheckpointStatus {
   if (overBudget || stage.human_approval !== "required") {
     return "completed";
   }
 
-  return runOptions.nonInteractive === true ? "awaiting_human" : "awaiting_human";
+  return "awaiting_human";
 }
 
 function buildApprovalContext(checkpoint: Checkpoint, budget: number, nextStage: Stage | undefined): ApprovalContext {
