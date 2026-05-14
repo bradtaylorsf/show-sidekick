@@ -3,7 +3,10 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { Registry } from "../../registry/index.js";
+import type { StageContext, StageResult } from "../../harness/index.js";
 import { createProgram } from "../program.js";
+import type { BuildHandlerOptions } from "./build.js";
 
 let scratchDirs: string[] = [];
 const originalCwd = process.cwd();
@@ -13,9 +16,9 @@ async function scratchProject(): Promise<string> {
   scratchDirs.push(root);
   await mkdir(path.join(root, ".predit", "pipelines"), { recursive: true });
   await writeFile(path.join(root, "CLAUDE.md"), "# test project\n", "utf8");
-  await writePipeline(root, "music-video");
-  await writeShow(root, "show", "music-video");
-  await writeEpisode(root, "show", "episode", "music-video");
+  await writePipeline(root, "framework-smoke");
+  await writeShow(root, "show", "framework-smoke");
+  await writeEpisode(root, "show", "episode", "framework-smoke");
   return root;
 }
 
@@ -26,11 +29,19 @@ afterEach(async () => {
 });
 
 describe("build command", () => {
-  it("threads stage and runtime flags into the Runner stub plan", async () => {
+  it("runs the framework-smoke pipeline through the Runner with an in-process dispatcher", async () => {
     const root = await scratchProject();
     process.chdir(root);
 
-    const { program, output } = captureProgram();
+    const contexts: StageContext[] = [];
+    const { program, output } = captureProgram({
+      registryFactory: () => new Registry({ tools: [] }),
+      dispatcherFactory: () => async (ctx) => {
+        contexts.push(ctx);
+        return fixtures[ctx.stage.slug] ?? stageResult({ unexpected: ctx.stage.slug }, 0);
+      },
+      now: () => new Date("2026-05-12T15:42:00.000Z"),
+    });
     await program.parseAsync(
       [
         "node",
@@ -39,15 +50,8 @@ describe("build command", () => {
         "build",
         "show/episode",
         "--sample",
-        "--from",
-        "idea",
-        "--to",
-        "script",
-        "--only",
-        "script",
         "--budget",
         "2.5",
-        "--non-interactive",
       ],
       { from: "node" },
     );
@@ -58,28 +62,23 @@ describe("build command", () => {
       show: string;
       episode: string;
       pipeline: string;
-      run_options: Record<string, unknown>;
+      status: string;
+      total_cost_usd: number;
     };
 
     expect(event).toEqual(
       expect.objectContaining({
-        event: "build_planned",
+        event: "build_finished",
         command: "build",
         show: "show",
         episode: "episode",
-        pipeline: "music-video",
+        pipeline: "framework-smoke",
+        status: "completed",
+        total_cost_usd: 0.3,
       }),
     );
-    expect(event.run_options).toEqual(
-      expect.objectContaining({
-        sample: true,
-        from: "idea",
-        to: "script",
-        only: "script",
-        budget_usd: 2.5,
-        nonInteractive: true,
-      }),
-    );
+    expect(contexts.map((ctx) => ctx.stage.slug)).toEqual(["research", "script"]);
+    expect(contexts[0]?.runOptions).toMatchObject({ sample: true, budget_usd: 2.5 });
   });
 
   it("rejects stage flags that are not declared by the pipeline", async () => {
@@ -127,22 +126,62 @@ async function writePipeline(root: string, slug: string): Promise<void> {
     [
       `slug: ${slug}`,
       "stages:",
-      "  - slug: idea",
-      "    skill: pipelines/music-video/idea-director.md",
-      "    produces: brief",
+      "  - slug: research",
+      "    skill: pipelines/framework-smoke/research-director.md",
+      "    produces: research_brief",
+      "    human_approval: never",
       "  - slug: script",
-      "    skill: pipelines/music-video/script-director.md",
+      "    skill: pipelines/framework-smoke/script-director.md",
       "    produces: script",
+      "    human_approval: never",
       "",
     ].join("\n"),
     "utf8",
   );
 }
 
-function captureProgram() {
+const fixtures: Record<string, StageResult> = {
+  research: stageResult(
+    {
+      topic_exploration: "Build command smoke coverage.",
+      sources: [],
+      findings: [{ claim: "The build command invokes Runner.", evidence: "In-process dispatcher fixture." }],
+    },
+    0.1,
+  ),
+  script: stageResult(
+    {
+      sections: [
+        {
+          slug: "intro",
+          start_s: 0,
+          end_s: 5,
+          narration: "A short build smoke script.",
+          dialogue: [],
+          enhancement_cues: [],
+        },
+      ],
+    },
+    0.2,
+  ),
+};
+
+function stageResult(artifact: unknown, stageCostUsd: number): StageResult {
+  return {
+    artifact,
+    cost_used: {
+      stage_cost_usd: stageCostUsd,
+      total_so_far_usd: stageCostUsd,
+      budget_remaining_usd: 3 - stageCostUsd,
+    },
+    decisions: [],
+  };
+}
+
+function captureProgram(build?: BuildHandlerOptions) {
   let stdout = "";
   let stderr = "";
-  const program = createProgram({
+  const io = {
     stdout: {
       write: (value: string) => {
         stdout += value;
@@ -155,6 +194,10 @@ function captureProgram() {
         return true;
       },
     },
+  };
+  const program = createProgram({
+    io,
+    build,
   });
 
   return {

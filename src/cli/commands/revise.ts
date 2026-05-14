@@ -84,7 +84,14 @@ export function createReviseHandler(io: CliIo) {
         ...(state.revision_notes ?? {}),
         [state.current_stage]: [...(state.revision_notes?.[state.current_stage] ?? []), note],
       };
-      await updateState(projectRoot, show, episode, { revision_notes: revisionNotes });
+      await updateState(projectRoot, show, episode, {
+        revision_notes: revisionNotes,
+        queued_stage_revision: {
+          stage: state.current_stage,
+          note,
+          queued_at: new Date().toISOString(),
+        },
+      });
 
       if (options.json) {
         const event: StageRevisionEvent = {
