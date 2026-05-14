@@ -170,6 +170,90 @@ const pipelineConfigs = {
       },
     },
   },
+  "daily-news": {
+    sourceManifest: "pipeline_defs/daily-news.yaml",
+    targetManifest: "bundled/pipelines/daily-news.yaml",
+    sourceSkillsDir: "skills/pipelines/daily-news",
+    targetSkillsDir: "bundled/skills/pipelines/daily-news",
+    transformStages: dailyNewsStages,
+    extraSkills: [
+      {
+        fileName: "publish-director.md",
+        content: dailyNewsPublishDirector(),
+      },
+    ],
+    frontmatter: {
+      "research-director.md": {
+        name: "daily-news-research-director",
+        description: "Find timely, attributed story candidates for a recurring news roundup.",
+        applies_to: "pipelines/daily-news",
+        stage: "research",
+        produces: "research_brief",
+      },
+      "idea-director.md": {
+        name: "daily-news-idea-director",
+        description: "Lock the daily news angle, story slate, voice, platform, and runtime.",
+        applies_to: "pipelines/daily-news",
+        stage: "idea",
+        produces: "brief",
+      },
+      "script-director.md": {
+        name: "daily-news-script-director",
+        description: "Write neutral, source-attributed broadcast narration for selected stories.",
+        applies_to: "pipelines/daily-news",
+        stage: "script",
+        produces: "script",
+      },
+      "capture-director.md": {
+        name: "daily-news-capture-director",
+        description: "Capture real source-page screenshots for each selected news story.",
+        applies_to: "pipelines/daily-news",
+        stage: "capture",
+        produces: "capture_manifest",
+      },
+      "scene-director.md": {
+        name: "daily-news-scene-director",
+        description: "Map narration and real screenshots into a broadcast-style timeline.",
+        applies_to: "pipelines/daily-news",
+        stage: "scene_plan",
+        produces: "scene_plan",
+      },
+      "asset-director.md": {
+        name: "daily-news-asset-director",
+        description: "Generate consistent TTS narration and optional newsroom audio beds.",
+        applies_to: "pipelines/daily-news",
+        stage: "assets",
+        produces: "asset_manifest",
+      },
+      "edit-director.md": {
+        name: "daily-news-edit-director",
+        description: "Lock lower-third timing, audio ducking, and render runtime for the roundup.",
+        applies_to: "pipelines/daily-news",
+        stage: "edit",
+        produces: "edit_decisions",
+      },
+      "compose-director.md": {
+        name: "daily-news-compose-director",
+        description: "Render and self-review the daily news episode with broadcast chrome intact.",
+        applies_to: "pipelines/daily-news",
+        stage: "compose",
+        produces: "render_report",
+      },
+      "publish-director.md": {
+        name: "daily-news-publish-director",
+        description: "Package the rendered news episode, sources, screenshots, and captions for delivery.",
+        applies_to: "pipelines/daily-news",
+        stage: "publish",
+        produces: "publish_log",
+      },
+      "executive-producer.md": {
+        name: "daily-news-executive-producer",
+        description: "Orchestrate fast recurring news production with source capture and strict revision limits.",
+        applies_to: "pipelines/daily-news",
+        role: "executive-producer",
+      },
+    },
+  },
 };
 
 let copied = 0;
@@ -254,6 +338,8 @@ function normalizePipelineManifest(slug, yaml, config) {
     ...(config.extraStages ?? []),
     ...(Array.isArray(original?.stages) ? original.stages.map((stage) => normalizeStage(slug, stage)) : []),
   ];
+  const transformedStages =
+    typeof config.transformStages === "function" ? config.transformStages(stages) : stages;
 
   return YAML.stringify(
     {
@@ -268,7 +354,7 @@ function normalizePipelineManifest(slug, yaml, config) {
         max_send_backs: numberOrDefault(orchestration.max_send_backs, 3),
         max_wall_time_minutes: numberOrDefault(orchestration.max_wall_time_minutes, 30),
       },
-      stages,
+      stages: transformedStages,
     },
     { lineWidth: 0 },
   );
@@ -322,6 +408,147 @@ function localizationSourceReviewStage() {
       "Speech, subtitle, and on-screen text risks are ready for localization planning",
     ],
     human_approval: "optional",
+  };
+}
+
+function dailyNewsStages(stages) {
+  const bySlug = new Map(stages.map((stage) => [stage.slug, stage]));
+  const research = bySlug.get("research");
+  const idea = bySlug.get("idea");
+  const script = bySlug.get("script");
+  const capture = bySlug.get("capture");
+  const scene = bySlug.get("scene_plan");
+  const assets = bySlug.get("assets");
+  const edit = bySlug.get("edit");
+  const compose = bySlug.get("compose");
+
+  return [
+    research && {
+      ...research,
+      review_focus: [
+        "At least 8-12 candidate headlines fetched before slate selection",
+        "Every headline has source URL, publisher, publish date, and brief summary",
+        "Recency window is honored and stale stories are dropped",
+      ],
+      success_criteria: [
+        "Schema-valid research_brief artifact",
+        "research_brief.headlines contains attributed, deduplicated candidates",
+      ],
+      human_approval: "required",
+    },
+    idea && {
+      ...idea,
+      review_focus: [
+        "Topic scope, source list, recency window, and selected story slate are explicit",
+        "Episode date, target runtime, platform, and TTS voice are locked",
+        "Render runtime choice is recorded before script",
+      ],
+      success_criteria: [
+        "Schema-valid brief artifact",
+        "Brief records selected stories and runtime/platform decisions",
+      ],
+      human_approval: "required",
+    },
+    script && {
+      ...script,
+      review_focus: [
+        "Each selected story has neutral, source-attributed narration",
+        "Episode opens with date and closes with a sign-off",
+        "No editorializing, clickbait, or unsupported claims",
+      ],
+      success_criteria: [
+        "Schema-valid script artifact",
+        "Script story count matches the selected story slate",
+      ],
+      human_approval: "required",
+    },
+    capture && {
+      ...capture,
+      tools_available: ["playwright_recording", "video_downloader"],
+      review_focus: [
+        "Captures are real source screenshots. Do not generate fake article pages.",
+        "Every selected story has an above-the-fold screenshot or explicit failure flag",
+        "Paywall, cookie banner, geo-block, and page-error issues are recorded",
+      ],
+      success_criteria: [
+        "Schema-valid capture_manifest artifact",
+        "All referenced screenshot files exist on disk",
+      ],
+      human_approval: "optional",
+    },
+    scene && {
+      ...scene,
+      review_focus: [
+        "Episode timeline maps intro, story screenshots, lower thirds, and outro",
+        "Publisher, headline, and date lower-third format is consistent",
+        "Capture quality flags are handled before compose",
+      ],
+      success_criteria: [
+        "Schema-valid scene_plan artifact",
+        "Total scene duration matches planned narration and screenshot hold timing",
+      ],
+      human_approval: "optional",
+    },
+    assets && {
+      ...assets,
+      review_focus: [
+        "One TTS audio file exists per intro, story, and outro block",
+        "Voice id and provider remain consistent across all narration",
+        "Narration loudness is normalized for broadcast clarity",
+      ],
+      success_criteria: [
+        "Schema-valid asset_manifest artifact",
+        "All referenced audio files exist on disk",
+      ],
+      human_approval: "optional",
+    },
+    edit && {
+      ...edit,
+      review_focus: [
+        "Render runtime remains the one locked in the brief",
+        "silent runtime swap is a CRITICAL governance violation",
+        "Lower-third timing and hard-cut story cadence are locked",
+        "Music ducking and narration timing match asset durations",
+      ],
+      success_criteria: [
+        "Schema-valid edit_decisions artifact",
+        "edit_decisions.render_runtime is present and matches the brief",
+      ],
+      human_approval: "optional",
+    },
+    compose && {
+      ...compose,
+      review_focus: [
+        "Rendered output duration matches planned duration within 2 seconds",
+        "Lower thirds render consistently across every story",
+        "Real screenshots do not show unwanted browser chrome, cookie banners, or scrollbars",
+        "Audio mix is clear and narration remains intelligible",
+      ],
+      success_criteria: [
+        "Schema-valid render_report artifact",
+        "Output file exists and passes ffprobe validation",
+      ],
+      human_approval: "optional",
+    },
+    dailyNewsPublishStage(),
+  ].filter(Boolean);
+}
+
+function dailyNewsPublishStage() {
+  return {
+    slug: "publish",
+    skill: "pipelines/daily-news/publish-director.md",
+    produces: "publish_log",
+    review_focus: [
+      "Rendered episode, source URLs, screenshots, and captions are packaged together",
+      "Publisher attribution and episode date survive into delivery metadata",
+      "Review notes identify any capture-quality or source-access caveats",
+    ],
+    success_criteria: [
+      "Schema-valid publish_log artifact",
+      "Export package contains rendered video, source manifest, screenshots, and metadata",
+    ],
+    human_approval: "required",
   };
 }
 
@@ -486,5 +713,54 @@ Give downstream stages a grounded source inventory, transcript confidence notes,
 - summaries cite probe data,
 - visible speech and on-screen text risks are explicit,
 - no target-language script or HeyGen video-translate job starts from an unreviewed source.
+`;
+}
+
+function dailyNewsPublishDirector() {
+  return `# Publish Director - Daily News Pipeline
+
+## When To Use
+
+Package the finished news roundup after compose has rendered and self-reviewed the episode. Daily-news delivery must preserve provenance: the viewer-facing video, source URLs, real screenshots, captions, and caveats should stay together.
+
+## Prerequisites
+
+| Layer | Resource | Purpose |
+|-------|----------|---------|
+| Schema | \`schemas/artifacts/publish_log.schema.json\` | Artifact validation |
+| Prior artifacts | \`priorArtifacts.compose\`, \`priorArtifacts.capture\`, \`priorArtifacts.research\`, \`priorArtifacts.script\` | Rendered output, source evidence, and narration context |
+| Playbook | Active news-broadcast playbook | Metadata and naming consistency |
+
+## Process
+
+### 1. Package The Episode
+
+Create a delivery folder containing the rendered episode, thumbnail or poster frame, optional caption files, and a source manifest.
+
+### 2. Preserve Source Provenance
+
+Include each selected story's publisher, headline, URL, publish date, captured screenshot path, and capture-quality flags. Do not strip paywall, cookie-banner, or geo-block notes; those notes explain visible artifacts.
+
+### 3. Label Recurring Outputs
+
+Use ISO episode dates and platform labels in filenames so scheduled runs do not collide:
+
+- \`daily-news-YYYY-MM-DD-vertical.mp4\`
+- \`daily-news-YYYY-MM-DD-sources.yaml\`
+- \`daily-news-YYYY-MM-DD-captions.srt\`
+
+### 4. Quality Gate
+
+- rendered video exists,
+- source manifest includes every selected story,
+- screenshots and captions are referenced by relative paths,
+- capture caveats remain visible in review notes,
+- the package is ready for upload or handoff without manual cleanup.
+
+## Common Pitfalls
+
+- Publishing the video without the source manifest.
+- Losing capture caveats that explain visible paywalls or cookie banners.
+- Reusing yesterday's date or filename in a scheduled run.
 `;
 }

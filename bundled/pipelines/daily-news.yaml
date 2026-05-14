@@ -1,0 +1,125 @@
+slug: daily-news
+display_name: Daily News
+description: Daily/recurring news roundup pipeline. Fetches top headlines via web_search, captures source-page screenshots via playwright-recording, scripts TTS narration, composes a fast-paced news montage with broadcast-style lower-third banners. Designed to run on a schedule (via /schedule skill) for hands-off daily episodes.
+status: beta
+master_clock: none
+orchestration:
+  budget_default_usd: 1.5
+  max_revisions_per_stage: 2
+  max_send_backs: 1
+  max_wall_time_minutes: 20
+stages:
+  - slug: research
+    skill: pipelines/daily-news/research-director.md
+    produces: research_brief
+    tools_available:
+      - web_search
+    review_focus:
+      - At least 8-12 candidate headlines fetched before slate selection
+      - Every headline has source URL, publisher, publish date, and brief summary
+      - Recency window is honored and stale stories are dropped
+    success_criteria:
+      - Schema-valid research_brief artifact
+      - research_brief.headlines contains attributed, deduplicated candidates
+    human_approval: required
+  - slug: idea
+    skill: pipelines/daily-news/idea-director.md
+    produces: brief
+    review_focus:
+      - Topic scope, source list, recency window, and selected story slate are explicit
+      - Episode date, target runtime, platform, and TTS voice are locked
+      - Render runtime choice is recorded before script
+    success_criteria:
+      - Schema-valid brief artifact
+      - Brief records selected stories and runtime/platform decisions
+    human_approval: required
+  - slug: script
+    skill: pipelines/daily-news/script-director.md
+    produces: script
+    review_focus:
+      - Each selected story has neutral, source-attributed narration
+      - Episode opens with date and closes with a sign-off
+      - No editorializing, clickbait, or unsupported claims
+    success_criteria:
+      - Schema-valid script artifact
+      - Script story count matches the selected story slate
+    human_approval: required
+  - slug: capture
+    skill: pipelines/daily-news/capture-director.md
+    produces: capture_manifest
+    tools_available:
+      - playwright_recording
+      - video_downloader
+    review_focus:
+      - Captures are real source screenshots. Do not generate fake article pages.
+      - Every selected story has an above-the-fold screenshot or explicit failure flag
+      - Paywall, cookie banner, geo-block, and page-error issues are recorded
+    success_criteria:
+      - Schema-valid capture_manifest artifact
+      - All referenced screenshot files exist on disk
+    human_approval: optional
+  - slug: scene_plan
+    skill: pipelines/daily-news/scene-director.md
+    produces: scene_plan
+    review_focus:
+      - Episode timeline maps intro, story screenshots, lower thirds, and outro
+      - Publisher, headline, and date lower-third format is consistent
+      - Capture quality flags are handled before compose
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Total scene duration matches planned narration and screenshot hold timing
+    human_approval: optional
+  - slug: assets
+    skill: pipelines/daily-news/asset-director.md
+    produces: asset_manifest
+    tools_available:
+      - tts_selector
+      - audio_mixer
+      - audio_enhance
+    review_focus:
+      - One TTS audio file exists per intro, story, and outro block
+      - Voice id and provider remain consistent across all narration
+      - Narration loudness is normalized for broadcast clarity
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - All referenced audio files exist on disk
+    human_approval: optional
+  - slug: edit
+    skill: pipelines/daily-news/edit-director.md
+    produces: edit_decisions
+    review_focus:
+      - Render runtime remains the one locked in the brief
+      - silent runtime swap is a CRITICAL governance violation
+      - Lower-third timing and hard-cut story cadence are locked
+      - Music ducking and narration timing match asset durations
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - edit_decisions.render_runtime is present and matches the brief
+    human_approval: optional
+  - slug: compose
+    skill: pipelines/daily-news/compose-director.md
+    produces: render_report
+    tools_available:
+      - video_compose
+      - audio_mixer
+      - video_stitch
+    review_focus:
+      - Rendered output duration matches planned duration within 2 seconds
+      - Lower thirds render consistently across every story
+      - Real screenshots do not show unwanted browser chrome, cookie banners, or scrollbars
+      - Audio mix is clear and narration remains intelligible
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output file exists and passes ffprobe validation
+    human_approval: optional
+  - slug: publish
+    skill: pipelines/daily-news/publish-director.md
+    produces: publish_log
+    review_focus:
+      - Rendered episode, source URLs, screenshots, and captions are packaged together
+      - Publisher attribution and episode date survive into delivery metadata
+      - Review notes identify any capture-quality or source-access caveats
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Export package contains rendered video, source manifest, screenshots, and metadata
+    human_approval: required

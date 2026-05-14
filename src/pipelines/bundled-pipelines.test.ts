@@ -110,6 +110,58 @@ describe("bundled pipeline manifests", () => {
     expect(existsSync(path.join(localizationSkillsDir, "executive-producer.md"))).toBe(true);
     expect(existsSync(path.join(localizationSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
   });
+
+  it("ships the daily-news manifest with nine directors plus an executive producer", async () => {
+    const manifest = await loadBundledManifest("daily-news");
+    const dailyNewsSkillsDir = path.join(bundledPipelineSkillsDir, "daily-news");
+    const directorFiles = [
+      "research-director.md",
+      "idea-director.md",
+      "script-director.md",
+      "capture-director.md",
+      "scene-director.md",
+      "asset-director.md",
+      "edit-director.md",
+      "compose-director.md",
+      "publish-director.md",
+    ];
+
+    expect(manifest).toMatchObject({
+      slug: "daily-news",
+      status: "beta",
+      master_clock: "none",
+      orchestration: {
+        budget_default_usd: 1.5,
+        max_revisions_per_stage: 2,
+        max_send_backs: 1,
+        max_wall_time_minutes: 20,
+      },
+    });
+    expect(manifest.stages.map((stage) => stage.slug)).toEqual([
+      "research",
+      "idea",
+      "script",
+      "capture",
+      "scene_plan",
+      "assets",
+      "edit",
+      "compose",
+      "publish",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "capture")?.tools_available).toEqual([
+      "playwright_recording",
+      "video_downloader",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "edit")?.review_focus).toContain(
+      "silent runtime swap is a CRITICAL governance violation",
+    );
+
+    for (const fileName of directorFiles) {
+      expect(existsSync(path.join(dailyNewsSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
+    }
+    expect(existsSync(path.join(dailyNewsSkillsDir, "executive-producer.md"))).toBe(true);
+    expect(existsSync(path.join(dailyNewsSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+  });
 });
 
 async function loadBundledManifest(slug: string) {

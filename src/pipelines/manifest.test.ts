@@ -111,6 +111,7 @@ describe("PipelineManifestSchema", () => {
           stage("assets"),
           stage("edit"),
           stage("compose"),
+          stage("publish"),
         ],
       }),
     ).not.toThrow();

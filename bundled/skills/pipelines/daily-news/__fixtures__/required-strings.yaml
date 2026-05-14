@@ -1,0 +1,33 @@
+pipeline: daily-news
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline state machine"
+  - file: executive-producer.md
+    section: "## Orchestration Limits"
+  - file: capture-director.md
+    section: "## Reference Inputs"
+  - file: edit-director.md
+    section: "## Recommended runtime: Remotion"
+required_phrases:
+  - file: capture-director.md
+    phrase: "Captures are real source screenshots. Do not generate fake article pages."
+  - file: edit-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: capture-director.md
+    phrase: "bundled/skills/agents/playwright-recording.md"
+  - file: capture-director.md
+    phrase: "bundled/skills/agents/video-download.md"
+  - file: executive-producer.md
+    phrase: "Round-3 revisions don't run"
+  - file: executive-producer.md
+    phrase: "Only one send-back is available"
+required_numerics:
+  - file: executive-producer.md
+    numeric: "max_revisions_per_stage: 2"
+  - file: executive-producer.md
+    numeric: "max_send_backs: 1"
+  - file: executive-producer.md
+    numeric: "5-15 min"
+required_modules:
+  - file: executive-producer.md
+    module: "Mandatory locked decisions"

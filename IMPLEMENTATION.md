@@ -1315,8 +1315,8 @@ A vitest suite under `tests/content-fidelity/` greps the corresponding skill mar
 ## L-12 — Daily-news pipeline + director skills
 
 **Standard acceptance.**
-- [ ] Pipeline + 9 director skills (+ capture-director) + EP + fixture.
-- [ ] **Content-fidelity**: orchestration override in manifest verbatim — `max_revisions_per_stage: 2`, `max_send_backs: 1` (unique to daily-news; runner enforces). Required phrases `"Captures are real source screenshots. Do not generate fake article pages."` + `"silent runtime swap is a CRITICAL governance violation"`. Cross-refs `playwright-recording`, `video-download`. Reviewer enforces 2/1 limits — round-3 revisions don't run.
+- [x] Pipeline + 9 director skills (+ capture-director) + EP + fixture.
+- [x] **Content-fidelity**: orchestration override in manifest verbatim — `max_revisions_per_stage: 2`, `max_send_backs: 1` (unique to daily-news; runner enforces). Required phrases `"Captures are real source screenshots. Do not generate fake article pages."` + `"silent runtime swap is a CRITICAL governance violation"`. Cross-refs `playwright-recording`, `video-download`. Reviewer enforces 2/1 limits — round-3 revisions don't run.
 
 **Cross-references.** audit C-33.
 
