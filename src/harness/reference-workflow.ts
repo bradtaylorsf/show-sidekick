@@ -214,6 +214,7 @@ function emitReferenceAnalysis(
     motion_type: scene.motion_type,
     flow_variance: scene.flow_variance,
   }));
+  const narrative = referenceNarrative(input.brief, fiveAspectBreakdown);
 
   if (input.json) {
     io.stdout.write(
@@ -233,6 +234,7 @@ function emitReferenceAnalysis(
         five_aspect_breakdown: fiveAspectBreakdown,
         pacing_style: input.brief.pacing_style,
         promise_elements: input.brief.promise_elements,
+        human_summary: narrative,
         required_next_steps: [
           "present_5_aspect_breakdown",
           "ask_critical_questions",
@@ -244,24 +246,36 @@ function emitReferenceAnalysis(
     return;
   }
 
-  const pacing = input.brief.pacing_style ?? "unspecified";
-  const promises = input.brief.promise_elements.length > 0 ? input.brief.promise_elements.join(", ") : "none captured";
-  const breakdownLines = fiveAspectBreakdown.flatMap((scene) => [
-    `- ${scene.scene_ref}`,
-    `  Subject: ${joinAspect(scene.subject)}`,
-    `  Subject Motion: ${joinAspect(scene.subject_motion)}`,
-    `  Scene: ${joinAspect(scene.scene)}`,
-    `  Spatial Framing: ${joinAspect(scene.spatial_framing)}`,
-    `  Camera: ${joinAspect(scene.camera)}`,
-  ]);
   io.stdout.write(
     [
-      `reference analysis: ${input.brief.scenes.length} scenes, pacing=${pacing}`,
-      `promise elements: ${promises}`,
-      "5-aspect breakdown:",
-      ...breakdownLines,
+      "I've watched the reference. Here's what I see:",
+      "",
+      `Content: ${narrative.content}`,
+      `Style: ${narrative.style}`,
+      `Structure: ${narrative.structure}`,
+      `Motion: ${narrative.motion}`,
+      "",
+      "5-aspect breakdown (per shot or shot-group):",
+      ...narrative.five_aspect_breakdown.flatMap((scene) => [
+        `- ${scene.scene_ref}`,
+        `  Subject: ${scene.subject}`,
+        `  Subject Motion: ${scene.subject_motion}`,
+        `  Scene: ${scene.scene}`,
+        `  Spatial Framing: ${scene.spatial_framing}`,
+        `  Camera: ${scene.camera}`,
+      ]),
+      "",
+      "What makes it work:",
+      ...narrative.what_makes_it_work.map((item) => `- ${item}`),
+      "",
+      "Critical questions before proposing:",
+      ...narrative.critical_questions.map((item) => `- ${item}`),
+      "",
+      "Differentiated concept directions:",
+      ...narrative.concept_directions.map((item) => `- ${item}`),
+      "",
       `video_analysis_brief: ${input.artifactPath}`,
-      "next: present the 5-aspect breakdown, ask the critical questions, propose 2-3 differentiated concepts, then enter the pipeline after sample approval.",
+      "next: answer the critical questions, choose a concept direction, approve a sample, then enter the selected pipeline.",
       "",
     ].join("\n"),
   );
@@ -273,6 +287,85 @@ function slugOf(value: LoadedShow | LoadedEpisode | string): string {
 
 function joinAspect(values: string[]): string {
   return values.length > 0 ? values.join("; ") : "N/A";
+}
+
+function referenceNarrative(
+  brief: VideoAnalysisBrief,
+  breakdown: Array<{
+    scene_ref: string;
+    subject: string[];
+    subject_motion: string[];
+    scene: string[];
+    spatial_framing: string[];
+    camera: string[];
+    motion_type: string;
+    flow_variance: number;
+  }>,
+): {
+  content: string;
+  style: string;
+  structure: string;
+  motion: string;
+  five_aspect_breakdown: Array<{
+    scene_ref: string;
+    subject: string;
+    subject_motion: string;
+    scene: string;
+    spatial_framing: string;
+    camera: string;
+  }>;
+  what_makes_it_work: string[];
+  critical_questions: string[];
+  concept_directions: string[];
+} {
+  const motionCounts = countMotionTypes(brief);
+  const pacing = brief.pacing_style ?? "unspecified pacing";
+  const promises = brief.promise_elements.length > 0 ? brief.promise_elements.join(", ") : "no explicit promise elements captured";
+  const dominantMotion = dominantMotionType(motionCounts);
+
+  return {
+    content: `${brief.scenes.length} analyzed shot${brief.scenes.length === 1 ? "" : "s"} built around ${promises}.`,
+    style: `${pacing} energy with ${dominantMotion.replace(/_/gu, " ")} as the dominant visual treatment.`,
+    structure: `${brief.scenes.length} scene group${brief.scenes.length === 1 ? "" : "s"}; downstream stages should preserve the labeled shot order rather than collapsing it into prose.`,
+    motion: `${motionCounts.motion_clip} motion clips, ${motionCounts.animated_still} animated stills, ${motionCounts.static_image} static images.`,
+    five_aspect_breakdown: breakdown.map((scene) => ({
+      scene_ref: scene.scene_ref,
+      subject: joinAspect(scene.subject),
+      subject_motion: joinAspect(scene.subject_motion),
+      scene: joinAspect(scene.scene),
+      spatial_framing: joinAspect(scene.spatial_framing),
+      camera: joinAspect(scene.camera),
+    })),
+    what_makes_it_work: [
+      `Clear pacing signal: ${pacing}.`,
+      `Reusable promise elements: ${promises}.`,
+      `Motion grammar is explicit enough to pick a matching production path: ${dominantMotion.replace(/_/gu, " ")}.`,
+    ],
+    critical_questions: [
+      "Do you want narration, visuals-only with music, or a mix?",
+      "How long should the new video be relative to this reference?",
+      "Which reference elements should be preserved, avoided, or transformed?",
+    ],
+    concept_directions: [
+      "Close-match concept: keep the pacing and shot grammar, swap in the user's subject.",
+      "Elevated concept: preserve the hook technique but upgrade composition, typography, and finish.",
+      "Lower-cost concept: keep the story structure while substituting available tools and simpler motion.",
+    ],
+  };
+}
+
+function countMotionTypes(brief: VideoAnalysisBrief): { motion_clip: number; animated_still: number; static_image: number } {
+  return brief.scenes.reduce(
+    (counts, scene) => {
+      counts[scene.motion_type] += 1;
+      return counts;
+    },
+    { motion_clip: 0, animated_still: 0, static_image: 0 },
+  );
+}
+
+function dominantMotionType(counts: { motion_clip: number; animated_still: number; static_image: number }): keyof typeof counts {
+  return (Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] ?? "motion_clip") as keyof typeof counts;
 }
 
 function referenceWorkflowLogger(): ToolLogger {

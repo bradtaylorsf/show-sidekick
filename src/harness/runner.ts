@@ -908,6 +908,7 @@ async function runStageReview(
     estimatedCostUsd: estimatedCostForReview(opts.pipeline, stage, opts.runOptions),
     cumulativeEstimatedUsd: cumulative.cumulativeEstimatedUsd,
     cumulativeActualUsd: cumulative.cumulativeActualUsd,
+    costDriftThreshold: opts.runOptions.cost_drift_threshold ?? opts.pipeline.orchestration.cost_drift_threshold,
     costLog: cumulative.costLog,
     referenceBrief: opts.videoAnalysisBrief,
     videoAnalysisBrief: opts.videoAnalysisBrief,
@@ -1158,6 +1159,8 @@ function buildToolPolicy(input: {
   const previous = majorChangePreviousState(input.decisionLog, input.priorArtifacts, input.opts.runOptions);
 
   return {
+    stage: input.stage.slug,
+    timestamp: input.now().toISOString(),
     sampleOrBatch: input.opts.runOptions.sample ? "sample" : "batch",
     budgetUsd: input.budget,
     budgetRemainingUsd: budgetRemainingFromCostLog(input.budget, input.costLog, input.cumulativeCost),
@@ -1165,6 +1168,12 @@ function buildToolPolicy(input: {
     showEpisode: { show: input.opts.show.slug, episode: input.opts.episode.slug },
     mode: toolInteractionMode(input.opts),
     io: toolInteractionIo(input.opts.io),
+    recordDecision: async (entry) => {
+      input.decisions.push(entry);
+      return await recordDecision({ show: input.opts.show.slug, episode: input.opts.episode.slug }, entry, {
+        root: input.opts.projectRoot,
+      });
+    },
     majorChange: {
       previous,
       next: previous,

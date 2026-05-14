@@ -63,6 +63,7 @@ predit tools <name>                      # tool detail (CLI vs API, env vars, co
 |---|---|
 | `--json` | Machine-readable output (for agents and scripts) |
 | `--dry-run` | Plan without spending |
+| `--cost-drift-threshold <multiplier>` | Override the cumulative cost-drift reviewer threshold for this run |
 | `--verbose` / `-v` | Show every decision and tool call |
 | `--no-color` | Strip ANSI color codes |
 | `--config <path>` | Override `show.yaml` location |
@@ -82,9 +83,9 @@ predit status                            # all episodes under the current show
 
 ## Reference-Driven Builds
 
-`predit build <show>/<episode> --reference <url-or-path>` analyzes a reference video before the Runner starts. When the flag is omitted, `inputs.reference` in `episode.yaml` is used if present. URLs are detected with `new URL()` for `http:`, `https:`, and `file:` protocols; non-URLs resolve first against cwd, then against `<project>/music_library/`.
+`predit build <show>/<episode> --reference <url-or-path>` analyzes a reference video before pipeline selection and before the Runner starts. When the flag is omitted, `inputs.reference` in `episode.yaml` is used if present. URLs are detected with `new URL()` for `http:`, `https:`, and `file:` protocols; non-URLs resolve first against cwd, then against `<project>/music_library/`.
 
-The analysis writes `projects/<show>/<episode>/artifacts/video_analysis_brief.json`, emits a `reference_analysis` event in JSON mode, and threads the `video_analysis_brief` artifact into every stage and reviewer pass.
+The analysis writes `projects/<show>/<episode>/artifacts/video_analysis_brief.json`, emits a `reference_analysis` event in JSON mode, and threads the `video_analysis_brief` artifact into every stage and reviewer pass. If the episode omits `pipeline`, the brief may steer selection from the show's default to a declared reference-capable pipeline; an explicit `episode.pipeline` remains authoritative.
 
 ## Output format
 

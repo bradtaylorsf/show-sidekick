@@ -24,7 +24,14 @@ import { Registry } from "../../registry/index.js";
 import { deepMerge } from "../../shows/deep-merge.js";
 import { PlaybookSchema } from "../../shows/playbook.js";
 import type { CliIo, GlobalOptions } from "./stub.js";
-import { loadRunTarget, parseStageRunOptions, type LoadedRunTarget, type StageFlagOptions } from "./run-target.js";
+import {
+  loadRunTargetInput,
+  parseStageRunOptions,
+  selectRunTargetPipeline,
+  type LoadedRunTarget,
+  type LoadedRunTargetInput,
+  type StageFlagOptions,
+} from "./run-target.js";
 
 type BuildFinishedEvent = {
   event: "build_finished";
@@ -41,10 +48,10 @@ type BuildFinishedEvent = {
 };
 
 export type BuildHandlerOptions = {
-  registryFactory?: (loaded: LoadedRunTarget) => Registry | Promise<Registry>;
+  registryFactory?: (loaded: LoadedRunTargetInput) => Registry | Promise<Registry>;
   referenceResolver?: (input: {
     source: ReferenceSource;
-    loaded: LoadedRunTarget;
+    loaded: LoadedRunTargetInput;
     registry: Registry;
     io: CliIo;
     json: boolean;
@@ -67,11 +74,10 @@ export function createBuildHandler(io: CliIo, handlerOptions: BuildHandlerOption
   return async (target: string, ...actionArgs: unknown[]): Promise<void> => {
     const command = actionArgs.at(-1) as Command;
     const options = command.optsWithGlobals<GlobalOptions>() as StageFlagOptions;
-    const loaded = await loadRunTarget(target);
-    const runOptions = parseStageRunOptions(options, loaded.pipeline);
-    const registry = await (handlerOptions.registryFactory ?? defaultRegistryFactory)(loaded);
-    const referenceSource = resolveReferenceSource(referenceValue(options, loaded), {
-      projectRoot: loaded.projectRoot,
+    const input = await loadRunTargetInput(target);
+    const registry = await (handlerOptions.registryFactory ?? defaultRegistryFactory)(input);
+    const referenceSource = resolveReferenceSource(referenceValue(options, input), {
+      projectRoot: input.projectRoot,
       cwd: process.cwd(),
     });
     const videoAnalysisBrief =
@@ -79,12 +85,14 @@ export function createBuildHandler(io: CliIo, handlerOptions: BuildHandlerOption
         ? undefined
         : await (handlerOptions.referenceResolver ?? defaultReferenceResolver)({
             source: referenceSource,
-            loaded,
+            loaded: input,
             registry,
             io,
             json: options.json === true,
             now: handlerOptions.now,
           });
+    const loaded = await selectRunTargetPipeline(input, { videoAnalysisBrief });
+    const runOptions = parseStageRunOptions(options, loaded.pipeline);
     const dispatcher = await (handlerOptions.dispatcherFactory ?? defaultDispatcherFactory)({
       loaded,
       registry,
@@ -117,16 +125,15 @@ export function createBuildHandler(io: CliIo, handlerOptions: BuildHandlerOption
   };
 }
 
-async function defaultRegistryFactory(loaded: LoadedRunTarget): Promise<Registry> {
+async function defaultRegistryFactory(_loaded: LoadedRunTargetInput): Promise<Registry> {
   const registry = new Registry();
   await registry.discover();
-  await registry.registerProjectTools(loaded.projectRoot, loaded.showSlug, loaded.episodeSlug);
   return registry;
 }
 
 async function defaultReferenceResolver(input: {
   source: ReferenceSource;
-  loaded: LoadedRunTarget;
+  loaded: LoadedRunTargetInput;
   registry: Registry;
   io: CliIo;
   json: boolean;
@@ -160,7 +167,7 @@ function defaultDispatcherFactory(input: {
   });
 }
 
-function referenceValue(options: StageFlagOptions, loaded: LoadedRunTarget): string | undefined {
+function referenceValue(options: StageFlagOptions, loaded: LoadedRunTargetInput): string | undefined {
   if (options.reference !== undefined) {
     return options.reference;
   }

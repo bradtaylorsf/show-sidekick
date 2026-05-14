@@ -78,6 +78,7 @@ describe("announceBeforeExecute", () => {
 
   it("emits an announce NDJSON event in non-interactive mode and proceeds", async () => {
     const events: Array<{ event: string; payload: unknown }> = [];
+    const decisions: DecisionEntry[] = [];
     const tool = makeTool();
 
     await expect(
@@ -85,6 +86,8 @@ describe("announceBeforeExecute", () => {
         tool,
         params: { model: "batch-model", units: 2 },
         ctx,
+        stage: "assets",
+        timestamp: "2026-05-13T12:00:00Z",
         reason: "batch render approved",
         mode: { json: true },
         io: {
@@ -92,6 +95,10 @@ describe("announceBeforeExecute", () => {
           prompt: () => {
             throw new Error("prompt should not be called");
           },
+        },
+        recordDecision: async (entry) => {
+          decisions.push(entry);
+          return decisions;
         },
       }),
     ).resolves.toBe("ok");
@@ -107,6 +114,14 @@ describe("announceBeforeExecute", () => {
           estimate_usd: 1,
         }),
       },
+    ]);
+    expect(decisions).toEqual([
+      expect.objectContaining({
+        stage: "assets",
+        category: "budget_tradeoff",
+        picked: "proceed_without_approval",
+        reason: expect.stringContaining("Non-interactive run proceeded after announcing video-gen"),
+      }),
     ]);
   });
 

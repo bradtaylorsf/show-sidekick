@@ -11,6 +11,7 @@ export type StageRunOptions = {
   from?: string;
   to?: string;
   only?: string;
+  cost_drift_threshold?: number;
   nonInteractive?: boolean;
 };
 

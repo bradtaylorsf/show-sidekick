@@ -136,6 +136,7 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
     .option("--only <stage>", "run only one stage")
     .option("--to <stage>", "stop after a stage")
     .option("--budget <usd>", "set a budget in USD")
+    .option("--cost-drift-threshold <multiplier>", "override the cumulative cost drift review threshold")
     .option("--reference <url-or-path>", "analyze a reference video URL or local file before running")
     .option("--non-interactive", "pause at required approvals and exit")
     .action(createBuildHandler(io, buildOptions));

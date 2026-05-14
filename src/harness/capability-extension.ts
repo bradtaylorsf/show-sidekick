@@ -2,6 +2,7 @@ import type { Dirent } from "node:fs";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { RegistryError } from "../registry/errors.js";
 
 type SlugRef = string | { slug: string };
 
@@ -88,7 +89,15 @@ async function listToolExtensions(dir: string): Promise<CapabilityExtension[]> {
 }
 
 async function isPaidToolModule(filePath: string): Promise<boolean> {
-  const imported = (await import(pathToFileURL(filePath).href)) as unknown;
+  let imported: unknown;
+
+  try {
+    imported = (await import(pathToFileURL(filePath).href)) as unknown;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new RegistryError("project-tool-failed", `Failed to import project tool ${filePath}: ${message}`, filePath);
+  }
+
   if (!isRecord(imported) || !isRecord(imported.default)) {
     return false;
   }

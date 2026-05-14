@@ -74,6 +74,8 @@ export function defineTool<IS extends ZodTypeAny, OS extends ZodTypeAny>(
         tool: tool as DefinedTool<IS, OS>,
         params,
         ctx,
+        stage: policy?.stage,
+        timestamp: policy?.timestamp,
         reason: policy?.reason ?? tool.best_for,
         sampleOrBatch: policy?.sampleOrBatch,
         model: policy?.model,
@@ -85,6 +87,7 @@ export function defineTool<IS extends ZodTypeAny, OS extends ZodTypeAny>(
         showEpisode: policy?.showEpisode,
         mode: policy?.mode,
         io: policy?.io,
+        recordDecision: policy?.recordDecision,
       },
       () => execute(params, ctx),
     );

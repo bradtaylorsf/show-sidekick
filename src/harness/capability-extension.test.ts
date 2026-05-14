@@ -62,6 +62,22 @@ describe("loadCapabilityExtensions", () => {
       all: [],
     });
   });
+
+  it("wraps project tool import failures with the registry project-tool error shape", async () => {
+    const root = await scratchProject();
+    await mkdir(path.join(root, "projects", "show", "episode", "tools"), { recursive: true });
+    await writeFile(
+      path.join(root, "projects", "show", "episode", "tools", "broken.js"),
+      "throw new Error('boom');\nexport default {};\n",
+      "utf8",
+    );
+
+    await expect(loadCapabilityExtensions({ projectRoot: root, show: "show", episode: "episode" })).rejects.toMatchObject({
+      name: "RegistryError",
+      code: "project-tool-failed",
+      message: expect.stringContaining("Failed to import project tool"),
+    });
+  });
 });
 
 async function scratchProject(): Promise<string> {

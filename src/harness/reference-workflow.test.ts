@@ -150,7 +150,42 @@ describe("analyzeReference", () => {
       scene_count: 1,
       pacing_style: "fast_paced",
       promise_elements: ["match cut"],
+      human_summary: {
+        critical_questions: expect.arrayContaining([expect.stringContaining("narration")]),
+        concept_directions: expect.arrayContaining([expect.stringContaining("Close-match")]),
+      },
     });
+  });
+
+  it("prints a labeled conversational 5-aspect report for human runs", async () => {
+    const root = await scratchProject();
+    const show = "show";
+    const episode = "episode";
+    const sourcePath = path.join(root, "reference.mp4");
+    await writeFile(sourcePath, "video", "utf8");
+
+    const registry = registryWithBrief(brief);
+    const output = captureIo();
+
+    await analyzeReference({
+      source: { kind: "file", original: sourcePath, absolutePath: sourcePath },
+      registry,
+      projectRoot: root,
+      show,
+      episode,
+      io: output.io,
+      json: false,
+      now: () => new Date("2026-05-12T15:42:00.000Z"),
+    });
+
+    expect(output.stdout()).toContain("I've watched the reference. Here's what I see:");
+    expect(output.stdout()).toContain("Content:");
+    expect(output.stdout()).toContain("Style:");
+    expect(output.stdout()).toContain("Structure:");
+    expect(output.stdout()).toContain("Motion:");
+    expect(output.stdout()).toContain("5-aspect breakdown (per shot or shot-group):");
+    expect(output.stdout()).toContain("Critical questions before proposing:");
+    expect(output.stdout()).toContain("Differentiated concept directions:");
   });
 });
 
@@ -170,6 +205,26 @@ const brief: VideoAnalysisBrief = {
     },
   ],
 };
+
+function registryWithBrief(result: VideoAnalysisBrief): Registry {
+  return new Registry({
+    tools: [
+      defineTool({
+        name: "video_analyzer",
+        capability: "video_analysis",
+        provider: "predit",
+        status: "beta",
+        integration: { kind: "library", package: "predit", install: "pnpm add predit" },
+        best_for: "test reference analysis",
+        input: z.object({ path: z.string() }),
+        output: VideoAnalysisBriefSchema,
+        async execute() {
+          return result;
+        },
+      }),
+    ],
+  });
+}
 
 async function scratchProject(): Promise<string> {
   const root = path.join(tmpdir(), `predit-reference-${randomUUID()}`);

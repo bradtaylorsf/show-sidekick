@@ -794,6 +794,47 @@ describe("Runner", () => {
     );
   });
 
+  it("uses an orchestration cost-drift threshold when reviewing cumulative cost", async () => {
+    const root = await scratchProject();
+    const pipeline = pipelineManifest(
+      [
+        stage("assets", {
+          produces: "unknown_artifact",
+          estimated_cost: {
+            sample: { usd: 0.5 },
+            full: { usd: 1 },
+          },
+        }),
+      ],
+      { max_revisions_per_stage: 0, cost_drift_threshold: 2 },
+    );
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: scriptedDispatcher([], {
+        assets: stageResult({ ok: true }, 1.31),
+      }),
+      runOptions: { sample: false },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    const checkpoint = await readCheckpoint(root, "show", "episode", "assets");
+    expect(checkpoint.review_summary?.findings ?? []).not.toContainEqual(
+      expect.objectContaining({
+        title: "Cumulative cost drift exceeded estimate",
+      }),
+    );
+  });
+
   it("halts compose when final_review fails, preserves the render, and allows force approval", async () => {
     const root = await scratchProject();
     await writePipeline(root, "demo", ["compose"]);
@@ -1160,6 +1201,7 @@ function pipelineManifest(
     stages,
     orchestration: {
       budget_default_usd: 3,
+      cost_drift_threshold: 1.3,
       max_revisions_per_stage: 2,
       max_send_backs: 3,
       max_wall_time_minutes: 30,

@@ -123,6 +123,8 @@ export type FirstPaidCallApprovalInput = {
 };
 
 export interface ToolExecutionPolicy {
+  stage?: string;
+  timestamp?: string;
   reason?: string;
   sampleOrBatch?: "sample" | "batch";
   model?: string;
@@ -133,6 +135,7 @@ export interface ToolExecutionPolicy {
   showEpisode?: string | { show: string; episode: string };
   mode?: ToolInteractionMode;
   io?: ToolInteractionIO;
+  recordDecision?: (entry: DecisionEntry) => DecisionLog | Promise<DecisionLog>;
   majorChange?: {
     previous: ToolExecutionState;
     next: ToolExecutionState;

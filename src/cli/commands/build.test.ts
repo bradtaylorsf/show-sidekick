@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -6,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { VideoAnalysisBrief } from "../../artifacts/video-analysis-brief.js";
 import { Registry } from "../../registry/index.js";
 import type { ReviewContext } from "../../review/runner.js";
+import videoAnalyzer from "../../tools/video-analyzer.js";
 import type { StageContext, StageResult } from "../../harness/index.js";
 import { createProgram } from "../program.js";
 import type { BuildHandlerOptions } from "./build.js";
@@ -134,6 +137,75 @@ describe("build command", () => {
     });
   });
 
+  it("uses a reference brief as a hint before pipeline selection when the episode has no explicit pipeline", async () => {
+    const root = await scratchProject();
+    const referencePath = path.join(root, "music_library", "reference.mp4");
+    await mkdir(path.dirname(referencePath), { recursive: true });
+    await writeFile(referencePath, "video", "utf8");
+    await writePipeline(root, "daily-news", { referenceSupported: false });
+    await writePipeline(root, "hybrid", { stages: ["source_review", "script"] });
+    await writeShow(root, "show", "daily-news", undefined, ["hybrid"]);
+    await writeEpisode(root, "show", "episode", undefined, "reference.mp4");
+    process.chdir(root);
+
+    const contexts: StageContext[] = [];
+    const { program, output } = captureProgram({
+      registryFactory: () => new Registry({ tools: [] }),
+      referenceResolver: () => referenceBrief,
+      dispatcherFactory: () => async (ctx) => {
+        contexts.push(ctx);
+        return stageResult({ stage: ctx.stage.slug }, 0);
+      },
+      reviewer: (stageSlug, _artifact, ctx) => passReview(stageSlug, ctx.round ?? 0),
+      now: () => new Date("2026-05-12T15:42:00.000Z"),
+    });
+
+    await program.parseAsync(["node", "predit", "--json", "build", "show/episode"], { from: "node" });
+
+    const finished = JSON.parse(output().stdout.trim()) as { pipeline: string };
+    expect(finished.pipeline).toBe("hybrid");
+    expect(contexts.map((ctx) => ctx.pipeline.slug)).toEqual(["hybrid", "hybrid"]);
+    expect(contexts.map((ctx) => ctx.stage.slug)).toEqual(["source_review", "script"]);
+  });
+
+  it.skipIf(!hasBinary("ffmpeg") || !hasBinary("ffprobe"))(
+    "drives a fixture video through the real video analyzer before Runner execution",
+    async () => {
+      const root = await scratchProject();
+      const referencePath = path.join(root, "music_library", "reference.mp4");
+      await mkdir(path.dirname(referencePath), { recursive: true });
+      makeFixtureVideo(referencePath);
+      await writeEpisode(root, "show", "episode", "framework-smoke", "reference.mp4");
+      process.chdir(root);
+
+      const contexts: StageContext[] = [];
+      const { program, output } = captureProgram({
+        registryFactory: () => new Registry({ tools: [videoAnalyzer] }),
+        dispatcherFactory: () => async (ctx) => {
+          contexts.push(ctx);
+          return fixtures[ctx.stage.slug] ?? stageResult({ unexpected: ctx.stage.slug }, 0);
+        },
+        reviewer: (stageSlug, _artifact, ctx) => passReview(stageSlug, ctx.round ?? 0),
+        now: () => new Date("2026-05-12T15:42:00.000Z"),
+      });
+
+      await program.parseAsync(["node", "predit", "--json", "build", "show/episode"], { from: "node" });
+
+      const events = output()
+        .stdout.trim()
+        .split(/\r?\n/u)
+        .map((line) => JSON.parse(line) as { event: string; [key: string]: unknown });
+      expect(events.map((event) => event.event)).toEqual(["reference_analysis", "build_finished"]);
+      expect(events[0]).toMatchObject({
+        event: "reference_analysis",
+        scene_count: 1,
+      });
+      expect(contexts[0]?.priorArtifacts.video_analysis_brief).toMatchObject({
+        scenes: [expect.objectContaining({ motion_type: "motion_clip" })],
+      });
+    },
+  );
+
   it("prefers --reference over episode inputs.reference", async () => {
     const root = await scratchProject();
     const referencePath = path.join(root, "flag-reference.mp4");
@@ -189,9 +261,19 @@ describe("build command", () => {
   });
 });
 
-async function writeShow(root: string, slug: string, pipeline: string, playbook?: string): Promise<void> {
+async function writeShow(
+  root: string,
+  slug: string,
+  pipeline: string,
+  playbook?: string,
+  additionalPipelines: string[] = [],
+): Promise<void> {
   const showDir = path.join(root, "shows", slug);
   await mkdir(path.join(showDir, "episodes"), { recursive: true });
+  const pipelineEntries = [
+    ...(playbook === undefined ? [`  ${pipeline}: {}`] : [`  ${pipeline}:`, `    playbook: ${playbook}`]),
+    ...additionalPipelines.map((name) => `  ${name}: {}`),
+  ];
   await writeFile(
     path.join(showDir, "show.yaml"),
     [
@@ -199,7 +281,7 @@ async function writeShow(root: string, slug: string, pipeline: string, playbook?
       'display_name: "Test Show"',
       "created: 2026-05-12",
       "pipelines:",
-      ...(playbook === undefined ? [`  ${pipeline}: {}`] : [`  ${pipeline}:`, `    playbook: ${playbook}`]),
+      ...pipelineEntries,
       "defaults:",
       `  pipeline: ${pipeline}`,
       "",
@@ -212,7 +294,7 @@ async function writeEpisode(
   root: string,
   show: string,
   slug: string,
-  pipeline: string,
+  pipeline: string | undefined,
   reference?: string,
 ): Promise<void> {
   await writeFile(
@@ -221,7 +303,7 @@ async function writeEpisode(
       `slug: ${slug}`,
       'title: "Episode"',
       "created: 2026-05-12",
-      `pipeline: ${pipeline}`,
+      ...(pipeline === undefined ? [] : [`pipeline: ${pipeline}`]),
       ...(reference === undefined ? [] : ["inputs:", `  reference: ${reference}`]),
       "",
     ].join("\n"),
@@ -229,24 +311,65 @@ async function writeEpisode(
   );
 }
 
-async function writePipeline(root: string, slug: string): Promise<void> {
+async function writePipeline(
+  root: string,
+  slug: string,
+  options: { stages?: string[]; referenceSupported?: boolean } = {},
+): Promise<void> {
+  const stages = options.stages ?? ["research", "script"];
   await writeFile(
     path.join(root, ".predit", "pipelines", `${slug}.yaml`),
     [
       `slug: ${slug}`,
+      ...(options.referenceSupported === undefined
+        ? []
+        : ["reference_input:", `  supported: ${options.referenceSupported ? "true" : "false"}`]),
       "stages:",
-      "  - slug: research",
-      "    skill: pipelines/framework-smoke/research-director.md",
-      "    produces: research_brief",
-      "    human_approval: never",
-      "  - slug: script",
-      "    skill: pipelines/framework-smoke/script-director.md",
-      "    produces: script",
-      "    human_approval: never",
+      ...stages.flatMap((stageSlug) => [
+        `  - slug: ${stageSlug}`,
+        `    skill: pipelines/framework-smoke/${stageSlug}-director.md`,
+        `    produces: ${producesForTestStage(stageSlug)}`,
+        "    human_approval: never",
+      ]),
       "",
     ].join("\n"),
     "utf8",
   );
+}
+
+function producesForTestStage(stageSlug: string): string {
+  if (stageSlug === "research") {
+    return "research_brief";
+  }
+  if (stageSlug === "script") {
+    return "script";
+  }
+  if (stageSlug === "source_review") {
+    return "source_media_review";
+  }
+
+  return `${stageSlug}_artifact`;
+}
+
+function hasBinary(binary: string): boolean {
+  const pathEnv = process.env.PATH ?? "";
+  return pathEnv.split(path.delimiter).some((dir) => existsSync(path.join(dir, binary)));
+}
+
+function makeFixtureVideo(outputPath: string): void {
+  execFileSync("ffmpeg", [
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-y",
+    "-f",
+    "lavfi",
+    "-i",
+    "color=c=red:s=32x32:d=1:r=5",
+    "-pix_fmt",
+    "yuv420p",
+    outputPath,
+  ]);
 }
 
 const fixtures: Record<string, StageResult> = {
