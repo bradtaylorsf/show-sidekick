@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it, vi } from "vitest";
 import type { Tool, ToolContext } from "../registry/tool.js";
-import clipEmbedder from "./clip_embedder.js";
 import clipSearch from "./clip_search.js";
 
 function noopLogger(): ToolContext["logger"] {
@@ -35,18 +34,18 @@ describe("clip_search tool", () => {
 
     const execute = vi.fn(async (params: unknown) => {
       if (isRecord(params) && typeof params.text === "string") {
-        return { embedding: [1, 0] };
+        return { vector: [1, 0], model_id: "mock-clip" };
       }
 
-      if (isRecord(params) && typeof params.video_path === "string" && params.video_path.endsWith("calm.mp4")) {
-        return { embedding: [0.95, 0.05] };
+      if (isRecord(params) && typeof params.path === "string" && params.path.endsWith("calm.mp4")) {
+        return { vector: [0.95, 0.05], model_id: "mock-clip" };
       }
 
-      if (isRecord(params) && typeof params.video_path === "string" && params.video_path.endsWith("neutral.mov")) {
-        return { embedding: [0.5, 0.5] };
+      if (isRecord(params) && typeof params.path === "string" && params.path.endsWith("neutral.mov")) {
+        return { vector: [0.5, 0.5], model_id: "mock-clip" };
       }
 
-      return { embedding: [0.05, 0.95] };
+      return { vector: [0.05, 0.95], model_id: "mock-clip" };
     });
     const embedder = { execute } as unknown as Tool;
     const registry = { select: vi.fn(async () => embedder) };
@@ -56,10 +55,10 @@ describe("clip_search tool", () => {
       context(projectRoot, registry),
     );
 
-    expect(registry.select).toHaveBeenCalledWith("clip_embedder");
+    expect(registry.select).toHaveBeenCalledWith("clip_embedding");
     expect(result.matches.map((match) => match.video_path)).toEqual([calm, neutral]);
     expect(result.matches[0]?.score).toBeGreaterThan(result.matches[1]?.score ?? 0);
-    await expect(stat(join(corpusDir, "calm.embedding.json"))).resolves.toMatchObject({ isFile: expect.any(Function) });
+    await expect(stat(join(corpusDir, "calm.mock-clip.embedding.json"))).resolves.toMatchObject({ isFile: expect.any(Function) });
   });
 
   it("throws a clear error when clip_embedder is not available", async () => {
@@ -68,10 +67,10 @@ describe("clip_search tool", () => {
         clipSearch.input.parse({ query: "anything", corpus_dir: "/tmp/corpus" }),
         { projectRoot: "/tmp/project", logger: noopLogger() },
       ),
-    ).rejects.toThrow("clip_embedder capability required (S-2)");
+    ).rejects.toThrow("clip_embedding capability required (S-2)");
   });
 
-  it("can search a fixture corpus with the bundled local clip_embedder", async () => {
+  it("does not reuse cached vectors across model ids", async () => {
     const projectRoot = await mkdtemp(join(tmpdir(), "predit-search-real-"));
     const corpusDir = join(projectRoot, "corpus");
     await mkdir(corpusDir, { recursive: true });
@@ -79,15 +78,29 @@ describe("clip_search tool", () => {
     const forest = join(corpusDir, "quiet-forest.mp4");
     await writeFile(city, "city skyline timelapse traffic");
     await writeFile(forest, "quiet forest trees");
-    const registry = { select: vi.fn(async () => clipEmbedder as unknown as Tool) };
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ vector: [1, 0], model_id: "model-a" })
+      .mockResolvedValueOnce({ vector: [1, 0], model_id: "model-a" })
+      .mockResolvedValueOnce({ vector: [0, 1], model_id: "model-a" })
+      .mockResolvedValueOnce({ vector: [0, 1], model_id: "model-b" })
+      .mockResolvedValueOnce({ vector: [0, 1], model_id: "model-b" })
+      .mockResolvedValueOnce({ vector: [1, 0], model_id: "model-b" });
+    const embedder = { execute } as unknown as Tool;
+    const registry = { select: vi.fn(async () => embedder) };
 
-    const result = await clipSearch.execute(
+    await clipSearch.execute(
       clipSearch.input.parse({ query: "city skyline", corpus_dir: corpusDir, top_k: 1 }),
       context(projectRoot, registry),
     );
+    await clipSearch.execute(clipSearch.input.parse({ query: "forest", corpus_dir: corpusDir, top_k: 1 }), context(projectRoot, registry));
 
-    expect(result.matches).toHaveLength(1);
-    expect(result.matches[0]?.video_path).toBe(city);
+    await expect(stat(join(corpusDir, "city-skyline.model-a.embedding.json"))).resolves.toMatchObject({
+      isFile: expect.any(Function),
+    });
+    await expect(stat(join(corpusDir, "city-skyline.model-b.embedding.json"))).resolves.toMatchObject({
+      isFile: expect.any(Function),
+    });
   });
 });
 

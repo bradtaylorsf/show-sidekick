@@ -1,8 +1,9 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
-import { basename, extname, isAbsolute, join, parse, resolve } from "node:path";
+import { basename, extname, join, parse } from "node:path";
 import { z } from "zod";
 import { defineTool } from "../registry/define-tool.js";
 import type { Tool, ToolContext } from "../registry/tool.js";
+import { resolveProjectPath } from "../tool-support/paths.js";
 
 const inputSchema = z.object({
   query: z.string().min(1),
@@ -29,13 +30,13 @@ export default defineTool({
   async execute(params, ctx) {
     const input = inputSchema.parse(params);
     const embedder = await selectClipEmbedder(ctx);
-    const queryEmbedding = readEmbedding(await embedder.execute({ text: input.query }, ctx));
+    const queryEmbedding = readEmbeddingWithModel(await embedder.execute({ text: input.query, modality: "text" }, ctx));
     const corpusDir = resolveProjectPath(input.corpus_dir, ctx.projectRoot);
     const videoPaths = await listVideoFiles(corpusDir);
     const matches = await Promise.all(
       videoPaths.map(async (videoPath) => {
-        const embedding = await readOrCreateClipEmbedding(videoPath, embedder, ctx);
-        return { video_path: videoPath, score: cosineSimilarity(queryEmbedding, embedding) };
+        const embedding = await readOrCreateClipEmbedding(videoPath, embedder, ctx, queryEmbedding.modelId);
+        return { video_path: videoPath, score: cosineSimilarity(queryEmbedding.vector, embedding) };
       }),
     );
 
@@ -48,54 +49,74 @@ export default defineTool({
 
 async function selectClipEmbedder(ctx: ToolContext): Promise<Tool> {
   if (!ctx.registry) {
-    throw new Error("clip_embedder capability required (S-2)");
+    throw new Error("clip_embedding capability required (S-2)");
   }
 
   try {
-    return await ctx.registry.select("clip_embedder");
+    return await ctx.registry.select("clip_embedding");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`clip_embedder capability required (S-2): ${message}`);
+    throw new Error(`clip_embedding capability required (S-2): ${message}`);
   }
 }
 
-async function readOrCreateClipEmbedding(videoPath: string, embedder: Tool, ctx: ToolContext): Promise<number[]> {
-  const embeddingPath = clipEmbeddingPath(videoPath);
+async function readOrCreateClipEmbedding(
+  videoPath: string,
+  embedder: Tool,
+  ctx: ToolContext,
+  modelId: string,
+): Promise<number[]> {
+  const embeddingPath = clipEmbeddingPath(videoPath, modelId);
 
   try {
-    return readEmbedding(JSON.parse(await readFile(embeddingPath, "utf8")));
+    const cached = readEmbeddingWithModel(JSON.parse(await readFile(embeddingPath, "utf8")));
+    if (cached.modelId === modelId) {
+      return cached.vector;
+    }
   } catch (error) {
     if (!isNodeError(error) || error.code !== "ENOENT") {
       throw error;
     }
   }
 
-  const embedding = readEmbedding(await embedder.execute({ video_path: videoPath }, ctx));
-  await writeFile(embeddingPath, `${JSON.stringify({ embedding })}\n`);
-  return embedding;
+  const embedding = readEmbeddingWithModel(await embedder.execute({ path: videoPath, modality: "frame" }, ctx));
+  if (embedding.modelId !== modelId) {
+    throw new Error(`clip_embedding model mismatch: query used ${modelId}, video used ${embedding.modelId}`);
+  }
+
+  await writeFile(embeddingPath, `${JSON.stringify({ model_id: modelId, vector: embedding.vector })}\n`);
+  return embedding.vector;
 }
 
-function readEmbedding(output: unknown): number[] {
+function readEmbeddingWithModel(output: unknown): { vector: number[]; modelId: string } {
   if (Array.isArray(output) && output.every((value) => typeof value === "number")) {
-    return output;
+    return { vector: output, modelId: "unknown" };
   }
 
   if (isRecord(output)) {
     if (Array.isArray(output.embedding) && output.embedding.every((value) => typeof value === "number")) {
-      return output.embedding;
+      return { vector: output.embedding, modelId: readModelId(output) };
     }
 
     if (Array.isArray(output.vector) && output.vector.every((value) => typeof value === "number")) {
-      return output.vector;
+      return { vector: output.vector, modelId: readModelId(output) };
     }
   }
 
-  throw new Error("clip_embedder did not return a numeric embedding");
+  throw new Error("clip_embedding did not return a numeric embedding");
 }
 
-function clipEmbeddingPath(videoPath: string): string {
+function clipEmbeddingPath(videoPath: string, modelId: string): string {
   const parsed = parse(videoPath);
-  return join(parsed.dir, `${parsed.name}.embedding.json`);
+  return join(parsed.dir, `${parsed.name}.${safeModelId(modelId)}.embedding.json`);
+}
+
+function readModelId(output: Record<string, unknown>): string {
+  return typeof output.model_id === "string" && output.model_id.length > 0 ? output.model_id : "unknown";
+}
+
+function safeModelId(modelId: string): string {
+  return modelId.replace(/[^a-zA-Z0-9._-]+/g, "_") || "unknown";
 }
 
 async function listVideoFiles(root: string): Promise<string[]> {
@@ -148,10 +169,6 @@ function cosineSimilarity(left: number[], right: number[]): number {
   }
 
   return dot / (Math.sqrt(leftMagnitude) * Math.sqrt(rightMagnitude));
-}
-
-function resolveProjectPath(path: string, projectRoot: string): string {
-  return isAbsolute(path) ? path : resolve(projectRoot, path);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

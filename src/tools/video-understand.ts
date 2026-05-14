@@ -1,10 +1,9 @@
-import { mkdtemp } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, mkdtemp } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
+import { transcribe } from "../audio/transcribe.js";
 import { defineTool, type ToolContext } from "../registry/index.js";
 import frameSampler from "./frame-sampler.js";
-import transcriber from "./transcriber.js";
 
 const inputSchema = z.object({
   path: z.string().min(1),
@@ -76,17 +75,13 @@ const videoUnderstand = defineTool({
   output: outputSchema,
   isAvailable: async () => {
     const frameSamplerAvailability = await frameSampler.isAvailable();
-    const transcriberAvailability = await transcriber.isAvailable();
-
-    if (!frameSamplerAvailability.available) {
-      return frameSamplerAvailability;
-    }
-
-    return transcriberAvailability;
+    return frameSamplerAvailability;
   },
   async execute(params: VideoUnderstandInput, ctx: ToolContext): Promise<VideoUnderstandOutput> {
     const input = inputSchema.parse(params);
-    const outputDir = input.output_dir ?? (await mkdtemp(join(tmpdir(), "predit-video-understand-")));
+    const toolRunDir = join(ctx.projectRoot, "projects", "_tool_runs");
+    await mkdir(toolRunDir, { recursive: true });
+    const outputDir = input.output_dir ?? (await mkdtemp(join(toolRunDir, "video-understand-")));
     const frameResult = await frameSampler.execute(
       {
         path: input.path,
@@ -98,23 +93,20 @@ const videoUnderstand = defineTool({
     );
     let transcriptSegments: TranscriptSegment[] = [];
 
-    try {
-      const transcript = await transcriber.execute({ path: input.path, language: input.language }, ctx);
-      transcriptSegments = transcript.segments.map((segment) => ({
-        text: segment.text,
-        start_s: segment.start_s,
-        end_s: segment.end_s,
-      }));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (!message.includes("capability marker")) {
-        throw error;
-      }
-
-      ctx.logger.warn("video_understand skipped transcription because no concrete transcriber was selected", {
-        reason: message,
-      });
-    }
+    const transcript = await transcribe(
+      { path: input.path, duration_s: 0, sample_rate: 0, channels: 0 },
+      {
+        language: input.language,
+        registry: ctx.registry,
+        logger: ctx.logger,
+        projectRoot: ctx.projectRoot,
+      },
+    );
+    transcriptSegments = transcript.segments.map((segment) => ({
+      text: segment.text,
+      start_s: segment.start_s,
+      end_s: segment.end_s,
+    }));
 
     return outputSchema.parse({
       summary: summarizeUnderstanding(frameResult.frames, transcriptSegments),

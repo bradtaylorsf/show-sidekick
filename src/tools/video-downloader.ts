@@ -3,6 +3,10 @@ import { mkdir, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
+import { errorWithInstallHint } from "../tool-support/errors.js";
+import { resolveProjectPath } from "../tool-support/paths.js";
+
+const INSTALL = "brew install yt-dlp";
 
 const inputSchema = z.object({
   url: z.string().url(),
@@ -32,7 +36,7 @@ async function runFile(binary: string, args: string[]): Promise<{ stdout: string
   return new Promise((resolve, reject) => {
     execFile(binary, args, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
-        reject(new Error(stderr.trim() || error.message));
+        reject(errorWithInstallHint(new Error(stderr.trim() || error.message), INSTALL));
         return;
       }
 
@@ -69,15 +73,16 @@ const videoDownloader = defineTool({
   integration: {
     kind: "binary",
     binary: "yt-dlp",
-    install: "brew install yt-dlp",
+    install: INSTALL,
   },
   best_for: "downloading reviewable source clips from supported video URLs",
   supports: ["youtube", "vimeo", "local-review-fixtures"],
   input: inputSchema,
   output: outputSchema,
-  async execute(params: VideoDownloaderInput): Promise<VideoDownloaderOutput> {
+  async execute(params: VideoDownloaderInput, ctx): Promise<VideoDownloaderOutput> {
     const input = inputSchema.parse(params);
-    await mkdir(input.output_dir, { recursive: true });
+    const outputDir = resolveProjectPath(input.output_dir, ctx.projectRoot);
+    await mkdir(outputDir, { recursive: true });
 
     const result = await runFile("yt-dlp", [
       "--no-progress",
@@ -86,10 +91,10 @@ const videoDownloader = defineTool({
       "--print",
       "after_move:filepath",
       "-o",
-      join(input.output_dir, "%(id)s.%(ext)s"),
+      join(outputDir, "%(id)s.%(ext)s"),
       input.url,
     ]);
-    const path = parseDownloadedPath(result.stdout) ?? (await newestFile(input.output_dir));
+    const path = parseDownloadedPath(result.stdout) ?? (await newestFile(outputDir));
 
     return outputSchema.parse({
       path,

@@ -3,6 +3,10 @@ import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
+import { errorWithInstallHint } from "../tool-support/errors.js";
+import { resolveProjectPath } from "../tool-support/paths.js";
+
+const INSTALL = "brew install ffmpeg";
 
 const inputSchema = z.object({
   output_path: z.string().min(1),
@@ -53,7 +57,8 @@ async function runFile(binary: string, args: string[]): Promise<{ stdout: string
   return new Promise((resolve, reject) => {
     execFile(binary, args, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
-        reject(new Error(stderr.trim() || error.message));
+        const message = process.platform === "darwin" ? `${stderr.trim() || error.message}\nmacOS requires Screen Recording permission for the terminal running predit.` : stderr.trim() || error.message;
+        reject(errorWithInstallHint(new Error(message), INSTALL));
         return;
       }
 
@@ -70,20 +75,21 @@ const screenRecorder = defineTool({
   integration: {
     kind: "binary",
     binary: "ffmpeg",
-    install: "brew install ffmpeg",
+    install: INSTALL,
   },
   best_for: "generic local screen capture on macOS via avfoundation or Linux via x11grab",
   supports: ["macos-avfoundation", "linux-x11grab", "screen-recording"],
   input: inputSchema,
   output: outputSchema,
-  async execute(params: ScreenRecorderInput): Promise<ScreenRecorderOutput> {
+  async execute(params: ScreenRecorderInput, ctx): Promise<ScreenRecorderOutput> {
     const input = inputSchema.parse(params);
-    await mkdir(dirname(input.output_path), { recursive: true });
+    const outputPath = resolveProjectPath(input.output_path, ctx.projectRoot);
+    await mkdir(dirname(outputPath), { recursive: true });
 
-    await runFile("ffmpeg", buildScreenRecorderArgs(input));
+    await runFile("ffmpeg", buildScreenRecorderArgs({ ...input, output_path: outputPath }));
 
     return outputSchema.parse({
-      video_path: input.output_path,
+      video_path: outputPath,
       duration_s: input.duration_s,
     });
   },

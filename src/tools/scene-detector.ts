@@ -1,6 +1,10 @@
 import { execFile } from "node:child_process";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
+import { errorWithInstallHint } from "../tool-support/errors.js";
+import { resolveProjectPath } from "../tool-support/paths.js";
+
+const INSTALL = "brew install ffmpeg";
 
 const inputSchema = z.object({
   path: z.string().min(1),
@@ -60,7 +64,7 @@ async function runFile(binary: string, args: string[]): Promise<{ stdout: string
   return new Promise((resolve, reject) => {
     execFile(binary, args, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
-        reject(error);
+        reject(errorWithInstallHint(error, INSTALL));
         return;
       }
 
@@ -91,20 +95,21 @@ const sceneDetector = defineTool({
   integration: {
     kind: "binary",
     binary: "ffmpeg",
-    install: "brew install ffmpeg",
+    install: INSTALL,
   },
   best_for: "fast cut boundary detection for source media review and clip window selection",
   supports: ["scene-cut-detection", "ffmpeg-scene-score"],
   input: inputSchema,
   output: outputSchema,
-  async execute(params: SceneDetectorInput): Promise<SceneDetectorOutput> {
+  async execute(params: SceneDetectorInput, ctx): Promise<SceneDetectorOutput> {
     const input = inputSchema.parse(params);
-    const duration = await probeDuration(input.path);
+    const inputPath = resolveProjectPath(input.path, ctx.projectRoot);
+    const duration = await probeDuration(inputPath);
     const result = await runFile("ffmpeg", [
       "-hide_banner",
       "-nostats",
       "-i",
-      input.path,
+      inputPath,
       "-vf",
       `select=gt(scene\\,${input.threshold}),metadata=print:file=-`,
       "-an",

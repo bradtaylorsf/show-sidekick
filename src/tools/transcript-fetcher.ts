@@ -4,6 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
+import { errorWithInstallHint } from "../tool-support/errors.js";
+
+const INSTALL = "brew install yt-dlp";
 
 const inputSchema = z.object({
   url: z.string().url(),
@@ -92,7 +95,7 @@ async function runFile(binary: string, args: string[]): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     execFile(binary, args, { maxBuffer: 10 * 1024 * 1024 }, (error, _stdout, stderr) => {
       if (error) {
-        reject(new Error(stderr.trim() || error.message));
+        reject(errorWithInstallHint(new Error(stderr.trim() || error.message), INSTALL));
         return;
       }
 
@@ -124,7 +127,7 @@ const transcriptFetcher = defineTool({
   integration: {
     kind: "binary",
     binary: "yt-dlp",
-    install: "brew install yt-dlp",
+    install: INSTALL,
   },
   best_for: "fetching parsed captions from YouTube or Vimeo source URLs",
   supports: ["youtube-captions", "vimeo-captions", "webvtt"],

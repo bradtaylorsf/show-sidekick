@@ -9,7 +9,7 @@ export interface TranscribeOptions {
   language?: string;
   model?: string;
   prefer?: string[];
-  registry?: Registry;
+  registry?: Pick<Registry, "select">;
   logger?: ToolLogger;
   projectRoot?: string;
   recordDecision?: (entry: DecisionEntry) => Promise<void> | void;
@@ -76,24 +76,27 @@ async function selectTranscriptionTool(options: TranscribeOptions): Promise<Tool
     return whisperCpp;
   }
 
-  if (hasPreferredAlternative(options.prefer)) {
-    const alternative = await selectFirstAvailable(options.registry, ["transcribe", "transcriber", "asr"], options.prefer);
-    if (alternative) {
-      return alternative;
-    }
+  const alternative = await selectFirstAvailable(options.registry, ["transcribe", "transcriber", "asr"], options.prefer);
+  if (alternative) {
+    return alternative;
   }
 
   return (await options.registry.select("whisper", { prefer: options.prefer })) as Tool<TranscribeToolInput, TranscribeToolOutput>;
 }
 
 async function selectFirstAvailable(
-  registry: Registry,
+  registry: Pick<Registry, "select">,
   capabilities: string[],
   prefer: string[] | undefined,
 ): Promise<Tool<TranscribeToolInput, TranscribeToolOutput> | undefined> {
   for (const capability of capabilities) {
     try {
-      return (await registry.select(capability, { prefer })) as Tool<TranscribeToolInput, TranscribeToolOutput>;
+      const tool = await registry.select(capability, { prefer });
+      if (isProviderSelectionMarker(tool)) {
+        continue;
+      }
+
+      return tool as Tool<TranscribeToolInput, TranscribeToolOutput>;
     } catch (error) {
       if (!(error instanceof NoToolAvailable)) {
         throw error;
@@ -104,8 +107,8 @@ async function selectFirstAvailable(
   return undefined;
 }
 
-function hasPreferredAlternative(prefer: string[] | undefined): boolean {
-  return prefer?.some((name) => name !== "whisper-cpp" && name !== "whisper") ?? false;
+function isProviderSelectionMarker(tool: Tool): boolean {
+  return tool.provider === "predit" && (tool.supports ?? []).includes("provider-selection");
 }
 
 async function runTool(

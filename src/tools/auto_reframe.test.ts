@@ -28,10 +28,10 @@ describe("auto_reframe tool", () => {
   it("uses face tracking to build a smart ffmpeg crop for vertical output", async () => {
     const projectRoot = await mkdtemp(join(tmpdir(), "predit-reframe-"));
     const faceTrackerExecute = vi.fn(async () => ({
-      track: [
-        { frame: 0, bbox: { x: 780, y: 120, width: 200, height: 260 } },
-        { frame: 1, bbox: { x: 800, y: 120, width: 200, height: 260 } },
-        { frame: 2, bbox: { x: 820, y: 120, width: 200, height: 260 } },
+      frames: [
+        { time_s: 0, faces: [{ x: 780, y: 120, w: 200, h: 260, score: 1 }] },
+        { time_s: 1, faces: [{ x: 800, y: 120, w: 200, h: 260, score: 1 }] },
+        { time_s: 2, faces: [{ x: 820, y: 120, w: 200, h: 260, score: 1 }] },
       ],
     }));
     const faceTracker = { execute: faceTrackerExecute } as unknown as Tool;
@@ -46,8 +46,8 @@ describe("auto_reframe tool", () => {
     const args = runCli.mock.calls[0]?.[1] ?? [];
     const filter = args[args.indexOf("-vf") + 1];
 
-    expect(registry.select).toHaveBeenCalledWith("face_tracker");
-    expect(faceTrackerExecute).toHaveBeenCalledWith({ video_path: join(projectRoot, "clips", "source.mp4") }, ctx);
+    expect(registry.select).toHaveBeenCalledWith("face_tracking");
+    expect(faceTrackerExecute).toHaveBeenCalledWith({ path: join(projectRoot, "clips", "source.mp4") }, ctx);
     expect(runCli).toHaveBeenCalledWith("ffmpeg", expect.any(Array), { cwd: projectRoot });
     expect(filter).toContain("crop=ih*9/16:ih");
     expect(filter).toContain("min(max(0,900");
@@ -63,7 +63,7 @@ describe("auto_reframe tool", () => {
     const ctx = context(projectRoot);
 
     await expect(autoReframe.execute(autoReframe.input.parse({ video_path: "source.mp4", target_aspect: "1:1" }), ctx)).rejects.toThrow(
-      "face_tracker capability required",
+      "face_tracking capability required",
     );
   });
 
@@ -80,8 +80,8 @@ describe("auto_reframe tool", () => {
     const filter = args[args.indexOf("-vf") + 1];
 
     expect(ctx.logger.warn).toHaveBeenCalledWith(
-      "face_tracker capability unavailable; using center crop fallback",
-      expect.objectContaining({ error: expect.stringContaining("face_tracker capability required") }),
+      "face_tracking capability unavailable; using center crop fallback",
+      expect.objectContaining({ error: expect.stringContaining("face_tracking capability required") }),
     );
     expect(filter).toContain("crop=ih*1/1:ih");
     expect(filter).toContain("iw/2");
@@ -91,7 +91,7 @@ describe("auto_reframe tool", () => {
     const projectRoot = await mkdtemp(join(tmpdir(), "predit-reframe-"));
     const faceTracker = {
       execute: vi.fn(async () => ({
-        track: [{ frame: 0, bbox: { x: 200, y: 40, width: 120, height: 120 } }],
+        frames: [{ time_s: 0, faces: [{ x: 200, y: 40, w: 120, h: 120, score: 1 }] }],
       })),
     } as unknown as Tool;
     const registry = { select: vi.fn(async () => faceTracker) };

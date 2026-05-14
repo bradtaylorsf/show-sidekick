@@ -1,16 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { mkdtemp, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it, vi } from "vitest";
 import characterAnimation, { estimateCharacterAnimationDuration } from "./character-animation.js";
 
-const ctx = {
-  projectRoot: "/tmp/predit",
-  logger: {
-    info: () => undefined,
-    warn: () => undefined,
-    error: () => undefined,
-    debug: () => undefined,
-    event: () => undefined,
-  },
-};
+function ctx(projectRoot: string, runCli = vi.fn(async () => ({ stdout: "", stderr: "" }))) {
+  return {
+    projectRoot,
+    runCli,
+    logger: {
+      info: () => undefined,
+      warn: () => undefined,
+      error: () => undefined,
+      debug: () => undefined,
+      event: () => undefined,
+    },
+  };
+}
 
 const fixture = {
   character_design: {
@@ -79,8 +85,7 @@ describe("character_animation", () => {
   it("registers the character animation capability", async () => {
     expect(characterAnimation.name).toBe("character_animation");
     expect(characterAnimation.capability).toBe("character_animation");
-    expect(characterAnimation.integration).toMatchObject({ kind: "library", package: "predit" });
-    await expect(characterAnimation.isAvailable()).resolves.toEqual({ available: true });
+    expect(characterAnimation.integration).toMatchObject({ kind: "binary", binary: "ffmpeg" });
   });
 
   it("parses input and output schemas", () => {
@@ -100,12 +105,21 @@ describe("character_animation", () => {
   });
 
   it("returns deterministic render metadata for valid artifacts", async () => {
-    await expect(characterAnimation.execute(fixture, ctx)).resolves.toEqual({
-      video_path: "host-animation.mp4",
+    const projectRoot = await mkdtemp(join(tmpdir(), "predit-character-animation-"));
+    const outputPath = join(projectRoot, "host-animation.mp4");
+    const runCli = vi.fn(async (_command: string, args: string[]) => {
+      await writeFile(args.at(-1) as string, "mp4");
+      return { stdout: "", stderr: "" };
+    });
+
+    await expect(characterAnimation.execute({ ...fixture, output_path: outputPath }, ctx(projectRoot, runCli))).resolves.toEqual({
+      video_path: outputPath,
       duration_s: 1.5,
       frame_count: 45,
       provider_metadata: {},
     });
+    await expect(stat(outputPath)).resolves.toMatchObject({ isFile: expect.any(Function) });
+    expect(runCli).toHaveBeenCalledWith("ffmpeg", expect.arrayContaining(["-t", "1.5", outputPath]), {});
   });
 
   it("throws validator findings before rendering invalid artifacts", async () => {
@@ -118,7 +132,7 @@ describe("character_animation", () => {
             required_actions: ["wave"],
           },
         },
-        ctx,
+        ctx("/tmp/predit"),
       ),
     ).rejects.toThrow(/required_actions includes "wave"/);
   });

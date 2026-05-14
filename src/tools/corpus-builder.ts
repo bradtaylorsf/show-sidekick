@@ -3,7 +3,8 @@ import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join } from "node:path";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
-import type { ToolContext } from "../registry/index.js";
+import type { Tool, ToolContext } from "../registry/index.js";
+import { resolveProjectPath } from "../tool-support/paths.js";
 import clipEmbedder from "./clip-embedder.js";
 
 const defaultGlob = "**/*.{png,jpg,jpeg,mp4,mov}";
@@ -147,22 +148,24 @@ const corpusBuilder = defineTool({
   isAvailable: async () => ({ available: true }),
   async execute(params: CorpusBuilderInput, ctx: ToolContext) {
     const input = inputSchema.parse(params);
-    const files = await enumerateCorpusFiles(input.dir, input.glob);
-    const frameDir = join(dirname(input.output_path), ".predit-corpus-frames");
+    const inputDir = resolveProjectPath(input.dir, ctx.projectRoot);
+    const outputPath = resolveProjectPath(input.output_path, ctx.projectRoot);
+    const files = await enumerateCorpusFiles(inputDir, input.glob);
+    const frameDir = join(dirname(outputPath), ".predit-corpus-frames");
+    const embedder = await selectClipEmbeddingTool(ctx);
 
     const index = await buildCorpusIndex(files, async (file) => {
       const embeddingPath = isVideoPath(file) ? await sampleMidpointFrame(file, frameDir) : file;
       const modality = isVideoPath(file) ? "frame" : "image";
 
-      // Keep corpus indexing parallel-safe with runtime work by calling the local tool module directly.
-      return clipEmbedder.execute({ path: embeddingPath, modality }, ctx);
+      return embedder.execute({ path: embeddingPath, modality }, ctx) as Promise<Embedding>;
     });
 
-    await mkdir(dirname(input.output_path), { recursive: true });
-    await writeFile(input.output_path, `${JSON.stringify(index, null, 2)}\n`, "utf8");
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${JSON.stringify(index, null, 2)}\n`, "utf8");
 
     return outputSchema.parse({
-      index_path: input.output_path,
+      index_path: outputPath,
       count: index.items.length,
       model_id: index.model_id,
     });
@@ -170,3 +173,11 @@ const corpusBuilder = defineTool({
 });
 
 export default corpusBuilder;
+
+async function selectClipEmbeddingTool(ctx: ToolContext): Promise<Tool> {
+  if (ctx.registry === undefined) {
+    return clipEmbedder;
+  }
+
+  return await ctx.registry.select("clip_embedding");
+}

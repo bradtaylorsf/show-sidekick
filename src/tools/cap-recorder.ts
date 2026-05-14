@@ -3,6 +3,10 @@ import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
+import { errorWithInstallHint } from "../tool-support/errors.js";
+import { resolveProjectPath } from "../tool-support/paths.js";
+
+const INSTALL = "brew install cap-so/cap/cap";
 
 const regionSchema = z.union([
   z.literal("screen"),
@@ -55,7 +59,7 @@ async function runFile(binary: string, args: string[]): Promise<{ stdout: string
   return new Promise((resolve, reject) => {
     execFile(binary, args, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
-        reject(new Error(stderr.trim() || error.message));
+        reject(errorWithInstallHint(new Error(stderr.trim() || error.message), INSTALL));
         return;
       }
 
@@ -73,23 +77,24 @@ const capRecorder = defineTool({
     kind: "cli",
     binary: "cap",
     auth: { mode: "none" },
-    install: "brew install cap-so/cap/cap",
+    install: INSTALL,
   },
   best_for: "macOS Cap CLI recordings of fixture windows or full-screen capture",
   supports: ["macos-screen-recording", "fixture-window-capture", "region-capture"],
   input: inputSchema,
   output: outputSchema,
-  async execute(params: CapRecorderInput): Promise<CapRecorderOutput> {
+  async execute(params: CapRecorderInput, ctx): Promise<CapRecorderOutput> {
     const input = inputSchema.parse(params);
-    await mkdir(dirname(input.output_path), { recursive: true });
+    const outputPath = resolveProjectPath(input.output_path, ctx.projectRoot);
+    await mkdir(dirname(outputPath), { recursive: true });
 
     const startedAt = Date.now();
-    const args = buildCapRecorderArgs(input);
+    const args = buildCapRecorderArgs({ ...input, output_path: outputPath });
     const result = await runFile("cap", args);
     const elapsedS = Math.max(0, (Date.now() - startedAt) / 1000);
 
     return outputSchema.parse({
-      video_path: input.output_path,
+      video_path: outputPath,
       duration_s: input.duration_s ?? elapsedS,
       provider_metadata: {
         binary: "cap",

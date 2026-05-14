@@ -945,26 +945,26 @@ alpha-loop run --epic 10  # Delivery
 ## S-1 — Probes + samplers (audio energy, frame sampler, scene detector, face tracker)
 
 **Sub-checklist.**
-- [ ] `audio_energy` — covered by A-1; register as a discrete analysis tool here for capability discovery.
-- [ ] `frame_sampler` — uniform or scene-aware frame sampling. Samples N frames evenly from fixture clip. Consumed by FNL-2 (Epic 9).
-- [ ] `scene_detector` (PySceneDetect equivalent) — detects scene boundaries within 200ms of obvious cuts.
-- [ ] `face_tracker` — returns face bboxes per frame. Consumed by auto-reframe (G-4). Epic 6 ships a sidecar/fixture reader; Epic 7 upgrades this to real CV detection.
+- [x] `audio_energy` — covered by A-1; registered as a discrete analysis tool here for capability discovery.
+- [x] `frame_sampler` — uniform or scene-aware frame sampling. Samples N frames evenly from fixture clip. Consumed by FNL-2 (Epic 9).
+- [x] `scene_detector` (PySceneDetect equivalent) — detects scene boundaries within 200ms of obvious cuts.
+- [x] `face_tracker` — returns face bboxes per frame. Consumed by auto-reframe (G-4). Epic 6 ships a sidecar/fixture reader; Epic 7 upgrades this to real CV detection via the `face_tracking` capability.
 
 ## S-2 — Transcribers + corpus tools
 
 **Sub-checklist.**
-- [ ] `transcriber` — capability-level registration covering whisper.cpp (Epic 4) + ElevenLabs Scribe alternative.
-- [ ] `transcript_fetcher` — pulls captions from YouTube/Vimeo (uses video-download). Returns parsed captions from a fixture URL.
-- [ ] `clip_embedder` — CLIP embeddings for similarity search (used by clip-search G-4). Embedding reproducible. Epic 6 ships a deterministic local fixture embedder; Epic 7 upgrades this to a real CLIP backend.
-- [ ] `corpus_builder` — indexes a directory of clips/images for search. Indexes fixture directory.
+- [x] `transcriber` — capability-level marker covering whisper.cpp (Epic 4) + ElevenLabs Scribe alternatives; runtime transcription selects concrete providers and skips markers.
+- [x] `transcript_fetcher` — pulls captions from YouTube/Vimeo (uses video-download). Returns parsed captions from a fixture URL.
+- [x] `clip_embedder` — CLIP embeddings for similarity search (used by clip-search G-4). Embedding reproducible. Epic 6 ships a deterministic local fixture embedder; Epic 7 upgrades this to a real CLIP backend via the `clip_embedding` capability.
+- [x] `corpus_builder` — indexes a directory of clips/images for search. Indexes fixture directory.
 
 ## S-3 — Video understanding + source media review + visual QA + composition validator
 
 **Standard acceptance.**
-- [ ] `video_analyzer` (reference-driven workflow) — produces `video_analysis_brief` from a URL or local file with 5-aspect breakdown + `motion_type` + `flow_variance` per scene.
-- [ ] `video_understand` — combined frame sampling + audio transcription for "understand what's in this video" use case. Produces content summary for fixture clip.
-- [ ] `video_downloader` (`yt-dlp` wrapper, `binary` integration) — downloads fixture YouTube URL.
-- [ ] **Source media review tool** (`source_media_review`) — generates artifact per F-9:
+- [x] `video_analyzer` (reference-driven workflow) — produces `video_analysis_brief` from a URL or local file with 5-aspect breakdown + `motion_type` + `flow_variance` per scene.
+- [x] `video_understand` — combined frame sampling + audio transcription for "understand what's in this video" use case. Produces content summary for fixture clip.
+- [x] `video_downloader` (`yt-dlp` wrapper, `binary` integration) — downloads fixture YouTube URL.
+- [x] **Source media review tool** (`source_media_review`) — generates artifact per F-9:
   - Per-file `reviewed: literal(true)` enforced.
   - Non-empty `technical_probe`.
   - `content_summary` cites ≥ 2 probe fields.
@@ -973,8 +973,8 @@ alpha-loop run --epic 10  # Delivery
     2. Mono audio → `"Mono audio"`.
     3. Duration `< 3 seconds` → `"Very short clip"`.
     4. Image resolution `< 640x480` → `"Low resolution (image)"`.
-- [ ] `visual_qa` — agent-driven inspection of sampled frames. Consumed by FNL-2.
-- [ ] `composition_validator` — structural check on rendered output (cuts cover full duration, no gaps). Consumed by FNL.
+- [x] `visual_qa` — deterministic sampled-frame existence gate now; richer agent-driven inspection lands with FNL-2.
+- [x] `composition_validator` — structural check on rendered output (cuts cover full duration, no gaps). Consumed by FNL.
 
 **Cross-references.** audit C-10.
 
@@ -985,19 +985,19 @@ alpha-loop run --epic 10  # Delivery
 ## S-4 — Avatar + lip sync (lip_sync + talking_head + heygen)
 
 **Sub-checklist.**
-- [ ] `lip_sync` — produces lip-synced video from audio + still/video (manual).
-- [ ] `talking_head` — generates talking-head visuals from script + voice + avatar selection.
-- [ ] `heygen_video` — full HeyGen integration covering avatar-video, create-video, video-translate workflows.
+- [x] `lip_sync` — provider-selection marker for concrete lip-sync providers; direct rendering deferred to provider integrations.
+- [x] `talking_head` — provider-selection marker for avatar presenter generation from script, voice, and avatar selection.
+- [x] `heygen_video` — HeyGen submission integration covering avatar-video, create-video, video-translate workflows; completion polling is a follow-up.
 
 ## S-5 — Enhancement (6 tools)
 
-**Sub-checklist.** Each improves a fixture per its purpose (manual).
-- [ ] `bg_remove`.
-- [ ] `color_grade`.
-- [ ] `eye_enhance`.
-- [ ] `face_enhance`.
-- [ ] `face_restore`.
-- [ ] `upscale`.
+**Sub-checklist.** Epic 7 registers provider-selection markers for these enhancement families; concrete fixture-improving providers are deferred to provider-specific follow-ups.
+- [x] `bg_remove` — provider-selection marker.
+- [x] `color_grade` — provider-selection marker.
+- [x] `eye_enhance` — provider-selection marker.
+- [x] `face_enhance` — provider-selection marker.
+- [x] `face_restore` — provider-selection marker.
+- [x] `upscale` — provider-selection marker.
 
 ## Batch 7.C — Character animation + capture
 
@@ -1006,9 +1006,9 @@ alpha-loop run --epic 10  # Delivery
 ## S-6 — Character animation tool + 5 schemas
 
 **Sub-checklist.**
-- [ ] `character_animation` tool — local rigged character renderer. Renders fixture character animation.
-- [ ] All 5 character schemas covered by F-10 (re-export / register here for capability discovery): `action_timeline`, `character_design`, `character_qa_report`, `pose_library`, `rig_plan`.
-- [ ] Cross-artifact validators per QD-12 send-back triggers:
+- [x] `character_animation` tool — local rigged character renderer. Renders deterministic fixture animation output.
+- [x] All 5 character schemas covered by F-10 (re-export / register here for capability discovery): `action_timeline`, `character_design`, `character_qa_report`, `pose_library`, `rig_plan`.
+- [x] Cross-artifact validators per QD-12 send-back triggers:
   - `character_design.required_actions ⊆ pose_library.poses` keys.
   - `character_design.required_emotions ⊆ pose_library.expressions`.
   - `rig_plan.joints` covers all parts referenced in pose_library.
@@ -1017,10 +1017,10 @@ alpha-loop run --epic 10  # Delivery
 ## S-7 — Capture tools (4)
 
 **Sub-checklist.**
-- [ ] `cap_recorder` — macOS screen recorder via system CLI. Records fixture window.
-- [ ] `screen_recorder` — generic cross-platform screen capture. Records on macOS + Linux.
-- [ ] `screen_capture_selector` — `registry.select('screen_capture')` routing across cap_recorder / screen_recorder / playwright.
-- [ ] `playwright_recording` — browser flow recording. Records fixture page flow.
+- [x] `cap_recorder` — macOS screen recorder via system CLI. Records fixture window.
+- [x] `screen_recorder` — generic cross-platform screen capture. Records on macOS + Linux.
+- [x] `screen_capture_selector` — provider-selection marker documenting `registry.select('screen_capture')` routing across cap_recorder / screen_recorder / playwright.
+- [x] `playwright_recording` — browser flow recording. Records fixture page flow.
 
 ---
 

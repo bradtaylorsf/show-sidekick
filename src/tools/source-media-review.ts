@@ -3,6 +3,10 @@ import { extname } from "node:path";
 import { z } from "zod";
 import { SourceMediaReviewSchema, type SourceMediaReview } from "../artifacts/index.js";
 import { defineTool } from "../registry/index.js";
+import { errorWithInstallHint } from "../tool-support/errors.js";
+import { resolveProjectPath } from "../tool-support/paths.js";
+
+const INSTALL = "brew install ffmpeg";
 
 const inputSchema = z.object({
   files: z.array(z.string().min(1)).min(1),
@@ -162,7 +166,7 @@ async function runFfprobe(path: string): Promise<{ stdout: string; stderr: strin
   return new Promise((resolve, reject) => {
     execFile("ffprobe", ["-v", "error", "-show_streams", "-show_format", "-of", "json", path], (error, stdout, stderr) => {
       if (error) {
-        reject(new Error(stderr.trim() || error.message));
+        reject(errorWithInstallHint(new Error(stderr.trim() || error.message), INSTALL));
         return;
       }
 
@@ -258,19 +262,20 @@ const sourceMediaReview = defineTool({
   integration: {
     kind: "binary",
     binary: "ffprobe",
-    install: "brew install ffmpeg",
+    install: INSTALL,
   },
   best_for: "grounding source media planning in actual ffprobe technical facts",
   supports: ["ffprobe-json", "quality-risk-rules", "source-review-artifact"],
   input: inputSchema,
   output: SourceMediaReviewSchema,
-  async execute(params: SourceMediaReviewInput): Promise<SourceMediaReview> {
+  async execute(params: SourceMediaReviewInput, ctx): Promise<SourceMediaReview> {
     const input = inputSchema.parse(params);
     const files = [];
 
     for (const path of input.files) {
-      const result = await runFfprobe(path);
-      files.push(buildSourceMediaReviewFile(path, parseFfprobeJson(result.stdout)));
+      const resolvedPath = resolveProjectPath(path, ctx.projectRoot);
+      const result = await runFfprobe(resolvedPath);
+      files.push(buildSourceMediaReviewFile(resolvedPath, parseFfprobeJson(result.stdout)));
     }
 
     return SourceMediaReviewSchema.parse({ files });

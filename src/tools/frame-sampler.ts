@@ -3,7 +3,11 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
+import { errorWithInstallHint } from "../tool-support/errors.js";
+import { resolveProjectPath } from "../tool-support/paths.js";
 import { parseSceneCutTimes } from "./scene-detector.js";
+
+const INSTALL = "brew install ffmpeg";
 
 const inputSchema = z.object({
   path: z.string().min(1),
@@ -61,7 +65,7 @@ async function runFile(binary: string, args: string[]): Promise<{ stdout: string
   return new Promise((resolve, reject) => {
     execFile(binary, args, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
-        reject(error);
+        reject(errorWithInstallHint(error, INSTALL));
         return;
       }
 
@@ -109,18 +113,20 @@ const frameSampler = defineTool({
   integration: {
     kind: "binary",
     binary: "ffmpeg",
-    install: "brew install ffmpeg",
+    install: INSTALL,
   },
   best_for: "uniform or scene-aware still-frame sampling from local video clips",
   supports: ["uniform-sampling", "scene-aware-sampling", "png-output"],
   input: inputSchema,
   output: outputSchema,
-  async execute(params: FrameSamplerInput): Promise<FrameSamplerOutput> {
+  async execute(params: FrameSamplerInput, ctx): Promise<FrameSamplerOutput> {
     const input = inputSchema.parse(params);
-    await mkdir(input.output_dir, { recursive: true });
+    const inputPath = resolveProjectPath(input.path, ctx.projectRoot);
+    const outputDir = resolveProjectPath(input.output_dir, ctx.projectRoot);
+    await mkdir(outputDir, { recursive: true });
 
-    const duration = await probeDuration(input.path);
-    const cuts = input.mode === "scene_aware" ? await detectCutTimes(input.path) : [];
+    const duration = await probeDuration(inputPath);
+    const cuts = input.mode === "scene_aware" ? await detectCutTimes(inputPath) : [];
     const times =
       input.mode === "scene_aware"
         ? mergeSceneAwareSampleTimes(duration, input.count, cuts)
@@ -129,8 +135,8 @@ const frameSampler = defineTool({
     const frames: FrameSamplerOutput["frames"] = [];
 
     for (const [index, time] of times.entries()) {
-      const outputPath = framePath(input.output_dir, index);
-      await runFile("ffmpeg", ["-hide_banner", "-y", "-ss", String(time), "-i", input.path, "-frames:v", "1", outputPath]);
+      const outputPath = framePath(outputDir, index);
+      await runFile("ffmpeg", ["-hide_banner", "-y", "-ss", String(time), "-i", inputPath, "-frames:v", "1", outputPath]);
       frames.push({ index, time_s: time, path: outputPath });
     }
 

@@ -132,6 +132,17 @@ describe("transcribe", () => {
     expect(whisperCalls).toHaveLength(0);
     expect(result.segments[0]?.text).toBe("scribe");
   });
+
+  it("skips provider-selection markers when selecting a concrete transcriber", async () => {
+    const whisperCalls: ToolCall[] = [];
+    const registry = new Registry({
+      tools: [transcriberMarker(), transcriptionTool("whisper-cpp", "whisper", whisperCalls, [segment("local", 0.9)])],
+    });
+
+    await transcribe(track(), { registry, prefer: ["transcriber"] });
+
+    expect(whisperCalls).toEqual([{ audio_path: "/tmp/audio.wav", model: "medium.en" }]);
+  });
 });
 
 function track(): AudioTrack {
@@ -185,6 +196,24 @@ function transcriptionTool(
       callIndex += 1;
 
       return { segments: response === undefined ? [] : [response] };
+    },
+  });
+}
+
+function transcriberMarker(): Tool<ToolCall, { segments: Segment[] }> {
+  return defineTool({
+    name: "transcriber",
+    capability: "transcriber",
+    provider: "predit",
+    status: "beta",
+    integration: { kind: "library", package: "predit", install: "pnpm add predit" },
+    best_for: "marker",
+    supports: ["provider-selection"],
+    input: toolInput,
+    output: toolOutput,
+    isAvailable: async () => ({ available: true }),
+    async execute() {
+      throw new Error("marker should not execute");
     },
   });
 }

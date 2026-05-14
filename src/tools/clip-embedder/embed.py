@@ -6,8 +6,9 @@ MODEL_ID = "ViT-B-32/laion2b_s34b_b79k"
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--path", required=True)
-    parser.add_argument("--modality", choices=["image", "frame"], default="image")
+    parser.add_argument("--path")
+    parser.add_argument("--text")
+    parser.add_argument("--modality", choices=["image", "frame", "text"], default="image")
     args = parser.parse_args()
 
     try:
@@ -19,11 +20,19 @@ def main() -> None:
 
     torch.manual_seed(0)
     model, _, preprocess = open_clip.create_model_and_transforms("ViT-B-32", pretrained="laion2b_s34b_b79k")
+    tokenizer = open_clip.get_tokenizer("ViT-B-32")
     model.eval()
-    image = preprocess(Image.open(args.path).convert("RGB")).unsqueeze(0)
 
     with torch.no_grad():
-        vector = model.encode_image(image)
+        if args.modality == "text":
+            if not args.text:
+                raise SystemExit("--text is required for text modality")
+            vector = model.encode_text(tokenizer([args.text]))
+        else:
+            if not args.path:
+                raise SystemExit("--path is required for image/frame modality")
+            image = preprocess(Image.open(args.path).convert("RGB")).unsqueeze(0)
+            vector = model.encode_image(image)
         vector = vector / vector.norm(dim=-1, keepdim=True)
 
     values = vector.squeeze(0).cpu().tolist()

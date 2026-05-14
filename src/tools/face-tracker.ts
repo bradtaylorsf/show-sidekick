@@ -3,6 +3,10 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
+import { errorWithInstallHint } from "../tool-support/errors.js";
+import { resolveProjectPath } from "../tool-support/paths.js";
+
+const INSTALL = "pip install opencv-python";
 
 const inputSchema = z.object({
   path: z.string().min(1),
@@ -86,7 +90,7 @@ async function runPython(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile("python3", args, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
-        reject(new Error(stderr.trim() || error.message));
+        reject(errorWithInstallHint(new Error(stderr.trim() || error.message), INSTALL));
         return;
       }
 
@@ -103,15 +107,15 @@ const faceTracker = defineTool({
   integration: {
     kind: "binary",
     binary: "python3",
-    install: "pip install opencv-python",
+    install: INSTALL,
   },
   best_for: "sampled face bounding boxes for auto-reframe planning",
   supports: ["opencv-haarcascade", "face-bounding-boxes"],
   input: inputSchema,
   output: outputSchema,
-  async execute(params: FaceTrackerInput): Promise<FaceTrackerOutput> {
+  async execute(params: FaceTrackerInput, ctx): Promise<FaceTrackerOutput> {
     const input = inputSchema.parse(params);
-    const stdout = await runPython(trackerArgs(input));
+    const stdout = await runPython(trackerArgs({ ...input, path: resolveProjectPath(input.path, ctx.projectRoot) }));
 
     return parseFaceTrackerJson(stdout);
   },

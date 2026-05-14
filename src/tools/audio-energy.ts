@@ -1,6 +1,10 @@
 import { execFile } from "node:child_process";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
+import { errorWithInstallHint } from "../tool-support/errors.js";
+import { resolveProjectPath } from "../tool-support/paths.js";
+
+const INSTALL = "brew install ffmpeg";
 
 const inputSchema = z.object({
   path: z.string().min(1),
@@ -63,7 +67,7 @@ async function runFile(binary: string, args: string[]): Promise<{ stdout: string
   return new Promise((resolve, reject) => {
     execFile(binary, args, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
-        reject(error);
+        reject(errorWithInstallHint(error, INSTALL));
         return;
       }
 
@@ -80,16 +84,17 @@ const audioEnergy = defineTool({
   integration: {
     kind: "binary",
     binary: "ffmpeg",
-    install: "brew install ffmpeg",
+    install: INSTALL,
   },
   best_for: "audio energy windows for beat-aware and voiceover-aware analysis",
   supports: ["audio-rms", "lufs", "ffmpeg-astats"],
   input: inputSchema,
   output: outputSchema,
-  async execute(params: AudioEnergyInput) {
+  async execute(params: AudioEnergyInput, ctx) {
     const input = inputSchema.parse(params);
+    const inputPath = resolveProjectPath(input.path, ctx.projectRoot);
     const filter = `astats=metadata=1:reset=${input.window_s},ebur128=metadata=1`;
-    const result = await runFile("ffmpeg", ["-hide_banner", "-nostats", "-i", input.path, "-af", filter, "-f", "null", "-"]);
+    const result = await runFile("ffmpeg", ["-hide_banner", "-nostats", "-i", inputPath, "-af", filter, "-f", "null", "-"]);
 
     return outputSchema.parse(parseAudioEnergyLog(`${result.stdout}\n${result.stderr}`, input.window_s));
   },

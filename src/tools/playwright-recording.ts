@@ -3,8 +3,11 @@ import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
+import { errorWithInstallHint } from "../tool-support/errors.js";
+import { resolveProjectPath } from "../tool-support/paths.js";
 
 const PLAYWRIGHT_PACKAGE: string = "playwright";
+const INSTALL = "pnpm add -D playwright && pnpm exec playwright install chromium";
 
 const viewportSchema = z.object({
   width: z.number().int().positive(),
@@ -177,7 +180,7 @@ const playwrightRecording = defineTool({
   integration: {
     kind: "library",
     package: PLAYWRIGHT_PACKAGE,
-    install: "pnpm add -D playwright && pnpm exec playwright install chromium",
+    install: INSTALL,
   },
   best_for: "deterministic browser flow recordings from fixture pages and source URLs",
   supports: ["browser-flow-recording", "fixture-page-capture", "playwright-video"],
@@ -191,17 +194,22 @@ const playwrightRecording = defineTool({
       return { available: false, reason: "playwright not installed", fix: "install" };
     }
   },
-  async execute(params: PlaywrightRecordingInput): Promise<PlaywrightRecordingOutput> {
+  async execute(params: PlaywrightRecordingInput, ctx): Promise<PlaywrightRecordingOutput> {
     const input = inputSchema.parse(params);
+    const outputPath = resolveProjectPath(input.output_path, ctx.projectRoot);
     const recordingDir = await mkdtemp(join(tmpdir(), "predit-playwright-"));
-    await mkdir(dirname(input.output_path), { recursive: true });
+    await mkdir(dirname(outputPath), { recursive: true });
 
     const startedAt = Date.now();
     const playwright = await importPlaywright();
     let browser: PlaywrightBrowser | undefined;
 
     try {
-      browser = await playwright.chromium.launch();
+      try {
+        browser = await playwright.chromium.launch();
+      } catch (error) {
+        throw errorWithInstallHint(error, INSTALL);
+      }
       const context = await browser.newContext(buildPlaywrightContextOptions(recordingDir, input.viewport));
       const page = await context.newPage();
 
@@ -213,11 +221,11 @@ const playwrightRecording = defineTool({
       const video = page.video();
       await context.close();
       const recordedPath = video === null ? await newestFile(recordingDir) : await video.path();
-      await rm(input.output_path, { force: true });
-      await rename(recordedPath, input.output_path);
+      await rm(outputPath, { force: true });
+      await rename(recordedPath, outputPath);
 
       return outputSchema.parse({
-        video_path: input.output_path,
+        video_path: outputPath,
         duration_s: Math.max(0, (Date.now() - startedAt) / 1000),
         source_url: input.url,
       });

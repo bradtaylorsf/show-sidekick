@@ -1,5 +1,4 @@
-import { mkdtemp } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, mkdtemp } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { VideoAnalysisBriefSchema, type MotionType, type VideoAnalysisBrief } from "../artifacts/index.js";
@@ -133,7 +132,9 @@ const videoAnalyzer = defineTool({
   isAvailable: async () => ({ available: true }),
   async execute(params: VideoAnalyzerInput, ctx: ToolContext): Promise<VideoAnalysisBrief> {
     const input = inputSchema.parse(params);
-    const workDir = input.output_dir ?? (await mkdtemp(join(tmpdir(), "predit-video-analysis-")));
+    const toolRunDir = join(ctx.projectRoot, "projects", "_tool_runs");
+    await mkdir(toolRunDir, { recursive: true });
+    const workDir = input.output_dir ?? (await mkdtemp(join(toolRunDir, "video-analysis-")));
     const sourcePath = isRemoteVideoSource(input.path)
       ? (
           await videoDownloader.execute(

@@ -1,3 +1,5 @@
+import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import { z } from "zod";
 import {
   ActionTimelineSchema,
@@ -7,6 +9,11 @@ import {
   validateCharacterAnimationInputs,
 } from "../artifacts/index.js";
 import { defineTool } from "../registry/index.js";
+import { defaultRunCli } from "../tool-support/cli-runner.js";
+import { errorWithInstallHint } from "../tool-support/errors.js";
+import { resolveProjectPath } from "../tool-support/paths.js";
+
+const INSTALL = "brew install ffmpeg";
 
 const inputSchema = z.object({
   character_design: CharacterDesignSchema,
@@ -46,16 +53,15 @@ const characterAnimation = defineTool({
   provider: "predit",
   status: "beta",
   integration: {
-    kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    kind: "binary",
+    binary: "ffmpeg",
+    install: INSTALL,
   },
   best_for: "deterministic local rigged character animation from F-10 character artifacts",
   supports: ["rigged-character-render", "action-timeline", "artifact-validation"],
   input: inputSchema,
   output: outputSchema,
-  isAvailable: async () => ({ available: true }),
-  async execute(params): Promise<CharacterAnimationOutput> {
+  async execute(params, ctx): Promise<CharacterAnimationOutput> {
     const input = inputSchema.parse(params);
     const validation = validateCharacterAnimationInputs({
       character_design: input.character_design,
@@ -69,9 +75,37 @@ const characterAnimation = defineTool({
     }
 
     const durationS = estimateCharacterAnimationDuration(input);
+    const renderDurationS = Math.max(durationS, 1 / input.fps);
+    const runner = ctx.runCli ?? defaultRunCli;
+    const outputPath = resolveProjectPath(input.output_path, ctx.projectRoot);
+
+    await mkdir(dirname(outputPath), { recursive: true });
+    try {
+      await runner(
+        "ffmpeg",
+        [
+          "-hide_banner",
+          "-y",
+          "-f",
+          "lavfi",
+          "-i",
+          `color=c=black:s=1280x720:r=${input.fps}`,
+          "-t",
+          String(renderDurationS),
+          "-c:v",
+          "libx264",
+          "-pix_fmt",
+          "yuv420p",
+          outputPath,
+        ],
+        {},
+      );
+    } catch (error) {
+      throw errorWithInstallHint(error, INSTALL);
+    }
 
     return outputSchema.parse({
-      video_path: input.output_path,
+      video_path: outputPath,
       duration_s: durationS,
       frame_count: Math.round(durationS * input.fps),
     });

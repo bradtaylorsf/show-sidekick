@@ -17,4 +17,10 @@ describe("clip_embedder", () => {
       model_id: CLIP_MODEL_ID,
     });
   });
+
+  it("accepts text and frame embedding inputs", () => {
+    expect(clipEmbedder.input.parse({ text: "quiet forest", modality: "text" }).modality).toBe("text");
+    expect(clipEmbedder.input.parse({ path: "frame.png", modality: "frame" }).path).toBe("frame.png");
+    expect(() => clipEmbedder.input.parse({ modality: "text" })).toThrow(/requires text/);
+  });
 });

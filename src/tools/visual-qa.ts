@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import { z } from "zod";
 import { defineTool } from "../registry/index.js";
 
@@ -43,9 +44,29 @@ const visualQa = defineTool({
   output: outputSchema,
   isAvailable: async () => ({ available: true }),
   async execute(params: VisualQaInput): Promise<VisualQaOutput> {
-    inputSchema.parse(params);
+    const input = inputSchema.parse(params);
+    const findings: VisualQaOutput["findings"] = [];
 
-    return createVisualQaResult();
+    for (const framePath of input.frame_paths) {
+      try {
+        const info = await stat(framePath);
+        if (!info.isFile()) {
+          findings.push({
+            frame_path: framePath,
+            severity: "critical",
+            description: "Frame path is not a file.",
+          });
+        }
+      } catch {
+        findings.push({
+          frame_path: framePath,
+          severity: "critical",
+          description: "Frame path does not exist.",
+        });
+      }
+    }
+
+    return createVisualQaResult(findings);
   },
 });
 
