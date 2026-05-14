@@ -115,6 +115,7 @@ budget_usd: 6
 # Inputs the pipeline needs.
 inputs:
   track: music_library/thechaosfm-news/2026-05-12-news-jam/track.mp3
+  reference: music_library/thechaosfm-news/reference-video.mp4
   lyrics: music_library/thechaosfm-news/2026-05-12-news-jam/lyrics.txt
   sources: music_library/thechaosfm-news/2026-05-12-news-jam/sources.yaml
   notes: |
@@ -126,6 +127,8 @@ cast: [host-mc, ambient-crowd]
 # Tags help filtering/listing.
 tags: [news-song, ps2, political-rap]
 ```
+
+`inputs.reference` is optional. When present, `predit build` treats it the same as `--reference`: a URL is parsed with `new URL()`, while local paths resolve against cwd and then `<project>/music_library/`. The resulting `video_analysis_brief` is saved under `projects/<show>/<episode>/artifacts/` and supplied to downstream stages and reviewer checks.
 
 ## Resolution order
 

@@ -3,7 +3,9 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import type { VideoAnalysisBrief } from "../../artifacts/video-analysis-brief.js";
 import { Registry } from "../../registry/index.js";
+import type { ReviewContext } from "../../review/runner.js";
 import type { StageContext, StageResult } from "../../harness/index.js";
 import { createProgram } from "../program.js";
 import type { BuildHandlerOptions } from "./build.js";
@@ -91,6 +93,72 @@ describe("build command", () => {
       program.parseAsync(["node", "predit", "build", "show/episode", "--from", "missing"], { from: "node" }),
     ).rejects.toThrow("unknown stage 'missing' for --from");
   });
+
+  it("analyzes an episode reference input before Runner and threads the brief into stages and review", async () => {
+    const root = await scratchProject();
+    const referencePath = path.join(root, "music_library", "reference.mp4");
+    await mkdir(path.dirname(referencePath), { recursive: true });
+    await writeFile(referencePath, "video", "utf8");
+    await writeEpisode(root, "show", "episode", "framework-smoke", "reference.mp4");
+    process.chdir(root);
+
+    const contexts: StageContext[] = [];
+    const reviewContexts: ReviewContext[] = [];
+    const referenceSources: string[] = [];
+    const { program } = captureProgram({
+      registryFactory: () => new Registry({ tools: [] }),
+      referenceResolver: ({ source }) => {
+        referenceSources.push(source.kind === "file" ? source.absolutePath : source.url);
+        return referenceBrief;
+      },
+      dispatcherFactory: () => async (ctx) => {
+        contexts.push(ctx);
+        return fixtures[ctx.stage.slug] ?? stageResult({ unexpected: ctx.stage.slug }, 0);
+      },
+      reviewer: (stageSlug, _artifact, ctx) => {
+        reviewContexts.push(ctx);
+        return passReview(stageSlug, ctx.round ?? 0);
+      },
+      now: () => new Date("2026-05-12T15:42:00.000Z"),
+    });
+
+    await program.parseAsync(["node", "predit", "--json", "build", "show/episode"], { from: "node" });
+
+    expect(referenceSources).toEqual([expect.stringContaining(path.join("music_library", "reference.mp4"))]);
+    expect(contexts[0]?.priorArtifacts.video_analysis_brief).toEqual(referenceBrief);
+    expect(contexts[1]?.priorArtifacts.video_analysis_brief).toEqual(referenceBrief);
+    expect(reviewContexts[0]).toMatchObject({
+      referenceBrief,
+      videoAnalysisBrief: referenceBrief,
+      referenceDriven: true,
+    });
+  });
+
+  it("prefers --reference over episode inputs.reference", async () => {
+    const root = await scratchProject();
+    const referencePath = path.join(root, "flag-reference.mp4");
+    await writeFile(referencePath, "video", "utf8");
+    await writeEpisode(root, "show", "episode", "framework-smoke", "missing-input-reference.mp4");
+    process.chdir(root);
+
+    const referenceSources: string[] = [];
+    const { program } = captureProgram({
+      registryFactory: () => new Registry({ tools: [] }),
+      referenceResolver: ({ source }) => {
+        referenceSources.push(source.kind === "file" ? source.absolutePath : source.url);
+        return referenceBrief;
+      },
+      dispatcherFactory: () => async (ctx) => fixtures[ctx.stage.slug] ?? stageResult({ unexpected: ctx.stage.slug }, 0),
+      reviewer: (stageSlug, _artifact, ctx) => passReview(stageSlug, ctx.round ?? 0),
+      now: () => new Date("2026-05-12T15:42:00.000Z"),
+    });
+
+    await program.parseAsync(["node", "predit", "--json", "build", "show/episode", "--reference", referencePath], {
+      from: "node",
+    });
+
+    expect(referenceSources).toEqual([referencePath]);
+  });
 });
 
 async function writeShow(root: string, slug: string, pipeline: string): Promise<void> {
@@ -112,10 +180,23 @@ async function writeShow(root: string, slug: string, pipeline: string): Promise<
   );
 }
 
-async function writeEpisode(root: string, show: string, slug: string, pipeline: string): Promise<void> {
+async function writeEpisode(
+  root: string,
+  show: string,
+  slug: string,
+  pipeline: string,
+  reference?: string,
+): Promise<void> {
   await writeFile(
     path.join(root, "shows", show, "episodes", `${slug}.yaml`),
-    [`slug: ${slug}`, 'title: "Episode"', "created: 2026-05-12", `pipeline: ${pipeline}`, ""].join("\n"),
+    [
+      `slug: ${slug}`,
+      'title: "Episode"',
+      "created: 2026-05-12",
+      `pipeline: ${pipeline}`,
+      ...(reference === undefined ? [] : ["inputs:", `  reference: ${reference}`]),
+      "",
+    ].join("\n"),
     "utf8",
   );
 }
@@ -177,6 +258,40 @@ function stageResult(artifact: unknown, stageCostUsd: number): StageResult {
     decisions: [],
   };
 }
+
+function passReview(stageSlug: string, round: number) {
+  return {
+    stage: stageSlug,
+    round,
+    decision: "pass" as const,
+    findings: [],
+    summary: {
+      critical: 0,
+      suggestions: 0,
+      nitpicks: 0,
+      investigations: 0,
+      success_criteria_met: 0,
+      success_criteria_total: 0,
+    },
+  };
+}
+
+const referenceBrief: VideoAnalysisBrief = {
+  pacing_style: "fast_paced",
+  promise_elements: ["match cut"],
+  scenes: [
+    {
+      scene_ref: "opening",
+      subject: ["host"],
+      subject_motion: ["walks toward camera"],
+      scene: ["warehouse with titles"],
+      spatial_framing: ["centered medium shot"],
+      camera: ["handheld push"],
+      motion_type: "motion_clip",
+      flow_variance: 0.2,
+    },
+  ],
+};
 
 function captureProgram(build?: BuildHandlerOptions) {
   let stdout = "";

@@ -28,7 +28,7 @@ AI pre-production for video. Builds the rough cut and an EDL/XML you finish in P
 
 Global flags: `--json`, `--dry-run`, `--verbose`, `--no-color`, `--config <path>`.
 
-Build/run commands currently validate show, episode, pipeline, stage flags, resume checkpoints, approval checkpoints, audited final-review force approvals, revision notes, status state, and cost summaries. `build` runs the integrated Runner state machine: registry preflight, stage dispatch, reviewer pass, checkpoint writes, approval gates, budget limits, and resumable state.
+Build/run commands currently validate show, episode, pipeline, stage flags, reference inputs, resume checkpoints, approval checkpoints, audited final-review force approvals, revision notes, status state, and cost summaries. `build` runs the integrated Runner state machine: optional `--reference <url-or-path>` / `inputs.reference` video analysis, registry preflight, stage dispatch, reviewer pass, checkpoint writes, approval gates, budget limits, and resumable state.
 
 Create/list commands scaffold project-local shows, episodes, pipelines, and playbooks, and list merged project-local plus `.predit` cache resources with JSON output for automation. `new playbook` uses the bundled playbook generator so the stub includes palette, typography, motion rules, audio mood, asset preferences, and quality rules.
 
