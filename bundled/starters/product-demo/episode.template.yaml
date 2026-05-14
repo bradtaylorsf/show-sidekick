@@ -1,0 +1,16 @@
+# Copy this file to episodes/<slug>.yaml and replace the title, inputs, and notes.
+slug: new-product-demo
+title: "New Product Demo"
+created: 2026-05-14
+pipeline: product-demo
+playbook: clean-professional
+runtime: ffmpeg
+aspect: "16:9"
+budget_usd: 0.5
+inputs:
+  screenshot: shows/product-demo/inputs/sample-episode/screenshot.jpg
+  notes: shows/product-demo/inputs/sample-episode/notes.txt
+cast: []
+tags:
+  - product-demo
+  - visual-led

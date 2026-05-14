@@ -1,0 +1,5 @@
+Start with a blank dashboard and reveal one simple bottleneck.
+Label the slow step, then show two duplicate handoffs fading out.
+Bring in the new workflow as three connected cards.
+Highlight the handoff that now happens automatically.
+End on the result: a cleaner review queue and a faster launch.

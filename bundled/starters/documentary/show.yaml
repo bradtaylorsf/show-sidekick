@@ -1,0 +1,28 @@
+slug: documentary
+display_name: "Documentary"
+description: "Visual-led documentary starter with a narration fixture and reference image."
+created: 2026-05-14
+brand: ./brand/
+characters: ./characters/
+skills: ./skills/
+pipelines:
+  documentary:
+    playbook: news-broadcast
+    runtime: ffmpeg
+    aspect: "16:9"
+    budget_usd: 0.75
+defaults:
+  pipeline: documentary
+  language: en
+ingest:
+  episode_template: ./episode.template.yaml
+  watch:
+    - path: ./inputs/
+      match: "**/narration.txt"
+      pipeline: documentary
+      slug_from: parent_dir
+starter:
+  fixture_size_bytes: 1920
+  expected_sample_duration_s: 15
+  pending_pipelines:
+    - documentary
