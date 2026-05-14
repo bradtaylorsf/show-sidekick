@@ -1,0 +1,108 @@
+identity:
+  name: "News Song — Protest"
+  category: cinematic
+  mood: somber, journalistic, contemplative-with-anger, weight-bearing
+  pace: deliberate
+  best_for: "16:9 horizontal master (with 9:16 letterboxed derivative) music videos for protest songs / folk-journalism songs about war, inequality, displacement, or other grave subject matter. Editorial-illustration visual treatment (Joe Sacco / Ralph Steadman / Eric Drooker / NY Times op-ed art) interwoven with real news screenshots. Honors the gravity of the lyrics — no Saturday-morning-cartoon energy here. Primary deliverable is YouTube 1920x1080; vertical TikTok/Shorts derivative letterboxes the 16:9 visual with text rails above and below."
+
+visual_language:
+  color_palette:
+    primary: ["#C9A66B"]              # muted amber / sepia — primary accent (warm, weighted)
+    accent: ["#8B3A3A", "#5C7388"]    # muted oxblood red + muted slate blue — secondary
+    background: "#1A1812"              # warm dark charcoal (not the pure navy of the playful playbook)
+    text: "#E6DFD2"                    # warm off-white
+    muted: "#3A3530"                   # mid-warm-grey for secondary text
+  composition: "alternates between full-frame editorial illustration (lyric depictions in sepia/muted-blue ink-and-wash style) and full-frame news-source screenshots with publisher attribution lower-third. Date card opens like a newspaper masthead. Slower pacing, longer scene holds. Breathing room between cuts."
+  texture: "hand-drawn editorial illustration for lyric scenes (cross-hatching, ink wash, muted overlays); real publisher screenshots for news scenes; subtle film-grain across entire composition for cohesion"
+
+typography:
+  headings:
+    font: "Playfair Display"
+    weight: 800
+    tracking: "-0.01em"
+  body:
+    font: "Inter"
+    weight: 600
+    line_height: 1.3
+  scale_system: "minor_third"
+  weight_matrix:
+    title: 800
+    heading: 700
+    body: 500
+    caption: 500
+
+motion:
+  transitions: [hard-cut, slow-fade, cross-dissolve]
+  animation_style: "power2.out for entrances, slow Ken-Burns 1.0->1.04 over scene duration, no overshoot, no elastic bounces. Captions fade in word-by-word with gentle ease, no scale-pop."
+  pacing_rules:
+    min_scene_hold_seconds: 3.0
+    max_scene_hold_seconds: 8.0
+    text_card_hold_seconds: 4.0
+    stat_card_hold_seconds: 5.0
+    transition_duration_seconds: 0.4
+  entrance: "gentle fade + 8px y-shift, power2.out, 0.5s. NO scale-pop on emphasis words."
+  exit: "slow fade-out 0.4s, power2.in"
+
+audio:
+  voice_style: "BYO Suno-generated vocals — typically folk / protest / Americana style"
+  music_mood: "BYO Suno track. Whisper-transcribe to derive section boundaries. Captions follow vocal cadence but should NEVER feel hyped — match the song's restraint."
+  music_volume: 1.0
+  sfx_style: "no white-flash on beat drops. No camera-shutter SFX on news reveals. Subtle cross-dissolves only. The music carries the energy."
+  ducking_threshold_db: 0
+
+asset_generation:
+  image_prompt_prefix: "Horizontal 16:9 editorial illustration in the style of Joe Sacco or Eric Drooker. Hand-drawn pen-and-ink with muted ink-wash color, cross-hatching, weight, dignified subject matter. Sepia and muted-blue palette dominant. Subtle film grain. Wide cinematic composition feels like a newspaper op-ed page spread or graphic novel splash panel. Caption-safe area at bottom 25 percent of frame is empty (lyric captions sit there in the 16:9 master). Mood: serious, contemplative, honoring the subject matter. "
+  image_negative_prompt: "cartoon, photorealistic, watercolor, 3D render, AI-art aesthetic, bright cheerful colors, Saturday-morning-cartoon, anime, kawaii, gradient on subject, hex code labels, brand logos, flat vector style, neon"
+  diagram_style: "hand-drawn editorial diagrams — sketched maps, marginalia, pull-quote panels in newspaper style"
+  consistency_anchors:
+    - "Warm dark charcoal (#1A1812) background or sepia wash in every editorial-illustration scene"
+    - "Hand-drawn pen-and-ink + muted ink-wash style consistent across all lyric-art scenes"
+    - "Per-character verbatim description block reused identically across all character appearances (if recurring characters used)"
+    - "Caption-safe bottom 30% empty"
+    - "Top 10% empty for editorial title/dateline overlay if used"
+    - "No hex codes / color spec text in Imagen prompts"
+    - "News scenes are real publisher screenshots — NEVER generate fake-news images via Imagen"
+    - "Subjects depicted with weight and dignity, never cartoonish"
+
+overlays:
+  stat_card:
+    bg: "#1A1812"
+    border: "#C9A66B"
+    radius: 2
+    shadow: "0 2px 8px rgba(0,0,0,0.5)"
+  key_term:
+    bg: "#0F0E0A"          # caption pill base; runtime applies rgba(15,14,10,0.9)
+    text: "#E6DFD2"
+    radius: 4
+    shadow: "0 8px 32px rgba(0,0,0,0.6)"
+  code_block:
+    bg: "#1A1812"
+    text: "#E6DFD2"
+    highlight: "#C9A66B"
+
+quality_rules:
+  - "Primary canvas 16:9 (1920x1080) for the YouTube master; 9:16 (1080x1920) is a letterboxed derivative built from the same scene+caption data"
+  - "Episode opens with a newspaper-masthead-style date card (date + episode title + show identity, ~4 sec)"
+  - "Episode closes with a credit card listing all sources by name (~5 sec)"
+  - "Captions snap to whisper word timestamps; pacing follows vocal restraint"
+  - "Emphasis words use color shift (oxblood red on key terms) but NO scale-pop bounce"
+  - "News scenes show real publisher screenshots ONLY — never AI-generated fake news"
+  - "Every news scene carries a lower-third banner (publisher + headline + date) in muted-warm palette"
+  - "Beat-drop hype tags are PERMITTED but quiet — newspaper pull-quote style, NOT hype-tag yelling. Use sparingly (2-3 max per episode)"
+  - "Hard cuts allowed on tight lyric beats; cross-dissolves preferred between sections"
+  - "NO white-flash transitions on beat drops"
+  - "Subjects depicted with dignity — no caricature on real-world tragedy subjects"
+  - "Sample-first: build 15-20 sec preview before committing to full episode budget"
+
+chart_palette:
+  - "#C9A66B"
+  - "#8B3A3A"
+  - "#5C7388"
+  - "#E6DFD2"
+  - "#3A3530"
+  - "#1A1812"
+
+color_rules:
+  harmony_type: "analogous"
+  contrast_validation: true
+  colorblind_safe: true

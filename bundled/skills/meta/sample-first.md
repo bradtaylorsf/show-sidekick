@@ -1,11 +1,19 @@
 ---
 name: sample-first
 description: Require a representative sample run before expensive, slow, reference-driven, or motion-sensitive productions.
+applies_to: meta
+cross_refs:
+  - specs/16-onboarding-and-discovery.md
+  - specs/12-checkpoint-protocol.md
+  - bundled/skills/meta/checkpoint-protocol.md
+  - bundled/skills/meta/decision-log.md
 ---
 
 # Sample-First Protocol
 
 Use this meta skill at proposal time when a pipeline trigger says the user should review a sample before a full batch run.
+
+This file is the navigability home for sample-first behavior. Pair it with `checkpoint-protocol.md` for `sample_vN` checkpoint handling and `decision-log.md` for any approved sample skip.
 
 ## When To Trigger
 
@@ -38,4 +46,7 @@ If the user still wants to skip, record a `downgrade_approval` decision explaini
 ## Cross-References
 
 - `specs/16-onboarding-and-discovery.md`
+- `specs/12-checkpoint-protocol.md`
+- `bundled/skills/meta/checkpoint-protocol.md`
+- `bundled/skills/meta/decision-log.md`
 - audit C-23

@@ -1,0 +1,111 @@
+identity:
+  name: "PS2 Dystopian News Rap"
+  category: retro
+  mood: gritty, political, cinematic, paranoid, late-night-urban
+  pace: fast
+  best_for: "Music-led news-song episodes where every episode uses a different song. The song drives timing; real news screenshots provide evidence; PS2-era low-poly cinematic scenes provide mood and metaphor. Default delivery uses source flyout cards instead of lyric captions."
+
+visual_language:
+  color_palette:
+    primary: ["#101820", "#1B1F2A", "#2A2630"]
+    accent: ["#FF5A2F", "#00D6C9", "#D6B45A"]
+    background: "#080A0E"
+    text: "#E8E2D4"
+    muted: "#59606D"
+  composition: "low-poly 3D city scenes, CRT news screens, surveillance-angle cutaways, full-frame publisher screenshots, and animated source flyout cards. News screenshots are evidence beats; PS2 scenes are cinematic lyric/metaphor beats. Each concept beat gets its own clip or shot angle, even when two concepts share one sentence. Avoid karaoke captions by default."
+  texture: "PS2-era video game cinematic, low-poly geometry, compressed textures, visible polygon edges, vertex lighting, baked shadows, retro reflections, foggy render distance, CRT glow, VHS tape noise, grainy motion blur"
+
+typography:
+  headings:
+    font: "Rajdhani"
+    weight: 800
+    tracking: "0.04em"
+  body:
+    font: "Inter"
+    weight: 650
+    line_height: 1.08
+  scale_system: "minor_third"
+  weight_matrix:
+    title: 850
+    heading: 760
+    body: 620
+    caption: 600
+
+motion:
+  transitions: [hard-cut, surveillance-glitch, crt-scanline-wipe, white-flash, match-cut]
+  animation_style: "PS2 cutscene camera language: dynamic handheld camera, dramatic low-angle shots, Dutch angles, tracking shots through fog, abrupt hard cuts, CRT glitch hits, grainy motion blur, and short source flyouts that slide/fly in for evidence beats."
+  pacing_rules:
+    min_scene_hold_seconds: 1.2
+    max_scene_hold_seconds: 5.0
+    text_card_hold_seconds: 2.2
+    stat_card_hold_seconds: 3.0
+    transition_duration_seconds: 0.16
+  entrance: "source flyout cards enter from screen edge with 14px overshoot, CRT flicker, and a 0.18s power3.out settle"
+  exit: "flyout cards snap down or smear sideways with 0.16s power3.in plus brief scanline glitch"
+
+audio:
+  voice_style: "BYO generated music track; vocals are part of the song, not narration"
+  music_mood: "dark political rap, dystopian news collage, underground early-2000s city energy"
+  music_volume: 1.0
+  sfx_style: "subtle CRT hum, tape glitch, surveillance camera click, low camera-shutter thump on source reveals, short whoosh on flyout cards"
+  ducking_threshold_db: 0
+
+asset_generation:
+  image_prompt_prefix: "PS2-style political rap music video, low-poly city streets at night, cinematic rain, dramatic shadows, flashing news screens, early 2000s video game graphics, gritty urban realism, moody fog, surveillance camera aesthetic, dramatic facial expressions, retro 3D rendering, chaotic downtown environment, cinematic action framing, vintage console graphics, emotional lighting, social unrest atmosphere, realistic proportions with low-detail textures, underground rap video energy. "
+  image_negative_prompt: "modern photorealistic render, smooth Unreal Engine look, ultra-detailed pores, glossy modern CGI, clean vector art, flat cartoon, anime-only style, readable fake news article text, invented logos, exact brand logos, hex code labels, overly perfect faces"
+  diagram_style: "CRT monitor diagrams, low-resolution map overlays, pixelated route lines, simple HUD boxes, scanline-backed data cards"
+  consistency_anchors:
+    - "Use PS2-era low-poly geometry and compressed texture maps in every generated lyric/metaphor scene"
+    - "Favor recognizable silhouettes, mood, lighting, and camera movement over detailed facial realism"
+    - "Use dramatic urban lighting: sodium orange, cold cyan, dirty CRT green, and deep shadow"
+    - "Use camera phrases: dynamic handheld camera, dramatic low-angle shot, Dutch angle, cinematic tracking shot, PS2 cutscene camera, grainy motion blur, retro depth fog"
+    - "Use texture phrases: compressed textures, low-resolution texture maps, visible polygon edges, simple shaders, vertex lighting, baked lighting, limited render distance"
+    - "News scenes are real publisher screenshots only; never generate fake news imagery or fake article layouts"
+    - "Default no-caption version keeps the bottom third available for source flyout cards, not karaoke lyrics"
+
+overlays:
+  stat_card:
+    bg: "#101820"
+    border: "#00D6C9"
+    text: "#E8E2D4"
+    radius: 2
+    shadow: "0 0 18px rgba(0,214,201,0.22)"
+  key_term:
+    bg: "#080A0E"
+    border: "#FF5A2F"
+    text: "#E8E2D4"
+    radius: 2
+    shadow: "0 0 22px rgba(255,90,47,0.30)"
+  code_block:
+    bg: "#080A0E"
+    border: "#59606D"
+    text: "#E8E2D4"
+    highlight: "#D6B45A"
+
+quality_rules:
+  - "Default caption_mode is none: no karaoke lyric captions in the first PS2 news-song sample"
+  - "Whisper still runs for timing; word timestamps drive cuts, source flyouts, and beat accents without rendering lyric captions"
+  - "Scene duration hard cap: no visual scene may run longer than 5.0 seconds"
+  - "Concept beats drive visual clips: a sentence can split into multiple concepts, and one concept can span a short phrase"
+  - "Instrumental or no-vocal sections must use fast-cut PS2 b-roll variations of the song's main concept from different angles"
+  - "Use source flyout cards for publisher, headline, date, and optional one-line evidence note"
+  - "Every news-source beat must use a real captured publisher page or an explicitly attributed source card"
+  - "Do not generate fake article pages, fake news anchors, or invented screenshots"
+  - "Keep faces simple; do not overdescribe facial details because PS2 authenticity comes from silhouettes, lighting, camera, and texture limits"
+  - "Use low-poly PS2 imperfections intentionally: jagged edges, low-resolution textures, limited render distance, vertex lighting, CRT/VHS artifacts"
+  - "Major beat drops may use white flash, surveillance glitch, or CRT scanline wipe, but avoid constant glitch noise"
+  - "News screenshots must remain legible; flyout cards must not obscure the article headline or source masthead"
+  - "Sample-first: render a no-caption PS2 sample before committing to a full episode"
+
+chart_palette:
+  - "#FF5A2F"
+  - "#00D6C9"
+  - "#D6B45A"
+  - "#E8E2D4"
+  - "#59606D"
+  - "#101820"
+
+color_rules:
+  harmony_type: "split-complementary"
+  contrast_validation: true
+  colorblind_safe: false

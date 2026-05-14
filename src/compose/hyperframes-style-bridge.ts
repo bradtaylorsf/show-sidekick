@@ -62,7 +62,11 @@ function compactCssVars(vars: Record<string, unknown>): CssVariableMap {
 }
 
 function px(value: Playbook["typography"][string] | undefined): string | undefined {
-  return typeof value === "number" ? `${value}px` : value;
+  if (typeof value === "number") {
+    return `${value}px`;
+  }
+
+  return typeof value === "string" ? value : undefined;
 }
 
 function ms(value: Playbook["motion"][string] | undefined): string | undefined {

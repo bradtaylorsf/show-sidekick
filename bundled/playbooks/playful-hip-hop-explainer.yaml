@@ -1,0 +1,95 @@
+identity:
+  name: "Playful Hip-Hop Explainer"
+  category: motion-graphics
+  mood: playful, energetic, character-driven, slightly chaotic in a controlled way
+  pace: rapid
+  best_for: "Vertical 9:16 music videos for hip-hop / spoken-word songs about technical or educational topics. Saturday-morning-cartoon energy applied to graduate-level concepts. Originated from the RAG Shelf Sprint music video (2026-05-08)."
+
+visual_language:
+  color_palette:
+    primary: ["#FFD23F"]         # vibrant yellow — lead accent (RAG / Verse 1 in source song)
+    accent: ["#FF4938", "#3FE3D6"]   # red + cyan-mint — secondary section accents
+    background: "#0B1020"        # deep navy-black
+    text: "#F5F2E8"              # warm off-white
+    muted: "#0F1423"             # semi-opaque pill background base (used as rgba(15,20,35,0.85) at runtime)
+  composition: "edge-to-edge characters mid-frame, captions in lower-third pill, big display tags top-or-mid for beat drops, subject typically centered or lower-center for vertical 9:16 framing. Each concept beat gets its own visual clip or camera angle; one sentence may split into multiple concepts."
+  texture: "flat 2D cartoon, clean black linework, vibrant flat colors, no gradients on characters (gradients only allowed on textured backgrounds)"
+
+typography:
+  headings:
+    font: "Outfit"
+    weight: 900
+    tracking: "0.02em"
+  body:
+    font: "Outfit"
+    weight: 700
+    line_height: 1.05
+  scale_system: "perfect_fourth"
+  weight_matrix:
+    title: 900
+    heading: 800
+    body: 700
+    caption: 700
+
+motion:
+  transitions: [hard-cut, white-flash, motion-blur-whip, cross-fade]
+  animation_style: "elastic.out(1, 0.5) on emphasis word pops (3-6% scale), back.out(2.2) on word entrance, power3.out on scene cuts (0.16s entrance), Ken-Burns 1.0->1.05 over scene duration"
+  pacing_rules:
+    min_scene_hold_seconds: 1.3
+    max_scene_hold_seconds: 5.0
+    text_card_hold_seconds: 1.5
+    stat_card_hold_seconds: 1.5
+    transition_duration_seconds: 0.18
+  entrance: "scale-up + back.out(2.2) for words, power3.out fade-in for scene images"
+  exit: "scale-down + power2.in (0.08s) for caption groups; transitions own scene exits"
+
+audio:
+  voice_style: "BYO vocals — typically Suno-generated hip-hop track, high-energy with rapid-fire verse delivery"
+  music_mood: "BYO Suno track. Whisper-transcribe the .mp3 first to derive section boundaries from music gaps; use whisper word timestamps to drive caption timing."
+  music_volume: 1.0
+  sfx_style: "white-flash on major beat drops, no traditional whoosh/pop SFX"
+  ducking_threshold_db: 0   # no narration ducking — vocals are the music
+
+asset_generation:
+  image_prompt_prefix: "Vertical 9:16 illustration for a hip-hop explainer music video. Flat 2D cartoon style with clean linework, vibrant colors, no photorealism, no gradients on characters, slight cel-shading. Caption-safe area at bottom 30 percent of frame is empty. Mood: playful, energetic, Saturday-morning-cartoon-meets-computer-science. "
+  image_negative_prompt: "photorealistic, watercolor, gradient on character, cluttered background, hex code labels in image, brand logos, generic stock illustration, 3D render"
+  diagram_style: "Hand-drawn cartoon diagrams over solid navy backgrounds, glowing colored nodes, simple labeled edges. Avoid realistic charts."
+  consistency_anchors:
+    - "Deep navy-black (#0B1020) background in every scene"
+    - "Per-character verbatim description block reused identically across all prompts featuring that character (see characters/<series>/<char>/character_sheet.md)"
+    - "Caption-safe bottom 30% empty so the caption pill doesn't overlap the subject"
+    - "Top 10% empty so beat-drop tag overlay doesn't overlap the subject"
+    - "No hex codes or technical color spec in Imagen prompts (Imagen renders them as labels in-frame)"
+
+overlays:
+  key_term:
+    bg: "#0F1423"          # caption pill base; runtime applies rgba(15,20,35,0.85)
+    text: "#F5F2E8"
+    radius: 28
+    shadow: "0 12px 40px rgba(0,0,0,0.55)"
+
+quality_rules:
+  - "Vertical 9:16 only (1080x1920). All compositions must use this aspect."
+  - "Captions snap to whisper word timestamps; no guessed timing."
+  - "Scene duration hard cap: no visual scene may run longer than 5.0 seconds"
+  - "Concept beats drive scene cuts: a sentence can contain multiple concepts, and each concept needs its own visual treatment"
+  - "Instrumental / no-vocal gaps use fast-cut b-roll variations depicting the song's main concept from different angles"
+  - "Per-section accent color: yellow for RAG, red for Agent, cyan-mint for Graph (or song's equivalent character/concept palette)"
+  - "UPPERCASE on emphasis words (technical terms, drops); normal case on connective text"
+  - "Word-level caption pops use elastic.out, max 1.20 scale to avoid clipping the pill"
+  - "Bottom 220px and top 110px masked solid background to hide Imagen text-rendering artifacts"
+  - "Beat-drop hype tags between sections (RAG, AGENTIC SEARCH, GRAPH DB pattern) — name them after the actual concept, not VERSE N"
+  - "White-flash transition (0.65 opacity, 0.06s in / 0.18s out) at major beat drops"
+  - "Sample-first: build 10-18 sec preview before committing to full-song budget"
+
+chart_palette:
+  - "#FFD23F"
+  - "#FF4938"
+  - "#3FE3D6"
+  - "#F5F2E8"
+  - "#0F1423"
+
+color_rules:
+  harmony_type: "triadic"
+  contrast_validation: true
+  colorblind_safe: false   # the per-character color binding (yellow/red/cyan) carries narrative meaning and isn't meant to be redundant

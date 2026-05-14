@@ -1,0 +1,101 @@
+identity:
+  name: "News Broadcast"
+  category: minimalist
+  mood: clean, authoritative, urgent, neutral
+  pace: rapid
+  best_for: "Daily news roundups, headline montages, breaking-news recaps. Vertical 9:16 for social platforms or 16:9 for web. High signal density, fast cuts, ticker-tape lower-third with source attribution."
+
+visual_language:
+  color_palette:
+    primary: ["#D72831"]              # broadcast red — banner / breaking-news accent
+    accent: ["#1A1F2E", "#FFFFFF"]    # deep navy + white — chrome
+    background: "#0F1419"             # near-black charcoal
+    text: "#F5F5F5"                   # near-white
+    muted: "#7A8294"                  # mid-grey for source attribution / secondary text
+  composition: "screenshot or photo fills frame; lower-third banner with red source-attribution tab + headline text; logo/clock in upper-right corner; chrome stays clean, content carries the variation"
+  texture: "flat, broadcast-clean, no gradients, no decorative texture; sharp edges; high contrast"
+
+typography:
+  headings:
+    font: "Inter"
+    weight: 800
+    tracking: "-0.02em"
+  body:
+    font: "Inter"
+    weight: 600
+    line_height: 1.25
+  code:
+    font: "JetBrains Mono"
+    weight: 500
+  scale_system: "perfect_fourth"
+  weight_matrix:
+    title: 800
+    heading: 700
+    body: 500
+    caption: 400
+
+motion:
+  transitions: [hard-cut, slide-up, wipe-left]
+  animation_style: "linear or ease-out, no overshoot, broadcast-mechanical feel"
+  pacing_rules:
+    min_scene_hold_seconds: 3.0
+    max_scene_hold_seconds: 12.0
+    text_card_hold_seconds: 4.0
+    stat_card_hold_seconds: 5.0
+    transition_duration_seconds: 0.25
+  entrance: "lower-third banner slides up from bottom in 0.3s with ease-out; headline text fades in 0.15s after"
+  exit: "lower-third slides down 0.25s before scene exits"
+
+audio:
+  voice_style: "clear, professional newsreader cadence; mid-tempo; neutral accent; ElevenLabs voice id should be a polished newsreader"
+  music_mood: "subtle newsroom bed — low-volume electronic pad with optional subtle ticking pulse; OFF during narration unless specifically called for"
+  music_volume: 0.05
+  sfx_style: "sparing — typewriter ding on headline transitions, optional camera-shutter on screenshot reveals"
+  ducking_threshold_db: -8
+
+asset_generation:
+  image_prompt_prefix: ""              # this pipeline is screenshot-led, not Imagen-led
+  image_negative_prompt: "cartoon, illustration, photoreal-fake, AI-generated artifacts"
+  diagram_style: "clean broadcast graphics — bar charts, pie charts, simple maps with minimal labels"
+  consistency_anchors:
+    - "Lower-third banner identical across every scene (same red tab, same fonts, same positioning)"
+    - "Source attribution always visible (publisher name + date)"
+    - "Logo/clock fixed in upper-right for the entire episode"
+    - "Real publisher screenshots are the visual variation — no AI-generated images for primary content"
+
+overlays:
+  stat_card:
+    bg: "#1A1F2E"
+    border: "#D72831"
+    radius: 4
+    shadow: "0 4px 12px rgba(0,0,0,0.4)"
+  key_term:
+    bg: "#D72831"
+    text: "#FFFFFF"
+    radius: 0
+  code_block:
+    bg: "#0F1419"
+    text: "#F5F5F5"
+    highlight: "#D72831"
+
+quality_rules:
+  - "Every story scene shows a real source screenshot or pull-quote"
+  - "Source attribution (publisher + date) visible on every headline"
+  - "Episode opens with date + episode title card; closes with credit + 'see you tomorrow'"
+  - "Narration TTS pace is 130-150 wpm (broadcast standard)"
+  - "Min 3 sec per story (long enough to read), max 12 sec (short enough to keep momentum)"
+  - "5-10 stories per episode at 60-90 sec each = 5-15 min total runtime"
+  - "Music duck to -8dB during narration; full volume only in transitions"
+
+chart_palette:
+  - "#D72831"
+  - "#3FA9F5"
+  - "#F5C443"
+  - "#7A8294"
+  - "#F5F5F5"
+  - "#1A1F2E"
+
+color_rules:
+  harmony_type: "complementary"
+  contrast_validation: true
+  colorblind_safe: true

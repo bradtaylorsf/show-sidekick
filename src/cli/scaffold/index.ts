@@ -5,6 +5,7 @@ import YAML from "yaml";
 import { atomicWrite } from "../../checkpoints/io.js";
 import { PipelineManifestSchema } from "../../pipelines/manifest.js";
 import { projectPaths } from "../../paths/project.js";
+import { generatePlaybook } from "../../playbooks/generator.js";
 import { EpisodeSchema, validateEpisodeAgainstShow } from "../../shows/episode.js";
 import type { LoadedShow } from "../../shows/load.js";
 import { ShowSchema } from "../../shows/show.js";
@@ -150,14 +151,7 @@ export async function scaffoldPlaybook(projectRoot: string, slugInput: string): 
   await assertMissing(filePath, "playbook");
   await atomicWrite(
     filePath,
-    YAML.stringify({
-      slug,
-      display_name: titleize(slug),
-      description: "Project-local playbook override.",
-      palette: {},
-      typography: {},
-      motion: {},
-    }),
+    YAML.stringify(generatePlaybook({ slug, name: titleize(slug), brief: "Project-local playbook override." })),
   );
   return { slug, filePath };
 }

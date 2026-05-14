@@ -1,0 +1,114 @@
+identity:
+  name: "The ChaosFM — GTA Political"
+  category: retro
+  mood: gritty, satirical, anti-oligarchy, political, cinematic, rebellious
+  pace: fast
+  best_for: "The ChaosFM branded political news songs and source-free protest music videos: PS2/GTA-inspired satire, class-divide imagery, public-figure caricature, real source evidence when available, and no-caption YouTube masters."
+
+visual_language:
+  color_palette:
+    primary: ["#101820", "#1B1F2A", "#2A2630"]
+    accent: ["#FF5A2F", "#00D6C9", "#D6B45A", "#EF1CA7"]
+    background: "#080A0E"
+    text: "#E8E2D4"
+    muted: "#59606D"
+  composition: "PS2/GTA-style political music-video scenes, low-poly city environments, class-divide tableaus, source evidence beats when available, and ChaosFM opening/end branding. Concept beats get their own shot or angle. Captions are off by default."
+  texture: "PS2-era low-poly geometry, compressed textures, visible polygon edges, vertex lighting, baked shadows, CRT glow, VHS tape noise, foggy render distance, rain, smoke, and rough early-2000s console imperfections"
+
+typography:
+  headings:
+    font: "Pricedown"
+    weight: 800
+    tracking: "0"
+  body:
+    font: "Futura"
+    weight: 650
+    line_height: 1.08
+  scale_system: "minor_third"
+  weight_matrix:
+    title: 850
+    heading: 760
+    body: 620
+    caption: 600
+
+motion:
+  transitions: [hard-cut, surveillance-glitch, crt-scanline-wipe, white-flash, match-cut]
+  animation_style: "PS2 cutscene camera language: handheld push-ins, drone flyovers, dramatic low-angle shots, Dutch angles, tracking shots through fog, abrupt hard cuts, CRT glitch hits, grainy motion blur, and short source flyouts only when real sources exist."
+  pacing_rules:
+    min_scene_hold_seconds: 1.2
+    max_scene_hold_seconds: 5.0
+    text_card_hold_seconds: 2.2
+    stat_card_hold_seconds: 3.0
+    transition_duration_seconds: 0.16
+  entrance: "hard cinematic reveals, CRT flicker, 14px overshoot on HUD/source cards, title/logo fade over opener"
+  exit: "snap cuts, smear exits, smoke clears, scanline glitches, and brand elements fading out before final shot"
+
+audio:
+  voice_style: "BYO generated music track; vocals are part of the song, not narration"
+  music_mood: "political rap, protest music, dystopian news collage, underground early-2000s city energy"
+  music_volume: 1.0
+  sfx_style: "subtle CRT hum, tape glitch, surveillance camera click, low shutter thump, short whoosh on source cards, no SFX that fights the song"
+  ducking_threshold_db: 0
+
+asset_generation:
+  image_prompt_prefix: "The ChaosFM branded PS2/GTA political satire music video, low-poly city streets at night, cinematic rain, dramatic shadows, flashing CRT news screens, early 2000s console graphics, gritty urban realism, moody fog, surveillance camera aesthetic, class divide, anti-oligarchy protest energy, dramatic public-figure caricature when relevant, vintage game graphics, emotional lighting, social unrest atmosphere, realistic proportions with low-detail textures, underground rap video energy. "
+  image_negative_prompt: "modern photorealistic render, smooth Unreal Engine look, glossy modern CGI, clean vector art, flat cartoon, anime-only style, readable fake news article text, invented publisher logos, platform logos, hex code labels, overly perfect faces, cute toy-like characters"
+  diagram_style: "CRT monitor diagrams, low-resolution map overlays, pixelated route lines, simple HUD boxes, scanline-backed data cards"
+  consistency_anchors:
+    - "Use The ChaosFM logo treatment in opener and end treatment unless the user explicitly opts out"
+    - "Use PS2-era low-poly geometry and compressed texture maps in every generated lyric/metaphor scene"
+    - "Favor recognizable silhouettes, mood, lighting, and camera movement over detailed facial realism"
+    - "Use dramatic urban lighting: sodium orange, cold cyan, dirty CRT green, hot magenta, and deep shadow"
+    - "Use camera phrases: dynamic handheld camera, drone flyover, dramatic low-angle shot, Dutch angle, cinematic tracking shot, PS2 cutscene camera, grainy motion blur, retro depth fog"
+    - "Use texture phrases: compressed textures, low-resolution texture maps, visible polygon edges, simple shaders, vertex lighting, baked lighting, limited render distance"
+    - "When sources exist, news scenes are real captured pages only; never generate fake news imagery or fake article layouts"
+    - "Default no-caption version keeps frame space available for brand overlays and source cards, not karaoke lyrics"
+
+overlays:
+  stat_card:
+    bg: "#101820"
+    border: "#00D6C9"
+    text: "#E8E2D4"
+    radius: 2
+    shadow: "0 0 18px rgba(0,214,201,0.22)"
+  key_term:
+    bg: "#080A0E"
+    border: "#FF5A2F"
+    text: "#E8E2D4"
+    radius: 2
+    shadow: "0 0 22px rgba(255,90,47,0.30)"
+    highlight: "#F5CC52"
+  code_block:
+    bg: "#D51627"
+    border: "#FFFFFF"
+    text: "#FFFFFF"
+    radius: 32
+    shadow: "0 8px 24px rgba(0,0,0,0.45)"
+    highlight: "#EF1CA7"
+
+quality_rules:
+  - "Default caption_mode is none: no karaoke lyric captions in the YouTube master"
+  - "Use ChaosFM opening title plus circular logo at the start of every branded master"
+  - "Use ChaosFM circular logo plus subscribe animation on the second-to-last scene"
+  - "Keep the final shot uncluttered after brand fade-out"
+  - "Scene duration hard cap: no visual scene may run longer than 5.0 seconds"
+  - "Concept beats drive visual clips: one sentence can split into multiple visual beats"
+  - "Instrumental or no-vocal sections use fast-cut PS2 b-roll variations of the song's main concept"
+  - "When real news sources exist, use captured pages and source cards; when no sources exist, do not fabricate sources"
+  - "Do not generate fake article pages, fake news anchors, or invented screenshots"
+  - "Keep public figures satirical and stylized, not photoreal"
+  - "If depicting violence or state force, keep it non-graphic and morally critical"
+  - "Sample-first: render a no-caption branded sample before committing to a full episode"
+
+chart_palette:
+  - "#FF5A2F"
+  - "#00D6C9"
+  - "#D6B45A"
+  - "#EF1CA7"
+  - "#E8E2D4"
+  - "#101820"
+
+color_rules:
+  harmony_type: "split-complementary"
+  contrast_validation: true
+  colorblind_safe: false

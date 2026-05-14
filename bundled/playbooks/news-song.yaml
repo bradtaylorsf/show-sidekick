@@ -1,0 +1,104 @@
+identity:
+  name: "News Song"
+  category: motion-graphics
+  mood: playful-with-authority, energetic, song-driven, journalistic at the seams
+  pace: rapid
+  best_for: "16:9 horizontal master (with 9:16 letterboxed TikTok/Shorts derivative) music videos that blend song-driven art (Imagen-generated character/concept visuals) with real news-source screenshots interwoven on song timing. Hybrid of playful-hip-hop-explainer + news-broadcast. Each episode opens with a date card; news scenes carry publisher attribution lower-thirds."
+
+visual_language:
+  color_palette:
+    primary: ["#FFD23F"]              # vibrant yellow — lead accent (matches playful-hip-hop-explainer)
+    accent: ["#FF4938", "#3FE3D6"]    # red + cyan-mint — secondary accents
+    background: "#0B1020"             # deep navy-black
+    text: "#F5F2E8"                   # warm off-white
+    muted: "#1A1F2E"                  # used for news-attribution banner background
+  composition: "alternates between full-frame Imagen character / concept art (lyric depictions) and full-frame news-source screenshots with publisher attribution lower-third. Date card opener and credit closer. Fast cuts on song beat drops; lower-third banners present only on news scenes."
+  texture: "flat 2D cartoon for lyric scenes, real publisher-page screenshots for news scenes, broadcast lower-third chrome on news scenes only"
+
+typography:
+  headings:
+    font: "Outfit"
+    weight: 900
+    tracking: "0.02em"
+  body:
+    font: "Outfit"
+    weight: 700
+    line_height: 1.05
+  scale_system: "perfect_fourth"
+  weight_matrix:
+    title: 900
+    heading: 800
+    body: 700
+    caption: 700
+
+motion:
+  transitions: [hard-cut, white-flash, motion-blur-whip, cross-fade]
+  animation_style: "elastic.out(1, 0.5) on caption emphasis, back.out(2.2) on word entrance, power3.out on scene cuts (0.16s), Ken-Burns 1.0->1.05 on stills, lower-third slides up 0.3s ease-out on news scenes"
+  pacing_rules:
+    min_scene_hold_seconds: 1.3
+    max_scene_hold_seconds: 5.0
+    text_card_hold_seconds: 1.5
+    stat_card_hold_seconds: 1.5
+    transition_duration_seconds: 0.18
+  entrance: "scale-up + back.out for words; power3.out fade-in for art scenes; slide-up for news lower-thirds"
+  exit: "scale-down + power2.in (0.08s) for caption groups; lower-third slides down 0.25s before next cut"
+
+audio:
+  voice_style: "BYO Suno-generated vocals — typically rap or melodic narration about the news topics"
+  music_mood: "BYO Suno track. Whisper-transcribe the .mp3 first to derive section boundaries from music gaps."
+  music_volume: 1.0
+  sfx_style: "white-flash on major beat drops; optional camera-shutter SFX on news-screenshot reveals (subtle)"
+  ducking_threshold_db: 0   # vocals are the music — no narration ducking
+
+asset_generation:
+  image_prompt_prefix: "Vertical 9:16 illustration for a hip-hop news-song music video. Flat 2D cartoon style with clean linework, vibrant colors, no photorealism, no gradients on characters, slight cel-shading. Caption-safe area at bottom 30 percent of frame is empty. Mood: playful, energetic, Saturday-morning-cartoon-meets-news. "
+  image_negative_prompt: "photorealistic, watercolor, gradient on character, cluttered background, hex code labels in image, brand logos, generic stock illustration, 3D render, news anchor desk, microphone"
+  diagram_style: "Hand-drawn cartoon diagrams over solid navy backgrounds, glowing colored nodes, simple labeled edges. Avoid realistic charts."
+  consistency_anchors:
+    - "Deep navy-black (#0B1020) background in every Imagen art scene"
+    - "Per-character verbatim description block reused identically across all prompts featuring that character (see characters/<series>/<char>/character_sheet.md)"
+    - "Caption-safe bottom 30% empty so the caption pill doesn't overlap the subject"
+    - "Top 10% empty so beat-drop tag overlay or lower-third doesn't overlap the subject"
+    - "No hex codes or technical color spec in Imagen prompts"
+    - "News scenes are real publisher screenshots — NEVER generate fake-news images via Imagen"
+
+overlays:
+  stat_card:
+    bg: "#1A1F2E"
+    border: "#FFD23F"
+    radius: 4
+    shadow: "0 4px 12px rgba(0,0,0,0.4)"
+  key_term:
+    bg: "#0F1423"          # caption pill base; runtime applies rgba(15,20,35,0.85)
+    text: "#F5F2E8"
+    radius: 28
+    shadow: "0 12px 40px rgba(0,0,0,0.55)"
+  code_block:
+    bg: "#0B1020"
+    text: "#F5F2E8"
+    highlight: "#FFD23F"
+
+quality_rules:
+  - "Primary canvas 16:9 (1920x1080) for the YouTube master; 9:16 (1080x1920) is a letterboxed derivative built from the same scene+caption data"
+  - "Episode opens with a date card (date + episode title + show identity, ~3 sec)"
+  - "Episode closes with a credit card and source-list summary (~3-5 sec)"
+  - "Captions snap to whisper word timestamps; no guessed timing"
+  - "News scenes show real publisher screenshots ONLY — never AI-generated fake news"
+  - "Every news scene carries a lower-third banner (publisher + headline + date)"
+  - "Lower-third banner format identical across every news scene in an episode (consistency)"
+  - "Imagen art scenes do NOT carry publisher attribution (those are lyric depictions, not news)"
+  - "Beat-drop hype tags between sections name the actual concept, not VERSE 1/2/3"
+  - "White-flash transition (0.65 opacity, 0.06s in / 0.18s out) at major beat drops"
+  - "Sample-first: build 15-20 sec preview before committing to full-episode budget"
+
+chart_palette:
+  - "#FFD23F"
+  - "#FF4938"
+  - "#3FE3D6"
+  - "#F5F2E8"
+  - "#1A1F2E"
+
+color_rules:
+  harmony_type: "triadic"
+  contrast_validation: true
+  colorblind_safe: false

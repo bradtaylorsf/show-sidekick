@@ -30,7 +30,7 @@ Global flags: `--json`, `--dry-run`, `--verbose`, `--no-color`, `--config <path>
 
 Build/run commands currently validate show, episode, pipeline, stage flags, resume checkpoints, approval checkpoints, audited final-review force approvals, revision notes, status state, and cost summaries. `build` emits a Runner-stub plan; `resume` and `revise` update resumable state, with live stage dispatch deferred to the integrated Runner.
 
-Create/list commands scaffold project-local shows, episodes, pipelines, and playbooks, and list merged project-local plus `.predit` cache resources with JSON output for automation.
+Create/list commands scaffold project-local shows, episodes, pipelines, and playbooks, and list merged project-local plus `.predit` cache resources with JSON output for automation. `new playbook` uses the bundled playbook generator so the stub includes palette, typography, motion rules, audio mood, asset preferences, and quality rules.
 
 ## License
 
