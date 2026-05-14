@@ -1107,112 +1107,113 @@ A vitest suite under `tests/content-fidelity/` greps the corresponding skill mar
 ## B-5 — L3V infrastructure + critical-subset declaration
 
 **Standard acceptance.**
-- [ ] `bundled/skills/agents/README.md` documents the skill format, frontmatter, contract (read before calling the tool).
-- [ ] Skill template referenced.
-- [ ] **Critical-subset (12 skills)** declared explicitly: `flux-best-practices, seedance-2-0, ai-video-gen, elevenlabs, google-tts, music, higgsfield-generate, remotion, gsap-timeline, gsap-plugins, acestep, whisperx`. These 12 must ship with content-fidelity tests verifying section headers (model identity, prompt structure, parameter defaults, quality keywords, anti-patterns).
+- [x] `bundled/skills/agents/README.md` documents the skill format, frontmatter, contract (read before calling the tool).
+- [x] Skill template referenced.
+- [x] **Critical-subset (12 skills)** declared explicitly: `flux-best-practices, seedance-2-0, ai-video-gen, elevenlabs, google-tts, music, higgsfield-generate, remotion, gsap-timeline, gsap-plugins, acestep, whisperx`. These 12 must ship with content-fidelity tests verifying section headers (model identity, prompt structure, parameter defaults, quality keywords, anti-patterns).
 
 ## B-6 — Image-gen vendor skills
 
 **Sub-checklist.** Port each to `bundled/skills/agents/<name>.md` with frontmatter; preserve section headers + named parameter values.
-- [ ] `bfl-api`.
-- [ ] `flux-best-practices` (critical subset).
-- [ ] Any image-gen-specific skills (e.g. `grok-media` if image-relevant).
+- [x] `bfl-api`.
+- [x] `flux-best-practices` (critical subset).
+- [x] Any image-gen-specific skills (e.g. `grok-media` if image-relevant).
 
 ## B-7 — Video-gen vendor skills
 
 **Sub-checklist.**
-- [ ] `ai-video-gen` (critical subset).
-- [ ] `seedance-2-0` (critical subset).
-- [ ] `ltx2`.
-- [ ] Provider-specific (kling, runway, veo, minimax notes that are commonly distinct).
+- [x] `ai-video-gen` (critical subset).
+- [x] `seedance-2-0` (critical subset).
+- [x] `ltx2`.
+- [x] Provider-specific (kling, runway, veo, minimax notes that are commonly distinct).
 
 ## B-8 — Audio vendor skills
 
 **Sub-checklist.**
-- [ ] `elevenlabs` (critical subset).
-- [ ] `music` (critical subset — covers Suno + MusicGen).
-- [ ] `acestep` (critical subset).
-- [ ] `text-to-speech`.
-- [ ] `doubao-tts`.
-- [ ] `sound-effects`.
-- [ ] `setup-api-key` (helper).
+- [x] `elevenlabs` (critical subset).
+- [x] `google-tts` (critical subset).
+- [x] `music` (critical subset — covers Suno + MusicGen).
+- [x] `acestep` (critical subset).
+- [x] `text-to-speech`.
+- [x] `doubao-tts`.
+- [x] `sound-effects`.
+- [x] `setup-api-key` (helper).
 
 ## B-9 — Avatar + lip-sync vendor skills
 
 **Sub-checklist.**
-- [ ] `avatar-video`.
-- [ ] `heygen`.
-- [ ] `create-video`.
-- [ ] `faceswap`.
-- [ ] `video-translate`.
-- [ ] `agents`.
-- [ ] `speech-to-text`.
+- [x] `avatar-video`.
+- [x] `heygen`.
+- [x] `create-video`.
+- [x] `faceswap`.
+- [x] `video-translate`.
+- [x] `agents`.
+- [x] `speech-to-text`.
 
 ## B-10 — Capture + post-edit vendor skills
 
 **Sub-checklist.**
-- [ ] `playwright-recording`.
-- [ ] `ffmpeg` (post-edit recipes).
-- [ ] `video-edit`.
-- [ ] `video-download`.
-- [ ] `video-understand`.
-- [ ] `video_toolkit`.
+- [x] `playwright-recording`.
+- [x] `ffmpeg` (post-edit recipes).
+- [x] `video-edit`.
+- [x] `video-download`.
+- [x] `video-understand`.
+- [x] `video_toolkit`.
 
 ## B-11 — Visualization vendor skills
 
 **Sub-checklist.**
-- [ ] `beautiful-mermaid`.
-- [ ] `d3-viz`.
-- [ ] `manim-composer`.
-- [ ] `manimce-best-practices`.
-- [ ] `manimgl-best-practices`.
-- [ ] `visual-style`.
+- [x] `beautiful-mermaid`.
+- [x] `d3-viz`.
+- [x] `manim-composer`.
+- [x] `manimce-best-practices`.
+- [x] `manimgl-best-practices`.
+- [x] `visual-style`.
 
 ## B-12 — Animation library vendor skills (GSAP family + framer-motion + Lottie)
 
 **Sub-checklist.**
-- [ ] `gsap-core`.
-- [ ] `gsap-timeline` (critical subset).
-- [ ] `gsap-plugins` (critical subset — SplitText, MorphSVG, MotionPath, DrawSVG, Flip, CustomEase).
-- [ ] `gsap-react`.
-- [ ] `gsap-utils`.
-- [ ] `gsap-performance`.
-- [ ] `gsap-scrolltrigger`.
-- [ ] `gsap-frameworks`.
-- [ ] `framer-motion` (Disney 12 principles).
-- [ ] `lottie-bodymovin`.
+- [x] `gsap-core`.
+- [x] `gsap-timeline` (critical subset).
+- [x] `gsap-plugins` (critical subset — SplitText, MorphSVG, MotionPath, DrawSVG, Flip, CustomEase).
+- [x] `gsap-react`.
+- [x] `gsap-utils`.
+- [x] `gsap-performance`.
+- [x] `gsap-scrolltrigger`.
+- [x] `gsap-frameworks`.
+- [x] `framer-motion` (Disney 12 principles).
+- [x] `lottie-bodymovin`.
 
 ## B-13 — Character animation vendor skills
 
 **Sub-checklist.**
-- [ ] `character-rigging`.
-- [ ] `svg-character-animation`.
-- [ ] `pose-library-design`.
-- [ ] `canvas-procedural-animation`.
-- [ ] `character-animation-qa`.
+- [x] `character-rigging`.
+- [x] `svg-character-animation`.
+- [x] `pose-library-design`.
+- [x] `canvas-procedural-animation`.
+- [x] `character-animation-qa`.
 
 ## B-14 — Remotion + HyperFrames vendor skills
 
 **Sub-checklist.**
-- [ ] `remotion` (critical subset).
-- [ ] `remotion-best-practices`.
-- [ ] `synthetic-screen-recording`.
-- [ ] `hyperframes`.
-- [ ] `hyperframes-cli`.
-- [ ] `hyperframes-registry`.
-- [ ] `website-to-hyperframes`.
+- [x] `remotion` (critical subset).
+- [x] `remotion-best-practices`.
+- [x] `synthetic-screen-recording`.
+- [x] `hyperframes`.
+- [x] `hyperframes-cli`.
+- [x] `hyperframes-registry`.
+- [x] `website-to-hyperframes`.
 
 ## B-15 — Higgsfield family + Three.js + web design vendor skills
 
 **Sub-checklist.**
-- [ ] `higgsfield-generate` (critical subset).
-- [ ] `higgsfield-soul-id`.
-- [ ] `higgsfield-character-train`.
-- [ ] `higgsfield-product-photoshoot`.
-- [ ] `higgsfield-listing-image`.
-- [ ] `marketing-studio`.
-- [ ] Three.js family (10 skills): `threejs-fundamentals`, `threejs-lighting`, `threejs-geometry`, `threejs-materials`, `threejs-textures`, `threejs-animation`, `threejs-interaction`, `threejs-postprocessing`, `threejs-shaders`, `threejs-loaders`.
-- [ ] Web design: `tailwind-design-system`, `vercel-react-best-practices`, `vercel-composition-patterns`, `web-design-guidelines`.
+- [x] `higgsfield-generate` (critical subset).
+- [x] `higgsfield-soul-id`.
+- [x] `higgsfield-character-train`.
+- [x] `higgsfield-product-photoshoot`.
+- [x] `higgsfield-listing-image`.
+- [x] `marketing-studio`.
+- [x] Three.js family (10 skills): `threejs-fundamentals`, `threejs-lighting`, `threejs-geometry`, `threejs-materials`, `threejs-textures`, `threejs-animation`, `threejs-interaction`, `threejs-postprocessing`, `threejs-shaders`, `threejs-loaders`.
+- [x] Web design: `tailwind-design-system`, `vercel-react-best-practices`, `vercel-composition-patterns`, `web-design-guidelines`.
 
 ## Batch 8.C — Bundled pipelines part 1 (foundational + simpler pipelines)
 

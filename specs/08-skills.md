@@ -91,6 +91,18 @@ Shows don't fork pipelines to tweak a single stage — they shadow the specific 
 
 Tools reference vendor skills via `agent_skills: ['higgsfield-generate', 'ai-video-gen']`. The agent reads these before crafting prompts for that tool. Layer 3 is where prompt structures, parameter sweet spots, camera-direction syntax, and quality keywords live. Hand-edit any time without a TypeScript rebuild.
 
+Bundled Layer 3 skills live in `.predit/skills/agents/<name>.md` and should use frontmatter like:
+
+```yaml
+name: higgsfield-generate
+description: Generate images/videos through the Higgsfield provider surface.
+applies_to: agents
+agent_skill: true
+critical: true
+```
+
+Critical vendor skills must include explicit `Model Identity`, `Prompt Structure`, `Parameter Defaults`, `Quality Keywords`, and `Anti-Patterns` sections. These headings are intentionally repetitive: they let tests verify that model-specific instructions, prompt shape, named defaults, quality language, and failure modes survive future ports or edits.
+
 ## What skills are not
 
 - They are not code. They have no executable directives, no templating language, no embedded scripts. The agent reads them as instructions, not configuration.
