@@ -168,6 +168,33 @@ describe("runReview", () => {
     );
   });
 
+  it("rejects scripts that modify existing bundled tools instead of wrapping them", () => {
+    const review = runReview(
+      "script",
+      {
+        sections: [
+          {
+            slug: "intro",
+            start_s: 0,
+            end_s: 5,
+            narration: "Patch src/tools/higgsfield.ts so the episode can upload signed assets.",
+            dialogue: [],
+            enhancement_cues: [],
+          },
+        ],
+      },
+      { pipeline: basePipeline },
+    );
+
+    expect(review.decision).toBe("revise");
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Script modifies existing tool; must create a wrapper",
+      }),
+    );
+  });
+
   it("runs composition validation for edit decisions when planned duration is available", () => {
     const review = runReview(
       "edit",
@@ -315,6 +342,22 @@ describe("runReview", () => {
     });
     expect(notProposal.findings).not.toContainEqual(
       expect.objectContaining({ title: "Sample-first protocol triggered but sample_required not set" }),
+    );
+  });
+
+  it("adds a critical finding when cumulative actual cost drifts above cumulative estimates", () => {
+    const review = runReview("scene_plan", validScenePlan, {
+      pipeline: basePipeline,
+      cumulativeActualUsd: 1.31,
+      cumulativeEstimatedUsd: 1,
+    });
+
+    expect(review.decision).toBe("revise");
+    expect(review.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        title: "Cumulative cost drift exceeded estimate",
+      }),
     );
   });
 

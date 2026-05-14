@@ -115,6 +115,7 @@ budget_usd: 6
 # Inputs the pipeline needs.
 inputs:
   track: music_library/thechaosfm-news/2026-05-12-news-jam/track.mp3
+  reference: music_library/thechaosfm-news/reference-video.mp4
   lyrics: music_library/thechaosfm-news/2026-05-12-news-jam/lyrics.txt
   sources: music_library/thechaosfm-news/2026-05-12-news-jam/sources.yaml
   notes: |
@@ -127,18 +128,21 @@ cast: [host-mc, ambient-crowd]
 tags: [news-song, ps2, political-rap]
 ```
 
+`inputs.reference` is optional. When present, `predit build` treats it the same as `--reference`: a URL is parsed with `new URL()`, while local paths resolve against cwd and then `<project>/music_library/`. The resulting `video_analysis_brief` is saved under `projects/<show>/<episode>/artifacts/` and supplied to downstream stages and reviewer checks. Reference analysis happens before pipeline selection; when `episode.pipeline` is omitted, the brief can steer the run from the show default to a declared reference-capable pipeline. An explicit `episode.pipeline` remains authoritative.
+
 ## Resolution order
 
 When the harness loads an episode, it merges configuration in this order (later wins):
 
-1. **Resolve the pipeline.** `episode.pipeline` (if set) or `show.defaults.pipeline`. The resolved name MUST be a key in `show.pipelines`; otherwise the harness fails with a structured error.
-2. **Load the pipeline manifest.** `pipelines/<pipeline>.yaml` (project-local override) or `.predit/pipelines/<pipeline>.yaml` (bundled). Provides workflow, stages, tools available, success criteria.
-3. **Resolve the playbook.** `episode.playbook` > `show.pipelines[<pipeline>].playbook`. Load `playbooks/<playbook>.yaml` (project-local) or `.predit/playbooks/<playbook>.yaml` (bundled).
-4. **Apply per-pipeline playbook overrides.** `show.pipelines[<pipeline>].playbook_overrides` is deep-merged on top of the playbook.
-5. **Apply per-pipeline defaults.** `show.pipelines[<pipeline>]` defaults (runtime, aspect, budget) deep-merge on top of the pipeline manifest's defaults.
-6. **Apply episode overrides.** `episode.*` deep-merges on top of the merged result.
-7. **Resolve characters.** `episode.cast[]` → `shows/<show>/characters/<slug>/`.
-8. **Resolve skills** (first match wins):
+1. **Resolve reference input, if any.** `--reference` wins over `inputs.reference`. The reference analyst writes `video_analysis_brief` before pipeline selection so it can inform routing.
+2. **Resolve the pipeline.** `episode.pipeline` (if set), else a reference-capable pipeline hinted by `video_analysis_brief`, else `show.defaults.pipeline`. The resolved name MUST be a key in `show.pipelines`; otherwise the harness fails with a structured error.
+3. **Load the pipeline manifest.** `pipelines/<pipeline>.yaml` (project-local override) or `.predit/pipelines/<pipeline>.yaml` (bundled). Provides workflow, stages, tools available, success criteria.
+4. **Resolve the playbook.** `episode.playbook` > `show.pipelines[<pipeline>].playbook`. Load `playbooks/<playbook>.yaml` (project-local) or `.predit/playbooks/<playbook>.yaml` (bundled).
+5. **Apply per-pipeline playbook overrides.** `show.pipelines[<pipeline>].playbook_overrides` is deep-merged on top of the playbook.
+6. **Apply per-pipeline defaults.** `show.pipelines[<pipeline>]` defaults (runtime, aspect, budget) deep-merge on top of the pipeline manifest's defaults.
+7. **Apply episode overrides.** `episode.*` deep-merges on top of the merged result.
+8. **Resolve characters.** `episode.cast[]` → `shows/<show>/characters/<slug>/`.
+9. **Resolve skills** (first match wins):
    - show-level: `shows/<show>/skills/<stage>-director.md`
    - project-local: `skills/pipelines/<pipeline>/<stage>-director.md`
    - bundled default: `.predit/skills/pipelines/<pipeline>/<stage>-director.md`

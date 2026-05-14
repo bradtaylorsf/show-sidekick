@@ -91,6 +91,7 @@ function skillCandidates(kind: SkillKind, name: string, ctx: ResolveSkillContext
   const directoryName = kind === "meta" ? "meta" : "agents";
   const fileName = `${name}.md`;
   return [
+    ...(ctx.show?.skillsDir ? [{ path: path.join(ctx.show.skillsDir, fileName), tier: "show" as const }] : []),
     {
       path: path.join(projectRoot, "skills", directoryName, fileName),
       tier: "project",

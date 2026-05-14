@@ -92,6 +92,7 @@ Available starters listed by `predit ls starters`.
 | Vendor skills (Layer 3) | `harness/skills/agents/` → cached | Yes — override in `<project>/skills/agents/` |
 | Starters | `harness/starters/` → cached | No (cloned via `predit new show --from`, then user-edited) |
 | Shows, characters, brand, episodes | `<project>/shows/` | Yes — fully user-owned |
+| Capability-extension scripts/tools | `<project>/projects/<show>/<episode>/scripts/`, `<project>/projects/<show>/<episode>/tools/` | Yes — episode-scoped wrappers created through MET-11 |
 | Music files, render outputs | `<project>/music_library/`, `<project>/projects/` | Yes (gitignored) |
 
 ## Resolution order

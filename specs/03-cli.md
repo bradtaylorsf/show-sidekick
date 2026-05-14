@@ -29,6 +29,7 @@ predit build <show>/<episode> --from <stage>
 predit build <show>/<episode> --only <stage>
 predit build <show>/<episode> --to <stage>
 predit build <show>/<episode> --budget <usd>
+predit build <show>/<episode> --reference <url-or-path>
 
 predit cuesheet <show>/<episode>        # build/cache audio cuesheet for debugging
 predit resume <show>/<episode>           # pick up at next checkpoint
@@ -62,6 +63,7 @@ predit tools <name>                      # tool detail (CLI vs API, env vars, co
 |---|---|
 | `--json` | Machine-readable output (for agents and scripts) |
 | `--dry-run` | Plan without spending |
+| `--cost-drift-threshold <multiplier>` | Override the cumulative cost-drift reviewer threshold for this run |
 | `--verbose` / `-v` | Show every decision and tool call |
 | `--no-color` | Strip ANSI color codes |
 | `--config <path>` | Override `show.yaml` location |
@@ -78,6 +80,12 @@ predit status                            # all episodes under the current show
 
 - **Default: interactive.** `predit build` prompts inline at each `human_approval: required` checkpoint with `(approve | revise | abort)`.
 - **`--non-interactive`** (or `CI=true`): the command pauses at the first required approval and exits with `status: awaiting_human`. Advance with `predit approve` or loop with `predit revise`. This is the mode agents (e.g. Claude Code) drive `predit` in.
+
+## Reference-Driven Builds
+
+`predit build <show>/<episode> --reference <url-or-path>` analyzes a reference video before pipeline selection and before the Runner starts. When the flag is omitted, `inputs.reference` in `episode.yaml` is used if present. URLs are detected with `new URL()` for `http:`, `https:`, and `file:` protocols; non-URLs resolve first against cwd, then against `<project>/music_library/`.
+
+The analysis writes `projects/<show>/<episode>/artifacts/video_analysis_brief.json`, emits a `reference_analysis` event in JSON mode, and threads the `video_analysis_brief` artifact into every stage and reviewer pass. If the episode omits `pipeline`, the brief may steer selection from the show's default to a declared reference-capable pipeline; an explicit `episode.pipeline` remains authoritative.
 
 ## Output format
 

@@ -63,6 +63,11 @@ async function resolveEpisodeInputs(
   const resolved: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(inputs)) {
+    if (key === "reference") {
+      resolved[key] = value;
+      continue;
+    }
+
     if (typeof value === "string" && looksLikeFilePath(value)) {
       const absolutePath = path.resolve(projectRoot, value);
 

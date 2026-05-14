@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { CostLogSchema, type CostLog } from "../artifacts/cost-log.js";
+import { DecisionEntrySchema, type DecisionEntry, type DecisionLog } from "../artifacts/decision-log.js";
 import type { Tool, ToolContext } from "../registry/tool.js";
 import { AbortedByUser } from "./errors.js";
 import { askForApproval, emitNdjson, isNonInteractive, type AnnounceIO, type InteractionMode, writeHuman } from "./io.js";
@@ -25,6 +26,8 @@ export type AnnounceBeforeExecuteInput<I, O> = {
   tool: Tool<I, O>;
   params: I;
   ctx?: ToolContext;
+  stage?: string;
+  timestamp?: string;
   reason: string;
   sampleOrBatch?: SampleOrBatch;
   model?: string;
@@ -36,6 +39,7 @@ export type AnnounceBeforeExecuteInput<I, O> = {
   showEpisode?: string | { show: string; episode: string };
   mode?: InteractionMode;
   io?: AnnounceIO;
+  recordDecision?: (entry: DecisionEntry) => DecisionLog | Promise<DecisionLog>;
 };
 
 export async function announceBeforeExecute<I, O>(
@@ -52,6 +56,7 @@ export async function announceBeforeExecute<I, O>(
 
   if (isNonInteractive(input.mode)) {
     emitNdjson(input.io, "announce", block);
+    await recordProceedWithoutApproval(input, block);
     return await runner();
   }
 
@@ -61,6 +66,46 @@ export async function announceBeforeExecute<I, O>(
   }
 
   return await runner();
+}
+
+async function recordProceedWithoutApproval<I, O>(
+  input: AnnounceBeforeExecuteInput<I, O>,
+  block: AnnounceBlock,
+): Promise<void> {
+  if (input.recordDecision === undefined) {
+    return;
+  }
+
+  const timestamp = input.timestamp ?? new Date().toISOString();
+  const entry = DecisionEntrySchema.parse({
+    id: `proceed-without-approval-${safeDecisionSegment(input.tool.name)}-${timestamp.replace(/[^0-9A-Z]/gu, "")}`,
+    stage: input.stage ?? "tool_call",
+    timestamp,
+    category: "budget_tradeoff",
+    scope: {
+      capability: input.tool.capability,
+      provider: input.tool.provider,
+    },
+    options_considered: [
+      {
+        label: "interactive_approval",
+        rejected_because: "Run is non-interactive, so no approval prompt can be shown before this paid call.",
+        notes: "The announce block was still emitted before execution.",
+      },
+      {
+        label: "proceed_without_approval",
+        rejected_because: null,
+        notes: "Allowed only because this run is explicitly non-interactive.",
+      },
+    ],
+    picked: "proceed_without_approval",
+    reason: `Non-interactive run proceeded after announcing ${block.tool} (${block.provider}, ${block.model}) for: ${block.reason}`,
+    confidence: 0.9,
+    user_visible: true,
+    supersedes: null,
+  });
+
+  await input.recordDecision(entry);
 }
 
 async function buildAnnounceBlock<I, O>(input: AnnounceBeforeExecuteInput<I, O>): Promise<AnnounceBlock> {
@@ -213,6 +258,13 @@ function inferString(params: unknown, fields: string[]): string | undefined {
 
 function roundUsd(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function safeDecisionSegment(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/gu, "-")
+    .replace(/^-+|-+$/gu, "");
 }
 
 function isMissingFile(error: unknown): boolean {

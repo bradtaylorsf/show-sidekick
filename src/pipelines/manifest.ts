@@ -11,6 +11,7 @@ const OrchestrationSchema = z
     mode: z.string().optional(),
     skill: z.string().optional(),
     budget_default_usd: z.number().positive().default(3.0),
+    cost_drift_threshold: z.number().positive().default(1.3),
     max_revisions_per_stage: z.number().int().min(0).default(2),
     max_send_backs: z.number().int().min(0).default(3),
     max_wall_time_minutes: z.number().int().positive().default(30),

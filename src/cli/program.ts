@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { createApproveHandler } from "./commands/approve.js";
-import { createBuildHandler } from "./commands/build.js";
+import { createBuildHandler, type BuildHandlerOptions } from "./commands/build.js";
 import { createCuesheetHandler } from "./commands/cuesheet.js";
 import { lsDecisions } from "./commands/ls-decisions.js";
 import { createLsHandler } from "./commands/ls.js";
@@ -40,7 +40,13 @@ type UnknownCommandPatch = Command & {
   unknownCommand: () => void;
 };
 
-export function createProgram(io: CliIo = defaultIo): Command {
+export type ProgramOptions = {
+  io?: CliIo;
+  build?: BuildHandlerOptions;
+};
+
+export function createProgram(input: CliIo | ProgramOptions = defaultIo): Command {
+  const { io, build } = normalizeProgramOptions(input);
   const program = new Command();
 
   program
@@ -68,7 +74,7 @@ export function createProgram(io: CliIo = defaultIo): Command {
   });
 
   registerUnknownCommandSuggestion(program);
-  registerCommands(program, io);
+  registerCommands(program, io, build);
 
   return program;
 }
@@ -88,7 +94,7 @@ function registerUnknownCommandSuggestion(program: Command): void {
   };
 }
 
-function registerCommands(program: Command, io: CliIo): void {
+function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandlerOptions = {}): void {
   program
     .command("init")
     .description("scaffold a new predit project in cwd")
@@ -130,8 +136,10 @@ function registerCommands(program: Command, io: CliIo): void {
     .option("--only <stage>", "run only one stage")
     .option("--to <stage>", "stop after a stage")
     .option("--budget <usd>", "set a budget in USD")
+    .option("--cost-drift-threshold <multiplier>", "override the cumulative cost drift review threshold")
+    .option("--reference <url-or-path>", "analyze a reference video URL or local file before running")
     .option("--non-interactive", "pause at required approvals and exit")
-    .action(createBuildHandler(io));
+    .action(createBuildHandler(io, buildOptions));
 
   program
     .command("cuesheet <target>")
@@ -217,4 +225,15 @@ function registerCommands(program: Command, io: CliIo): void {
     .command("update")
     .description("refresh the local .predit cache")
     .action(createStubHandler("update", [], io));
+}
+
+function normalizeProgramOptions(input: CliIo | ProgramOptions): { io: CliIo; build?: BuildHandlerOptions } {
+  if ("stdout" in input && "stderr" in input) {
+    return { io: input };
+  }
+
+  return {
+    io: input.io ?? defaultIo,
+    build: input.build,
+  };
 }

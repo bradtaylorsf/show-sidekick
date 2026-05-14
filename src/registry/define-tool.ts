@@ -1,10 +1,5 @@
 import type { z, ZodTypeAny } from "zod";
-import {
-  announceBeforeExecute,
-  detectMajorChange,
-  enforceMotionGuardrail,
-  requireApproval,
-} from "../announce/index.js";
+import { AwaitingHuman, announceBeforeExecute, detectMajorChange, enforceMotionGuardrail, requireApproval } from "../announce/index.js";
 import { probe } from "./availability.js";
 import type { Availability, Tool, ToolAvailabilityContext, ToolContext } from "./tool.js";
 
@@ -54,6 +49,19 @@ export function defineTool<IS extends ZodTypeAny, OS extends ZodTypeAny>(
       });
     }
 
+    if (requiresFirstPaidCallApproval(tool as DefinedTool<IS, OS>)) {
+      if (policy?.firstPaidCallApproval === undefined) {
+        throw new AwaitingHuman(`${tool.name} requires approval before the first paid API call`);
+      }
+
+      await policy.firstPaidCallApproval({
+        tool: tool as DefinedTool<IS, OS>,
+        reason: policy.reason ?? tool.best_for,
+        stage: policy.majorChange?.stage,
+        timestamp: policy.majorChange?.timestamp,
+      });
+    }
+
     if (tool.integration.kind === "api" && tool.cost !== undefined && tool.cost.usd > 0) {
       const availability = await (tool as DefinedTool<IS, OS>).isAvailable({ projectRoot: ctx.projectRoot });
       if (!availability.available) {
@@ -66,6 +74,8 @@ export function defineTool<IS extends ZodTypeAny, OS extends ZodTypeAny>(
         tool: tool as DefinedTool<IS, OS>,
         params,
         ctx,
+        stage: policy?.stage,
+        timestamp: policy?.timestamp,
         reason: policy?.reason ?? tool.best_for,
         sampleOrBatch: policy?.sampleOrBatch,
         model: policy?.model,
@@ -77,12 +87,23 @@ export function defineTool<IS extends ZodTypeAny, OS extends ZodTypeAny>(
         showEpisode: policy?.showEpisode,
         mode: policy?.mode,
         io: policy?.io,
+        recordDecision: policy?.recordDecision,
       },
       () => execute(params, ctx),
     );
   };
 
   return tool as DefinedTool<IS, OS>;
+}
+
+function requiresFirstPaidCallApproval(tool: Tool): boolean {
+  return (
+    tool.source === "project" &&
+    tool.requires_first_call_approval === true &&
+    tool.integration.kind === "api" &&
+    tool.cost !== undefined &&
+    tool.cost.usd > 0
+  );
 }
 
 function defaultProbeOptions(integration: Tool["integration"]): { timeoutMs?: number } {

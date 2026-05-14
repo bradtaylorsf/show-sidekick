@@ -12,6 +12,8 @@ export interface Tool<I = unknown, O = unknown> {
   capability: Capability;                // "image_to_video" | "tts" | "music_generation" | "music_search" | ...
   provider: string;                      // "higgsfield" | "elevenlabs" | "ffmpeg"
   status: 'production' | 'beta' | 'experimental';
+  source?: 'bundled' | 'project';        // project tools come from projects/<show>/<episode>/tools/
+  requires_first_call_approval?: boolean;// paid project API tools require first-call approval
 
   integration: Integration;
 
@@ -67,6 +69,7 @@ export class Registry {
   all(): Tool[];
   byCapability(cap: Capability): Tool[];
   byProvider(provider: string): Tool[];
+  registerProjectTools(projectRoot, show, episode): Promise<Tool[]>;
 
   async select(
     cap: Capability,
@@ -145,6 +148,12 @@ Relative read paths resolve against `projectRoot`.
 Tools that write generated artifacts must keep output paths inside `projectRoot`.
 When a tool needs an output directory for frames, recordings, downloads, or rendered media, it should resolve that path with the write-path helper and reject traversal outside the project.
 If a tool stores a review artifact for a caller-supplied source path, it should preserve the caller's original path string in the artifact and use the resolved path only for probing.
+
+## Project-scoped tools
+
+`MET-11` capability extensions may add episode-local tools under `projects/<show>/<episode>/tools/<name>.ts` or `.js`.
+The registry validates these modules against the same `Tool` contract, tags them `source: 'project'`, and skips `_draft` / test files.
+Paid project API tools are tagged `requires_first_call_approval: true`; the tool execution path must fire the first-paid-call approval hook before the first paid API call and record a `capability_extension` decision.
 
 ## Layer 3 vendor knowledge
 

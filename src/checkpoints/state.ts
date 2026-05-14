@@ -17,6 +17,13 @@ export const StateSchema = z
     last_checkpoint_at: z.string().optional(),
     cost_total_usd: z.number().nonnegative().optional(),
     revision_notes: z.record(z.string(), z.array(z.string())).optional(),
+    queued_stage_revision: z
+      .object({
+        stage: z.string(),
+        note: z.string(),
+        queued_at: z.string(),
+      })
+      .optional(),
     sample: z
       .object({
         latest_version: z.number().int().nonnegative().optional(),

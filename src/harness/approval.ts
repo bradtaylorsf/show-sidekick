@@ -1,9 +1,10 @@
 import type { Checkpoint } from "../checkpoints/index.js";
 import type { CliIo } from "../cli/commands/stub.js";
 
-export type ApprovalAction = "approve" | "revise" | "abort";
+export type ApprovalAction = "approve" | "revise" | "abort" | "sample" | "downgrade";
 
 export type ApprovalContext = {
+  kind?: "stage" | "sample-first";
   stageCost: number;
   totalSoFar: number;
   budgetRemaining: number;
@@ -11,6 +12,10 @@ export type ApprovalContext = {
     sample?: number;
     full?: number;
     stage?: string;
+  };
+  projectedRemainingTotals?: {
+    sample: number;
+    full: number;
   };
   actions?: ReadonlyArray<ApprovalAction>;
   artifactSummary?: string[];
@@ -34,29 +39,35 @@ export type ApprovalEvent =
   | {
       event: "approval_block_start";
       stage: string;
+      kind?: ApprovalContext["kind"];
     }
   | {
       event: "artifact_summary";
       stage: string;
+      kind?: ApprovalContext["kind"];
       bullets: string[];
     }
   | {
       event: "review_findings";
       stage: string;
+      kind?: ApprovalContext["kind"];
       counts: ApprovalCounts;
       critical_findings: ApprovalCriticalFinding[];
     }
   | {
       event: "cost_snapshot";
       stage: string;
+      kind?: ApprovalContext["kind"];
       stage_cost_usd: number;
       total_so_far_usd: number;
       budget_remaining_usd: number;
       projected_next_stage?: ApprovalContext["projectedNextStage"];
+      projected_remaining_totals?: ApprovalContext["projectedRemainingTotals"];
     }
   | {
       event: "action_options";
       stage: string;
+      kind?: ApprovalContext["kind"];
       actions: ApprovalAction[];
     };
 
@@ -87,29 +98,35 @@ export function formatApprovalEvents(checkpoint: Checkpoint, ctx: ApprovalContex
     {
       event: "approval_block_start",
       stage: checkpoint.stage,
+      kind: ctx.kind,
     },
     {
       event: "artifact_summary",
       stage: checkpoint.stage,
+      kind: ctx.kind,
       bullets: artifactSummaryBullets(ctx.artifactSummary),
     },
     {
       event: "review_findings",
       stage: checkpoint.stage,
+      kind: ctx.kind,
       counts: reviewCounts(checkpoint),
       critical_findings: criticalFindingsForApproval(checkpoint),
     },
     {
       event: "cost_snapshot",
       stage: checkpoint.stage,
+      kind: ctx.kind,
       stage_cost_usd: ctx.stageCost,
       total_so_far_usd: ctx.totalSoFar,
       budget_remaining_usd: ctx.budgetRemaining,
       projected_next_stage: ctx.projectedNextStage,
+      projected_remaining_totals: ctx.projectedRemainingTotals,
     },
     {
       event: "action_options",
       stage: checkpoint.stage,
+      kind: ctx.kind,
       actions,
     },
   ];
@@ -189,9 +206,10 @@ function formatCriticalFinding(finding: ApprovalCriticalFinding): string {
 function formatCostLine(ctx: ApprovalContext): string {
   const totalBudget = ctx.totalSoFar + ctx.budgetRemaining;
   const projection = formatProjection(ctx.projectedNextStage);
+  const projectedRemaining = formatProjectedRemainingTotals(ctx.projectedRemainingTotals);
   return `${formatUsd(ctx.totalSoFar)} of ${formatUsd(totalBudget)} budget (${formatUsd(
     ctx.budgetRemaining,
-  )} remaining). This stage: ${formatUsd(ctx.stageCost)}.${projection}`;
+  )} remaining). This stage: ${formatUsd(ctx.stageCost)}.${projection}${projectedRemaining}`;
 }
 
 function formatProjection(projectedNextStage: ApprovalContext["projectedNextStage"]): string {
@@ -211,6 +229,14 @@ function formatProjection(projectedNextStage: ApprovalContext["projectedNextStag
   }
 
   return ` Next stage (${projectedNextStage.stage ?? "next"}) estimates ${estimates.join(" / ")}.`;
+}
+
+function formatProjectedRemainingTotals(totals: ApprovalContext["projectedRemainingTotals"]): string {
+  if (totals === undefined) {
+    return "";
+  }
+
+  return ` Projected remaining: ${formatUsd(totals.full)} full / ${formatUsd(totals.sample)} sample.`;
 }
 
 function formatUsd(value: number): string {

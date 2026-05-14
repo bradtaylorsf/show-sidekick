@@ -37,6 +37,13 @@ describe("createProgram", () => {
     expect(flags).toEqual(expect.arrayContaining(["--json", "--dry-run", "--verbose", "--no-color", "--config"]));
   });
 
+  it("defines the build reference option", () => {
+    const { program } = captureProgram();
+    const build = program.commands.find((command) => command.name() === "build");
+
+    expect(build?.options.map((option) => option.long)).toEqual(expect.arrayContaining(["--reference"]));
+  });
+
   it("emits parseable NDJSON for remaining stub commands in json mode", async () => {
     const { program, output } = captureProgram();
 

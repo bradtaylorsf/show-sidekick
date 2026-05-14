@@ -198,12 +198,13 @@ orchestration:
   mode: executive-producer             # explicit orchestration style
   skill: pipelines/music-video/executive-producer.md
   budget_default_usd: 6.00            # used when episode does not override
+  cost_drift_threshold: 1.3            # critical reviewer finding when actual > threshold * estimate
   max_revisions_per_stage: 3          # reviewer rounds before pass_with_warnings
   max_send_backs: 3                   # total stage send-backs per run
   max_wall_time_minutes: 60           # hard ceiling
 ```
 
-Defaults (when omitted): `budget_default_usd: 3.00, max_revisions_per_stage: 2, max_send_backs: 3, max_wall_time_minutes: 30`. If `mode: executive-producer` is present, `skill` must point to the EP skill explicitly; the runner should not guess. Daily-news, for example, runs with `max_revisions_per_stage: 2` and `max_send_backs: 1` to keep cadence tight.
+Defaults (when omitted): `budget_default_usd: 3.00, cost_drift_threshold: 1.3, max_revisions_per_stage: 2, max_send_backs: 3, max_wall_time_minutes: 30`. If `mode: executive-producer` is present, `skill` must point to the EP skill explicitly; the runner should not guess. Daily-news, for example, runs with `max_revisions_per_stage: 2` and `max_send_backs: 1` to keep cadence tight.
 
 ## `sample` block (per-pipeline sample scope)
 

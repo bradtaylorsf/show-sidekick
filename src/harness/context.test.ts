@@ -152,6 +152,7 @@ function pipelineManifest(): PipelineManifest {
     stages: [stage("idea"), stage("script"), stage("assets")],
     orchestration: {
       budget_default_usd: 3,
+      cost_drift_threshold: 1.3,
       max_revisions_per_stage: 2,
       max_send_backs: 3,
       max_wall_time_minutes: 30,

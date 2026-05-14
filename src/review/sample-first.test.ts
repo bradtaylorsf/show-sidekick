@@ -3,7 +3,13 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { ProposalPacket } from "../artifacts/proposal-packet.js";
-import { checkSampleFirstProtocol, getSampleFirstTriggers, loadSampleFirstTriggers } from "./sample-first.js";
+import {
+  SAMPLE_FIRST_FINDING_TITLE,
+  checkSampleFirstProtocol,
+  getSampleFirstTriggers,
+  isSampleFirstFinding,
+  loadSampleFirstTriggers,
+} from "./sample-first.js";
 
 const SAMPLE_FIRST_SKILL_PATH = fileURLToPath(new URL("../../bundled/skills/meta/sample-first.md", import.meta.url));
 
@@ -48,6 +54,8 @@ describe("sample-first protocol reviewer", () => {
         description: expect.stringContaining("cost > $0.50"),
       }),
     ]);
+    expect(isSampleFirstFinding(findings[0])).toBe(true);
+    expect(findings[0]?.title).toBe(SAMPLE_FIRST_FINDING_TITLE);
   });
 
   it("fires news-song above its time threshold", () => {
