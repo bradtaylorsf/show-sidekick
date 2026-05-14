@@ -1,0 +1,29 @@
+[
+  {
+    "id": "decision-1",
+    "stage": "idea",
+    "timestamp": "2026-05-14T12:00:00.000Z",
+    "category": "pipeline_selection",
+    "scope": {
+      "capability": "pipeline",
+      "provider": "predit"
+    },
+    "options_considered": [
+      {
+        "label": "framework-smoke",
+        "rejected_because": null,
+        "notes": "Fast fixture."
+      },
+      {
+        "label": "hybrid",
+        "rejected_because": "Too broad for this fixture.",
+        "notes": null
+      }
+    ],
+    "picked": "framework-smoke",
+    "reason": "It is the smallest integration pipeline.",
+    "confidence": 1,
+    "user_visible": true,
+    "supersedes": null
+  }
+]

@@ -1,0 +1,35 @@
+{
+  "scenes": [
+    {
+      "slug": "scene-1",
+      "order": 0,
+      "start_s": 0,
+      "end_s": 5,
+      "narrative_role": "hook",
+      "scene_anchor": "intro",
+      "hero_moment": true,
+      "texture_keywords": ["clean", "focused"],
+      "character_actions": [
+        {
+          "character": "host",
+          "action": "points to chart"
+        }
+      ],
+      "shot_language": {
+        "shot_size": "MS",
+        "camera_movement": "static",
+        "lighting_key": "soft",
+        "lens_mm": 50,
+        "depth_of_field": "deep",
+        "color_temperature": "daylight"
+      },
+      "required_assets": [
+        {
+          "id": "asset-1",
+          "source": "generated",
+          "notes": "Hero chart background."
+        }
+      ]
+    }
+  ]
+}

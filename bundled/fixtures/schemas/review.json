@@ -1,0 +1,23 @@
+{
+  "stage": "script",
+  "round": 1,
+  "decision": "pass",
+  "findings": [
+    {
+      "severity": "suggestion",
+      "title": "Tighten intro",
+      "location": "sections[0].narration",
+      "description": "The intro can be shorter.",
+      "proposed_fix": "Remove the first clause.",
+      "status": "pending"
+    }
+  ],
+  "summary": {
+    "critical": 0,
+    "suggestions": 1,
+    "nitpicks": 0,
+    "investigations": 0,
+    "success_criteria_met": 3,
+    "success_criteria_total": 3
+  }
+}

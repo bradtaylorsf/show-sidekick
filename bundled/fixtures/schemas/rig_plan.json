@@ -1,0 +1,28 @@
+{
+  "character": "host",
+  "joints": [
+    {
+      "id": "root",
+      "parent": null,
+      "pivot": {
+        "x": 0,
+        "y": 0
+      },
+      "default_rotation_deg": 0,
+      "range_deg": {
+        "min": -10,
+        "max": 10
+      }
+    }
+  ],
+  "attachment_points": [
+    {
+      "id": "hand-prop",
+      "joint": "root",
+      "offset": {
+        "x": 10,
+        "y": 20
+      }
+    }
+  ]
+}

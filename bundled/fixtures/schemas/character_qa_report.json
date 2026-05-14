@@ -1,0 +1,16 @@
+{
+  "findings": [
+    {
+      "character": "host",
+      "aspect": "consistency",
+      "severity": "suggestion",
+      "description": "Keep the jacket color consistent.",
+      "evidence": "Frame 12 differs slightly."
+    }
+  ],
+  "summary": {
+    "characters_reviewed": 1,
+    "critical": 0,
+    "suggestions": 1
+  }
+}

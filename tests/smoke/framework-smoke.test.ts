@@ -3,6 +3,8 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { RenderReportSchema } from "../../src/artifacts/index.js";
+import { readCheckpoint } from "../../src/checkpoints/index.js";
 import { Registry } from "../../src/registry/index.js";
 import type { StageContext, StageResult } from "../../src/harness/index.js";
 import { createProgram } from "../../src/cli/program.js";
@@ -47,12 +49,18 @@ describe("framework smoke", () => {
       expect.objectContaining({
         event: "build_finished",
         status: "completed",
-        last_stage: "script",
+        last_stage: "compose",
       }),
     );
     expect(event.total_cost_usd).toBeGreaterThan(0);
-    expect(contexts.map((ctx) => ctx.stage.slug)).toEqual(["research", "script"]);
+    expect(contexts.map((ctx) => ctx.stage.slug)).toEqual(["research", "script", "compose"]);
     expect(durationMs).toBeLessThan(30_000);
+
+    const composeCheckpoint = await readCheckpoint(root, "show", "episode", "compose");
+    expect(RenderReportSchema.parse(composeCheckpoint.artifact)).toMatchObject({
+      output_path: "renders/framework-smoke.mp4",
+      runtime_used: "ffmpeg",
+    });
   });
 });
 
@@ -80,6 +88,10 @@ async function writePipeline(root: string, slug: string): Promise<void> {
       "  - slug: script",
       "    skill: pipelines/framework-smoke/script-director.md",
       "    produces: script",
+      "    human_approval: never",
+      "  - slug: compose",
+      "    skill: pipelines/framework-smoke/compose-director.md",
+      "    produces: render_report",
       "    human_approval: never",
       "",
     ].join("\n"),
@@ -137,6 +149,29 @@ const fixtures: Record<string, StageResult> = {
       ],
     },
     0.2,
+  ),
+  compose: stageResult(
+    {
+      output_path: "renders/framework-smoke.mp4",
+      encoding_profile: "h264-main",
+      duration_s: 5,
+      resolution: {
+        width: 1920,
+        height: 1080,
+      },
+      framerate: 30,
+      runtime_used: "ffmpeg",
+      asset_count: 0,
+      warnings: [],
+      validation_steps: [
+        {
+          name: "fixture-compose",
+          status: "pass",
+          notes: "No external API keys used.",
+        },
+      ],
+    },
+    0,
   ),
 };
 

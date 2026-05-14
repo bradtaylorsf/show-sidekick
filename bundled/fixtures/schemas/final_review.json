@@ -1,0 +1,51 @@
+{
+  "status": "pass",
+  "recommended_action": "present_to_user",
+  "checks": {
+    "technical_probe": {
+      "container": "mp4",
+      "duration_s": 10,
+      "duration_promised_s": 10,
+      "width": 1920,
+      "height": 1080,
+      "framerate": 30,
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "audio_channels": 2,
+      "bitrate_kbps": 8000,
+      "verdict": "pass"
+    },
+    "visual_spotcheck": {
+      "frames_sampled": 4,
+      "frame_paths": ["frames/0001.png"],
+      "sample_points_pct": [0, 33, 66, 100],
+      "hero_frame_path": "frames/0001.png",
+      "matched_elements": ["title"],
+      "findings": []
+    },
+    "audio_spotcheck": {
+      "narration_present": true,
+      "music_present": true,
+      "caption_sync_accuracy": 0.98,
+      "findings": []
+    },
+    "promise_preservation": {
+      "delivery_promise_honored": true,
+      "silent_downgrade_detected": false,
+      "runtime_swap_detected": false,
+      "runtime_swap_check": "runtime matched",
+      "motion_ratio_actual": 0.8,
+      "render_runtime_used": "ffmpeg",
+      "findings": []
+    },
+    "subtitle_check": {
+      "present": true,
+      "accuracy_within_150ms": 0.98
+    },
+    "transcript_comparison": {
+      "word_accuracy": 0.99,
+      "missing_words_pct": 0
+    }
+  },
+  "issues_found": []
+}

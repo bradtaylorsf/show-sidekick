@@ -1,0 +1,24 @@
+{
+  "poses": {
+    "idle": {
+      "description": "Neutral standing pose.",
+      "hold_frames": 12,
+      "transition_to": {
+        "point": {
+          "transition_frames": 8,
+          "ease": "easeInOut"
+        }
+      }
+    }
+  },
+  "expressions": {
+    "smile": {
+      "description": "Small confident smile.",
+      "joints": {
+        "mouth": {
+          "curve": 0.6
+        }
+      }
+    }
+  }
+}

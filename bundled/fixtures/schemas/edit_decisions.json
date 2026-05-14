@@ -1,0 +1,35 @@
+{
+  "cuts": [
+    {
+      "start_s": 0,
+      "end_s": 5,
+      "asset_id": "asset-1",
+      "transition_in": "cut",
+      "transition_out": "fade",
+      "provider": "fixture"
+    }
+  ],
+  "overlays": [],
+  "subtitles": {
+    "enabled": true,
+    "source": "captions.srt"
+  },
+  "audio": {
+    "music": {
+      "track_path": "music_library/fixture.wav",
+      "ducking": {
+        "enabled": true,
+        "threshold_db": -18,
+        "reduction_db": -6,
+        "attack_ms": 20,
+        "release_ms": 100
+      }
+    }
+  },
+  "render_runtime": "ffmpeg",
+  "renderer_family": "explainer-data",
+  "brand": {
+    "slug": "fixture",
+    "name": "Fixture"
+  }
+}

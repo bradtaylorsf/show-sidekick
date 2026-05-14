@@ -1,0 +1,18 @@
+{
+  "screenshots": [
+    {
+      "story_id": "story-1",
+      "image_path": "captures/story-1.png",
+      "captured_at": "2026-05-14T12:00:00.000Z",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "quality_flags": [],
+      "page_load_status": 200,
+      "url": "https://example.com/story",
+      "publisher": "Example"
+    }
+  ],
+  "failures": []
+}

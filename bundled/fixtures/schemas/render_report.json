@@ -1,0 +1,20 @@
+{
+  "output_path": "renders/fixture.mp4",
+  "encoding_profile": "h264-main",
+  "duration_s": 10,
+  "resolution": {
+    "width": 1920,
+    "height": 1080
+  },
+  "framerate": 30,
+  "runtime_used": "ffmpeg",
+  "asset_count": 1,
+  "warnings": [],
+  "validation_steps": [
+    {
+      "name": "lint",
+      "status": "pass",
+      "notes": "Fixture lint passed."
+    }
+  ]
+}
