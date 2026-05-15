@@ -134,17 +134,30 @@ export function deriveSlug(dropAbsolutePath: string, watchEntry: IngestWatchEntr
 export async function deriveInputs(
   dropAbsolutePath: string,
   entry: Pick<ShowIngestWatchEntry, "show">,
+  options: { templateInputs?: Record<string, unknown> } = {},
 ): Promise<Record<string, string>> {
   const matchedFilePath = path.resolve(dropAbsolutePath);
   const siblingDir = path.dirname(matchedFilePath);
-  const files = await readdir(siblingDir, { withFileTypes: true });
+  const siblingFiles = await siblingInputFiles(siblingDir);
   const inputs: Record<string, string> = {};
+  const usedPaths = new Set<string>();
 
-  addInput(inputs, inferInputKey(matchedFilePath), matchedFilePath, entry.show.projectRoot);
+  for (const [key, value] of Object.entries(options.templateInputs ?? {})) {
+    if (typeof value !== "string" || !looksLikeFileInput(value)) {
+      continue;
+    }
 
-  for (const file of files.filter((candidate) => candidate.isFile()).sort(byName)) {
-    const absolutePath = path.join(siblingDir, file.name);
-    if (absolutePath === matchedFilePath) {
+    const matched = siblingFiles.find((candidate) => path.basename(candidate) === path.basename(value));
+    if (matched === undefined) {
+      continue;
+    }
+
+    addInput(inputs, key, matched, entry.show.projectRoot);
+    usedPaths.add(path.normalize(matched));
+  }
+
+  for (const absolutePath of prioritizeMatchedFile(siblingFiles, matchedFilePath)) {
+    if (usedPaths.has(path.normalize(absolutePath))) {
       continue;
     }
 
@@ -191,6 +204,22 @@ async function* walkFiles(root: string): AsyncGenerator<string> {
   }
 }
 
+async function siblingInputFiles(siblingDir: string): Promise<string[]> {
+  const files = await readdir(siblingDir, { withFileTypes: true });
+  return files
+    .filter((candidate) => candidate.isFile())
+    .sort(byName)
+    .map((file) => path.join(siblingDir, file.name));
+}
+
+function prioritizeMatchedFile(files: string[], matchedFilePath: string): string[] {
+  const normalizedMatch = path.normalize(matchedFilePath);
+  return [
+    ...files.filter((file) => path.normalize(file) === normalizedMatch),
+    ...files.filter((file) => path.normalize(file) !== normalizedMatch),
+  ];
+}
+
 function inferInputKey(filePath: string): string {
   const extension = path.extname(filePath).toLowerCase();
 
@@ -211,6 +240,14 @@ function inferInputKey(filePath: string): string {
   }
 
   return "source";
+}
+
+function looksLikeFileInput(value: string): boolean {
+  if (value.trim() === "" || value.includes("\n")) {
+    return false;
+  }
+
+  return path.extname(value) !== "";
 }
 
 function addInput(inputs: Record<string, string>, key: string, absolutePath: string, projectRoot: string): void {

@@ -53,6 +53,7 @@ predit export <show>/<episode> --target davinci    # Resolve XML
 predit export <show>/<episode> --format edl        # raw EDL
 predit export <show>/<episode> --target premiere --asset-link-mode copy
 predit export <show>/<episode> --target premiere --out handoffs
+predit export <show>/<episode> --target premiere --overwrite
 
 # Ingest
 predit import <path> --as <show>/<episode>     # scaffold an episode from a dropped folder

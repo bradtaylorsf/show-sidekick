@@ -6,10 +6,9 @@ This walks a fresh machine from install to a 15-second music-video sample and an
 
 - Node.js 22 or newer
 - pnpm 9 or newer
-- `ffmpeg` on `PATH`
-- At least one image provider and one TTS provider configured
+- `ffmpeg` on `PATH` for local media work
 
-One simple setup is `OPENAI_API_KEY`, which enables `openai_image` and `openai_tts`. See [providers.md](providers.md) for the generated provider table.
+The bundled `music-video` starter sample is zero-key: it does not require API credentials. See [providers.md](providers.md) when you want to unlock paid image, TTS, music, or video generation for custom episodes.
 
 ```bash
 node --version
@@ -34,9 +33,9 @@ The starter creates `shows/music-video/` with:
 - expected sample duration: 15 seconds
 - fixture size: 120213 bytes
 
-## Configure Providers
+## Optional Provider Setup
 
-For OpenAI image and TTS:
+You can render and export the starter sample before configuring any providers. For custom episodes, choose one `image_generation` tool and one `tts` tool from [providers.md](providers.md), set the listed env vars, then run `predit ls tools` to check availability.
 
 ```bash
 export OPENAI_API_KEY="sk-..."
@@ -44,8 +43,6 @@ predit setup openai_image
 predit setup openai_tts
 predit ls tools
 ```
-
-For another provider combination, choose one `image_generation` tool and one `tts` tool from [providers.md](providers.md), set the listed env vars, then run `predit ls tools` to check availability.
 
 ## Render the Sample
 
@@ -60,6 +57,7 @@ projects/music-video/sample-episode/
 ```
 
 That workspace holds checkpoints, generated assets, cost logs, decisions, and renders for the episode. The starter sample is designed as a short beat-synced rough cut from the bundled 15-second synthesized track and lyrics fixture.
+The compose stage writes `projects/music-video/sample-episode/renders/sample-preview.mp4`.
 
 ## Export for Editing
 
@@ -76,6 +74,7 @@ predit export music-video/sample-episode --target edl
 ```
 
 Exports are written under `exports/` by default, and each export records `projects/music-video/sample-episode/publish_log.json`.
+If the package already exists, re-run with `--overwrite`.
 
 ## Troubleshooting
 

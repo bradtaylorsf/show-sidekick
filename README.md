@@ -18,7 +18,6 @@ Requirements: Node 22+, pnpm 9+, and `ffmpeg` for local media work.
 mkdir my-shows
 cd my-shows
 predit init --starter music-video --git
-export OPENAI_API_KEY="..."
 predit build music-video/sample-episode --sample
 predit export music-video/sample-episode --target premiere
 ```
@@ -29,7 +28,7 @@ The full walkthrough is in [docs/quickstart.md](docs/quickstart.md), including p
 
 - Show-first model: each show owns its brand, characters, defaults, ingest rules, and episode workspace.
 - Audio-led pipelines: music videos, trailers, and news songs snap visual timing to beats, sections, and climax points.
-- Zero-key starter shows: nine bundled starters scaffold working show folders and sample fixtures.
+- Starter shows: nine bundled templates scaffold show folders and sample fixtures; `music-video` includes a zero-key runnable sample.
 - NLE handoff: Premiere XML, DaVinci XML, CapCut draft packages, and CMX 3600 EDL.
 - Registry-driven tools: concrete integrations live in `src/tools/` and are selected by capability, availability, cost, and runtime.
 - Integrated runner: checkpoints, approvals, resume state, first paid-call approval, and cost budget enforcement.
@@ -56,7 +55,7 @@ Common flows:
 - `predit update --check` verifies the local `.predit/` cache against the installed harness without writing.
 - `predit build <show>/<episode> --sample` runs a short sample pass through the integrated Runner.
 - `predit status <show>/<episode>` reports current stage, checkpoint status, costs, and the latest decision.
-- `predit export <show>/<episode> --target premiere|davinci|capcut|edl` writes an editor handoff package under `exports/`.
+- `predit export <show>/<episode> --target premiere|davinci|capcut|edl` writes an editor handoff package under `exports/`; pass `--overwrite` to replace an existing package.
 - `predit import <path> --as <show>/<episode>` and `predit watch` turn watched drops into episode YAML.
 - `predit ls starters` lists bundled starter shows, fixture sizes, pipelines, and expected sample durations.
 

@@ -215,6 +215,7 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
     .option("--format <format>", "export format such as edl")
     .option("--asset-link-mode <mode>", "copy, symlink, or reference")
     .option("--out <dir>", "export root directory (defaults to exports/)")
+    .option("--overwrite", "replace an existing export package")
     .action(createExportHandler(io));
 
   program

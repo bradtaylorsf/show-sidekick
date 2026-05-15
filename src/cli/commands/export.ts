@@ -9,6 +9,7 @@ export type ExportCommandOptions = GlobalOptions & {
   format?: string;
   assetLinkMode?: string;
   out?: string;
+  overwrite?: boolean;
 };
 
 export type ExportDeps = {
@@ -41,6 +42,7 @@ export function createExportHandler(io: CliIo, deps: ExportDeps = defaultDeps) {
       target: exportTarget,
       assetLinkMode: options.assetLinkMode,
       outDir: options.out,
+      overwrite: options.overwrite === true,
     });
     const publishLogPath = await deps.writePublishLog(
       runTarget.projectRoot,

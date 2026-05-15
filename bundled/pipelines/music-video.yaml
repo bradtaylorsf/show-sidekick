@@ -1,0 +1,70 @@
+slug: music-video
+display_name: Music Video
+description: "Zero-key audio-led starter pipeline for the bundled music-video sample. It creates a short beat-synced rough-cut artifact set from the supplied track and lyrics, then exports to common NLE handoff formats."
+status: production
+master_clock: audio
+default_checkpoint_policy: automatic
+orchestration:
+  mode: starter-sample
+  skill: pipelines/music-video/compose-director.md
+  budget_default_usd: 0.5
+  max_revisions_per_stage: 0
+  max_send_backs: 0
+  max_wall_time_minutes: 5
+compatible_playbooks:
+  recommended:
+    - news-song
+    - playful-hip-hop-explainer
+  also_works:
+    - thechaosfm-gta-political
+  custom_allowed: true
+export:
+  supported_targets: [premiere, davinci, capcut, edl]
+  default_target: premiere
+sample:
+  duration_s_min: 15
+  duration_s_max: 20
+  hint: "Use the bundled track and lyrics to create a zero-key sample rough cut."
+metadata:
+  starter_sample_dispatcher: zero-key
+stages:
+  - slug: cuesheet
+    skill: pipelines/_shared/cuesheet-director.md
+    produces: cuesheet
+    human_approval: never
+    checkpoint_required: true
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+  - slug: assets
+    skill: pipelines/music-video/asset-director.md
+    produces: asset_manifest
+    required_artifacts_in:
+      - cuesheet
+    human_approval: never
+    checkpoint_required: true
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+  - slug: edit
+    skill: pipelines/music-video/edit-director.md
+    produces: edit_decisions
+    required_artifacts_in:
+      - cuesheet
+      - asset_manifest
+    human_approval: never
+    checkpoint_required: true
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+  - slug: compose
+    skill: pipelines/music-video/compose-director.md
+    produces: render_report
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+    human_approval: never
+    checkpoint_required: true
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }

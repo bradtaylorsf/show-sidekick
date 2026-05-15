@@ -16,7 +16,7 @@ Apache License 2.0, applied at first public release. Until then the repo stays p
 
 Run before flipping the repo public:
 
-`pnpm release:check` runs the automated public-flip gate. `pnpm release:check:full` also runs the fresh-clone install/build/test command sequence.
+`pnpm release:check` runs the automated public-flip gate, including the bundled starter sample E2E. `pnpm release:check:full` also runs the fresh-clone install/build/test command sequence.
 
 - [x] `.migration/` directory removed from the working tree
 - [x] `git grep` for sibling-repo path names returns no hits in tracked files

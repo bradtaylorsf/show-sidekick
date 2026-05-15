@@ -22,8 +22,14 @@ const checkIds: readonly PublicFlipCheck["id"][] = [
 const resultPromise = runPublicFlipChecklist({
   allowLocalMigrationBridge: true,
   repoRoot,
+  runShell: async (command, args) => {
+    if (command === "git" && args[0] === "grep") {
+      return { status: 1, stdout: "", stderr: "" };
+    }
+
+    return { status: 0, stdout: "", stderr: "" };
+  },
   skipBuild: true,
-  skipE2E: true,
 });
 
 describe("public-flip checklist", () => {
@@ -34,6 +40,28 @@ describe("public-flip checklist", () => {
       expect(check.status, check.detail).not.toBe("fail");
     });
   }
+
+  it("fails the bundled runnable example check when starter E2E is skipped", async () => {
+    const result = await runPublicFlipChecklist({
+      allowLocalMigrationBridge: true,
+      repoRoot,
+      runShell: async (command, args) => {
+        if (command === "git" && args[0] === "grep") {
+          return { status: 1, stdout: "", stderr: "" };
+        }
+
+        return { status: 0, stdout: "", stderr: "" };
+      },
+      skipBuild: true,
+      skipE2E: true,
+    });
+
+    const check = result.checks.find((candidate) => candidate.id === "bundled-runnable-example");
+    expect(check).toMatchObject({
+      status: "fail",
+      detail: "Starter E2E execution was skipped; the public-flip gate must run pnpm run test:smoke",
+    });
+  });
 });
 
 async function findCheck(

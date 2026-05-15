@@ -41,7 +41,8 @@ export function buildEdl(options: EdlExporterOptions): string {
 
   const assetsById = new Map(options.assets.map((asset) => [asset.id, asset]));
   const reelState: ReelState = { byKey: new Map(), next: 1 };
-  const lines = [`TITLE: ${sanitizeTitle(options.projectName)}`, `FCM: ${isNtsc(options.renderReport.framerate) ? "DROP FRAME" : "NON-DROP FRAME"}`, ""];
+  const dropFrame = usesDropFrameNumbering(options.renderReport.framerate);
+  const lines = [`TITLE: ${sanitizeTitle(options.projectName)}`, `FCM: ${dropFrame ? "DROP FRAME" : "NON-DROP FRAME"}`, ""];
   let eventNumber = 1;
 
   for (const cut of cuts) {
@@ -60,6 +61,7 @@ export function buildEdl(options: EdlExporterOptions): string {
         recordStartS: cut.start_s,
         recordEndS: cut.end_s,
         framerate: options.renderReport.framerate,
+        dropFrame,
       }),
     );
   }
@@ -76,6 +78,7 @@ export function buildEdl(options: EdlExporterOptions): string {
         recordStartS: 0,
         recordEndS: durationS,
         framerate: options.renderReport.framerate,
+        dropFrame,
       }),
     );
   }
@@ -92,16 +95,17 @@ function eventLine(options: {
   recordStartS: number;
   recordEndS: number;
   framerate: number;
+  dropFrame: boolean;
 }): string {
   return [
     String(options.eventNumber).padStart(3, "0"),
     options.reelId,
     options.channel,
     "C",
-    smpteTimecode(options.sourceStartS, options.framerate),
-    smpteTimecode(options.sourceEndS, options.framerate),
-    smpteTimecode(options.recordStartS, options.framerate),
-    smpteTimecode(options.recordEndS, options.framerate),
+    smpteTimecode(options.sourceStartS, options.framerate, options.dropFrame),
+    smpteTimecode(options.sourceEndS, options.framerate, options.dropFrame),
+    smpteTimecode(options.recordStartS, options.framerate, options.dropFrame),
+    smpteTimecode(options.recordEndS, options.framerate, options.dropFrame),
   ].join("  ");
 }
 
@@ -116,11 +120,10 @@ function reelIdFor(state: ReelState, key: string): string {
   return id;
 }
 
-function smpteTimecode(seconds: number, framerate: number): string {
+function smpteTimecode(seconds: number, framerate: number, dropFrame: boolean): string {
   const totalFrames = secondsToFrames(seconds, framerate);
   const nominalFrameRate = Math.max(1, Math.round(framerate));
-  const frameNumber =
-    usesDropFrameNumbering(framerate, nominalFrameRate) ? toDropFrameNumber(totalFrames, nominalFrameRate) : totalFrames;
+  const frameNumber = dropFrame ? toDropFrameNumber(totalFrames, nominalFrameRate) : totalFrames;
   const framesPerHour = nominalFrameRate * 60 * 60;
   const framesPerMinute = nominalFrameRate * 60;
   const hours = Math.floor(frameNumber / framesPerHour);
@@ -128,20 +131,19 @@ function smpteTimecode(seconds: number, framerate: number): string {
   const frameRemainder = frameNumber % framesPerMinute;
   const secondsPart = Math.floor(frameRemainder / nominalFrameRate);
   const frames = frameRemainder % nominalFrameRate;
+  const separator = dropFrame ? ";" : ":";
 
-  return [hours, minutes, secondsPart, frames].map((value) => String(value).padStart(2, "0")).join(":");
+  return `${[hours, minutes, secondsPart].map((value) => String(value).padStart(2, "0")).join(":")}${separator}${String(frames).padStart(2, "0")}`;
 }
 
 function secondsToFrames(seconds: number, framerate: number): number {
   return Math.max(0, Math.round(seconds * framerate));
 }
 
-function isNtsc(framerate: number): boolean {
-  return Math.abs(framerate - Math.round(framerate)) > 0.001;
-}
-
-function usesDropFrameNumbering(framerate: number, nominalFrameRate: number): boolean {
-  return isNtsc(framerate) && (nominalFrameRate === 30 || nominalFrameRate === 60);
+function usesDropFrameNumbering(framerate: number): boolean {
+  const nominalFrameRate = Math.max(1, Math.round(framerate));
+  const fractional = Math.abs(framerate - nominalFrameRate) > 0.001;
+  return fractional && (nominalFrameRate === 30 || nominalFrameRate === 60);
 }
 
 function toDropFrameNumber(totalFrames: number, nominalFrameRate: number): number {

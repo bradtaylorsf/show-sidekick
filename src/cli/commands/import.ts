@@ -3,8 +3,9 @@ import { realpath } from "node:fs/promises";
 import type { Command } from "commander";
 import YAML from "yaml";
 import { atomicWrite } from "../../checkpoints/io.js";
+import { loadYaml } from "../../config/loader.js";
 import { findProjectRoot, parseShowEpisode } from "../../paths/project.js";
-import { EpisodeSchema, validateEpisodeAgainstShow } from "../../shows/episode.js";
+import { EpisodeSchema, validateEpisodeAgainstShow, type Episode } from "../../shows/episode.js";
 import { deriveInputs, resolveDropMatch, showIngestWatchEntries } from "../../shows/ingest.js";
 import { loadShow } from "../../shows/load.js";
 import { assertMissing, titleize, today } from "../scaffold/index.js";
@@ -53,15 +54,18 @@ export function createImportHandler(io: CliIo, deps: ImportDeps = {}) {
     await assertMissing(target.episodeFile, "episode");
 
     const pipeline = match.watchEntry.pipeline;
-    const inputs = await deriveInputs(match.matchedFilePath, match);
+    const template = await loadEpisodeTemplate(show);
+    const inputs = await deriveInputs(match.matchedFilePath, match, {
+      templateInputs: template?.inputs,
+    });
     const episode = {
       slug: target.episode,
       title: titleize(target.episode),
       created: today(),
       pipeline,
       inputs,
-      cast: [],
-      tags: [pipeline],
+      cast: template?.cast ?? [],
+      tags: mergeTags(template?.tags, pipeline),
     };
     const parsed = EpisodeSchema.parse(episode);
     const validation = validateEpisodeAgainstShow(parsed, show);
@@ -84,6 +88,19 @@ export function createImportHandler(io: CliIo, deps: ImportDeps = {}) {
 
 async function resolveExistingPath(inputPath: string): Promise<string> {
   return realpath(inputPath);
+}
+
+async function loadEpisodeTemplate(show: Awaited<ReturnType<typeof loadShow>>): Promise<Episode | undefined> {
+  if (show.ingest?.episode_template === undefined) {
+    return undefined;
+  }
+
+  const template = await loadYaml(path.resolve(show.rootDir, show.ingest.episode_template), EpisodeSchema);
+  return EpisodeSchema.parse(template);
+}
+
+function mergeTags(templateTags: string[] | undefined, pipeline: string): string[] {
+  return [...new Set([pipeline, ...(templateTags ?? [])])];
 }
 
 function emitImported(io: CliIo, options: GlobalOptions, event: ImportEvent): void {

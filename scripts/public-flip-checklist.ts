@@ -69,7 +69,7 @@ export async function runPublicFlipChecklist(
   const allowLocalMigrationBridge = options.allowLocalMigrationBridge ?? false;
   const runShell = options.runShell ?? defaultRunShell;
   const skipBuild = options.skipBuild ?? true;
-  const skipE2E = options.skipE2E ?? true;
+  const skipE2E = options.skipE2E ?? false;
 
   const definitions: readonly CheckDefinition[] = [
     {
@@ -301,9 +301,7 @@ async function checkBundledRunnableExample(
   }
 
   if (skipE2E) {
-    return pass(
-      `${runnableStarters.length} starter(s) have sample episodes; E2E execution is covered by tests/smoke/framework-smoke.test.ts`,
-    );
+    return fail("Starter E2E execution was skipped; the public-flip gate must run pnpm run test:smoke");
   }
 
   const smoke = await runPnpm(runShell, repoRoot, ["run", "test:smoke"]);

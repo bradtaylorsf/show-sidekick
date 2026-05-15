@@ -12,12 +12,12 @@ const originalCwd = process.cwd();
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 const ingestWatchFixture = path.join(repoRoot, "bundled/fixtures/ingest-watch/thechaosfm-news/pilot");
 
-async function scratchProject(): Promise<string> {
+async function scratchProject(options: { template?: boolean } = {}): Promise<string> {
   const root = path.join(tmpdir(), `predit-import-${randomUUID()}`);
   scratchDirs.push(root);
   await mkdir(path.join(root, ".predit"), { recursive: true });
   await writeFile(path.join(root, "CLAUDE.md"), "# project\n", "utf8");
-  await writeShow(root, "thechaosfm");
+  await writeShow(root, "thechaosfm", options);
   return root;
 }
 
@@ -53,6 +53,29 @@ describe("import command", () => {
       },
       cast: [],
       tags: ["news-song"],
+    });
+  });
+
+  it("uses ingest episode templates to preserve pipeline-specific input keys", async () => {
+    const root = await scratchProject({ template: true });
+    const dropDir = path.join(root, "music_library", "thechaosfm-news", "pilot");
+    await mkdir(dropDir, { recursive: true });
+    await writeFile(path.join(dropDir, "track.mp3"), "audio", "utf8");
+    await writeFile(path.join(dropDir, "narration.txt"), "voiceover", "utf8");
+    await writeFile(path.join(dropDir, "reference.jpg"), "image", "utf8");
+    process.chdir(root);
+    const { program } = captureProgram();
+
+    await program.parseAsync(["node", "predit", "import", dropDir, "--as", "thechaosfm/pilot"], {
+      from: "node",
+    });
+
+    const episodePath = path.join(root, "shows", "thechaosfm", "episodes", "pilot.yaml");
+    const episode = parseYaml(await readFile(episodePath, "utf8")) as Record<string, unknown>;
+    expect(episode.inputs).toMatchObject({
+      track: "music_library/thechaosfm-news/pilot/track.mp3",
+      narration: "music_library/thechaosfm-news/pilot/narration.txt",
+      reference_image: "music_library/thechaosfm-news/pilot/reference.jpg",
     });
   });
 
@@ -151,9 +174,13 @@ function captureProgram() {
   };
 }
 
-async function writeShow(root: string, slug: string): Promise<void> {
+async function writeShow(root: string, slug: string, options: { template?: boolean } = {}): Promise<void> {
   const showDir = path.join(root, "shows", slug);
   await mkdir(path.join(showDir, "episodes"), { recursive: true });
+  const ingestLines = options.template
+    ? ["ingest:", "  episode_template: ./episode.template.yaml", "  watch:"]
+    : ["ingest:", "  watch:"];
+
   await writeFile(
     path.join(showDir, "show.yaml"),
     [
@@ -164,8 +191,7 @@ async function writeShow(root: string, slug: string): Promise<void> {
       "  news-song: {}",
       "defaults:",
       "  pipeline: news-song",
-      "ingest:",
-      "  watch:",
+      ...ingestLines,
       "    - path: ../../music_library/thechaosfm-news",
       '      match: "**/track.mp3"',
       "      pipeline: news-song",
@@ -174,6 +200,26 @@ async function writeShow(root: string, slug: string): Promise<void> {
     ].join("\n"),
     "utf8",
   );
+
+  if (options.template) {
+    await writeFile(
+      path.join(showDir, "episode.template.yaml"),
+      [
+        "slug: sample-episode",
+        'title: "Template"',
+        "created: 2026-05-12",
+        "pipeline: news-song",
+        "inputs:",
+        "  track: shows/thechaosfm/inputs/sample-episode/track.mp3",
+        "  narration: shows/thechaosfm/inputs/sample-episode/narration.txt",
+        "  reference_image: shows/thechaosfm/inputs/sample-episode/reference.jpg",
+        "cast: []",
+        "tags: [template]",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+  }
 }
 
 async function writeDropFixture(root: string): Promise<string> {

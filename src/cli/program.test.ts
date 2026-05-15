@@ -70,7 +70,7 @@ describe("createProgram", () => {
     const exportCommand = program.commands.find((command) => command.name() === "export");
 
     expect(exportCommand?.options.map((option) => option.long)).toEqual(
-      expect.arrayContaining(["--target", "--format", "--asset-link-mode", "--out"]),
+      expect.arrayContaining(["--target", "--format", "--asset-link-mode", "--out", "--overwrite"]),
     );
   });
 

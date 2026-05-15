@@ -59,6 +59,7 @@ export async function scaffoldShow(projectRoot: string, options: ShowScaffoldOpt
   const filePath = path.join(showDir, "show.yaml");
   if (starter) {
     await normalizeStarterShow(filePath, slug);
+    await rewriteStarterShowReferences(showDir, starter, slug);
     return { slug, filePath };
   }
 
@@ -203,6 +204,43 @@ async function normalizeStarterShow(filePath: string, slug: string): Promise<voi
 
   ShowSchema.parse(show);
   await atomicWrite(filePath, YAML.stringify(show));
+}
+
+async function rewriteStarterShowReferences(showDir: string, starter: string, slug: string): Promise<void> {
+  if (starter === slug) {
+    return;
+  }
+
+  const files = [path.join(showDir, "episode.template.yaml"), ...(await listYamlFiles(path.join(showDir, "episodes")))];
+  const from = `shows/${starter}/`;
+  const to = `shows/${slug}/`;
+
+  for (const filePath of files) {
+    if (!(await exists(filePath))) {
+      continue;
+    }
+
+    const current = await readFile(filePath, "utf8");
+    const next = current.replaceAll(from, to);
+    if (next !== current) {
+      await atomicWrite(filePath, next);
+    }
+  }
+}
+
+async function listYamlFiles(dir: string): Promise<string[]> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".yaml"))
+      .map((entry) => path.join(dir, entry.name));
+  } catch (error) {
+    const fileError = error as ErrorWithCode;
+    if (fileError.code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
 }
 
 export async function assertMissing(targetPath: string, label: string): Promise<void> {

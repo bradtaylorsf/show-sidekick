@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -81,6 +81,24 @@ describe("new command", () => {
       },
     });
     expect(show.pipelines).not.toHaveProperty("default");
+  });
+
+  it("rewrites starter sample paths when cloning to a custom show slug", async () => {
+    const root = await scratchProject();
+    await writeStarter(root, "music-video");
+    process.chdir(root);
+
+    const { program } = captureProgram();
+    await program.parseAsync(["node", "predit", "new", "show", "custom-show", "--from", "music-video"], {
+      from: "node",
+    });
+
+    await expect(readFile(path.join(root, "shows", "custom-show", "episodes", "sample-episode.yaml"), "utf8")).resolves.toContain(
+      "shows/custom-show/inputs/sample-episode/track.wav",
+    );
+    await expect(readFile(path.join(root, "shows", "custom-show", "episode.template.yaml"), "utf8")).resolves.toContain(
+      "shows/custom-show/inputs/sample-episode/track.wav",
+    );
   });
 
   it("throws when a requested starter is missing", async () => {
@@ -180,6 +198,8 @@ function captureProgram() {
 async function writeStarter(root: string, name: string): Promise<void> {
   const starterDir = path.join(root, ".predit", "starters", name);
   await mkdir(path.join(starterDir, "brand"), { recursive: true });
+  await mkdir(path.join(starterDir, "episodes"), { recursive: true });
+  await mkdir(path.join(starterDir, "inputs", "sample-episode"), { recursive: true });
   await writeFile(
     path.join(starterDir, "show.yaml"),
     [
@@ -194,6 +214,33 @@ async function writeStarter(root: string, name: string): Promise<void> {
       '    aspect: "16:9"',
       "defaults:",
       "  pipeline: cinematic",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  await writeFile(path.join(starterDir, "inputs", "sample-episode", "track.wav"), "audio\n", "utf8");
+  await writeFile(
+    path.join(starterDir, "episode.template.yaml"),
+    [
+      "slug: sample-episode",
+      'title: "Sample"',
+      "created: 2026-05-12",
+      "pipeline: cinematic",
+      "inputs:",
+      `  track: shows/${name}/inputs/sample-episode/track.wav`,
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  await writeFile(
+    path.join(starterDir, "episodes", "sample-episode.yaml"),
+    [
+      "slug: sample-episode",
+      'title: "Sample"',
+      "created: 2026-05-12",
+      "pipeline: cinematic",
+      "inputs:",
+      `  track: shows/${name}/inputs/sample-episode/track.wav`,
       "",
     ].join("\n"),
     "utf8",

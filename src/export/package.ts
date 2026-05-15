@@ -1,4 +1,4 @@
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import type { AssetManifest, PublishLog, PublishLogOutput } from "../artifacts/index.js";
 import { atomicWrite } from "../checkpoints/io.js";
@@ -27,6 +27,7 @@ export type AssembleExportPackageOptions = {
   target: string;
   assetLinkMode?: string;
   outDir?: string;
+  overwrite?: boolean;
   now?: Date;
 };
 
@@ -51,7 +52,7 @@ export async function assembleExportPackage(
   const assetsDir = path.join(packageDir, "assets");
   const captionsDir = path.join(packageDir, "captions");
 
-  await rm(packageDir, { recursive: true, force: true });
+  await preparePackageDirectory(packageDir, options.overwrite === true);
   await mkdir(assetsDir, { recursive: true });
   await mkdir(captionsDir, { recursive: true });
 
@@ -118,6 +119,31 @@ export function validatePipelineSupportsTarget(pipeline: Pipeline, target: strin
 
   if (!supported.includes(target)) {
     throw new Error(`pipeline '${pipeline.slug}' does not support export target '${target}'; supported targets: ${supported.join(", ")}`);
+  }
+}
+
+async function preparePackageDirectory(packageDir: string, overwrite: boolean): Promise<void> {
+  if (!(await exists(packageDir))) {
+    return;
+  }
+
+  if (!overwrite) {
+    throw new Error(`export package already exists at ${packageDir}; pass --overwrite to replace it`);
+  }
+
+  await rm(packageDir, { recursive: true, force: true });
+}
+
+async function exists(filePath: string): Promise<boolean> {
+  try {
+    await stat(filePath);
+    return true;
+  } catch (error) {
+    const fileError = error as { code?: string };
+    if (fileError.code === "ENOENT") {
+      return false;
+    }
+    throw error;
   }
 }
 

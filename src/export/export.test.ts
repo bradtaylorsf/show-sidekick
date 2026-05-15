@@ -47,6 +47,20 @@ describe("loadExportArtifacts", () => {
       filePath: path.join(root, "projects", "show", "episode", "render_report.json"),
     } satisfies Partial<MissingArtifactError>);
   });
+
+  it("rejects edit decisions whose cuts run backward", async () => {
+    const root = await scratchProject();
+    await writeExportWorkspace(root, {
+      editDecisions: {
+        ...editDecisions(),
+        cuts: [{ start_s: 3, end_s: 2, asset_id: "hero" }],
+      },
+    });
+
+    await expect(loadExportArtifacts(root, "show", "episode")).rejects.toThrow(
+      "cut end_s must be greater than start_s",
+    );
+  });
 });
 
 describe("linkAsset", () => {
@@ -158,10 +172,31 @@ describe("exportCapcut", () => {
 
 describe("buildEdl", () => {
   it.each([
-    { framerate: 24, fcm: "FCM: NON-DROP FRAME", expectedOut: "00:00:01:12" },
-    { framerate: 30, fcm: "FCM: NON-DROP FRAME", expectedOut: "00:00:01:15" },
-    { framerate: 23.976, fcm: "FCM: DROP FRAME", expectedOut: "00:00:01:12" },
-  ])("builds CMX 3600 SMPTE timecode at $framerate fps", ({ framerate, fcm, expectedOut }) => {
+    {
+      framerate: 24,
+      fcm: "FCM: NON-DROP FRAME",
+      expectedStart: "00:00:00:00",
+      expectedOut: "00:00:01:12",
+    },
+    {
+      framerate: 30,
+      fcm: "FCM: NON-DROP FRAME",
+      expectedStart: "00:00:00:00",
+      expectedOut: "00:00:01:15",
+    },
+    {
+      framerate: 23.976,
+      fcm: "FCM: NON-DROP FRAME",
+      expectedStart: "00:00:00:00",
+      expectedOut: "00:00:01:12",
+    },
+    {
+      framerate: 29.97,
+      fcm: "FCM: DROP FRAME",
+      expectedStart: "00:00:00;00",
+      expectedOut: "00:00:01;15",
+    },
+  ])("builds CMX 3600 SMPTE timecode at $framerate fps", ({ framerate, fcm, expectedStart, expectedOut }) => {
     const root = "/project";
     const edl = buildEdl({
       packageDir: root,
@@ -179,7 +214,7 @@ describe("buildEdl", () => {
     expect(edl).toContain("TITLE: show/episode");
     expect(edl).toContain(fcm);
     expect(edl).toMatch(
-      new RegExp(`001\\s+AX001\\s+V\\s+C\\s+00:00:00:00\\s+${expectedOut}\\s+00:00:00:00\\s+${expectedOut}`),
+      new RegExp(`001\\s+AX001\\s+V\\s+C\\s+${expectedStart}\\s+${expectedOut}\\s+${expectedStart}\\s+${expectedOut}`),
     );
     expect(edl).toMatch(/002\s+AX002\s+A\s+C/);
   });
@@ -310,6 +345,38 @@ describe("assembleExportPackage", () => {
       }),
     ).rejects.toThrow("does not support export target 'davinci'");
   });
+
+  it("refuses to overwrite an existing package unless overwrite is explicit", async () => {
+    const root = await scratchProject();
+    await writeExportWorkspace(root);
+    const packageDir = path.join(root, "exports", "show__episode.premiere");
+    await mkdir(packageDir, { recursive: true });
+    await writeFile(path.join(packageDir, "editor-note.txt"), "keep\n", "utf8");
+
+    await expect(
+      assembleExportPackage({
+        projectRoot: root,
+        show: loadedShow(root),
+        showSlug: "show",
+        episodeSlug: "episode",
+        pipeline: pipeline(),
+        target: "premiere",
+      }),
+    ).rejects.toThrow("pass --overwrite to replace it");
+    await expect(readFile(path.join(packageDir, "editor-note.txt"), "utf8")).resolves.toBe("keep\n");
+
+    await expect(
+      assembleExportPackage({
+        projectRoot: root,
+        show: loadedShow(root),
+        showSlug: "show",
+        episodeSlug: "episode",
+        pipeline: pipeline(),
+        target: "premiere",
+        overwrite: true,
+      }),
+    ).resolves.toMatchObject({ target: "premiere" });
+  });
 });
 
 describe("predit export", () => {
@@ -321,7 +388,19 @@ describe("predit export", () => {
     const { program, output } = captureProgram();
 
     await program.parseAsync(
-      ["node", "predit", "--json", "export", "show/episode", "--target", "premiere", "--asset-link-mode", "reference", "--out", "handoffs"],
+      [
+        "node",
+        "predit",
+        "--json",
+        "export",
+        "show/episode",
+        "--target",
+        "premiere",
+        "--asset-link-mode",
+        "reference",
+        "--out",
+        "handoffs",
+      ],
       { from: "node" },
     );
 
@@ -441,7 +520,7 @@ async function writeProjectFiles(root: string): Promise<void> {
   );
 }
 
-async function writeExportWorkspace(root: string, options: { omit?: string } = {}): Promise<void> {
+async function writeExportWorkspace(root: string, options: { omit?: string; editDecisions?: unknown } = {}): Promise<void> {
   const projectDir = path.join(root, "projects", "show", "episode");
   const mediaDir = path.join(root, "media");
   await mkdir(projectDir, { recursive: true });
@@ -455,7 +534,7 @@ async function writeExportWorkspace(root: string, options: { omit?: string } = {
   ]);
 
   const files: Record<string, unknown> = {
-    edit_decisions: editDecisions(),
+    edit_decisions: options.editDecisions ?? editDecisions(),
     cuesheet: cuesheet(),
     asset_manifest: assetManifest(),
     render_report: renderReport(),
