@@ -2,6 +2,7 @@ slug: podcast-repurpose
 display_name: Podcast Repurpose
 description: Podcast repurposing pipeline for turning long-form audio or video into social clips, captioned excerpts, and editor handoff packages.
 status: beta
+sample_support: unsupported
 master_clock: voiceover
 default_checkpoint_policy: guided
 extensions:
@@ -37,6 +38,8 @@ orchestration:
 sample:
   duration_s_min: 15
   duration_s_max: 30
+  max_scenes: 3
+  max_cost_usd: 0.8
   hint: One excerpt, caption treatment, and support card.
 export:
   supported_targets:

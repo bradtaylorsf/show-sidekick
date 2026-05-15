@@ -2,6 +2,7 @@ slug: avatar-spokesperson
 display_name: Avatar Spokesperson
 description: Avatar-led spokesperson pipeline for scripted explainers, announcements, training clips, and product narration with optional support visuals.
 status: beta
+sample_support: unsupported
 master_clock: voiceover
 default_checkpoint_policy: guided
 extensions:
@@ -36,6 +37,8 @@ orchestration:
 sample:
   duration_s_min: 12
   duration_s_max: 18
+  max_scenes: 2
+  max_cost_usd: 0.8
   hint: One avatar take, one support visual, one closing line.
 export:
   supported_targets:

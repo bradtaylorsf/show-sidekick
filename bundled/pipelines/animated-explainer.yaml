@@ -2,6 +2,7 @@ slug: animated-explainer
 display_name: Animated Explainer
 description: Script-led explainer pipeline for flat motion graphics, callouts, diagrams, and concise narrated education videos.
 status: production
+sample_support: paid
 master_clock: voiceover
 default_checkpoint_policy: guided
 extensions:
@@ -36,6 +37,8 @@ orchestration:
 sample:
   duration_s_min: 12
   duration_s_max: 18
+  max_scenes: 3
+  max_cost_usd: 1
   hint: One concise concept, three visual beats, and a final takeaway card.
 export:
   supported_targets:

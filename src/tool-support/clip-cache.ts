@@ -8,12 +8,14 @@ export type ClipCacheKeyInput = {
   provider: string;
   model: string;
   image_url?: string;
+  image_fingerprint?: string;
   duration?: number;
   aspect_ratio?: string;
 };
 
 export type ClipCacheStoreInput = ClipCacheKeyInput & {
   video_path: string;
+  resolved_image_url?: string;
 };
 
 export type ClipCacheEntry = ClipCacheStoreInput & {
@@ -29,13 +31,13 @@ export function clipCacheKey(input: ClipCacheKeyInput): string {
 export async function lookupClipCache(
   ctx: ToolContext,
   input: ClipCacheKeyInput,
-): Promise<{ video_path: string; cache_key: string } | undefined> {
+): Promise<{ video_path: string; cache_key: string; resolved_image_url?: string } | undefined> {
   const key = clipCacheKey(input);
 
   try {
     const index = await readIndex(indexPath(ctx.projectRoot));
     const entry = index[key];
-    return entry ? { video_path: entry.video_path, cache_key: key } : undefined;
+    return entry ? { video_path: entry.video_path, cache_key: key, resolved_image_url: entry.resolved_image_url } : undefined;
   } catch (error) {
     ctx.logger.warn("clip cache lookup skipped", { error: errorMessage(error) });
     return undefined;
@@ -140,6 +142,7 @@ function normalizeCacheKey(input: ClipCacheKeyInput): ClipCacheKeyInput {
     provider: input.provider,
     model: input.model,
     ...(input.image_url !== undefined ? { image_url: input.image_url } : {}),
+    ...(input.image_fingerprint !== undefined ? { image_fingerprint: input.image_fingerprint } : {}),
     ...(input.duration !== undefined ? { duration: input.duration } : {}),
     ...(input.aspect_ratio !== undefined ? { aspect_ratio: input.aspect_ratio } : {}),
   };

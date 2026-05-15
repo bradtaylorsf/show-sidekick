@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ProviderProfileNameSchema } from "../providers/profiles.js";
 import { PipelineRuntimeSchema } from "./pipeline-config.js";
 import type { Show } from "./show.js";
 
@@ -11,6 +12,7 @@ export const EpisodeSchema = z.object({
   runtime: PipelineRuntimeSchema.optional(),
   aspect: z.string().optional(),
   budget_usd: z.number().positive().optional(),
+  provider_profile: ProviderProfileNameSchema.optional(),
   inputs: z.record(z.string(), z.unknown()).default({}),
   cast: z.array(z.string()).default([]),
   tags: z.array(z.string()).optional(),

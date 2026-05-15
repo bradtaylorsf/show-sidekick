@@ -2,6 +2,7 @@ slug: animation
 display_name: Animation
 description: General animation lane for narrated motion pieces, stylized cutdowns, and generated visual sequences that are not tied to characters.
 status: beta
+sample_support: unsupported
 master_clock: voiceover
 default_checkpoint_policy: guided
 extensions:
@@ -36,6 +37,8 @@ orchestration:
 sample:
   duration_s_min: 10
   duration_s_max: 16
+  max_scenes: 2
+  max_cost_usd: 0.8
   hint: A short motion sequence with one visual motif and two transitions.
 export:
   supported_targets:

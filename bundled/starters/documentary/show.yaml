@@ -2,6 +2,7 @@ slug: documentary
 display_name: Documentary
 description: Visual-led documentary starter with a narration fixture and reference image.
 created: 2026-05-14
+sample_support: unsupported
 brand: ./brand/
 characters: ./characters/
 skills: ./skills/

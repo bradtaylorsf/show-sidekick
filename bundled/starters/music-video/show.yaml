@@ -2,6 +2,7 @@ slug: music-video
 display_name: Music Video
 description: Audio-led vertical music video starter with a synthesized track and lyric fixture.
 created: 2026-05-14
+sample_support: both
 brand: ./brand/
 characters: ./characters/
 skills: ./skills/

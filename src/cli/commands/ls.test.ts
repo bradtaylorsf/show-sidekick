@@ -126,6 +126,7 @@ describe("ls command", () => {
         fixture_size: "3 B",
         fixture_size_bytes: 3,
         sample_duration_s: 15,
+        sample_support: "paid",
         sample_supported: true,
       }),
     ]);
@@ -144,9 +145,9 @@ describe("ls command", () => {
     await program.parseAsync(["node", "predit", "--json", "ls", "starters"], { from: "node" });
 
     const rows = parseLines(output().stdout);
-    expect(rows.map((row) => ({ name: row.name, sample_supported: row.sample_supported }))).toEqual([
-      { name: "sampled-starter", sample_supported: true },
-      { name: "unsampled-starter", sample_supported: false },
+    expect(rows.map((row) => ({ name: row.name, sample_support: row.sample_support, sample_supported: row.sample_supported }))).toEqual([
+      { name: "sampled-starter", sample_support: "paid", sample_supported: true },
+      { name: "unsampled-starter", sample_support: "unsupported", sample_supported: false },
     ]);
   });
 
@@ -184,7 +185,7 @@ describe("ls command", () => {
     expect(output().stdout).toContain("pipelines");
     expect(output().stdout).toContain("fixture_size");
     expect(output().stdout).toContain("sample_duration_s");
-    expect(output().stdout).toContain("sample_supported");
+    expect(output().stdout).toContain("sample_support");
     expect(output().stdout).toContain("cinematic-trailer");
     expect(output().stdout).toContain("1.6 KB");
   });

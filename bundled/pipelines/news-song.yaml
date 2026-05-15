@@ -2,6 +2,7 @@ slug: news-song
 display_name: News Song
 description: Audio-led news-song pipeline for topical music videos with sourced headline beats, lyrics, cuesheets, and rhythmic visual packaging.
 status: production
+sample_support: paid
 master_clock: audio
 stage_order: manifest
 default_checkpoint_policy: guided
@@ -38,6 +39,8 @@ orchestration:
 sample:
   duration_s_min: 15
   duration_s_max: 20
+  max_scenes: 3
+  max_cost_usd: 1
   hint: Hook plus first headline beat with no-caption preview support.
 export:
   supported_targets:

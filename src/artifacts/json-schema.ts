@@ -136,6 +136,7 @@ export const CostLogJsonSchema = withMeta("cost_log", {
       units: nonNegativeNumberJson,
       usd: nonNegativeNumberJson,
       mode: { type: "string", enum: ["sample", "full"] },
+      cache_hit: { type: "boolean" },
     },
     ["tool", "provider", "model", "units", "usd", "mode"],
   ),

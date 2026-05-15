@@ -161,7 +161,7 @@ async function listStarters(projectRoot: string): Promise<Row[]> {
       const fixtureSizeBytes =
         metadata.fixture_size_bytes ?? (await directorySize(path.join(entry.path, "inputs")));
       const pipelineKeys = Object.keys(show.pipelines).sort();
-      const sampleSupported = await starterSampleSupported(projectRoot, pipelineKeys);
+      const sampleSupport = show.sample_support ?? (await starterSampleSupport(projectRoot, pipelineKeys));
 
       return {
         event: "starter_listed",
@@ -174,7 +174,8 @@ async function listStarters(projectRoot: string): Promise<Row[]> {
         fixture_size: formatBytes(fixtureSizeBytes),
         fixture_size_bytes: fixtureSizeBytes,
         sample_duration_s: metadata.expected_sample_duration_s,
-        sample_supported: sampleSupported,
+        sample_support: sampleSupport,
+        sample_supported: sampleSupport !== "unsupported",
       };
     }),
   );
@@ -303,22 +304,33 @@ function parseStarterMetadata(value: unknown): StarterMetadata {
   return StarterMetadataSchema.parse(value.starter);
 }
 
-async function starterSampleSupported(projectRoot: string, pipelineKeys: string[]): Promise<boolean> {
+async function starterSampleSupport(projectRoot: string, pipelineKeys: string[]): Promise<"zero-key" | "paid" | "both" | "unsupported"> {
   if (pipelineKeys.length === 0) {
-    return false;
+    return "unsupported";
   }
 
-  const support = await Promise.all(pipelineKeys.map((pipeline) => pipelineSampleSupported(projectRoot, pipeline)));
-  return support.every(Boolean);
-}
-
-async function pipelineSampleSupported(projectRoot: string, pipelineKey: string): Promise<boolean> {
-  const pipeline = await loadPipeline(projectRoot, pipelineKey);
-  if (pipeline.sample === undefined) {
-    return false;
+  const support = await Promise.all(
+    pipelineKeys.map(async (pipelineKey) => {
+      const pipeline = await loadPipeline(projectRoot, pipelineKey);
+      if (pipeline.sample_support !== undefined) {
+        return pipeline.sample_support;
+      }
+      if (pipeline.sample === undefined) {
+        return "unsupported" as const;
+      }
+      return "paid" as const;
+    }),
+  );
+  if (support.includes("unsupported")) {
+    return "unsupported";
   }
 
-  return pipeline.stages.every((stage) => stage.sample_mode_supported !== false);
+  const hasZeroKey = support.some((value) => value === "zero-key" || value === "both");
+  const hasPaid = support.some((value) => value === "paid" || value === "both");
+  if (hasZeroKey && hasPaid) {
+    return "both";
+  }
+  return hasZeroKey ? "zero-key" : "paid";
 }
 
 async function directorySize(dir: string): Promise<number> {
@@ -405,7 +417,7 @@ function pickColumns(rows: Row[]): string[] {
   }
 
   if (first?.kind === "starters") {
-    return ["name", "description", "pipelines", "fixture_size", "sample_duration_s", "sample_supported"];
+    return ["name", "description", "pipelines", "fixture_size", "sample_duration_s", "sample_support"];
   }
 
   return ["name", "source", "path"];

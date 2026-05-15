@@ -1,5 +1,6 @@
 import { DecisionEntrySchema, type DecisionEntry } from "../artifacts/decision-log.js";
 import type { Integration } from "../registry/tool.js";
+import { z } from "zod";
 
 export type ProviderProfileSlug = "paid-demo";
 
@@ -153,6 +154,13 @@ export function getProviderProfile(slug: string): ProviderProfile | undefined {
 export function providerProfileNames(): ProviderProfileSlug[] {
   return [...PROFILES.keys()];
 }
+
+export const ProviderProfileNameSchema = z.string().refine(
+  (value): value is ProviderProfileSlug => PROFILES.has(value as ProviderProfileSlug),
+  {
+    message: `expected one of: ${providerProfileNames().join(", ")}`,
+  },
+);
 
 export function buildProviderProfileDecision(input: {
   profile: ProviderProfile;

@@ -29,6 +29,8 @@ projects/<show>/<episode>/
 | `awaiting_human` | Stage finished, artifact produced, review passed, but `human_approval: required` is gating the next stage. |
 | `failed` | Stage could not produce a valid artifact after two review rounds. The pipeline halts here. |
 
+Provider-backed sample failures also use `failed`. If a paid tool call fails, the checkpoint remains inspectable and includes the partial failure artifact, cost snapshot, and any tool invocations already known. `state.json` records a `failed` block with the stage, error, last artifact path when available, and last cost entries so the operator can retry with `--from <stage>` or revise without losing context.
+
 ## Checkpoint contents
 
 Every completed or awaiting-human checkpoint contains:
@@ -113,6 +115,8 @@ The sample checkpoint:
 - Records sample cost and projected full cost.
 - Status is always `awaiting_human` — the user must approve before the full run begins.
 - Is versioned so `predit revise <show>/<episode> "<note>"` can preserve each human revision request as its own sub-checkpoint.
+
+Paid sample mode does not bypass normal stage checkpoints. It may additionally halt before a stage when `pipeline.sample.max_cost_usd` or `pipeline.sample.max_scenes` would be exceeded; the halted stage receives a failed checkpoint with `artifact.error: "sample_limit_exceeded"`.
 
 The latest sample version is tracked in `projects/<show>/<episode>/state.json`:
 

@@ -2,6 +2,7 @@ slug: documentary-montage
 display_name: Documentary Montage
 description: Narration-led montage pipeline for stills, archival-feeling assets, captions, and calm documentary pacing.
 status: production
+sample_support: paid
 master_clock: voiceover
 default_checkpoint_policy: guided
 extensions:
@@ -35,6 +36,8 @@ orchestration:
 sample:
   duration_s_min: 12
   duration_s_max: 18
+  max_scenes: 3
+  max_cost_usd: 0.9
   hint: One narration passage, two stills, and source-style captions.
 export:
   supported_targets:

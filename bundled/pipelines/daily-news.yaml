@@ -2,6 +2,7 @@ slug: daily-news
 display_name: Daily News
 description: Daily/recurring news roundup pipeline. Fetches top headlines via web_search, captures source-page screenshots via playwright-recording, scripts TTS narration, composes a fast-paced news montage with broadcast-style lower-third banners. Designed to run on a schedule (via /schedule skill) for hands-off daily episodes.
 status: beta
+sample_support: unsupported
 master_clock: none
 stage_order: manifest
 default_checkpoint_policy: guided
@@ -362,4 +363,6 @@ stages:
 sample:
   duration_s_min: 15
   duration_s_max: 20
+  max_scenes: 3
+  max_cost_usd: 0.8
   hint: Three sourced headlines, one captured card, and a short broadcast preview.

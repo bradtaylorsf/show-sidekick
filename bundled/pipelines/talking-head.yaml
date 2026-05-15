@@ -2,6 +2,7 @@ slug: talking-head
 display_name: Talking Head
 description: Talking-head pipeline for narration-led hosted videos with direct-to-camera delivery, captions, support cards, and simple editorial packaging.
 status: beta
+sample_support: paid
 master_clock: voiceover
 default_checkpoint_policy: guided
 extensions:
@@ -36,6 +37,8 @@ orchestration:
 sample:
   duration_s_min: 12
   duration_s_max: 20
+  max_scenes: 2
+  max_cost_usd: 0.9
   hint: One hosted paragraph, caption pass, and one support card.
 export:
   supported_targets:

@@ -80,6 +80,7 @@ async function writePipeline(root: string, slug: string): Promise<void> {
     path.join(root, ".predit", "pipelines", `${slug}.yaml`),
     [
       `slug: ${slug}`,
+      "sample_support: both",
       "stages:",
       "  - slug: research",
       "    skill: pipelines/framework-smoke/research-director.md",

@@ -2,6 +2,7 @@ slug: localization-dub
 display_name: Localization Dub
 description: Transcript-first localization pipeline for producing translated subtitles, dubbed audio, and optional lip-synced language variants from an existing source video. EP orchestration adds quality gates for translation accuracy, timing preservation, and per-locale consistency.
 status: beta
+sample_support: unsupported
 master_clock: none
 default_checkpoint_policy: guided
 extensions:
@@ -317,4 +318,6 @@ stages:
 sample:
   duration_s_min: 12
   duration_s_max: 18
+  max_scenes: 3
+  max_cost_usd: 0.8
   hint: One source segment with subtitle or dub timing proof.
