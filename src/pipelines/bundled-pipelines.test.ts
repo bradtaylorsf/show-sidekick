@@ -664,6 +664,90 @@ describe("bundled pipeline manifests", () => {
     expect(existsSync(path.join(musicVideoSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
   });
 
+  it("ships the news-song manifest with nine directors plus an executive producer", async () => {
+    const manifest = await loadBundledManifest("news-song");
+    const newsSongSkillsDir = path.join(bundledPipelineSkillsDir, "news-song");
+    const directorFiles = [
+      "cuesheet-director.md",
+      "source-review-director.md",
+      "idea-director.md",
+      "script-director.md",
+      "scene-director.md",
+      "capture-director.md",
+      "asset-director.md",
+      "edit-director.md",
+      "compose-director.md",
+    ];
+
+    expect(manifest).toMatchObject({
+      slug: "news-song",
+      status: "production",
+      master_clock: "audio",
+      stage_order: "manifest",
+      orchestration: {
+        mode: "executive-producer",
+        skill: "pipelines/news-song/executive-producer.md",
+        budget_default_usd: 5,
+        max_revisions_per_stage: 3,
+        max_send_backs: 3,
+        max_wall_time_minutes: 45,
+      },
+      sample: {
+        duration_s_min: 15,
+        duration_s_max: 20,
+      },
+    });
+    expect(manifest.stages.map((stage) => stage.slug)).toEqual([
+      "cuesheet",
+      "source_review",
+      "idea",
+      "script",
+      "scene_plan",
+      "capture",
+      "assets",
+      "edit",
+      "compose",
+    ]);
+    expect(manifest.required_skills).toEqual(
+      expect.arrayContaining([
+        "pipelines/news-song/executive-producer.md",
+        "pipelines/news-song/cuesheet-director.md",
+        "pipelines/news-song/capture-director.md",
+        "meta/sample-first",
+        "core/hyperframes",
+        "agents/higgsfield-generate",
+        "agents/playwright-recording",
+      ]),
+    );
+    expect(manifest.compatible_playbooks?.recommended).toContain("news-song");
+    expect(manifest.compatible_playbooks?.also_works).toEqual(
+      expect.arrayContaining(["news-song-protest", "thechaosfm-gta-political"]),
+    );
+    expect(manifest.metadata).toMatchObject({
+      content_modes: {
+        "sourced-political-news-song": { requires_sources: true },
+        "source-free-protest-music-video": { requires_sources: false },
+      },
+      reviewer_type_separation_rule:
+        "scene_kind: news-screenshot MUST reference assets with provider = playwright_recording; scene_kind: lyric-art MUST reference image-gen tool assets. Mismatch is a critical violation (fake-news protection).",
+    });
+    expect(manifest.stages.find((stage) => stage.slug === "capture")?.tools_available).toEqual([
+      "playwright_recording",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "assets")?.review_focus).toContain(
+      "scene_kind: news-screenshot MUST reference assets with provider = playwright_recording; scene_kind: lyric-art MUST reference image-gen tool assets. Mismatch is a critical violation (fake-news protection).",
+    );
+    expect(manifest.stages.find((stage) => stage.slug === "compose")?.review_focus).toContain(
+      "15-20 sec no-caption PS2 sample renders without lyric captions",
+    );
+
+    for (const fileName of directorFiles) {
+      expect(existsSync(path.join(newsSongSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
+    }
+    expect(existsSync(path.join(newsSongSkillsDir, "executive-producer.md"))).toBe(true);
+    expect(existsSync(path.join(newsSongSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+  });
+
   it("ships the daily-news manifest with nine directors plus an executive producer", async () => {
     const manifest = await loadBundledManifest("daily-news");
     const dailyNewsSkillsDir = path.join(bundledPipelineSkillsDir, "daily-news");

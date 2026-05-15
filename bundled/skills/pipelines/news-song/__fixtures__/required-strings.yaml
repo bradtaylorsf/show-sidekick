@@ -1,0 +1,73 @@
+pipeline: news-song
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline state machine"
+  - file: executive-producer.md
+    section: "## Mandatory locked decisions"
+  - file: executive-producer.md
+    section: "## Validated patterns from named productions"
+  - file: executive-producer.md
+    section: "## Content modes"
+  - file: executive-producer.md
+    section: "## When to stop and check with the human"
+  - file: capture-director.md
+    section: "## Content Mode Gate"
+  - file: asset-director.md
+    section: "## Asset Type Separation"
+  - file: asset-director.md
+    section: "## PS2 Prompt Modules"
+required_phrases:
+  - file: executive-producer.md
+    phrase: "Do not overdescribe faces. The PS2 look works through silhouette, mood, lighting, camera movement, and nostalgia."
+  - file: executive-producer.md
+    phrase: "News screenshots are real, not generated. Mixing these creates fake-news content; do not do it."
+  - file: executive-producer.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: executive-producer.md
+    phrase: "Sample-first is mandatory for any production estimated > $1 or > 15 min"
+  - file: executive-producer.md
+    phrase: "sourced-political-news-song"
+  - file: executive-producer.md
+    phrase: "source-free-protest-music-video"
+  - file: asset-director.md
+    phrase: "scene_kind: news-screenshot MUST reference assets with provider = playwright_recording; scene_kind: lyric-art MUST reference image-gen tool assets. Mismatch is a critical violation (fake-news protection)."
+required_numerics:
+  - file: executive-producer.md
+    numeric: "15-20 sec"
+  - file: executive-producer.md
+    numeric: "5.0 seconds"
+  - file: executive-producer.md
+    numeric: "max_revisions_per_stage: 3"
+  - file: executive-producer.md
+    numeric: "max_send_backs: 3"
+required_modules:
+  - file: executive-producer.md
+    module: "Shell's Love Tap learning (deep-URL specificity)"
+  - file: executive-producer.md
+    module: "BLS/FRED browser-block note"
+  - file: executive-producer.md
+    module: "Source flyout HUD timing rules"
+  - file: executive-producer.md
+    module: "PS2-era visual treatment (low-poly, compressed textures, polygon edges)"
+  - file: executive-producer.md
+    module: "Per-section accent color (matches music-video pattern)"
+  - file: asset-director.md
+    module: "**Dark political rap**"
+  - file: asset-director.md
+    module: "dark political rap music video, low-poly city streets at night, cinematic rain, dramatic shadows, underground rap video energy"
+  - file: asset-director.md
+    module: "**Hyper cinematic**"
+  - file: asset-director.md
+    module: "hyper cinematic PS2 cutscene camera, dramatic low-angle shot, Dutch angle, tracking shot through fog, grainy motion blur"
+  - file: asset-director.md
+    module: "**News dystopian**"
+  - file: asset-director.md
+    module: "news dystopian skyline, CRT news screens, surveillance cameras, flashing headlines as unreadable light shapes, social unrest atmosphere"
+  - file: asset-director.md
+    module: "**Anime hybrid**"
+  - file: asset-director.md
+    module: "anime hybrid character staging with PS2 low-poly bodies, expressive silhouettes, cel-shaded edges, moody neon rim light"
+  - file: asset-director.md
+    module: "**VHS + PS2**"
+  - file: asset-director.md
+    module: "VHS + PS2 texture stack, compressed textures, visible polygon edges, CRT scanlines, tape noise, limited render distance"
