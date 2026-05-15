@@ -148,6 +148,7 @@ describe("bundled Batch 8.A skills", () => {
       "any two of these four signals",
       "Composition runtimes",
       "Quick upgrades - env var",
+      "Personalized Zero-Key First Video",
       "Anti-Patterns",
     ]);
     await expectFileContains("meta/decision-log.md", [

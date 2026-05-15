@@ -8,6 +8,7 @@ Layer A: product confidence
 
 - A fresh user project can be initialized, inspected, and operated by Codex or Claude from `AGENTS.md`.
 - Paid provider setup is clear before any credits are spent.
+- The first no-key artifact is a personalized idea reel derived from safe project/session context, not a generic smoke sample.
 - The harness can produce representative samples across source-free, audio-led, voiceover-led, screen-demo, talking-head, and mixed-source workflows.
 - Remotion and HyperFrames decisions are made explicitly instead of hidden behind ffmpeg sample assembly.
 
@@ -60,6 +61,7 @@ Run these one at a time in a user project so failures are easy to inspect and pr
 
 | Demo | Pipeline | Starter / setup | Primary coverage |
 |---|---|---|---|
+| Personalized no-key idea reel | `music-video` | `predit new show first-video --from music-video`; rewrite `lyrics.txt` into four safe context-aware card lines | Agent onboarding, zero-key renderer, script-card personalization, export path |
 | Provider scratch explainer | `animated-explainer` | `predit new show explainer --from animated-explainer` | OpenAI image, ElevenLabs narration, Higgsfield clip, ffmpeg sample assembly |
 | Audio-led supplied-track video | `music-video` or `news-song` | `predit new show audio-demo --from music-video` or `--from news-song` | Audio master clock, cuesheet, beat-synced edit, exports |
 | Hosted / talking-head follow-up | `talking-head` | `predit new show host-demo --pipelines talking-head` | Voiceover master clock, captions, support cards, Remotion-oriented runtime choice |
@@ -116,7 +118,7 @@ Read AGENTS.md, then read .predit/skills/meta/onboarding.md and .predit/skills/m
 
 Run `predit doctor --profile paid-demo --json` and summarize provider readiness. Do not spend credits until I approve.
 
-Create one benchmark sample for: <demo name>. Use pipeline <pipeline>. Keep it to sample scope. Log every issue, confusing message, failed tool call, output path, and workaround in projects/<show>/<episode>/notes.md.
+Create one benchmark sample for: <demo name>. Use pipeline <pipeline>. Keep it to sample scope. If this is the personalized no-key idea reel, use only safe context from this project/session, offer three ideas, write four short visible-card lines to the starter lyrics file, and do not use paid providers. Log every issue, confusing message, failed tool call, output path, and workaround in projects/<show>/<episode>/notes.md.
 
 Before generation, present:
 - pipeline and runtime recommendation
@@ -162,6 +164,6 @@ Create `projects/<show>/<episode>/notes.md` with:
 
 ## First Three Recommended Demos
 
-1. `animated-explainer`: best first paid provider smoke because it exercises OpenAI image, ElevenLabs narration, Higgsfield motion, and ffmpeg composition from a simple source-free brief.
-2. `music-video` or `news-song`: best audio-led test because the track is the master clock and the output is easy to inspect for timing.
+1. Personalized no-key idea reel: best first UX smoke because it proves a blank project plus an agent can create a useful first video without API keys.
+2. `animated-explainer`: best first paid provider smoke because it exercises OpenAI image, ElevenLabs narration, Higgsfield motion, and ffmpeg composition from a simple source-free brief.
 3. `screen-demo` plus a manual `hybrid` follow-up: best route to test recorded/source media plus generated support assets and runtime selection. Use the screen demo for the first Remotion/HyperFrames conversation, then use `hybrid` once source-media review is stable.

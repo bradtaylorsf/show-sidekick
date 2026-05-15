@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -29,6 +29,16 @@ describe("music-video starter sample", () => {
     await mkdir(root, { recursive: true });
 
     const initEvents = parseEvents(await runPredit(root, ["init", "--starter", "music-video"]));
+    await writeFile(
+      path.join(root, "shows", "music-video", "inputs", "sample-episode", "lyrics.txt"),
+      [
+        "Codex teammate: turn the demo folder into a sharp first reel.",
+        "Idea 1: show the CLI setup and what is ready.",
+        "Idea 2: compare two richer video directions.",
+        "Next: add paid tools when the sample feels right.",
+      ].join("\n"),
+      "utf8",
+    );
     const buildEvents = parseEvents(await runPredit(root, ["build", "music-video/sample-episode", "--sample"]));
     expect(buildEvents).toEqual(
       expect.arrayContaining([expect.objectContaining({ event: "build_finished", status: "completed" })]),
@@ -45,6 +55,23 @@ describe("music-video starter sample", () => {
     expect(renderReport.output_path).toBe("projects/music-video/sample-episode/renders/sample-preview.mp4");
     expect(existsSync(renderOutputPath)).toBe(true);
     expect((await readFile(renderOutputPath)).subarray(4, 8).toString("ascii")).toBe("ftyp");
+    expect(renderReport.asset_count).toBeGreaterThan(1);
+    const assetManifest = JSON.parse(
+      await readFile(path.join(root, "projects", "music-video", "sample-episode", "asset_manifest.json"), "utf8"),
+    ) as { assets: Array<{ id: string; path: string; prompt: string }> };
+    expect(assetManifest.assets.map((asset) => asset.id)).toEqual([
+      "sample_card_1",
+      "sample_card_2",
+      "sample_card_3",
+      "sample_card_4",
+    ]);
+    expect(assetManifest.assets.every((asset) => existsSync(path.join(root, asset.path)))).toBe(true);
+    expect(assetManifest.assets[0]?.prompt).toContain("idea card");
+    expect(assetManifest.assets[0]?.prompt).toContain("Codex teammate");
+    const editDecisions = JSON.parse(
+      await readFile(path.join(root, "projects", "music-video", "sample-episode", "edit_decisions.json"), "utf8"),
+    ) as { cuts: Array<{ asset_id: string }> };
+    expect(new Set(editDecisions.cuts.map((cut) => cut.asset_id)).size).toBeGreaterThan(1);
     expect(JSON.parse(await readFile(path.join(root, "projects", "music-video", "sample-episode", "cost_log.json"), "utf8"))).toEqual(
       expect.arrayContaining([expect.objectContaining({ tool: "starter_sample", usd: 0, mode: "sample" })]),
     );

@@ -28,16 +28,16 @@ predit export music-video/sample-episode --target premiere
 For an agent-guided blank project, run `predit init` and give Codex, Claude, or another agent this prompt:
 
 ```text
-Read AGENTS.md and .predit/skills/meta/onboarding.md, then guide me through my first predit video.
+Read AGENTS.md and .predit/skills/meta/onboarding.md, then guide me through a personalized no-key first predit video.
 ```
 
-The scaffolded `AGENTS.md` tells the agent to run `predit doctor --profile paid-demo`, choose a starter or pipeline, explain cost before paid generation, build a sample, and export an editor handoff. The full walkthrough is in [docs/quickstart.md](docs/quickstart.md), including provider setup, sample outputs, and troubleshooting.
+The scaffolded `AGENTS.md` tells the agent to run `predit doctor --profile paid-demo`, use safe project/session context to suggest three first-video ideas, render a free multi-card idea reel before paid generation, and export an editor handoff. The full walkthrough is in [docs/quickstart.md](docs/quickstart.md), including provider setup, sample outputs, and troubleshooting.
 
 ## Features
 
 - Show-first model: each show owns its brand, characters, defaults, ingest rules, and episode workspace.
 - Audio-led pipelines: music videos, trailers, and news songs snap visual timing to beats, sections, and climax points.
-- Starter shows: nine bundled templates scaffold show folders and sample fixtures; `music-video` includes a zero-key runnable sample.
+- Starter shows: nine bundled templates scaffold show folders and sample fixtures; `music-video` includes a zero-key multi-card idea reel sample.
 - NLE handoff: Premiere XML, DaVinci XML, CapCut draft packages, and CMX 3600 EDL.
 - Registry-driven tools: concrete integrations live in `src/tools/` and are selected by capability, availability, cost, and runtime.
 - Integrated runner: checkpoints, approvals, resume state, first paid-call approval, and cost budget enforcement.

@@ -53,7 +53,7 @@ If Remotion or HyperFrames is unavailable, offer `predit setup runtimes` before 
 
 | Tier | Available | Best pipelines |
 |---|---|---|
-| **Zero-key** | Local TTS, ffmpeg, and Remotion and/or HyperFrames | animated-explainer with free narration |
+| **Zero-key** | ffmpeg, optional local audio/fixtures, and no provider keys | personalized music-video idea reel |
 | **Starter** | One image provider, free TTS, and at least one composition runtime | animated-explainer, animation |
 | **Standard** | Image generation, paid TTS, and music generation | animated-explainer, animation, screen-demo, hybrid |
 | **Full** | Video generation, image generation, premium TTS, and music | cinematic, avatar, talking-head, music-video |
@@ -122,18 +122,31 @@ Offer exactly three prompts. Each should target a different pipeline or style an
 
 Examples:
 
+> "Make my first no-key predit video: use what you know from this project/session to suggest three video ideas, pick the strongest one, and render a 15-second idea reel." (music-video starter)
+
 > "Make a 45-second animated explainer about why the sky is blue." (animated-explainer pipeline)
 
 > "Turn this interview recording into 3 short clips for TikTok and YouTube Shorts." (clip-factory pipeline)
 
-> "Paste a YouTube link and say: make me something like this. Analyze the style, pacing, and structure, then propose 2-3 creative variants." (reference-driven workflow)
-
 Rules:
 
 - The first prompt should be the most impressive thing the setup can produce now.
+- For vague first-video requests, lead with the personalized zero-key idea reel when the user wants the fastest start or provider keys are missing.
 - Use blockquote formatting so prompts are easy to copy.
 - Add one brief note explaining why each prompt fits.
 - Do not suggest prompts that require unavailable tools.
+
+### Personalized Zero-Key First Video
+
+When the user asks for a first video without a specific brief, use the no-key `music-video` starter as a personalized idea reel:
+
+1. Use only context the user has shared in this session or project. It is fine to say "based on this project folder and what you've told me"; do not infer sensitive traits, private facts, or hidden preferences.
+2. Offer exactly three concrete video ideas that the current setup can produce.
+3. If the user told you to proceed, choose the strongest idea and scaffold `predit new show first-video --from music-video` unless a suitable music-video starter show already exists.
+4. Rewrite `shows/<show>/inputs/<episode>/lyrics.txt` into four short lines: personalized hook, idea 1, idea 2, next step. The zero-key renderer turns those lines into visible cards, so keep each line punchy.
+5. Run `predit build <show>/<episode> --sample`, then export an editor handoff.
+
+This path should feel like a useful first artifact, not only a technical smoke test.
 
 ### Step 6: Summarize The Workflow
 
@@ -152,16 +165,17 @@ Use this sequence for a first video:
 ```bash
 predit update --check
 predit doctor --profile paid-demo
-predit setup runtimes
 predit ls starters
-predit new show <show> --from <starter>
-predit new episode <show> <episode>
-predit build <show>/<episode> --sample --provider-profile paid-demo
-predit export <show>/<episode> --target premiere
+predit new show first-video --from music-video
+# Edit shows/first-video/inputs/sample-episode/lyrics.txt into four short idea-card lines.
+predit build first-video/sample-episode --sample
+predit export first-video/sample-episode --target premiere
 ```
 
 For a zero-key starter, use `predit init --starter music-video`, then run
-`predit build music-video/sample-episode --sample`. For custom workflows, use
+`predit build music-video/sample-episode --sample`. Run `predit setup runtimes`
+when the user approves richer Remotion/HyperFrames composition for a paid or
+runtime-specific video. For custom workflows, use
 `predit new pipeline <slug>` to create a local manifest and first director skill,
 then bind a show to it with `predit new show <show> --pipelines <slug>`.
 
@@ -192,3 +206,4 @@ Match it to the closest pipeline. If no existing pipeline fits, say so and expla
 - Do not skip onboarding when the user is uncertain.
 - Do not suggest prompts that need unavailable tools.
 - Do not choose Remotion or HyperFrames during onboarding.
+- Do not render a generic first-video smoke sample when the user asked an agent for help; personalize the zero-key script cards from safe user/project context.

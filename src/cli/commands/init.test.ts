@@ -117,6 +117,7 @@ describe("init command", () => {
     expect(output().stdout).toContain("edit .env with any provider keys");
     expect(output().stdout).toContain("predit ls starters");
     expect(output().stdout).toContain("Read AGENTS.md and .predit/skills/meta/onboarding.md");
+    expect(output().stdout).toContain("personalized no-key first predit video");
   });
 
   it("clones a requested starter and normalizes show.yaml to the starter slug", async () => {

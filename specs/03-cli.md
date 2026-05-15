@@ -107,7 +107,7 @@ The analysis writes `projects/<show>/<episode>/artifacts/video_analysis_brief.js
 - Default output is human-readable with picocolors.
 - `--json` switches to NDJSON for streaming-friendly machine output. Each command documents its event schema in its source.
 - Errors always go to stderr; results to stdout.
-- Human-mode `predit init` prints first-run next steps: run `predit doctor --profile paid-demo`, choose or build a starter/show, and ask the user's agent to read `AGENTS.md` plus `.predit/skills/meta/onboarding.md`.
+- Human-mode `predit init` prints first-run next steps: run `predit doctor --profile paid-demo`, choose or build a starter/show, and ask the user's agent to read `AGENTS.md` plus `.predit/skills/meta/onboarding.md` for a personalized no-key first video.
 
 ## Maintainer Demo Matrix
 

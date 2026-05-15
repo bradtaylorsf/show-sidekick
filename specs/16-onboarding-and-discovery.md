@@ -45,7 +45,7 @@ Based on discovery, the agent classifies the user's setup:
 
 | Tier | Available | Best pipelines |
 |---|---|---|
-| **Zero-key** | Local TTS (Piper) + ffmpeg + Remotion and/or HyperFrames | Animated explainer with free narration |
+| **Zero-key** | ffmpeg, bundled fixtures, and no provider keys | Personalized music-video idea reel |
 | **Starter** | One configured image provider + free TTS + at least one composition runtime | Animated explainer, animation (AI visuals) |
 | **Standard** | Image gen + paid TTS + music gen | Animated explainer, animation, screen demo, hybrid |
 | **Full** | Video gen + image gen + premium TTS + music | All pipelines including cinematic, avatar, talking head, music video |
@@ -115,7 +115,7 @@ Present exactly three prompts the user can copy now. Each targets a different pi
 Tier-specific examples:
 
 **Zero-key:**
-> "Make a 45-second animated explainer about why the sky is blue." (animated-explainer pipeline)
+> "Make my first no-key predit video: use what you know from this project/session to suggest three video ideas, pick the strongest one, and render a 15-second idea reel." (music-video starter)
 
 **Starter:**
 > "Make a music video for the track I just dropped in `music_library/midnight-train/`." (music-video pipeline)
@@ -130,9 +130,24 @@ Rules:
 
 - Exactly 3 prompts.
 - First prompt is the most impressive thing the user's setup can produce.
+- For vague first-video requests, lead with the personalized zero-key idea reel when provider keys are missing or the user wants the fastest start.
 - Each prompt targets a different pipeline.
 - Brief note explains what makes the prompt a good fit.
 - Use blockquote formatting so prompts are easy to copy.
+
+### 5a. Personalized zero-key first video
+
+When a user asks an agent to help create the first video without giving a specific creative brief, the default no-key path is a personalized idea reel, not a generic smoke sample.
+
+Protocol:
+
+1. Use only safe context the user has shared in the current session or project. Do not infer sensitive personal attributes or reveal private facts.
+2. Offer exactly three concrete video ideas the current setup can produce.
+3. If the user asked the agent to proceed, pick the strongest idea and use the `music-video` starter because it has the zero-key renderer.
+4. Write four short visible-card lines to `shows/<show>/inputs/<episode>/lyrics.txt`: tailored hook, idea 1, idea 2, next step.
+5. Run `predit build <show>/<episode> --sample` without a paid provider profile, then export an editor handoff.
+
+The zero-key renderer turns the script lines into multiple procedural cards with local motion and ffmpeg audio/video assembly. This keeps the first artifact free while making it feel specific to the operator.
 
 ### 6. Workflow summary (2–3 sentences)
 
@@ -165,7 +180,7 @@ Match to a pipeline. If it fits, name the pipeline and the tools you'd use. If i
 
 **"I just want to test it quickly"**
 
-Suggest the shortest zero-key prompt the user's setup supports.
+Suggest the personalized zero-key idea reel first. If the user explicitly wants a pure smoke test, use the shortest zero-key starter sample the setup supports.
 
 ## Anti-patterns
 
@@ -175,3 +190,4 @@ Suggest the shortest zero-key prompt the user's setup supports.
 - **Don't apologize for missing capabilities.** Frame as "here's what you have" and optionally "here's a quick upgrade." Never "unfortunately you don't have..."
 - **Don't skip orientation when the user is uncertain.** 30 seconds of orientation saves 10 minutes of confusion.
 - **Don't suggest prompts that need tools the user doesn't have.** Every prompt must be achievable with the current setup.
+- **Don't render a generic first-video smoke sample for agent-guided onboarding.** Use safe user/project context to personalize the zero-key script cards.

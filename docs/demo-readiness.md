@@ -54,7 +54,7 @@ Expected local outputs:
 
 ## Provider Setup Without Storing Credentials In The Repo
 
-The zero-key `music-video` sample can run without provider credentials. Paid demo lanes use the `paid-demo` provider profile described in [Provider Profiles](provider-profiles.md).
+The zero-key `music-video` sample can run without provider credentials. Its renderer turns the starter lyrics/script lines into multiple procedural idea cards, so agent-guided onboarding can personalize the first artifact before any paid calls. Paid demo lanes use the `paid-demo` provider profile described in [Provider Profiles](provider-profiles.md).
 
 Use environment variables and provider CLIs. Do not store credentials in `show.yaml`, `episode.yaml`, `.predit/`, starter files, committed docs, or generated artifacts.
 
@@ -91,7 +91,7 @@ Current expected green paths:
 
 | Starter | Default Pipeline | sample_support | Expected Status | Notes |
 |---|---|---|---|---|
-| `music-video` | `music-video` | `both` | Green for zero-key; included in paid-demo | Zero-key starter sample and export path are the first validation lane. |
+| `music-video` | `music-video` | `both` | Green for zero-key; included in paid-demo | Zero-key multi-card idea reel and export path are the first validation lane. |
 | `ai-workflow-demo` | `screen-demo` | `paid` | Paid-demo only | Requires paid-demo provider setup; synthetic terminal fixture. |
 | `animated-explainer` | `animated-explainer` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
 | `cinematic-trailer` | `cinematic` | `paid` | Paid-demo only | Requires paid-demo provider setup. |

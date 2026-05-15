@@ -208,7 +208,7 @@ function emitInitialized(io: CliIo, options: InitOptions, event: InitEvent): voi
         "  predit new show music-video --from music-video",
       ];
   const agentPrompt = [
-    'agent prompt: "Read AGENTS.md and .predit/skills/meta/onboarding.md, then guide me through my first predit video."',
+    'agent prompt: "Read AGENTS.md and .predit/skills/meta/onboarding.md, then guide me through a personalized no-key first predit video."',
   ];
 
   io.stdout.write(`init: scaffolded predit project at ${event.path}${starter}${git}\n${[...nextSteps, ...agentPrompt].join("\n")}\n`);
