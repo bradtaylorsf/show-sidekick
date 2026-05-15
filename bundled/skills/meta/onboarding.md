@@ -94,6 +94,7 @@ Rules:
 - Keep it to 8-12 useful lines when possible.
 - Mention at most two suggestions per effort tier.
 - Read install instructions from the registry; do not hardcode provider names or environment variables.
+- When env vars are missing, tell the user they can either export them in the current shell/agent session or copy `.env.example` to `.env` and fill the values. The CLI loads project `.env`, `.env.<command>`, and `.env.local`; shell values win.
 
 ### Step 4: Report Composition Runtimes Separately
 

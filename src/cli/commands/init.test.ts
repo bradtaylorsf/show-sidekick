@@ -45,6 +45,7 @@ describe("init command", () => {
     await expect(readFile(path.join(projectRoot, "CLAUDE.md"), "utf8")).resolves.toContain("AGENTS.md");
     await expect(readFile(path.join(projectRoot, "AGENTS.md"), "utf8")).resolves.toContain("user project");
     await expect(readFile(path.join(projectRoot, ".gitignore"), "utf8")).resolves.toContain(".predit/");
+    await expect(readFile(path.join(projectRoot, ".env.example"), "utf8")).resolves.toContain("OPENAI_API_KEY=");
     await expect(stat(path.join(projectRoot, "shows"))).resolves.toMatchObject({ isDirectory: expect.any(Function) });
     await expect(stat(path.join(projectRoot, "projects"))).resolves.toMatchObject({ isDirectory: expect.any(Function) });
     await expect(stat(path.join(projectRoot, "music_library"))).resolves.toMatchObject({
@@ -201,6 +202,7 @@ async function writeFakeBundled(root: string): Promise<void> {
   await writeFile(path.join(root, "templates", "user-project", "CLAUDE.md"), "# test\nRead AGENTS.md\n", "utf8");
   await writeFile(path.join(root, "templates", "user-project", "AGENTS.md"), "# test user project\n", "utf8");
   await writeFile(path.join(root, "templates", "user-project", ".gitignore"), ".predit/\nprojects/\n", "utf8");
+  await writeFile(path.join(root, "templates", "user-project", ".env.example"), "OPENAI_API_KEY=\n", "utf8");
 
   for (const dirname of BUNDLED_CACHE_DIRS) {
     await mkdir(path.join(root, dirname), { recursive: true });

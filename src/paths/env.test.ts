@@ -4,11 +4,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { MissingEnvError } from "./errors.js";
-import { loadEnv, optionalEnv, requireEnv } from "./env.js";
+import { loadEnv, loadEnvIntoProcess, optionalEnv, requireEnv } from "./env.js";
 
 let scratchDirs: string[] = [];
 const processEnvKey = "PREDIT_TEST_PROCESS_ENV";
 const missingEnvKey = "PREDIT_TEST_MISSING_ENV";
+const hydratedEnvKey = "PREDIT_TEST_HYDRATED_ENV";
 
 async function scratchProject(): Promise<string> {
   const root = path.join(tmpdir(), `predit-env-${randomUUID()}`);
@@ -23,6 +24,7 @@ afterEach(async () => {
   scratchDirs = [];
   delete process.env[processEnvKey];
   delete process.env[missingEnvKey];
+  delete process.env[hydratedEnvKey];
 });
 
 describe("env loader", () => {
@@ -66,5 +68,22 @@ describe("env loader", () => {
     const root = await scratchProject();
 
     expect(optionalEnv(missingEnvKey, undefined, root)).toBeUndefined();
+  });
+
+  it("hydrates process.env from project env files without replacing existing values", async () => {
+    const root = await scratchProject();
+    process.env[processEnvKey] = "process";
+    await writeFile(
+      path.join(root, ".env"),
+      `${hydratedEnvKey}=file\n${processEnvKey}=file\n`,
+      "utf8",
+    );
+
+    expect(loadEnvIntoProcess(undefined, root)).toMatchObject({
+      [hydratedEnvKey]: "file",
+      [processEnvKey]: "process",
+    });
+    expect(process.env[hydratedEnvKey]).toBe("file");
+    expect(process.env[processEnvKey]).toBe("process");
   });
 });

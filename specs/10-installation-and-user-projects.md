@@ -43,7 +43,7 @@ Scaffolds a new user project in the current directory:
 
 ```bash
 cd ~/my-shows
-predit init                       # creates CLAUDE.md, AGENTS.md, .predit/, .gitignore
+predit init                       # creates CLAUDE.md, AGENTS.md, .env.example, .predit/, .gitignore
 predit init --git                 # same, plus `git init`
 predit init --starter music-video # scaffold a starter show alongside the project
 ```
@@ -56,7 +56,8 @@ Created files:
 my-shows/
 ├── CLAUDE.md                # tiny pointer → AGENTS.md
 ├── AGENTS.md                # agent operating contract for this project
-├── .gitignore               # excludes .predit/, projects/, music_library/
+├── .gitignore               # excludes .predit/, projects/, music_library/, .env
+├── .env.example             # optional provider key template
 ├── .predit/                 # local cache of bundled harness content (gitignored)
 │   ├── version.json
 │   ├── pipelines/
@@ -71,6 +72,8 @@ my-shows/
 ├── music_library/           # gitignored drop zone
 └── projects/                # gitignored runtime workspace
 ```
+
+Every non-`init` command loads environment values from the project root in this order: `.env`, `.env.<command>`, `.env.local`, then the parent process environment. The shell environment wins, so CI and agent sessions can override local files without editing them. The scaffold gitignores `.env`, `.env.<command>`, and `.env.local`; `.env.example` is safe to commit.
 
 ### `predit update`
 

@@ -69,6 +69,8 @@ node "$HARNESS/dist/cli/index.js" doctor --profile paid-demo
 node "$HARNESS/dist/cli/index.js" build news-song/sample-episode --sample --provider-profile paid-demo
 ```
 
+In user projects, the same keys can live in `.env` copied from `.env.example`. `predit` loads `.env`, `.env.<command>`, and `.env.local` before `doctor`, `build`, and other commands, while preserving any values already exported in the shell.
+
 Provider expectations for `paid-demo`:
 
 - OpenAI: image generation and fallback TTS through `OPENAI_API_KEY`.

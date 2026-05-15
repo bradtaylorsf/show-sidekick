@@ -18,6 +18,7 @@ import { createUpdateHandler } from "./commands/update.js";
 import { createWatchHandler } from "./commands/watch.js";
 import { suggest } from "./fuzzy.js";
 import { configure } from "../log/mode.js";
+import { loadEnvIntoProcess } from "../paths/env.js";
 import { ProjectRootNotFoundError } from "../paths/errors.js";
 import { findProjectRoot } from "../paths/project.js";
 import { computeBundledChecksum } from "../version/bundled.js";
@@ -85,6 +86,9 @@ export function createProgram(input: CliIo | ProgramOptions = defaultIo): Comman
 
     const commandName = topLevelCommandName(actionCommand);
     const projectRoot = requireProjectRoot(commandName);
+    if (projectRoot !== null) {
+      loadEnvIntoProcess(commandName, projectRoot);
+    }
     await checkProjectCache(commandName, projectRoot, io);
   });
 

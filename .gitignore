@@ -4,6 +4,8 @@ dist/
 *.log
 .env
 .env.local
+.env.*
+!.env.example
 .env.*.local
 
 # Runtime workspace — regenerable outputs per episode

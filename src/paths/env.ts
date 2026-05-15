@@ -28,6 +28,16 @@ export function loadEnv(command?: string, root: string = findProjectRoot()): Rec
   return values;
 }
 
+export function loadEnvIntoProcess(command?: string, root: string = findProjectRoot()): Record<string, string> {
+  const values = loadEnv(command, root);
+
+  for (const [key, value] of Object.entries(values)) {
+    process.env[key] = value;
+  }
+
+  return values;
+}
+
 export function requireEnv(name: string, command?: string, root?: string): string {
   const value = optionalEnv(name, command, root);
 

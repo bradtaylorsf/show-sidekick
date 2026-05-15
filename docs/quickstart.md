@@ -61,6 +61,8 @@ predit setup openai_tts
 predit ls tools
 ```
 
+Or keep credentials project-local by copying `.env.example` to `.env` and filling in the same keys. `predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before each command; exported shell variables still take precedence. `.env` is gitignored by the scaffold.
+
 ## Render the Sample
 
 ```bash

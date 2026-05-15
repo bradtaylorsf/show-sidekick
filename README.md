@@ -18,6 +18,7 @@ Requirements: Node 22+, pnpm 9+, and `ffmpeg` for local media work.
 mkdir my-shows
 cd my-shows
 predit init --starter music-video --git
+cp .env.example .env            # optional: add paid provider keys here
 predit doctor --profile paid-demo
 predit build music-video/sample-episode --sample
 predit export music-video/sample-episode --target premiere
@@ -58,8 +59,9 @@ Global flags: `--json`, `--dry-run`, `--verbose`, `--no-color`, `--config <path>
 
 Common flows:
 
-- `predit init --starter music-video --git` scaffolds a user project, initializes git, and clones the music-video starter into `shows/music-video/`.
+- `predit init --starter music-video --git` scaffolds a user project, initializes git, writes `.env.example`, and clones the music-video starter into `shows/music-video/`.
 - `predit init` scaffolds a blank project with agent instructions, bundled pipeline cache, and first-run next steps.
+- Commands load `.env`, `.env.<command>`, and `.env.local` from the project root; shell environment variables win over file values.
 - `predit doctor --profile paid-demo` checks OpenAI, ElevenLabs, Higgsfield, ffmpeg, and ffprobe readiness without spending provider credits.
 - `predit new show <slug> --from <starter>` clones a starter-backed show; `predit new show <slug> --pipelines <pipeline>` creates a custom show bound to existing manifests.
 - `predit new pipeline <slug>` creates `pipelines/<slug>.yaml` plus `skills/pipelines/<slug>/idea-director.md`.

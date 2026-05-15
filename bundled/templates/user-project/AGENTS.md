@@ -30,7 +30,7 @@ The intelligence is in the skills, not in improvised code. An agent that reads t
 
 When a user says "help me make the first video", "what can this project do?", or gives a broad creative goal, guide them through this path:
 
-1. Run `predit doctor --profile paid-demo --json` and summarize what is ready, what needs env vars, what needs CLI login, and which composition runtimes are available.
+1. Run `predit doctor --profile paid-demo --json` and summarize what is ready, what needs env vars, what needs CLI login, and which composition runtimes are available. If env vars are missing and `.env` does not exist, suggest copying `.env.example` to `.env` and filling the keys, or exporting the variables in the current shell.
 2. Run `predit ls starters` and recommend one starter or one pipeline based on the user's goal.
 3. If the project has no show yet, scaffold one with `predit new show <slug> --from <starter>` for starter-backed work, or `predit new show <slug> --pipelines <pipeline>` for a custom show.
 4. Create or select an episode with `predit new episode <show> <episode>`.
@@ -55,12 +55,15 @@ Record any issue, confusing output, failed tool call, or manual fix in `projects
 ├── skills/                        # optional: project-local skill overrides
 ├── music_library/                 # gitignored — drop audio here
 ├── projects/<show>/<episode>/     # gitignored — runtime workspace, generated assets, renders
+├── .env.example                   # copy to .env for provider keys
 └── .predit/                       # gitignored — bundled cache (read-only)
     ├── pipelines/
     ├── playbooks/
     ├── skills/
     └── schemas/
 ```
+
+`predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before commands run. Shell-exported values win over file values. Never commit `.env`.
 
 When resolving any resource (pipeline, playbook, skill, schema), check the project-local path first, then `.predit/`. Project-local always wins. For director skills, also check `shows/<show>/skills/` before either.
 

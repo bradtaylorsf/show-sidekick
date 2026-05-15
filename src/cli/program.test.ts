@@ -99,6 +99,50 @@ describe("createProgram", () => {
     expect(events.at(-1)).toMatchObject({ check: "ffprobe", status: "ok" });
   });
 
+  it("loads project .env before doctor checks provider availability", async () => {
+    const root = await scratchCurrentProject();
+    process.chdir(root);
+    await writeFile(
+      path.join(root, ".env"),
+      "OPENAI_API_KEY=predit-dotenv-openai\nELEVENLABS_API_KEY=predit-dotenv-eleven\n",
+      "utf8",
+    );
+    const originalOpenAi = process.env.OPENAI_API_KEY;
+    const originalElevenLabs = process.env.ELEVENLABS_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.ELEVENLABS_API_KEY;
+
+    try {
+      const { program, output } = captureProgram({
+        doctor: {
+          createRegistry: async () => paidDemoRegistry(),
+          probeIntegration: async (integration) => {
+            if (integration.kind !== "api") {
+              return { available: true };
+            }
+
+            const missing = integration.env.filter((name) => {
+              const value = process.env[name];
+              return value === undefined || value.trim() === "";
+            });
+            return missing.length === 0
+              ? { available: true }
+              : { available: false, reason: `missing env: ${missing.join(", ")}`, fix: "env" };
+          },
+        },
+      });
+
+      await program.parseAsync(["node", "predit", "--json", "doctor", "--profile", "paid-demo"], { from: "node" });
+
+      const events = output().stdout.trim().split(/\r?\n/u).map((line) => JSON.parse(line) as Record<string, unknown>);
+      expect(events.find((event) => event.check === "OPENAI_API_KEY")).toMatchObject({ status: "ok" });
+      expect(events.find((event) => event.check === "ELEVENLABS_API_KEY")).toMatchObject({ status: "ok" });
+    } finally {
+      restoreEnv("OPENAI_API_KEY", originalOpenAi);
+      restoreEnv("ELEVENLABS_API_KEY", originalElevenLabs);
+    }
+  });
+
   it("defines init and update lifecycle options", () => {
     const { program } = captureProgram();
     const init = program.commands.find((command) => command.name() === "init");
@@ -265,6 +309,15 @@ async function scratchDir(): Promise<string> {
   scratchDirs.push(root);
   await mkdir(root, { recursive: true });
   return root;
+}
+
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+    return;
+  }
+
+  process.env[name] = value;
 }
 
 function sameMajorDifferentVersion(): string {

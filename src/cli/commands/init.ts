@@ -138,6 +138,10 @@ async function copyUserProjectTemplates(sourceBundledRoot: string, projectRoot: 
     errorOnExist: true,
     force: false,
   });
+  await cp(path.join(templateRoot, ".env.example"), path.join(projectRoot, ".env.example"), {
+    errorOnExist: true,
+    force: false,
+  });
 }
 
 async function defaultRunGit(args: string[], cwd: string): Promise<void> {

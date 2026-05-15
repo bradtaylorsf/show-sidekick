@@ -5,7 +5,7 @@ export {
   ProjectAlreadyInitializedError,
   ProjectRootNotFoundError,
 } from "./errors.js";
-export { loadEnv, optionalEnv, requireEnv } from "./env.js";
+export { loadEnv, loadEnvIntoProcess, optionalEnv, requireEnv } from "./env.js";
 export {
   findProjectRoot,
   parseShowEpisode,
