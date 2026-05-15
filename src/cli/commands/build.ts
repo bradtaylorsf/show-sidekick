@@ -21,6 +21,8 @@ import {
 import { createStarterSampleDispatcher } from "../../harness/starter-sample.js";
 import { resolve as resolveProjectResource } from "../../paths/project.js";
 import { loadProjectPlaybook } from "../../playbooks/project-loader.js";
+import { recordDecision } from "../../decisions/store.js";
+import { buildProviderProfileDecision, getProviderProfile, providerProfileNames } from "../../providers/profiles.js";
 import { Registry } from "../../registry/index.js";
 import { deepMerge } from "../../shows/deep-merge.js";
 import { PlaybookSchema } from "../../shows/playbook.js";
@@ -94,6 +96,7 @@ export function createBuildHandler(io: CliIo, handlerOptions: BuildHandlerOption
           });
     const loaded = await selectRunTargetPipeline(input, { videoAnalysisBrief });
     const runOptions = parseStageRunOptions(options, loaded.pipeline);
+    await recordProviderProfileSelection(options, loaded, handlerOptions.now);
     const dispatcher = await (handlerOptions.dispatcherFactory ?? defaultDispatcherFactory)({
       loaded,
       registry,
@@ -124,6 +127,30 @@ export function createBuildHandler(io: CliIo, handlerOptions: BuildHandlerOption
 
     emitBuildFinished(io, options, target, loaded, result);
   };
+}
+
+async function recordProviderProfileSelection(
+  options: StageFlagOptions,
+  loaded: LoadedRunTarget,
+  now: (() => Date) | undefined,
+): Promise<void> {
+  if (options.providerProfile === undefined) {
+    return;
+  }
+
+  const profile = getProviderProfile(options.providerProfile);
+  if (profile === undefined) {
+    throw new Error(`unknown provider profile "${options.providerProfile}"; expected one of: ${providerProfileNames().join(", ")}`);
+  }
+
+  await recordDecision(
+    { show: loaded.showSlug, episode: loaded.episodeSlug },
+    buildProviderProfileDecision({
+      profile,
+      timestamp: (now ?? (() => new Date()))().toISOString(),
+    }),
+    { root: loaded.projectRoot },
+  );
 }
 
 async function defaultRegistryFactory(_loaded: LoadedRunTargetInput): Promise<Registry> {

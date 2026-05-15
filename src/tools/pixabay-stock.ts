@@ -61,7 +61,6 @@ export default defineTool({
   best_for: "searching Pixabay for broad stock images with attribution metadata",
   supports: ["stock-search", "attribution"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-image-attribution"],
   input: PixabayStockInputSchema,
   output: PixabayStockOutputSchema,
 

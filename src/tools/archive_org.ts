@@ -22,7 +22,6 @@ export default defineTool({
   best_for: "Searching Internet Archive movies and public-domain moving-image collections.",
   supports: ["stock-video", "public-domain", "internet-archive"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "archive-org"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

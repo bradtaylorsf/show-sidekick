@@ -14,7 +14,6 @@ export default defineTool({
   best_for: "Searching a configured Pond5 public-domain video manifest.",
   supports: ["stock-video", "manifest-search", "public-domain"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "pond5"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

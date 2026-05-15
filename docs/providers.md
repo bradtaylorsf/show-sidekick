@@ -53,7 +53,13 @@ pnpm run docs:providers
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
+| `action_timeline_compiler` | beta | binary | ffmpeg | none | Compatibility alias for action timeline compilation | not declared |
 | `character_animation` | beta | binary | ffmpeg | none | deterministic local rigged character animation from F-10 character artifacts | not declared |
+| `character_animation_reviewer` | beta | binary | ffmpeg | none | Compatibility alias for character animation review | not declared |
+| `character_rig_renderer` | beta | binary | ffmpeg | none | Compatibility alias for character rig rendering | not declared |
+| `character_spec_generator` | beta | binary | ffmpeg | none | Compatibility alias for character animation specification generation | not declared |
+| `pose_library_builder` | beta | binary | ffmpeg | none | Compatibility alias for character pose library building | not declared |
+| `svg_rig_builder` | beta | binary | ffmpeg | none | Compatibility alias for SVG character rig building | not declared |
 
 ## clip_cache
 
@@ -72,6 +78,7 @@ pnpm run docs:providers
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
 | `clip_search` | beta | library | node:fs | none | Semantic search over a local corpus of generated clips using a CLIP embedder tool. | $0 / call |
+| `direct_clip_search` | beta | library | node:fs | none | Compatibility alias for direct generated-clip corpus search | $0 / call |
 
 ## color_grade
 
@@ -160,6 +167,7 @@ pnpm run docs:providers
 | `wan_video` | experimental | api | replicate | `REPLICATE_API_TOKEN` | Open-source Wan 2.1 image-to-video experiments through Replicate. | $0.5 / clip |
 | `ltx_video_local` | experimental | binary | ltx-video | none | Local LTX video generation on a CUDA GPU with no per-clip provider charge. | $0 / clip |
 | `higgsfield` | production | cli | higgsfield / higgsfield | cli-login (higgsfield whoami) | Kling v2.1 Pro image-to-video through the Higgsfield CLI. | $0.3 / clip |
+| `higgsfield_video` | production | cli | higgsfield / higgsfield | cli-login (higgsfield whoami) | Compatibility alias for Higgsfield image-to-video generation | $0.3 / clip |
 | `video_selector` | beta | library | predit | none | Provider-selection marker for choosing a concrete image-to-video tool at runtime | not declared |
 
 ## lip_sync
@@ -305,6 +313,7 @@ pnpm run docs:providers
 | `hyperframes` | production | cli | hyperframes / npx | none | HyperFrames composition specs with mandatory lint and validate gates before render | not declared |
 | `hyperframes_compose` | production | cli | hyperframes / npx | none | Compatibility alias for HyperFrames composition specs | not declared |
 | `remotion` | beta | library | remotion | none | typed Remotion-compatible scene catalog validation with word-level caption checks; renderer invocation lands with the compose runner | not declared |
+| `remotion_caption_burn` | beta | library | remotion | none | Compatibility alias for Remotion caption burn and compose validation | not declared |
 | `video_compose` | production | library | predit | none | runtime routing for FFmpeg, Remotion, and HyperFrames with pre-compose validation | not declared |
 
 ## video_download

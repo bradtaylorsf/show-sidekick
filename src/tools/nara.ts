@@ -22,7 +22,6 @@ export default defineTool({
   best_for: "Searching National Archives video records for public-domain US government footage.",
   supports: ["stock-video", "public-domain", "national-archives"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "nara"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

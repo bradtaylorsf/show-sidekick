@@ -33,7 +33,14 @@ Test-only lane:
 
 - `framework-smoke`
 
-Show-starter-only concepts are denylisted in `SHOW_ONLY_DENYLIST`. Examples include `ww2-diary`, `thechaosfm`, `last-rev`, `rave-queen`, `gta-political`, and `aint-no-crowns`.
+Show-starter-only concepts are denylisted in `SHOW_ONLY_DENYLIST`. Examples include `ww2-diary`, `thechaosfm`, `last-rev`, `rave-queen`, `gta-political`, and `aint-no-crowns`. These slugs may appear under `bundled/starters/`, playbooks, or demo briefs, but they must never appear as `bundled/pipelines/<slug>.yaml`.
+
+## Show Starter Examples
+
+- `ww2-diary` is a starter on `cinematic` with the `news-broadcast` playbook.
+- `thechaosfm` is a branded starter on `news-song` with the `thechaosfm-gta-political` playbook; the show-level Ain't No Crowns benchmark metadata lives in the starter README.
+- `last-rev` is a starter that declares `screen-demo` for synthetic terminal walkthroughs and `talking-head` for hosted follow-ups.
+- `rave-queen` is a starter on `cinematic`; its README records why `animation` was rejected as the default binding.
 
 ## Adding A Bundled Pipeline
 

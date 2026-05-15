@@ -22,7 +22,6 @@ export default defineTool({
   best_for: "Searching Pixabay stock video clips with creator and license attribution.",
   supports: ["stock-video", "pixabay-content-license"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "pixabay"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

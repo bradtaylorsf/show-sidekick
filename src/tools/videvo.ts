@@ -14,7 +14,6 @@ export default defineTool({
   best_for: "Searching a configured Videvo stock-video manifest while preserving per-clip license metadata.",
   supports: ["stock-video", "manifest-search", "videvo-license"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "videvo"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

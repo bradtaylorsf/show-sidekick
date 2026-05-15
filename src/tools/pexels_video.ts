@@ -22,7 +22,6 @@ export default defineTool({
   best_for: "Searching free stock video clips from Pexels with attribution metadata.",
   supports: ["stock-video", "pexels-license"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "pexels"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

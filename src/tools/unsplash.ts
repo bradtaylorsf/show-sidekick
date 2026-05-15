@@ -23,7 +23,6 @@ export default defineTool({
   best_for: "Searching Unsplash image assets for documentary and explainer visual coverage.",
   supports: ["stock-image", "unsplash-license"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-image", "unsplash"],
   input: stockVideoInputSchema,
   output: stockImageOutputSchema,
   async execute(params) {

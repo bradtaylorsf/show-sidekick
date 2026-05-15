@@ -40,7 +40,7 @@ export default defineTool({
   best_for: "Grok image generations through xAI's OpenAI-compatible image endpoint",
   supports: ["grok-2-image", "text-to-image"],
   cost: { unit: "image", usd: GROK_IMAGE_COST_USD },
-  agent_skills: ["grok-image"],
+  agent_skills: ["grok-media"],
   input: GrokImageInputSchema,
   output: GrokImageOutputSchema,
 

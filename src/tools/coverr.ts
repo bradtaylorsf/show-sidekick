@@ -14,7 +14,6 @@ export default defineTool({
   best_for: "Searching a configured Coverr free stock-video manifest.",
   supports: ["stock-video", "manifest-search", "coverr-license"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "coverr"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

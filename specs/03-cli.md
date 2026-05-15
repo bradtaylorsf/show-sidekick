@@ -17,6 +17,7 @@ predit init                              # scaffold a new predit project in cwd
 predit init --git                        # scaffold, git init, add, and commit
 predit init --starter music-video        # scaffold and clone a bundled starter show
 predit doctor                            # registry + tool preflight (capability menu)
+predit doctor --profile paid-demo        # preflight a named provider profile
 predit update                            # refresh .predit/ from the installed harness
 predit update --check                    # verify .predit/ without writing
 
@@ -34,6 +35,7 @@ predit build <show>/<episode> --only <stage>
 predit build <show>/<episode> --to <stage>
 predit build <show>/<episode> --budget <usd>
 predit build <show>/<episode> --reference <url-or-path>
+predit build <show>/<episode> --provider-profile paid-demo
 
 predit cuesheet <show>/<episode>        # build/cache audio cuesheet for debugging
 predit resume <show>/<episode>           # pick up at next checkpoint

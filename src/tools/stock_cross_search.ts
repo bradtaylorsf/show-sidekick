@@ -49,7 +49,6 @@ export default defineTool({
   best_for: "Fan-out search across configured stock video and stock image sources with ranked, attributed results.",
   supports: ["stock-video", "stock-image", "cross-source-search"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "stock-image"],
   input: inputSchema,
   output: outputSchema,
   async execute(params, ctx) {

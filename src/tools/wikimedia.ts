@@ -22,7 +22,6 @@ export default defineTool({
   best_for: "Searching Wikimedia Commons video files with per-file license metadata.",
   supports: ["stock-video", "wikimedia-commons", "creative-commons", "public-domain"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "wikimedia"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

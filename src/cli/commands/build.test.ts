@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { VideoAnalysisBrief } from "../../artifacts/video-analysis-brief.js";
+import { readDecisionLog } from "../../decisions/store.js";
 import { Registry } from "../../registry/index.js";
 import type { ReviewContext } from "../../review/runner.js";
 import videoAnalyzer from "../../tools/video-analyzer.js";
@@ -84,6 +85,34 @@ describe("build command", () => {
     );
     expect(contexts.map((ctx) => ctx.stage.slug)).toEqual(["research", "script"]);
     expect(contexts[0]?.runOptions).toMatchObject({ sample: true, budget_usd: 2.5 });
+  });
+
+  it("records provider profile selection decisions before a paid-demo sample run", async () => {
+    const root = await scratchProject();
+    process.chdir(root);
+
+    const { program } = captureProgram({
+      registryFactory: () => new Registry({ tools: [] }),
+      dispatcherFactory: () => async (ctx) => fixtures[ctx.stage.slug] ?? stageResult({ unexpected: ctx.stage.slug }, 0),
+      now: () => new Date("2026-05-12T15:42:00.000Z"),
+    });
+
+    await program.parseAsync(
+      ["node", "predit", "--json", "build", "show/episode", "--sample", "--provider-profile", "paid-demo"],
+      { from: "node" },
+    );
+
+    await expect(readDecisionLog({ show: "show", episode: "episode" }, { root })).resolves.toContainEqual(
+      expect.objectContaining({
+        stage: "preflight",
+        category: "provider_profile_selection",
+        picked: "paid-demo",
+        options_considered: expect.arrayContaining([
+          expect.objectContaining({ label: "free-zero-cost", rejected_because: expect.any(String) }),
+          expect.objectContaining({ label: "mixed", rejected_because: expect.any(String) }),
+        ]),
+      }),
+    );
   });
 
   it("rejects stage flags that are not declared by the pipeline", async () => {

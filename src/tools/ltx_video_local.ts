@@ -31,7 +31,7 @@ export default defineTool({
   best_for: "Local LTX video generation on a CUDA GPU with no per-clip provider charge.",
   supports: ["ltx-video", "local-gpu", "image-to-video", "text-to-video"],
   cost: { unit: "clip", usd: 0 },
-  agent_skills: ["ai-video-gen", "ltx"],
+  agent_skills: ["ai-video-gen", "ltx2"],
   input: inputSchema,
   output: videoProviderOutputSchema,
   async isAvailable(): Promise<Availability> {

@@ -23,7 +23,6 @@ export default defineTool({
   best_for: "Searching Library of Congress film and video records for public-domain documentary assets.",
   supports: ["stock-video", "public-domain", "library-of-congress"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "loc"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

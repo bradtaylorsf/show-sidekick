@@ -53,7 +53,16 @@ describe("createProgram", () => {
     const { program } = captureProgram();
     const build = program.commands.find((command) => command.name() === "build");
 
-    expect(build?.options.map((option) => option.long)).toEqual(expect.arrayContaining(["--reference"]));
+    expect(build?.options.map((option) => option.long)).toEqual(
+      expect.arrayContaining(["--reference", "--provider-profile"]),
+    );
+  });
+
+  it("defines the doctor profile option", () => {
+    const { program } = captureProgram();
+    const doctor = program.commands.find((command) => command.name() === "doctor");
+
+    expect(doctor?.options.map((option) => option.long)).toEqual(expect.arrayContaining(["--profile"]));
   });
 
   it("defines init and update lifecycle options", () => {
@@ -79,15 +88,15 @@ describe("createProgram", () => {
     process.chdir(root);
     const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "--json", "doctor"], { from: "node" });
+    await program.parseAsync(["node", "predit", "--json", "tools", "fixture"], { from: "node" });
 
     const event = JSON.parse(output().stdout.trim()) as { event: string; command: string; args: Record<string, unknown> };
 
     expect(event).toEqual(
       expect.objectContaining({
         event: "stub",
-        command: "doctor",
-        args: {},
+        command: "tools",
+        args: { name: "fixture" },
       }),
     );
   });
@@ -102,10 +111,10 @@ describe("createProgram", () => {
       return true;
     });
 
-    await program.parseAsync(["node", "predit", "--verbose", "doctor"], { from: "node" });
+    await program.parseAsync(["node", "predit", "--verbose", "tools", "fixture"], { from: "node" });
 
     expect(output().stderr).toBe("");
-    expect(stderr).toContain("stub command invoked: doctor");
+    expect(stderr).toContain("stub command invoked: tools");
   });
 
   it("requires a project root before non-init commands run", async () => {
@@ -144,10 +153,10 @@ describe("createProgram", () => {
     process.chdir(root);
     const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "doctor"], { from: "node" });
+    await program.parseAsync(["node", "predit", "tools", "fixture"], { from: "node" });
 
     expect(output().stderr).toContain("run 'predit update'");
-    expect(output().stdout).toContain("doctor: not yet implemented");
+    expect(output().stdout).toContain("tools: not yet implemented");
   });
 
   it("warns before commands when the bundled checksum is stale", async () => {
@@ -159,10 +168,10 @@ describe("createProgram", () => {
     process.chdir(root);
     const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "doctor"], { from: "node" });
+    await program.parseAsync(["node", "predit", "tools", "fixture"], { from: "node" });
 
     expect(output().stderr).toContain("checksum is stale");
-    expect(output().stdout).toContain("doctor: not yet implemented");
+    expect(output().stdout).toContain("tools: not yet implemented");
   });
 
   it("does not warn before commands when cache version and checksum match", async () => {
@@ -174,10 +183,10 @@ describe("createProgram", () => {
     process.chdir(root);
     const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "doctor"], { from: "node" });
+    await program.parseAsync(["node", "predit", "tools", "fixture"], { from: "node" });
 
     expect(output().stderr).toBe("");
-    expect(output().stdout).toContain("doctor: not yet implemented");
+    expect(output().stdout).toContain("tools: not yet implemented");
   });
 
   it("refuses commands when .predit was locked by an incompatible major version", async () => {

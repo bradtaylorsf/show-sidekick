@@ -15,7 +15,7 @@ export default defineTool({
   best_for: "Fast general-purpose narration with OpenAI gpt-4o-mini-tts voices.",
   supports: ["narration-audio", "gpt-4o-mini-tts"],
   cost: { unit: "token", usd: COST_USD },
-  agent_skills: ["openai-tts"],
+  agent_skills: ["text-to-speech"],
   input: ttsProviderInputSchema,
   output: ttsProviderOutputSchema,
   async execute(params, ctx) {

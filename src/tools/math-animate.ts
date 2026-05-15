@@ -32,7 +32,6 @@ export default defineTool({
   best_for: "rendering Manim math scenes as animation clips or PNG frames",
   supports: ["math", "animation", "latex"],
   cost: { unit: "image", usd: 0 },
-  agent_skills: ["manim-scenes"],
   input: MathAnimateInputSchema,
   output: MathAnimateOutputSchema,
 

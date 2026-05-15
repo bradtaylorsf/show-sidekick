@@ -30,15 +30,15 @@ function context(projectRoot = "/project"): ToolContext {
 type FetchCall = [string, { method?: string; headers?: Record<string, string> } | undefined];
 
 const providers = [
-  { tool: archiveOrg, name: "archive_org", capability: "stock_video", provider: "archive_org", env: [], skills: ["stock-video", "archive-org"] },
-  { tool: nasa, name: "nasa", capability: "stock_video", provider: "nasa", env: [], skills: ["stock-video", "nasa"] },
-  { tool: noaa, name: "noaa", capability: "stock_video", provider: "noaa", env: ["NOAA_FEED_URL"], skills: ["stock-video", "noaa"] },
-  { tool: jaxa, name: "jaxa", capability: "stock_video", provider: "jaxa", env: ["JAXA_FEED_URL"], skills: ["stock-video", "jaxa"] },
-  { tool: esa, name: "esa", capability: "stock_video", provider: "esa", env: [], skills: ["stock-video", "esa"] },
-  { tool: loc, name: "loc", capability: "stock_video", provider: "loc", env: [], skills: ["stock-video", "loc"] },
-  { tool: nara, name: "nara", capability: "stock_video", provider: "nara", env: [], skills: ["stock-video", "nara"] },
-  { tool: wikimedia, name: "wikimedia", capability: "stock_video", provider: "wikimedia", env: [], skills: ["stock-video", "wikimedia"] },
-  { tool: unsplash, name: "unsplash", capability: "stock_image", provider: "unsplash", env: ["UNSPLASH_ACCESS_KEY"], skills: ["stock-image", "unsplash"] },
+  { tool: archiveOrg, name: "archive_org", capability: "stock_video", provider: "archive_org", env: [], skills: undefined },
+  { tool: nasa, name: "nasa", capability: "stock_video", provider: "nasa", env: [], skills: undefined },
+  { tool: noaa, name: "noaa", capability: "stock_video", provider: "noaa", env: ["NOAA_FEED_URL"], skills: undefined },
+  { tool: jaxa, name: "jaxa", capability: "stock_video", provider: "jaxa", env: ["JAXA_FEED_URL"], skills: undefined },
+  { tool: esa, name: "esa", capability: "stock_video", provider: "esa", env: [], skills: undefined },
+  { tool: loc, name: "loc", capability: "stock_video", provider: "loc", env: [], skills: undefined },
+  { tool: nara, name: "nara", capability: "stock_video", provider: "nara", env: [], skills: undefined },
+  { tool: wikimedia, name: "wikimedia", capability: "stock_video", provider: "wikimedia", env: [], skills: undefined },
+  { tool: unsplash, name: "unsplash", capability: "stock_image", provider: "unsplash", env: ["UNSPLASH_ACCESS_KEY"], skills: undefined },
 ] as const;
 
 const apiProviderSpecs = [
@@ -248,8 +248,8 @@ describe("public-domain and government stock tools", () => {
         status: "beta",
         integration: { kind: "api", env: spec.env },
         cost: { unit: "call", usd: 0 },
-        agent_skills: spec.skills,
       });
+      expect(spec.tool.agent_skills).toBe(spec.skills);
     }
   });
 

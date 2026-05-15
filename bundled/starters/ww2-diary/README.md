@@ -1,6 +1,6 @@
 # WW2 Diary Starter
 
-Specialty WW2 diary starter for short narration-first historical rough cuts.
+Specialty WW2 diary starter for short narration-first historical rough cuts. This is a show starter layered on bundled pipeline types, not a bundled `ww2-diary` pipeline.
 
 - Starter: `ww2-diary`
 - Pipeline slug: `cinematic`

@@ -14,7 +14,7 @@ export default defineTool({
   best_for: "Open-source Wan 2.1 image-to-video experiments through Replicate.",
   supports: ["wan-2.1", "replicate", "image-to-video", "text-to-video"],
   cost: { unit: "clip", usd: COST_USD },
-  agent_skills: ["ai-video-gen", "wan"],
+  agent_skills: ["ai-video-gen"],
   input: videoProviderInputSchema,
   output: videoProviderOutputSchema,
   async execute(params, ctx) {

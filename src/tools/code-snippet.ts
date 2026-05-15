@@ -67,7 +67,6 @@ export default defineTool({
   best_for: "transparent PNG code overlays for explainers and talking-head terminal shots",
   supports: ["transparent-png", "code-overlay", "syntax-color"],
   cost: { unit: "image", usd: 0 },
-  agent_skills: ["code-snippet-render"],
   input: CodeSnippetInputSchema,
   output: CodeSnippetOutputSchema,
 
