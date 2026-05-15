@@ -322,6 +322,62 @@ describe("bundled pipeline manifests", () => {
     expect(existsSync(path.join(talkingHeadSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
   });
 
+  it("ships the avatar-spokesperson manifest with eight directors plus an executive producer", async () => {
+    const manifest = await loadBundledManifest("avatar-spokesperson");
+    const avatarSkillsDir = path.join(bundledPipelineSkillsDir, "avatar-spokesperson");
+    const directorFiles = [
+      "source-review-director.md",
+      "idea-director.md",
+      "script-director.md",
+      "scene-director.md",
+      "asset-director.md",
+      "edit-director.md",
+      "compose-director.md",
+      "publish-director.md",
+    ];
+    const g1GovernancePhrase =
+      "The pivot decision happens at G1 (after IDEA). Do not wait until the ASSETS stage to discover the tool is missing.";
+
+    expect(manifest).toMatchObject({
+      slug: "avatar-spokesperson",
+      status: "beta",
+      master_clock: "none",
+      orchestration: {
+        mode: "executive-producer",
+        skill: "pipelines/avatar-spokesperson/executive-producer.md",
+        budget_default_usd: 3,
+        max_revisions_per_stage: 3,
+        max_send_backs: 2,
+        max_wall_time_minutes: 18,
+      },
+    });
+    expect(manifest.stages.map((stage) => stage.slug)).toEqual([
+      "source_review",
+      "idea",
+      "script",
+      "scene_plan",
+      "assets",
+      "edit",
+      "compose",
+      "publish",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "idea")?.tools_available).toEqual([
+      "talking_head",
+      "lip_sync",
+      "heygen_video",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "assets")?.tools_available).toContain("heygen_video");
+
+    for (const fileName of directorFiles) {
+      expect(existsSync(path.join(avatarSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
+    }
+    expect(existsSync(path.join(avatarSkillsDir, "executive-producer.md"))).toBe(true);
+    expect(existsSync(path.join(avatarSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+    await expect(readFile(path.join(avatarSkillsDir, "idea-director.md"), "utf8")).resolves.toContain(
+      g1GovernancePhrase,
+    );
+  });
+
   it("ships the clip-factory manifest with seven directors plus an executive producer", async () => {
     const manifest = await loadBundledManifest("clip-factory");
     const clipFactorySkillsDir = path.join(bundledPipelineSkillsDir, "clip-factory");
@@ -371,6 +427,62 @@ describe("bundled pipeline manifests", () => {
     }
     expect(existsSync(path.join(clipFactorySkillsDir, "executive-producer.md"))).toBe(true);
     expect(existsSync(path.join(clipFactorySkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+  });
+
+  it("ships the podcast-repurpose manifest with seven directors plus an executive producer", async () => {
+    const manifest = await loadBundledManifest("podcast-repurpose");
+    const podcastSkillsDir = path.join(bundledPipelineSkillsDir, "podcast-repurpose");
+    const directorFiles = [
+      "source-review-director.md",
+      "idea-director.md",
+      "scene-director.md",
+      "asset-director.md",
+      "edit-director.md",
+      "compose-director.md",
+      "publish-director.md",
+    ];
+
+    expect(manifest).toMatchObject({
+      slug: "podcast-repurpose",
+      status: "production",
+      master_clock: "none",
+      orchestration: {
+        mode: "executive-producer",
+        skill: "pipelines/podcast-repurpose/executive-producer.md",
+        budget_default_usd: 1.5,
+        max_revisions_per_stage: 3,
+        max_send_backs: 2,
+        max_wall_time_minutes: 15,
+      },
+    });
+    expect(manifest.stages.map((stage) => stage.slug)).toEqual([
+      "source_review",
+      "idea",
+      "scene_plan",
+      "assets",
+      "edit",
+      "compose",
+      "publish",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "scene_plan")?.review_focus).toContain(
+      "chapter-based segmentation is used for clip windows",
+    );
+    expect(manifest.stages.find((stage) => stage.slug === "source_review")?.tools_available).toEqual([
+      "source_media_review",
+      "scene_detect",
+      "frame_sampler",
+      "transcriber",
+      "video_understand",
+    ]);
+
+    for (const fileName of directorFiles) {
+      expect(existsSync(path.join(podcastSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
+    }
+    expect(existsSync(path.join(podcastSkillsDir, "executive-producer.md"))).toBe(true);
+    expect(existsSync(path.join(podcastSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+    await expect(readFile(path.join(podcastSkillsDir, "scene-director.md"), "utf8")).resolves.toContain(
+      "## Chapter-Based Segmentation",
+    );
   });
 
   it("ships the daily-news manifest with nine directors plus an executive producer", async () => {
@@ -424,6 +536,60 @@ describe("bundled pipeline manifests", () => {
     }
     expect(existsSync(path.join(dailyNewsSkillsDir, "executive-producer.md"))).toBe(true);
     expect(existsSync(path.join(dailyNewsSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+  });
+
+  it("ships the screen-demo manifest with seven directors plus an executive producer", async () => {
+    const manifest = await loadBundledManifest("screen-demo");
+    const screenDemoSkillsDir = path.join(bundledPipelineSkillsDir, "screen-demo");
+    const directorFiles = [
+      "idea-director.md",
+      "capture-director.md",
+      "scene-director.md",
+      "asset-director.md",
+      "edit-director.md",
+      "compose-director.md",
+      "publish-director.md",
+    ];
+    const modeSelectionRule =
+      "Use synthetic_terminal when the demo is a CLI / install flow / terminal workflow. Use real_capture when the demo is a real app UI or requires unpredictable live behavior.";
+
+    expect(manifest).toMatchObject({
+      slug: "screen-demo",
+      status: "production",
+      master_clock: "none",
+      orchestration: {
+        mode: "executive-producer",
+        skill: "pipelines/screen-demo/executive-producer.md",
+        budget_default_usd: 1.5,
+        max_revisions_per_stage: 3,
+        max_send_backs: 2,
+        max_wall_time_minutes: 15,
+      },
+    });
+    expect(manifest.stages.map((stage) => stage.slug)).toEqual([
+      "idea",
+      "capture",
+      "scene_plan",
+      "assets",
+      "edit",
+      "compose",
+      "publish",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "capture")?.tools_available).toEqual([
+      "playwright_recording",
+    ]);
+
+    for (const fileName of directorFiles) {
+      expect(existsSync(path.join(screenDemoSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
+    }
+    expect(existsSync(path.join(screenDemoSkillsDir, "executive-producer.md"))).toBe(true);
+    expect(existsSync(path.join(screenDemoSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+    await expect(readFile(path.join(screenDemoSkillsDir, "idea-director.md"), "utf8")).resolves.toContain(
+      modeSelectionRule,
+    );
+    await expect(readFile(path.join(screenDemoSkillsDir, "scene-director.md"), "utf8")).resolves.toContain(
+      "terminal_scene",
+    );
   });
 
   it("resolves every declared pipeline director and executive-producer skill", async () => {
