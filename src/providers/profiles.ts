@@ -121,6 +121,26 @@ export const PAID_DEMO_PROFILE: ProviderProfile = {
       rejected_because: "Leaves provider coverage ambiguous for the paid demo lane.",
       notes: "Can be useful for production, but this demo profile needs deterministic provider requirements.",
     },
+    {
+      label: "kling_video",
+      rejected_because: "Higgsfield is the first paid demo path and wraps the target Kling clip lane.",
+      notes: null,
+    },
+    {
+      label: "runway_video",
+      rejected_because: "Higher variance for this benchmark and not part of the first paid profile.",
+      notes: null,
+    },
+    {
+      label: "piper_tts",
+      rejected_because: "Zero-cost local TTS does not validate paid narration setup.",
+      notes: null,
+    },
+    {
+      label: "google_tts",
+      rejected_because: "Not part of the first paid demo profile.",
+      notes: null,
+    },
   ],
 };
 
