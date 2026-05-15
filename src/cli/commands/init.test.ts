@@ -301,19 +301,6 @@ async function writeFakeBundled(root: string): Promise<void> {
     "utf8",
   );
 
-  await writeFile(
-    path.join(root, "pipelines", "cinematic.yaml"),
-    [
-      "slug: cinematic",
-      "stages:",
-      "  - slug: idea",
-      "    skill: pipelines/cinematic/idea-director.md",
-      "    produces: brief",
-      "",
-    ].join("\n"),
-    "utf8",
-  );
-
   const starterDir = path.join(root, "starters", "music-video");
   await mkdir(path.join(starterDir, "brand"), { recursive: true });
   await writeFile(

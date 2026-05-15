@@ -126,21 +126,6 @@ The analysis writes `projects/<show>/<episode>/artifacts/video_analysis_brief.js
 
 The matrix records CLI path/version, provider profile, env availability, workdir, per-lane command, exit code, last event, and artifact paths. It exits `0` only when every selected lane completes; otherwise it exits `2`.
 
-## Maintainer Demo Matrix
-
-`pnpm demo-matrix` is a harness-maintainer script, not an installed `predit` command. It creates fresh temp user projects outside the harness repo, runs the local or overridden CLI path, initializes fixture-backed starters, and invokes `predit build <show>/sample-episode --sample`. Flags:
-
-| Flag | Meaning |
-|---|---|
-| `--zero-key` | Run lanes whose `sample_support` includes `zero-key`; this is the default. |
-| `--paid-demo` | Run lanes whose `sample_support` includes `paid`, passing `--provider-profile paid-demo`. |
-| `--only <slug>` | Restrict to one or more starter slugs. |
-| `--keep-workdir` | Keep generated temp user projects for inspection. |
-| `--json` | Emit NDJSON `matrix_started`, `lane_completed`, and `matrix_finished` events. |
-| `--cli-path <path>` | Override the local TypeScript CLI entrypoint or installed binary. |
-
-The matrix records CLI path/version, provider profile, env availability, workdir, per-lane command, exit code, last event, and artifact paths. It exits `0` only when every selected lane completes; otherwise it exits `2`.
-
 ## Ingest Commands
 
 `predit import <path> --as <show>/<episode>` resolves `<path>` as either a dropped file or a folder containing a matching dropped file. It matches the path against the target show's `ingest.watch[]`, uses the matched watch entry's `pipeline`, derives sibling inputs, and writes `shows/<show>/episodes/<episode>.yaml`. It refuses to overwrite an existing episode file.
