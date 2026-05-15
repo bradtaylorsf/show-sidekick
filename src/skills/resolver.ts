@@ -23,6 +23,10 @@ type SkillCandidate = {
   tier: SkillTier;
 };
 
+const PIPELINE_SLUG_DIRECTORIES: Record<string, string> = {
+  "animated-explainer": "explainer",
+};
+
 // Process-lifetime cache; long-running runners need explicit invalidation before supporting live skill edits.
 const contentCache = new Map<string, string>();
 
@@ -71,14 +75,15 @@ function skillCandidates(kind: SkillKind, name: string, ctx: ResolveSkillContext
     }
 
     const fileName = `${name}-director.md`;
+    const pipelineDirectory = pipelineSkillDirectory(ctx.pipeline);
     return [
       ...(ctx.show?.skillsDir ? [{ path: path.join(ctx.show.skillsDir, fileName), tier: "show" as const }] : []),
       {
-        path: path.join(projectRoot, "skills", "pipelines", ctx.pipeline, fileName),
+        path: path.join(projectRoot, "skills", "pipelines", pipelineDirectory, fileName),
         tier: "project",
       },
       {
-        path: path.join(projectRoot, ".predit", "skills", "pipelines", ctx.pipeline, fileName),
+        path: path.join(projectRoot, ".predit", "skills", "pipelines", pipelineDirectory, fileName),
         tier: "bundled-pipeline",
       },
       {
@@ -101,6 +106,10 @@ function skillCandidates(kind: SkillKind, name: string, ctx: ResolveSkillContext
       tier: "bundled",
     },
   ];
+}
+
+function pipelineSkillDirectory(pipeline: string): string {
+  return PIPELINE_SLUG_DIRECTORIES[pipeline] ?? pipeline;
 }
 
 async function cachedRead(filePath: string): Promise<string> {

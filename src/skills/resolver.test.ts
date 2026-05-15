@@ -87,6 +87,25 @@ describe("skill resolver", () => {
     });
   });
 
+  it("maps the animated-explainer slug to the preserved explainer skill directory", async () => {
+    const root = await scratchProject();
+    const show = await writeAndLoadShow(root, "music-videos");
+    const skillDir = path.join(root, ".predit", "skills", "pipelines", "explainer");
+    await writeSkill(skillDir, "idea-director.md", "explainer skill");
+
+    const skill = await resolveSkill("director", "idea", {
+      projectRoot: root,
+      show,
+      pipeline: "animated-explainer",
+    });
+
+    expect(skill).toEqual({
+      path: path.join(skillDir, "idea-director.md"),
+      content: "explainer skill",
+      tier: "bundled-pipeline",
+    });
+  });
+
   it("falls back to bundled shared director skills", async () => {
     const root = await scratchProject();
     const show = await writeAndLoadShow(root, "music-videos");
