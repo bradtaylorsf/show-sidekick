@@ -1,11 +1,14 @@
-import { readdir } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
+import YAML from "yaml";
+import { z } from "zod";
 import { loadPipeline } from "../../pipelines/load.js";
 import { findProjectRoot, projectPaths } from "../../paths/project.js";
 import { Registry } from "../../registry/index.js";
 import type { Availability, Tool } from "../../registry/tool.js";
 import { safeSlug } from "../scaffold/index.js";
+import { ShowSchema, type Show } from "../../shows/show.js";
 import type { CliIo, GlobalOptions } from "./stub.js";
 
 type Source = "local" | "bundled";
@@ -32,6 +35,16 @@ type ToolRow = BaseRow & {
 };
 
 type Row = BaseRow | ToolRow;
+
+const StarterMetadataSchema = z
+  .object({
+    fixture_size_bytes: z.number().int().nonnegative().optional(),
+    expected_sample_duration_s: z.number().positive().optional(),
+    pending_pipelines: z.array(z.string()).default([]),
+  })
+  .default({});
+
+type StarterMetadata = z.infer<typeof StarterMetadataSchema>;
 
 export type LsHandlerOptions = {
   registryFactory?: () => Registry;
@@ -141,13 +154,30 @@ async function listPlaybooks(projectRoot: string): Promise<Row[]> {
 
 async function listStarters(projectRoot: string): Promise<Row[]> {
   const paths = projectPaths(projectRoot);
-  return (await listDirectories(path.join(paths.predit, "starters"))).map((entry) => ({
-    event: "starter_listed",
-    kind: "starters",
-    name: entry.name,
-    path: entry.path,
-    source: "bundled" as const,
-  }));
+  const entries = await listDirectories(path.join(paths.predit, "starters"));
+  const rows = await Promise.all(
+    entries.map(async (entry) => {
+      const showPath = path.join(entry.path, "show.yaml");
+      const { show, metadata } = await loadStarterShow(showPath);
+      const fixtureSizeBytes =
+        metadata.fixture_size_bytes ?? (await directorySize(path.join(entry.path, "inputs")));
+
+      return {
+        event: "starter_listed",
+        kind: "starters",
+        name: entry.name,
+        path: entry.path,
+        source: "bundled" as const,
+        description: show.description,
+        pipelines: Object.keys(show.pipelines).sort(),
+        fixture_size: formatBytes(fixtureSizeBytes),
+        fixture_size_bytes: fixtureSizeBytes,
+        sample_duration_s: metadata.expected_sample_duration_s,
+      };
+    }),
+  );
+
+  return sortByName(rows);
 }
 
 async function listTools(registry: Registry): Promise<Row[]> {
@@ -254,8 +284,71 @@ async function listYamlFiles(dir: string): Promise<NamedEntry[]> {
   }
 }
 
+async function loadStarterShow(showPath: string): Promise<{ show: Show; metadata: StarterMetadata }> {
+  const raw = await readFile(showPath, "utf8");
+  const parsed = YAML.parse(raw) as unknown;
+  return {
+    show: ShowSchema.parse(parsed),
+    metadata: parseStarterMetadata(parsed),
+  };
+}
+
+function parseStarterMetadata(value: unknown): StarterMetadata {
+  if (!isRecord(value) || value.starter === undefined) {
+    return StarterMetadataSchema.parse({});
+  }
+
+  return StarterMetadataSchema.parse(value.starter);
+}
+
+async function directorySize(dir: string): Promise<number> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    const sizes = await Promise.all(
+      entries.map(async (entry) => {
+        const entryPath = path.join(dir, entry.name);
+
+        if (entry.isDirectory()) {
+          return directorySize(entryPath);
+        }
+        if (entry.isFile()) {
+          return (await stat(entryPath)).size;
+        }
+
+        return 0;
+      }),
+    );
+
+    return sizes.reduce((total, size) => total + size, 0);
+  } catch (error) {
+    const fileError = error as ErrorWithCode;
+    if (fileError.code === "ENOENT") {
+      return 0;
+    }
+    throw error;
+  }
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  const kibibytes = bytes / 1024;
+  if (kibibytes < 1024) {
+    const rounded = kibibytes >= 10 ? Math.round(kibibytes).toString() : kibibytes.toFixed(1);
+    return `${rounded} KB`;
+  }
+
+  return `${(kibibytes / 1024).toFixed(1)} MB`;
+}
+
 function sortByName<T extends { name: string }>(rows: T[]): T[] {
   return rows.sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function requireArg(kind: string, value: string | undefined): string {
@@ -291,12 +384,20 @@ function pickColumns(rows: Row[]): string[] {
     return ["timestamp", "stage", "category", "picked", "name"];
   }
 
+  if (first?.kind === "starters") {
+    return ["name", "description", "pipelines", "fixture_size", "sample_duration_s"];
+  }
+
   return ["name", "source", "path"];
 }
 
 function formatCell(value: unknown): string {
   if (value === undefined || value === null) {
     return "";
+  }
+
+  if (Array.isArray(value)) {
+    return value.join(", ");
   }
 
   return String(value);

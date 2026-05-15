@@ -1,0 +1,16 @@
+{
+  "outputs": [
+    {
+      "path": "exports/fixture.mp4",
+      "kind": "video",
+      "platform": "local",
+      "notes": "Fixture export."
+    }
+  ],
+  "metadata": {
+    "target": "local"
+  },
+  "source_manifest_path": "projects/show/episode/render_report.json",
+  "captions_path": "projects/show/episode/captions.srt",
+  "notes": ["Published by fixture"]
+}

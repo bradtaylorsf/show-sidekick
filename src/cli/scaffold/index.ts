@@ -59,6 +59,7 @@ export async function scaffoldShow(projectRoot: string, options: ShowScaffoldOpt
   const filePath = path.join(showDir, "show.yaml");
   if (starter) {
     await normalizeStarterShow(filePath, slug);
+    await rewriteStarterShowReferences(showDir, starter, slug);
     return { slug, filePath };
   }
 
@@ -205,7 +206,44 @@ async function normalizeStarterShow(filePath: string, slug: string): Promise<voi
   await atomicWrite(filePath, YAML.stringify(show));
 }
 
-async function assertMissing(targetPath: string, label: string): Promise<void> {
+async function rewriteStarterShowReferences(showDir: string, starter: string, slug: string): Promise<void> {
+  if (starter === slug) {
+    return;
+  }
+
+  const files = [path.join(showDir, "episode.template.yaml"), ...(await listYamlFiles(path.join(showDir, "episodes")))];
+  const from = `shows/${starter}/`;
+  const to = `shows/${slug}/`;
+
+  for (const filePath of files) {
+    if (!(await exists(filePath))) {
+      continue;
+    }
+
+    const current = await readFile(filePath, "utf8");
+    const next = current.replaceAll(from, to);
+    if (next !== current) {
+      await atomicWrite(filePath, next);
+    }
+  }
+}
+
+async function listYamlFiles(dir: string): Promise<string[]> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".yaml"))
+      .map((entry) => path.join(dir, entry.name));
+  } catch (error) {
+    const fileError = error as ErrorWithCode;
+    if (fileError.code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
+}
+
+export async function assertMissing(targetPath: string, label: string): Promise<void> {
   if (await exists(targetPath)) {
     throw new Error(`refuses to clobber existing ${label} at ${targetPath}`);
   }
@@ -233,7 +271,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function today(): string {
+export function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
@@ -241,7 +279,7 @@ function defaultEpisodeSlug(): string {
   return `${today()}-${randomUUID().slice(0, 8)}`;
 }
 
-function titleize(slug: string): string {
+export function titleize(slug: string): string {
   return slug
     .split(/[-_]/u)
     .filter(Boolean)

@@ -1,0 +1,10 @@
+{
+  "hero": [
+    {
+      "time_s": 0,
+      "pose": "idle",
+      "transition_frames": 0,
+      "ease": "linear"
+    }
+  ]
+}

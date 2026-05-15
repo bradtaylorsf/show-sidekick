@@ -1,0 +1,28 @@
+slug: cinematic-trailer
+display_name: "Cinematic Trailer"
+description: "Audio-led cinematic trailer starter with a sample reference image fixture."
+created: 2026-05-14
+brand: ./brand/
+characters: ./characters/
+skills: ./skills/
+pipelines:
+  cinematic:
+    playbook: clean-professional
+    runtime: ffmpeg
+    aspect: "16:9"
+    budget_usd: 0.75
+defaults:
+  pipeline: cinematic
+  language: en
+ingest:
+  episode_template: ./episode.template.yaml
+  watch:
+    - path: ./inputs/
+      match: "**/reference.jpg"
+      pipeline: cinematic
+      slug_from: parent_dir
+starter:
+  fixture_size_bytes: 1602
+  expected_sample_duration_s: 15
+  pending_pipelines:
+    - cinematic

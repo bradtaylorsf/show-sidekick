@@ -1,0 +1,32 @@
+{
+  "concept_options": [
+    {
+      "slug": "clean-demo",
+      "hook": "Show the workflow clearly.",
+      "treatment": "A direct product walkthrough."
+    },
+    {
+      "slug": "data-story",
+      "hook": "Lead with the metric.",
+      "treatment": "Charts explain the impact."
+    },
+    {
+      "slug": "human-case",
+      "hook": "Follow one user.",
+      "treatment": "A presenter narrates the result."
+    }
+  ],
+  "production_plan": {
+    "render_runtime": "ffmpeg",
+    "renderer_family": "explainer-data",
+    "audio_architecture": "single_narrator",
+    "sample_required": true
+  },
+  "delivery_promise": {
+    "motion_led": true,
+    "narration_present": true,
+    "music_present": false,
+    "reference_driven": false
+  },
+  "decision_log_ref": "decision-1"
+}

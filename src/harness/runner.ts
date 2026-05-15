@@ -18,6 +18,7 @@ import {
   readCheckpoint,
   readState,
   updateState,
+  atomicWrite,
   writeCheckpoint,
   writeSampleCheckpoint,
   type Checkpoint,
@@ -244,6 +245,10 @@ async function refreshRegistryAndWarn(opts: RunnerOptions): Promise<RegistryWarn
     return [];
   }
 
+  if (shouldSuppressRegistryWarnings(opts)) {
+    return [];
+  }
+
   if (opts.json === true) {
     opts.io.stdout.write(`${JSON.stringify({ event: "registry_warnings", warnings })}\n`);
     return warnings;
@@ -260,6 +265,20 @@ async function refreshRegistryAndWarn(opts: RunnerOptions): Promise<RegistryWarn
     ].join("\n"),
   );
   return warnings;
+}
+
+function shouldSuppressRegistryWarnings(opts: RunnerOptions): boolean {
+  return opts.runOptions.sample === true && usesZeroKeyStarterSample(opts.pipeline);
+}
+
+function usesZeroKeyStarterSample(pipeline: PipelineManifest): boolean {
+  const metadata = pipeline.metadata;
+  return (
+    typeof metadata === "object" &&
+    metadata !== null &&
+    !Array.isArray(metadata) &&
+    metadata.starter_sample_dispatcher === "zero-key"
+  );
 }
 
 function registryWarning(tool: string, availability: Extract<Availability, { available: false }>): RegistryWarning {
@@ -1119,6 +1138,7 @@ async function writeCompletedCheckpointAndState(
   revisionNotes: Record<string, string[]>,
 ): Promise<void> {
   await writeCheckpoint(opts.projectRoot, opts.show.slug, opts.episode.slug, checkpoint.stage, checkpoint);
+  await writeProducedArtifact(opts, checkpoint.stage, checkpoint.artifact);
   await updateState(opts.projectRoot, opts.show.slug, opts.episode.slug, {
     pipeline: opts.pipelineName,
     current_stage: checkpoint.stage,
@@ -1128,6 +1148,31 @@ async function writeCompletedCheckpointAndState(
     revision_notes: revisionNotes,
     queued_stage_revision: undefined,
   });
+}
+
+async function writeProducedArtifact(opts: RunnerOptions, stageSlug: string, artifact: unknown): Promise<void> {
+  const stage = opts.pipeline.stages.find((candidate) => candidate.slug === stageSlug);
+  if (stage === undefined || stage.produces.trim() === "") {
+    return;
+  }
+
+  const artifactDir = projectDir(opts.projectRoot, opts.show.slug, opts.episode.slug);
+  await atomicWrite(path.join(artifactDir, `${stage.produces}.json`), `${JSON.stringify(artifact, null, 2)}\n`);
+
+  if (!isRecord(artifact)) {
+    return;
+  }
+
+  for (const artifactName of stage.produces_artifacts) {
+    if (artifactName === stage.produces) {
+      continue;
+    }
+
+    const nestedArtifact = artifact[artifactName];
+    if (nestedArtifact !== undefined) {
+      await atomicWrite(path.join(artifactDir, `${artifactName}.json`), `${JSON.stringify(nestedArtifact, null, 2)}\n`);
+    }
+  }
 }
 
 async function recordStageDecisions(opts: RunnerOptions, decisions: DecisionEntry[]): Promise<DecisionEntry[]> {

@@ -1,17 +1,38 @@
 # predit
 
-AI pre-production for video. Builds the rough cut and an EDL/XML you finish in Premiere or CapCut.
+Show-first AI pre-production for video: build the rough cut, then finish in Premiere, DaVinci, CapCut, or any NLE that reads EDL/XML.
 
-**Status:** in active development. Public release on Apache 2.0 once the core pipelines reach feature parity.
+**Status:** v0.1.0 public-flip candidate. The CLI, bundled starters, registry, runner, and NLE handoff formats are in active alpha; provider availability depends on the tools configured on your machine.
 
-## What it does
+## Install
 
-`predit` is a show-first video production harness. You author a *show* once — its pipeline, look, characters, brand — then add *episodes*, where each episode is one rendered output. The agent drives production stage by stage, snaps visuals to audio structure (beats, sections, climax), and hands off a rough cut you can ship as draft or finish in a real NLE.
+```bash
+pnpm add -g predit
+```
 
-## Quick links
+Requirements: Node 22+, pnpm 9+, and `ffmpeg` for local media work.
 
-- [`specs/`](specs/) — the design specs that drive implementation
-- [`AGENTS.md`](AGENTS.md) — agent operating contract
+## 60-Second Quickstart
+
+```bash
+mkdir my-shows
+cd my-shows
+predit init --starter music-video --git
+predit build music-video/sample-episode --sample
+predit export music-video/sample-episode --target premiere
+```
+
+The full walkthrough is in [docs/quickstart.md](docs/quickstart.md), including provider setup, sample outputs, and troubleshooting.
+
+## Features
+
+- Show-first model: each show owns its brand, characters, defaults, ingest rules, and episode workspace.
+- Audio-led pipelines: music videos, trailers, and news songs snap visual timing to beats, sections, and climax points.
+- Starter shows: nine bundled templates scaffold show folders and sample fixtures; `music-video` includes a zero-key runnable sample.
+- NLE handoff: Premiere XML, DaVinci XML, CapCut draft packages, and CMX 3600 EDL.
+- Registry-driven tools: concrete integrations live in `src/tools/` and are selected by capability, availability, cost, and runtime.
+- Integrated runner: checkpoints, approvals, resume state, first paid-call approval, and cost budget enforcement.
+- Agent-readable production layer: pipeline manifests and director skills stay in Markdown/YAML instead of hard-coded orchestration.
 
 ## CLI Surface
 
@@ -24,14 +45,30 @@ AI pre-production for video. Builds the rough cut and an EDL/XML you finish in P
 | Build / run | `build`, `cuesheet`, `resume`, `status`, `approve`, `revise` |
 | Inspect | `ls`, `ls decisions <show>/<episode>`, `show` |
 | Export / ingest | `export`, `import`, `watch` |
-| Tooling | `setup`, `tools` |
+| Tooling | `setup <tool>`, `tools <name>` |
 
 Global flags: `--json`, `--dry-run`, `--verbose`, `--no-color`, `--config <path>`.
 
-Build/run commands currently validate show, episode, pipeline, stage flags, reference inputs, resume checkpoints, approval checkpoints, audited final-review force approvals, revision notes, status state, and cost summaries. `build` runs the integrated Runner state machine: optional `--reference <url-or-path>` / `inputs.reference` video analysis before pipeline selection, registry preflight, stage dispatch, reviewer pass, checkpoint writes, approval gates, budget limits, configurable cost-drift review thresholds, and resumable state.
+Common flows:
 
-Create/list commands scaffold project-local shows, episodes, pipelines, and playbooks, and list merged project-local plus `.predit` cache resources with JSON output for automation. `new playbook` uses the bundled playbook generator so the stub includes palette, typography, motion rules, audio mood, asset preferences, and quality rules.
+- `predit init --starter music-video --git` scaffolds a user project, initializes git, and clones the music-video starter into `shows/music-video/`.
+- `predit update --check` verifies the local `.predit/` cache against the installed harness without writing.
+- `predit build <show>/<episode> --sample` runs a short sample pass through the integrated Runner.
+- `predit status <show>/<episode>` reports current stage, checkpoint status, costs, and the latest decision.
+- `predit export <show>/<episode> --target premiere|davinci|capcut|edl` writes an editor handoff package under `exports/`; pass `--overwrite` to replace an existing package.
+- `predit import <path> --as <show>/<episode>` and `predit watch` turn watched drops into episode YAML.
+- `predit ls starters` lists bundled starter shows, fixture sizes, pipelines, and expected sample durations.
+
+## Docs
+
+- [specs/](specs/) - design specs and implementation contract
+- [AGENTS.md](AGENTS.md) - harness contributor contract for agents working in this repo
+- [CONTRIBUTING.md](CONTRIBUTING.md) - development setup and extension guide
+- [docs/quickstart.md](docs/quickstart.md) - first rendered sample from a fresh machine
+- [docs/providers.md](docs/providers.md) - generated provider catalog from the registry
+- [CHANGELOG.md](CHANGELOG.md) - release notes
+- [LICENSE](LICENSE) - Apache-2.0
 
 ## License
 
-Apache 2.0 (planned, applied at first public release).
+Apache-2.0.

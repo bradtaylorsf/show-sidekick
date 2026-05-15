@@ -21,6 +21,9 @@ export const CutSchema = z.object({
   transition_in: z.string().optional(),
   transition_out: z.string().optional(),
   provider: z.string().optional(),
+}).refine((cut) => cut.end_s > cut.start_s, {
+  message: "cut end_s must be greater than start_s",
+  path: ["end_s"],
 });
 
 export const EditDecisionsSchema = z.object({

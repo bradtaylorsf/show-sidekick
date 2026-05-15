@@ -14,7 +14,11 @@
 ```bash
 # Project lifecycle
 predit init                              # scaffold a new predit project in cwd
+predit init --git                        # scaffold, git init, add, and commit
+predit init --starter music-video        # scaffold and clone a bundled starter show
 predit doctor                            # registry + tool preflight (capability menu)
+predit update                            # refresh .predit/ from the installed harness
+predit update --check                    # verify .predit/ without writing
 
 # Create
 predit new show <slug>                   # scaffold shows/<slug>/
@@ -39,7 +43,7 @@ predit approve <show>/<episode> --force "<reason>"  # audited force-approval for
 predit revise <show>/<episode> "<note>"  # loop the current stage with note
 
 # Inspect
-predit ls shows | episodes <show> | pipelines | playbooks | tools | decisions <show>/<episode>
+predit ls shows | episodes <show> | pipelines | playbooks | starters | tools | decisions <show>/<episode>
 predit show <show>/<episode>             # full state dump of an episode
 
 # Export (the differentiator)
@@ -47,6 +51,9 @@ predit export <show>/<episode> --target premiere   # Premiere XML + linked asset
 predit export <show>/<episode> --target capcut     # CapCut draft
 predit export <show>/<episode> --target davinci    # Resolve XML
 predit export <show>/<episode> --format edl        # raw EDL
+predit export <show>/<episode> --target premiere --asset-link-mode copy
+predit export <show>/<episode> --target premiere --out handoffs
+predit export <show>/<episode> --target premiere --overwrite
 
 # Ingest
 predit import <path> --as <show>/<episode>     # scaffold an episode from a dropped folder
@@ -67,6 +74,10 @@ predit tools <name>                      # tool detail (CLI vs API, env vars, co
 | `--verbose` / `-v` | Show every decision and tool call |
 | `--no-color` | Strip ANSI color codes |
 | `--config <path>` | Override `show.yaml` location |
+
+## Project root requirement
+
+Every command except `predit init` must run inside a predit user project, detected by walking upward from the current directory until both `CLAUDE.md` and `.predit/` are found. When no project root is found, the CLI errors before command execution and points the user to `predit init`.
 
 ## Cwd-aware shortcuts
 
@@ -93,8 +104,15 @@ The analysis writes `projects/<show>/<episode>/artifacts/video_analysis_brief.js
 - `--json` switches to NDJSON for streaming-friendly machine output. Each command documents its event schema in its source.
 - Errors always go to stderr; results to stdout.
 
+## Ingest Commands
+
+`predit import <path> --as <show>/<episode>` resolves `<path>` as either a dropped file or a folder containing a matching dropped file. It matches the path against the target show's `ingest.watch[]`, uses the matched watch entry's `pipeline`, derives sibling inputs, and writes `shows/<show>/episodes/<episode>.yaml`. It refuses to overwrite an existing episode file.
+
+`predit watch` loads every show's `ingest.watch[]`, watches the declared paths recursively, and prints a suggested `predit import <path> --as <show>/<derived-episode>` command when a drop matches. Watch suggestions are emitted within two seconds of the filesystem event.
+
 ## Addressing — `<show>/<episode>`
 
 - The path separator is `/`, mirroring filesystem layout.
 - `predit build music-videos/midnight-train` resolves `shows/music-videos/episodes/midnight-train.yaml`.
 - Listing forms drop the episode: `predit ls episodes music-videos`.
+- `predit ls starters` includes each starter's name, description, declared pipeline keys, fixture size, and expected sample duration so agents can choose a starter without opening every template.

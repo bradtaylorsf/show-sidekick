@@ -2,6 +2,9 @@ import { Command } from "commander";
 import { createApproveHandler } from "./commands/approve.js";
 import { createBuildHandler, type BuildHandlerOptions } from "./commands/build.js";
 import { createCuesheetHandler } from "./commands/cuesheet.js";
+import { createExportHandler } from "./commands/export.js";
+import { createInitHandler } from "./commands/init.js";
+import { createImportHandler } from "./commands/import.js";
 import { lsDecisions } from "./commands/ls-decisions.js";
 import { createLsHandler } from "./commands/ls.js";
 import { createNewHandlers } from "./commands/new.js";
@@ -10,8 +13,14 @@ import { createReviseHandler } from "./commands/revise.js";
 import { createSetupHandler } from "./commands/setup.js";
 import { createStatusHandler } from "./commands/status.js";
 import { type CliIo, createStubHandler, defaultIo, type GlobalOptions } from "./commands/stub.js";
+import { createUpdateHandler } from "./commands/update.js";
+import { createWatchHandler } from "./commands/watch.js";
 import { suggest } from "./fuzzy.js";
 import { configure } from "../log/mode.js";
+import { ProjectRootNotFoundError } from "../paths/errors.js";
+import { findProjectRoot } from "../paths/project.js";
+import { computeBundledChecksum } from "../version/bundled.js";
+import { compareVersions, readCacheVersion } from "../version/cache.js";
 import { VERSION } from "../version.js";
 
 const CLI_DESCRIPTION = "AI pre-production for video - build the rough cut, finish in your NLE.";
@@ -63,7 +72,7 @@ export function createProgram(input: CliIo | ProgramOptions = defaultIo): Comman
       writeErr: (value) => io.stderr.write(value),
     });
 
-  program.hook("preAction", (_thisCommand, actionCommand) => {
+  program.hook("preAction", async (_thisCommand, actionCommand) => {
     const options = actionCommand.optsWithGlobals<{ json?: boolean; verbose?: boolean; color?: boolean }>();
 
     configure({
@@ -71,6 +80,10 @@ export function createProgram(input: CliIo | ProgramOptions = defaultIo): Comman
       verbose: options.verbose === true,
       color: options.color !== false,
     });
+
+    const commandName = topLevelCommandName(actionCommand);
+    const projectRoot = requireProjectRoot(commandName);
+    await checkProjectCache(commandName, projectRoot, io);
   });
 
   registerUnknownCommandSuggestion(program);
@@ -98,7 +111,9 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
   program
     .command("init")
     .description("scaffold a new predit project in cwd")
-    .action(createStubHandler("init", [], io));
+    .option("--git", "initialize git and commit the scaffold")
+    .option("--starter <name>", "clone a bundled starter show into shows/<name>/")
+    .action(createInitHandler(io));
 
   program
     .command("doctor")
@@ -169,7 +184,7 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
 
   program
     .command("ls <kind> [arg]")
-    .description("list shows, episodes, pipelines, playbooks, tools, or decisions")
+    .description("list shows, episodes, pipelines, playbooks, starters, tools, or decisions")
     .action(async (...actionArgs: unknown[]) => {
       const kind = actionArgs[0] as string;
       const arg = typeof actionArgs[1] === "string" ? actionArgs[1] : undefined;
@@ -196,20 +211,23 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
   program
     .command("export <target>")
     .description("export an editor handoff")
-    .option("--target <nle>", "premiere, capcut, or davinci")
+    .option("--target <nle>", "premiere, davinci, capcut, or edl")
     .option("--format <format>", "export format such as edl")
-    .action(createStubHandler("export", ["target"], io));
+    .option("--asset-link-mode <mode>", "copy, symlink, or reference")
+    .option("--out <dir>", "export root directory (defaults to exports/)")
+    .option("--overwrite", "replace an existing export package")
+    .action(createExportHandler(io));
 
   program
     .command("import <path>")
     .description("scaffold an episode from a dropped folder")
     .option("--as <target>", "target show/episode")
-    .action(createStubHandler("import", ["path"], io));
+    .action(createImportHandler(io));
 
   program
     .command("watch")
     .description("detect drops and suggest imports")
-    .action(createStubHandler("watch", [], io));
+    .action(createWatchHandler(io));
 
   program
     .command("setup <tool>")
@@ -224,7 +242,79 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
   program
     .command("update")
     .description("refresh the local .predit cache")
-    .action(createStubHandler("update", [], io));
+    .option("--check", "check whether .predit is current without writing")
+    .action(createUpdateHandler(io));
+}
+
+async function checkProjectCache(commandName: string, projectRoot: string | null, io: CliIo): Promise<void> {
+  if (projectRoot === null) {
+    return;
+  }
+
+  const cached = await readCacheVersion(projectRoot);
+  if (cached === null) {
+    io.stderr.write(`warning: ${projectRoot}/.predit/version.json is missing; run 'predit update'\n`);
+    return;
+  }
+
+  const comparison = compareVersions(VERSION, cached);
+  if (comparison === "match" && cached.bundled_checksum === (await computeBundledChecksum())) {
+    return;
+  }
+
+  if (comparison === "mismatch") {
+    if (commandName !== "update") {
+      io.stderr.write(
+        `warning: .predit cache is locked to predit v${cached.harness_version}, installed is v${VERSION}; run 'predit update'\n`,
+      );
+    }
+    return;
+  }
+
+  if (comparison === "match") {
+    if (commandName !== "update") {
+      io.stderr.write("warning: .predit bundled cache checksum is stale; run 'predit update'\n");
+    }
+    return;
+  }
+
+  const message = [
+    `.predit cache is incompatible with installed predit: project has v${cached.harness_version}, installed is v${VERSION}.`,
+    "Run 'predit update' to refresh the project cache, or install a matching harness with",
+    `'pnpm i -g predit@${cached.harness_version}'.`,
+  ].join(" ");
+
+  if (commandName === "update") {
+    io.stderr.write(`warning: ${message}\n`);
+    return;
+  }
+
+  throw new Error(message);
+}
+
+function requireProjectRoot(commandName: string): string | null {
+  if (commandName === "init") {
+    return null;
+  }
+
+  try {
+    return findProjectRoot();
+  } catch (error) {
+    if (error instanceof ProjectRootNotFoundError) {
+      throw new Error(error.message);
+    }
+    throw error;
+  }
+}
+
+function topLevelCommandName(command: Command): string {
+  let current = command;
+
+  while (current.parent && current.parent.name() !== "predit") {
+    current = current.parent;
+  }
+
+  return current.name();
 }
 
 function normalizeProgramOptions(input: CliIo | ProgramOptions): { io: CliIo; build?: BuildHandlerOptions } {

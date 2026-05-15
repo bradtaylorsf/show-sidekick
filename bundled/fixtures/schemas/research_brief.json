@@ -1,0 +1,18 @@
+{
+  "topic_exploration": "Schema fixture coverage.",
+  "sources": [
+    {
+      "url": "https://example.com/source",
+      "title": "Fixture Source",
+      "accessed_at": "2026-05-14T12:00:00.000Z",
+      "summary": "A stable fixture source."
+    }
+  ],
+  "findings": [
+    {
+      "claim": "Fixtures catch schema drift.",
+      "evidence": "Each artifact has a committed JSON example.",
+      "source_refs": ["https://example.com/source"]
+    }
+  ]
+}

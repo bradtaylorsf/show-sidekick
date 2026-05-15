@@ -1,0 +1,18 @@
+{
+  "sections": [
+    {
+      "slug": "intro",
+      "role": "hook",
+      "start_s": 0,
+      "end_s": 5,
+      "narration": "A short schema fixture opens the story.",
+      "dialogue": [
+        {
+          "character": "host",
+          "line": "Let us check the artifact."
+        }
+      ],
+      "enhancement_cues": ["show title"]
+    }
+  ]
+}

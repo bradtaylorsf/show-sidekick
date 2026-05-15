@@ -92,6 +92,12 @@ export:
   asset_link_mode: copy                  # copy | symlink | reference
 ```
 
+Ingest `path` values resolve relative to `shows/<show>/`. A drop matches when the dropped file, or a file inside the dropped folder, lives under that watch path and satisfies `match`. The built-in matcher supports the common starter pattern `**/literal.ext` and exact `*` segment wildcards; matches are anchored, so `**/track.mp3` does not match `track.mp3.bak`.
+
+When `slug_from` is `parent_dir`, watch suggestions derive the episode slug from the matched file's parent folder. `filename` derives it from the matched file basename. `prompt` requires a human-supplied slug and is rejected by non-interactive ingest.
+
+`predit import` uses the episode slug from `--as`, the matched watch entry's `pipeline`, and sibling files next to the matched file to populate `inputs`. Audio files become `track`, `.txt` becomes `lyrics`, `.yaml` / `.yml` becomes `sources`, video files become `reference`, and other files become `source`.
+
 A single-pipeline show is just a `pipelines:` map with one entry. The model degrades cleanly to "one workflow per show" when that's all the show needs.
 
 ## `episode.yaml`
@@ -160,7 +166,7 @@ Runtime state (current stage, last checkpoint, costs, decisions) lives in `proje
 
 ## Pipeline binding (multi-pipeline shows)
 
-A show declares the pipelines it uses in `show.pipelines: { <name>: { ... } }`. Each entry maps a pipeline name to its per-pipeline defaults (playbook, runtime, aspect, budget, playbook_overrides). The show owns brand, characters, and skills; the pipelines under it are the technical workflows that identity runs.
+A show declares the pipelines it uses in `show.pipelines: { <name>: { ... } }`. Each entry maps a pipeline name to its per-pipeline defaults (playbook, runtime, aspect, budget, playbook_overrides) and pipeline-specific mode flags such as `capture_mode`. The show owns brand, characters, and skills; the pipelines under it are the technical workflows that identity runs.
 
 **Validation rules:**
 
@@ -198,6 +204,7 @@ pipelines:
   screen-demo:
     playbook: clean-professional
     runtime: remotion
+    capture_mode: synthetic_terminal
   talking-head:
     playbook: clean-professional
     runtime: remotion

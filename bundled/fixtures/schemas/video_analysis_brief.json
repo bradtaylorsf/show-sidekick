@@ -1,0 +1,17 @@
+{
+  "pacing_style": "steady",
+  "promise_elements": ["clear visuals"],
+  "approved_budget_usd": 0,
+  "scenes": [
+    {
+      "scene_ref": "scene-1",
+      "subject": ["host"],
+      "subject_motion": ["pointing"],
+      "scene": ["studio"],
+      "spatial_framing": ["medium shot"],
+      "camera": ["static"],
+      "motion_type": "animated_still",
+      "flow_variance": 0.2
+    }
+  ]
+}

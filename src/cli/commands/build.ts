@@ -18,6 +18,7 @@ import {
   type RunnerOptions,
   type RunnerResult,
 } from "../../harness/index.js";
+import { createStarterSampleDispatcher } from "../../harness/starter-sample.js";
 import { resolve as resolveProjectResource } from "../../paths/project.js";
 import { loadProjectPlaybook } from "../../playbooks/project-loader.js";
 import { Registry } from "../../registry/index.js";
@@ -152,10 +153,15 @@ async function defaultReferenceResolver(input: {
 }
 
 function defaultDispatcherFactory(input: {
+  loaded: LoadedRunTarget;
   io: CliIo;
   options: StageFlagOptions;
   now?: () => Date;
 }): Dispatcher {
+  if (input.options.sample === true && usesStarterSampleDispatcher(input.loaded.pipeline)) {
+    return createStarterSampleDispatcher();
+  }
+
   return createExternalAgentDispatcher({
     now: input.now,
     emit(event) {
@@ -165,6 +171,16 @@ function defaultDispatcherFactory(input: {
       return awaitStageEvent(process.stdin, predicate);
     },
   });
+}
+
+function usesStarterSampleDispatcher(pipeline: LoadedRunTarget["pipeline"]): boolean {
+  const metadata = pipeline.metadata;
+  return (
+    typeof metadata === "object" &&
+    metadata !== null &&
+    !Array.isArray(metadata) &&
+    metadata.starter_sample_dispatcher === "zero-key"
+  );
 }
 
 function referenceValue(options: StageFlagOptions, loaded: LoadedRunTargetInput): string | undefined {

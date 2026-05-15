@@ -1,4 +1,4 @@
-import { exec, execFile } from "node:child_process";
+import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { createRequire } from "node:module";
 import type { Availability, Integration } from "./tool.js";
 
@@ -155,14 +155,45 @@ function runFile(command: string, args: string[], timeoutMs: number): Promise<Co
 function runShell(command: string, timeoutMs: number): Promise<CommandResult> {
   return new Promise((resolve) => {
     let timedOut = false;
-    const child = exec(command, (error) => {
-      resolve({ ok: error === null, timedOut });
+    let settled = false;
+    const child = spawn(command, {
+      detached: process.platform !== "win32",
+      shell: true,
+      stdio: "ignore",
     });
+
+    const finish = (ok: boolean) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timeout);
+      resolve({ ok, timedOut });
+    };
+
     const timeout = setTimeout(() => {
       timedOut = true;
-      child.kill();
+      killProcessTree(child);
     }, timeoutMs);
 
-    child.once("exit", () => clearTimeout(timeout));
+    child.once("error", () => finish(false));
+    child.once("exit", (code) => finish(code === 0 && !timedOut));
   });
+}
+
+function killProcessTree(child: ChildProcess): void {
+  if (child.pid === undefined) {
+    child.kill("SIGKILL");
+    return;
+  }
+
+  try {
+    if (process.platform === "win32") {
+      child.kill("SIGKILL");
+    } else {
+      process.kill(-child.pid, "SIGKILL");
+    }
+  } catch {
+    child.kill("SIGKILL");
+  }
 }
