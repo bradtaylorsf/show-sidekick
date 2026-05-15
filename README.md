@@ -23,6 +23,7 @@ predit export music-video/sample-episode --target premiere
 ```
 
 The full walkthrough is in [docs/quickstart.md](docs/quickstart.md), including provider setup, sample outputs, and troubleshooting.
+Demo-operator notes for validating the local CLI from a separate user project are in [docs/demo-readiness.md](docs/demo-readiness.md).
 
 ## Features
 
@@ -65,6 +66,7 @@ Common flows:
 - [AGENTS.md](AGENTS.md) - harness contributor contract for agents working in this repo
 - [CONTRIBUTING.md](CONTRIBUTING.md) - development setup and extension guide
 - [docs/quickstart.md](docs/quickstart.md) - first rendered sample from a fresh machine
+- [docs/demo-readiness.md](docs/demo-readiness.md) - local CLI demo matrix plan and provider-backed validation runbook
 - [docs/providers.md](docs/providers.md) - generated provider catalog from the registry
 - [CHANGELOG.md](CHANGELOG.md) - release notes
 - [LICENSE](LICENSE) - Apache-2.0
