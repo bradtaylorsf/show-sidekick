@@ -1,6 +1,6 @@
 # predit — Implementation Guide
 
-This document is the authoritative work plan for building `predit`. It is structured for [alpha-loop](https://github.com/bradtaylorsf/alpha-loop)'s epic-based execution model: **10 epics**, each containing batched child issues. Alpha-loop processes child issues in checklist order; batches mark groups of items that have no inter-dependencies within the batch.
+This document is the authoritative work plan for building `predit`. It is structured for [alpha-loop](https://github.com/bradtaylorsf/alpha-loop)'s epic-based execution model: **11 epics**, each containing batched child issues. Alpha-loop processes child issues in checklist order; batches mark groups of items that have no inter-dependencies within the batch.
 
 ## How to use this guide
 
@@ -28,8 +28,11 @@ Phase C — Integration (after Phase B)
   Epic 9   Runner Integration + Reference + Cost    5 issues, 2 batches
   Epic 10  User Project + Starters + Delivery      11 issues, 4 batches
 
+Phase D — Demo readiness (after Phase C)
+  Epic 11  Demo Readiness + Provider Validation     12 issues, 4 batches
+
                                                  ────────────
-                                                 116 issues
+                                                 128 issues
 ```
 
 ## Cross-epic dependency map
@@ -42,6 +45,8 @@ Phase C — Integration (after Phase B)
 | **Epic 9 (Audio integration) → Epic 4 (Audio Subsystem)** | Hard. Cuesheet must exist before Runner can orchestrate audio-led pipelines. |
 | **Epic 8 (L2P pipelines) → Epics 4–7 tool registrations** | **Soft.** L2P manifests reference tool names as strings; integration tests pass once both sides land. |
 | **Epic 10 → Epic 9** | Hard. Starters need the integrated runtime to run end-to-end. |
+| **Epic 11 → Epic 10** | Hard. Demo readiness validates the delivered CLI, starter scaffolds, exports, and user-project model from Epic 10. |
+| **Epic 11 provider demos → Epics 6–7** | Hard for paid-provider runs. OpenAI, ElevenLabs, Higgsfield, transcription, stock, and analysis tools must have stable registry entries and availability checks. |
 
 **Translation:** Foundation is the gate. After it, **Epics 2–8 run truly in parallel** (no cross-blocking). Epic 9 waits for 2, 4, 5. Epic 10 waits for 9.
 
@@ -65,6 +70,9 @@ alpha-loop run --epic 8   # Bundled Content (32 issues; run 2–3 loops concurre
 # Phase C: when Epics 2, 4, 5 are done
 alpha-loop run --epic 9   # Runner Integration
 alpha-loop run --epic 10  # Delivery
+
+# Phase D: demo-ready validation
+alpha-loop run --epic 11  # Pipeline parity + provider-backed demo matrix
 ```
 
 ## Document conventions
@@ -1649,6 +1657,193 @@ A vitest suite under `tests/content-fidelity/` greps the corresponding skill mar
   - `pnpm install && pnpm build && pnpm test` green.
   - CHANGELOG entry for v0.1.0.
   - All open pre-release-tagged issues closed or moved to post-release.
+
+---
+
+# Phase D — Demo readiness
+
+# Epic 11 — Demo Readiness + Provider Validation
+
+**Goal.** Make `predit` demo-ready as a CLI-first harness. A reviewer should be able to create a separate user project, configure OpenAI + ElevenLabs + Higgsfield, and render one representative sample for every approved bundled pipeline/starter lane while preserving the separation between the installed harness and user-owned show content.
+
+**Who benefits.** Brad and reviewers get a repeatable demo matrix that proves the production guts work outside the harness repo. Future users get a clearer mental model: install the CLI, initialize a user project, let the coding agent run production from that project.
+
+**Current baseline after PR #200.** Baseline bundled pipeline manifests are filled in and schema-tested. The nested compose-stage `final_review` regression is fixed in PR #200 commit `98fca8a`, and the zero-key `music-video` sample now produces V-9-compliant final review artifacts. Demo readiness is not complete yet: only `music-video` currently renders through `--sample` end-to-end, and several starters still need normalization, refusal, or sample-support metadata before the demo matrix can be trusted.
+
+**Impact.** This epic turns production readiness into observable evidence: pipeline taxonomy, starter correctness, provider preflight, paid-provider sample runs, export handoff, and comparison reports.
+
+**Hard dependencies.** Epic 10 (project lifecycle + starters + export), Epic 6 (video/audio generation tools), Epic 7 (analysis/specialty tools).
+
+**Status when complete.** `predit` ships an approved, documented bundled pipeline surface, show starters are no longer confused with pipeline types, every advertised starter either builds a sample or refuses early with a clear starter-aware message, paid provider preflight is clear, and a demo operator can run the matrix from a clean user project without entering the harness repo.
+
+## Batch 11.A — Pipeline taxonomy + starter correctness
+
+*Sequential.* DR-1 establishes the taxonomy guard; DR-2 audits the shipped manifests; DR-3 fixes starter bindings; DR-4 layers show starters on top.
+
+## DR-1 — Bundled pipeline inventory and taxonomy guard
+
+**Standard acceptance.**
+- [ ] Add a canonical demo-readiness inventory that classifies slugs as `core_default`, `seeded_extension`, `test_only`, or `show_starter_only`.
+- [ ] The shipped bundled manifest inventory is explicit and tested: `animated-explainer`, `animation`, `avatar-spokesperson`, `character-animation`, `cinematic`, `clip-factory`, `daily-news`, `documentary-montage`, `hybrid`, `localization-dub`, `music-video`, `news-song`, `podcast-repurpose`, `screen-demo`, `talking-head`.
+- [ ] `framework-smoke` is explicitly `test_only` and never appears as a default starter.
+- [ ] A test fails if a default starter references a missing bundled pipeline.
+- [ ] A test fails if a show-only concept such as `ww2-diary`, `thechaosfm`, `last-rev`, `rave-queen`, `gta-political`, or `aint-no-crowns` is added as a bundled pipeline type.
+- [ ] The taxonomy test is wired into the bundled pipeline/starter test suite so future agent runs cannot silently regress it.
+
+**Cross-references.** `specs/05-pipelines.md`, `specs/10-installation-and-user-projects.md`, `docs/demo-readiness.md`.
+
+## DR-2 — Audit shipped pipeline manifests and director skills
+
+PR #200 filled in the baseline bundled manifests. This issue is now a cleanup/audit pass to make sure the shipped manifests, director skills, fixtures, and CLI listing behavior are production-ready.
+
+**Standard acceptance.**
+- [ ] Every bundled manifest validates with `PipelineManifestSchema`.
+- [ ] Every bundled stage resolves its required director skill from a freshly initialized user project.
+- [ ] Every pipeline skill set includes the required fixture/audit strings expected by the test suite.
+- [ ] Each stage has clear `required_artifacts_in`, `produces`, `review_focus`, `success_criteria`, `estimated_cost`, and `human_approval` semantics.
+- [ ] Stage directors are predit-native Markdown and do not refer to sibling-repo paths, private migration folders, or harness-private project folders.
+- [ ] `predit ls pipelines --json` lists the approved bundled pipeline inventory from a freshly initialized user project.
+
+**Cross-references.** `specs/05-pipelines.md`, `specs/08-skills.md`, DR-1.
+
+## DR-3 — Normalize or refuse default starter pipeline slugs
+
+Known cleanup targets:
+- `documentary` currently points at missing pipeline `documentary`; decide whether it should use `documentary-montage` or be removed/refused until redesigned.
+- `product-demo` currently points at missing pipeline `product-demo`; decide whether it should use `screen-demo`, `hybrid`, or be removed/refused until redesigned.
+- `ww2-diary` currently points at missing pipeline `ww2-diary`; keep it as a show starter on a real pipeline, likely `cinematic`, or refuse/remove until that decision is implemented.
+- `ai-workflow-demo`, `animated-explainer`, and `cinematic-trailer` still list `pending_pipelines` entries even though their target manifests now ship.
+
+**Standard acceptance.**
+- [ ] All default bundled starters reference existing bundled pipeline slugs.
+- [ ] Broken starters are either fixed, removed from the bundled default set, or refused at `predit init --starter` with a clear message naming the missing/undecided pipeline binding.
+- [ ] Remove `pending_pipelines` as an acceptable escape hatch for default bundled starters.
+- [ ] Clear stale `pending_pipelines` entries for `ai-workflow-demo`, `animated-explainer`, and `cinematic-trailer`.
+- [ ] Starter README files distinguish starter name from pipeline slug.
+- [ ] `predit ls starters --json` reports real pipeline keys and sample support status for every bundled starter.
+
+**Cross-references.** `specs/04-shows-and-episodes.md`, `specs/10-installation-and-user-projects.md`, DR-1.
+
+## DR-4 — Recast show concepts as show/playbook starters
+
+**Standard acceptance.**
+- [ ] `ww2-diary` is a show starter that uses `cinematic`, not a pipeline.
+- [ ] `thechaosfm` is a branded show starter that uses `news-song` or `music-video` plus `thechaosfm-gta-political`, not a default pipeline type.
+- [ ] Last Rev workflows are demo/show starters on `animated-explainer` or `screen-demo`, not new pipeline types.
+- [ ] Rave Queen is a demo/show starter on `cinematic` or `animation`, with the decision recorded in the starter README.
+- [ ] TheChaosFM/Ain't No Crowns benchmark metadata is documented as a show-level reference: 16:9, no captions, source-free, OpenAI image generation, Higgsfield/Kling clips, HyperFrames target.
+- [ ] The taxonomy guard from DR-1 fails if these show-only slugs appear under `bundled/pipelines/`.
+
+**Cross-references.** `specs/04-shows-and-episodes.md`, `docs/demo-readiness.md`.
+
+## Batch 11.B — Provider-backed production lane
+
+*Parallel-safe after DR-1.* These issues make OpenAI + ElevenLabs + Higgsfield a coherent first paid-provider profile.
+
+## DR-5 — Paid demo provider profile and preflight
+
+**Standard acceptance.**
+- [ ] Add a documented provider profile named `paid-demo` for OpenAI image/TTS, ElevenLabs TTS, Higgsfield image-to-video, and ffmpeg local assembly.
+- [ ] Replace the `doctor` stub with a real preflight command.
+- [ ] `predit doctor` clearly reports availability for `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`, `higgsfield` binary, `higgsfield whoami`, `ffmpeg`, and `ffprobe`.
+- [ ] Missing credentials produce setup instructions, not stack traces.
+- [ ] Provider profile selection is recorded in `decision_log` with rejected alternatives.
+- [ ] Paid-provider sample runs emit announce blocks before every non-zero-cost generation call.
+
+**Cross-references.** `specs/06-tool-registry.md`, `specs/15-announce-and-escalate.md`, `docs/providers.md`.
+
+## DR-6 — Tool compatibility aliases and availability fixes
+
+**Standard acceptance.**
+- [ ] Add compatibility aliases or manifest rewrites for legacy tool names: `higgsfield_video`, `direct_clip_search`, `remotion_caption_burn`, `character_spec_generator`, `pose_library_builder`, `svg_rig_builder`, `character_rig_renderer`, `character_animation_reviewer`, `action_timeline_compiler`.
+- [ ] `node:*` and global-runtime integrations such as `node:fetch` do not fail `require.resolve` based availability checks.
+- [ ] Registry tests cover alias lookup, capability lookup, and unavailable-provider messaging.
+- [ ] No bundled manifest references an unregistered tool name after alias resolution.
+- [ ] Tool `agent_skills` references resolve to bundled skills or are intentionally removed. Known gaps include OpenAI image guidance, Recraft image guidance, stock image/video guidance, and attribution guidance.
+
+**Cross-references.** `specs/06-tool-registry.md`.
+
+## DR-7 — Paid and sample mode through Runner
+
+Current baseline:
+- `music-video` has a working zero-key `--sample` path.
+- `news-song`, `thechaosfm`, `animated-explainer`, `cinematic-trailer`, and `ai-workflow-demo` currently fall through to external-agent stages and fail cleanly under `</dev/null` with no render.
+- `documentary`, `product-demo`, and `ww2-diary` currently fail at pipeline load until DR-3 normalizes or refuses them.
+
+**Standard acceptance.**
+- [ ] `predit build <show>/<episode> --sample` can opt into paid providers through documented show/episode/provider config without bypassing the Runner.
+- [ ] Every advertised bundled demo starter either produces a sample render or reports `sample_support: unsupported` with a useful CLI message.
+- [ ] Sample mode limits duration, scene count, and cost for each pipeline family.
+- [ ] OpenAI image generation writes asset files and cost entries.
+- [ ] ElevenLabs TTS writes narration/audio files and cost entries.
+- [ ] Higgsfield CLI image-to-video writes clip files, caches repeated prompts/inputs, and cost entries.
+- [ ] A failed paid-provider call leaves the stage checkpoint inspectable and resumable.
+- [ ] The nested `final_review` regression test added in PR #200 remains green so sample renders are actually reviewed.
+
+**Cross-references.** `specs/12-checkpoint-protocol.md`, `specs/14-decision-log.md`, DR-3.
+
+## Batch 11.C — Demo matrix + verification
+
+*Parallel-safe after DR-2 and DR-3.* These issues prove each pipeline type can produce something inspectable.
+
+## DR-8 — Demo briefs for every approved demo lane
+
+**Standard acceptance.**
+- [ ] Add one sample brief/input folder for each approved demo lane from DR-1 and DR-3.
+- [ ] Demo briefs use fresh content while preserving each format's structure.
+- [ ] Each brief declares expected aspect ratio, duration target, provider profile, runtime, master clock, and export target.
+- [ ] Audio-led demos include a real or synthetic track/lyrics fixture; narration-led demos include script or narration inputs; screen demos include synthetic terminal or screenshot fixtures.
+- [ ] Demo fixture licensing is documented; no private generated media is committed unless explicitly approved.
+
+**Cross-references.** `specs/04-shows-and-episodes.md`, `specs/10-installation-and-user-projects.md`.
+
+## DR-9 — CLI demo matrix runner
+
+**Standard acceptance.**
+- [ ] Add a harness-maintainer script that creates a fresh user project outside the repo, runs the installed or local `predit` CLI, initializes each starter/show, and runs `build --sample`.
+- [ ] The runner accepts `--zero-key`, `--paid-demo`, `--only <slug>`, `--keep-workdir`, and `--json`.
+- [ ] The runner never writes generated demo outputs into the harness repo.
+- [ ] The runner records the exact CLI path/version, provider profile, env availability, and working directory for each run.
+- [ ] Failures are summarized per pipeline with the failed command, exit code, last event, and artifact paths.
+
+**Cross-references.** `specs/03-cli.md`, `specs/10-installation-and-user-projects.md`.
+
+## DR-10 — Render artifact verification and export checks
+
+**Standard acceptance.**
+- [ ] Every demo run verifies `render_report`, `asset_manifest`, `edit_decisions`, `cost_log`, and `decision_log` where the pipeline is expected to produce them.
+- [ ] `ffprobe` validates rendered duration, resolution, frame rate, and audio presence according to each demo brief.
+- [ ] The runner exports Premiere XML and EDL for every completed sample.
+- [ ] A contact sheet or frame sample summary is generated for visual review.
+- [ ] Verification results are written as a single JSON report that can be attached to a PR or issue.
+
+**Cross-references.** `specs/09-export.md`, `specs/17-self-review-of-output.md`.
+
+## Batch 11.D — Comparison + operator docs
+
+*Parallel-safe after DR-9.* These issues make the demo useful for review rather than just green/red CI.
+
+## DR-11 — Baseline comparison report
+
+**Standard acceptance.**
+- [ ] Add a comparison report template for running equivalent inputs through the reference baseline and `predit`.
+- [ ] The report captures pipeline slug, provider choices, stage artifacts, render duration, cost, runtime, export outputs, and reviewer findings.
+- [ ] Differences are categorized as migration bug, intentional CLI-model difference, provider drift, or creative variance.
+- [ ] The Ain't No Crowns reference is documented as a TheChaosFM show benchmark, not a default pipeline benchmark.
+- [ ] The report can be filled from the demo matrix JSON plus manual notes from baseline runs.
+
+**Cross-references.** `docs/demo-readiness.md`.
+
+## DR-12 — CLI operator guide for agents and reviewers
+
+**Standard acceptance.**
+- [ ] `docs/demo-readiness.md` explains the legacy in-repo run model versus the `predit` CLI/user-project model without requiring operators to work inside the harness repo.
+- [ ] The guide includes verified commands for local development without publishing: build the harness, run `dist/cli/index.js` from a separate folder, initialize a starter, build a sample, and export it.
+- [ ] The guide includes provider setup for OpenAI, ElevenLabs, and Higgsfield without storing credentials in the repo.
+- [ ] The guide states current expected green paths and known blockers for the full demo matrix.
+- [ ] The user-project `AGENTS.md` template points agents toward this model without encouraging edits inside `.predit/`.
+
+**Cross-references.** `specs/10-installation-and-user-projects.md`, `bundled/templates/user-project/AGENTS.md`.
 
 ---
 
