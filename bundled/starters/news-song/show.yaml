@@ -24,5 +24,3 @@ ingest:
 starter:
   fixture_size_bytes: 120225
   expected_sample_duration_s: 15
-  pending_pipelines:
-    - news-song

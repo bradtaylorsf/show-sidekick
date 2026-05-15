@@ -1,0 +1,332 @@
+slug: news-song
+display_name: News Song
+description: "Audio-led political news-song pipeline for Brad's primary workflow: lyric-timed music, real source screenshots when sourced, PS2-era generated lyric art, source flyout evidence, and HyperFrames-aware rough cuts."
+status: production
+master_clock: audio
+stage_order: manifest
+default_checkpoint_policy: guided
+defaults:
+  aspect: "16:9"
+  canvas: "1920×1080 landscape (16:9) master with 1080×1920 vertical derivative"
+  duration_strategy: track_length
+  max_scene_duration_s: 5.0
+  render_runtime: hyperframes
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/news-song/executive-producer.md
+  - pipelines/news-song/cuesheet-director.md
+  - pipelines/news-song/source-review-director.md
+  - pipelines/news-song/idea-director.md
+  - pipelines/news-song/script-director.md
+  - pipelines/news-song/scene-director.md
+  - pipelines/news-song/capture-director.md
+  - pipelines/news-song/asset-director.md
+  - pipelines/news-song/edit-director.md
+  - pipelines/news-song/compose-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+  - meta/sample-first
+  - meta/announce-and-escalate
+  - core/hyperframes
+  - agents/higgsfield-generate
+  - agents/playwright-recording
+compatible_playbooks:
+  recommended:
+    - news-song
+  also_works:
+    - news-song-protest
+    - thechaosfm-gta-political
+    - ps2-dystopian-news-rap
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/news-song/executive-producer.md
+  budget_default_usd: 5
+  max_revisions_per_stage: 3
+  max_send_backs: 3
+  max_wall_time_minutes: 45
+sample:
+  duration_s_min: 15
+  duration_s_max: 20
+  hint: "Build a 15-20 sec no-caption PS2 sample before committing to full source capture, image generation, or motion work."
+metadata:
+  default_playbook: news-song
+  caption_mode_default: none
+  source_asset_provider: playwright_recording
+  lyric_asset_provider: image_generation
+  reviewer_type_separation_rule: "scene_kind: news-screenshot MUST reference assets with provider = playwright_recording; scene_kind: lyric-art MUST reference image-gen tool assets. Mismatch is a critical violation (fake-news protection)."
+  content_modes:
+    sourced-political-news-song:
+      requires_sources: true
+      source_file: sources.yaml
+      screenshot_provider: playwright_recording
+      scene_kinds: [news-screenshot, lyric-art]
+    source-free-protest-music-video:
+      requires_sources: false
+      source_file: null
+      screenshot_provider: null
+      scene_kinds: [lyric-art]
+export:
+  supported_targets: [premiere, davinci, capcut, edl]
+  default_target: premiere
+  notes: |
+    Export packages include cuesheet, source review, real screenshot capture manifest when sourced, lyric-art asset manifest, source flyout timing, edit decisions, render output, and NLE handoff metadata.
+stages:
+  - slug: cuesheet
+    skill: pipelines/news-song/cuesheet-director.md
+    produces: cuesheet
+    produces_artifacts:
+      - cuesheet
+    audio_sync: build
+    tools_available:
+      - whisper
+      - aubio
+      - audio_energy
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+    review_focus:
+      - Whisper word timestamps are available even when captions are disabled
+      - Beat grid, downbeats, and section labels support a 15-20 sec no-caption PS2 sample
+      - Source flyout timing can anchor to words, beats, or downbeats
+    success_criteria:
+      - Schema-valid cuesheet artifact
+      - Word timestamps and beats are present
+  - slug: source_review
+    skill: pipelines/news-song/source-review-director.md
+    produces: source_media_review
+    produces_artifacts:
+      - source_media_review
+    required_artifacts_in:
+      - cuesheet
+    tools_available:
+      - source_media_review
+      - transcriber
+      - audio_energy
+      - web_search
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0.25, comment: "Source verification and concept review only; no generation." }
+    review_focus:
+      - content_mode is one of sourced-political-news-song or source-free-protest-music-video
+      - sourced-political-news-song has deep source URLs ready for capture
+      - source-free-protest-music-video does not invent sources or fake article pages
+    success_criteria:
+      - Schema-valid source_media_review artifact
+      - Content mode and timing source are named
+  - slug: idea
+    skill: pipelines/news-song/idea-director.md
+    produces: brief
+    produces_artifacts:
+      - brief
+      - decision_log
+    required_artifacts_in:
+      - cuesheet
+      - source_media_review
+    tools_available:
+      - web_search
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0.25, comment: "Reference and source-mode review only; no generation." }
+    review_focus:
+      - Content mode is locked before writing lyrics or source flyouts
+      - Sample-first requirement is visible for estimates over $1 or 15 min
+      - Canvas is 16:9 master with vertical derivative
+    success_criteria:
+      - Schema-valid brief artifact
+      - Content mode, canvas, and sample-first decision are locked
+  - slug: script
+    skill: pipelines/news-song/script-director.md
+    produces: script
+    produces_artifacts:
+      - script
+    required_artifacts_in:
+      - brief
+      - cuesheet
+      - source_media_review
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+    review_focus:
+      - Lyrics, source flyouts, and no-caption beats cite cuesheet timing
+      - sourced-political-news-song only attributes real sources
+      - source-free-protest-music-video does not imply factual source backing
+    success_criteria:
+      - Schema-valid script artifact
+      - Script sections cite word, beat, or downbeat timing anchors
+  - slug: scene_plan
+    skill: pipelines/news-song/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - script
+      - cuesheet
+    optional_artifacts_in:
+      - brief
+      - source_media_review
+    audio_sync: required
+    tools_available:
+      - image_generation
+      - image_to_video
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+    review_focus:
+      - Every scene is anchored to beats, sections, or word timestamps
+      - news-screenshot scenes are used only for real source evidence
+      - lyric-art scenes are generated PS2 metaphor or protest visuals
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - All scenes are <= 5.0 seconds
+  - slug: capture
+    skill: pipelines/news-song/capture-director.md
+    produces: capture_manifest
+    produces_artifacts:
+      - capture_manifest
+    required_artifacts_in:
+      - scene_plan
+    optional_artifacts_in:
+      - source_media_review
+      - script
+      - brief
+    required_tools:
+      - playwright_recording
+    tools_available:
+      - playwright_recording
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+    review_focus:
+      - sourced-political-news-song captures real publisher screenshots through playwright_recording
+      - source-free-protest-music-video writes a skipped/no-op capture manifest
+      - News screenshots are real, not generated. Mixing these creates fake-news content; do not do it.
+    success_criteria:
+      - Schema-valid capture_manifest artifact
+      - All sourced screenshots reference real captured files or quality flags
+  - slug: assets
+    skill: pipelines/news-song/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - scene_plan
+    optional_artifacts_in:
+      - capture_manifest
+      - brief
+      - script
+      - cuesheet
+    optional_tools:
+      - image_generation
+      - image_to_video
+      - image_hosting
+      - clip_cache
+    tools_available:
+      - image_generation
+      - image_to_video
+      - image_hosting
+      - clip_cache
+    sample_mode_supported: true
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    estimated_cost:
+      sample: { usd: 1, comment: "15-20 sec no-caption PS2 sample: a few lyric-art plates and optional hero motion." }
+      full: { usd: 5, comment: "Full run uses real screenshot capture plus generated PS2 lyric-art and selected image-to-video clips." }
+    review_focus:
+      - "scene_kind: news-screenshot MUST reference assets with provider = playwright_recording; scene_kind: lyric-art MUST reference image-gen tool assets. Mismatch is a critical violation (fake-news protection)."
+      - PS2 prompt modules preserve low-poly, compressed texture, and polygon-edge treatment
+      - No-caption sample keeps lyrics off-screen while source flyouts remain timed
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - All referenced screenshot assets are real captures and all lyric-art assets are generated art tasks
+  - slug: edit
+    skill: pipelines/news-song/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - scene_plan
+      - asset_manifest
+      - cuesheet
+    optional_artifacts_in:
+      - capture_manifest
+      - script
+      - brief
+    tools_available:
+      - subtitle_gen
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+    review_focus:
+      - Source flyout HUD timing follows word, beat, or downbeat anchors
+      - Long holds over 5.0 seconds are split into quick cuts
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - No-caption sample keeps caption_mode none unless explicitly approved
+  - slug: compose
+    skill: pipelines/news-song/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+      - cuesheet
+    optional_artifacts_in:
+      - capture_manifest
+      - scene_plan
+      - script
+      - brief
+    required_tools:
+      - video_compose
+    optional_tools:
+      - audio_mixer
+      - subtitle_gen
+      - hyperframes_compose
+    tools_available:
+      - video_compose
+      - audio_mixer
+      - subtitle_gen
+      - hyperframes_compose
+    requires_runtime: any
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+    review_focus:
+      - 15-20 sec no-caption PS2 sample renders without lyric captions
+      - Runtime matches the locked decision
+      - Real news screenshots and generated lyric-art remain separated
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output files exist and pass ffprobe validation
