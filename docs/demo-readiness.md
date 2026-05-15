@@ -54,7 +54,7 @@ Expected local outputs:
 
 ## Provider Setup Without Storing Credentials In The Repo
 
-The zero-key `animated-explainer` sample can run without provider credentials. Its renderer turns the starter script lines into narrated animated cards, so agent-guided onboarding can personalize the first artifact before any paid calls. Paid demo lanes use the `paid-demo` provider profile described in [Provider Profiles](provider-profiles.md).
+The zero-key `animated-explainer` sample can run without provider credentials. Its renderer turns the starter script lines into narrated procedural Remotion motion-graphics scenes and writes the voiceover cuesheet needed for export, so agent-guided onboarding can personalize the first artifact before any paid calls. Paid demo lanes use the `paid-demo` provider profile described in [Provider Profiles](provider-profiles.md).
 
 Use environment variables and provider CLIs. Do not store credentials in `show.yaml`, `episode.yaml`, `.predit/`, starter files, committed docs, or generated artifacts.
 

@@ -164,9 +164,11 @@ function remotionEntrySource(
   const audioSource = audioPath ? mediaSrc(audioPath, projectRoot, media) : undefined;
   const props = {
     fps: input.fps,
+    animationFirst: input.edit_decisions.renderer_family === "animation-first",
     cuts: input.edit_decisions.cuts.map((cut, index) => {
       const asset = assets.get(cut.asset_id);
       const source = asset?.path ? mediaSrc(asset.path, projectRoot, media) : undefined;
+      const card = starterCardCopy(asset?.prompt ?? cut.asset_id);
       return {
         index,
         startFrame: Math.round(cut.start_s * input.fps),
@@ -175,6 +177,9 @@ function remotionEntrySource(
         useStaticFile: source?.useStaticFile ?? false,
         kind: asset?.kind ?? "video",
         label: asset?.prompt ?? cut.asset_id,
+        eyebrow: card.eyebrow,
+        title: card.title,
+        body: card.body,
       };
     }),
     audioSrc: audioSource?.src,
@@ -196,6 +201,10 @@ function mediaUrl(src, useStaticFile) {
 function Scene({ cut, total }) {
   const frame = useCurrentFrame();
   const progress = interpolate(frame, [0, Math.max(1, cut.durationFrames - 1)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  if (props.animationFirst) {
+    return <AnimatedExplainerScene cut={cut} total={total} progress={progress} frame={frame} />;
+  }
+
   const scale = 1.02 + progress * (cut.index % 2 === 0 ? 0.08 : 0.04);
   const x = (cut.index % 2 === 0 ? -1 : 1) * progress * 36;
   const y = Math.sin(progress * Math.PI) * -18;
@@ -242,6 +251,207 @@ function Scene({ cut, total }) {
   );
 }
 
+const accents = ["#ffd666", "#3fdcff", "#ff67a6", "#7affa9"];
+const darks = ["#111827", "#071625", "#200b1a", "#072018"];
+
+function AnimatedExplainerScene({ cut, total, progress, frame }) {
+  const accent = accents[cut.index % accents.length];
+  const dark = darks[cut.index % darks.length];
+  const entrance = interpolate(frame, [0, 18], [40, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const fade = interpolate(frame, [0, 12, Math.max(18, cut.durationFrames - 14), cut.durationFrames], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const titleSize = cut.title.length > 34 ? 56 : cut.title.length > 24 ? 64 : 72;
+  const bodySize = cut.body.length > 145 ? 31 : cut.body.length > 105 ? 35 : cut.body.length > 70 ? 40 : 45;
+  const sweep = Math.round(progress * 520);
+  const orbit = Math.sin(progress * Math.PI * 2 + cut.index) * 28;
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: dark, overflow: "hidden", fontFamily: "Inter, Arial, sans-serif" }}>
+      <AbsoluteFill style={{
+        background: "radial-gradient(circle at " + (24 + progress * 45) + "% 18%, " + accent + "55, transparent 31%), linear-gradient(135deg, " + dark + ", #050914 72%)",
+      }} />
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        opacity: 0.22,
+        backgroundImage: "linear-gradient(" + accent + " 1px, transparent 1px), linear-gradient(90deg, " + accent + " 1px, transparent 1px)",
+        backgroundSize: "64px 64px",
+        transform: "translateX(" + (-sweep % 64) + "px) translateY(" + ((sweep / 2) % 64) + "px)",
+      }} />
+      <div style={{
+        position: "absolute",
+        left: 72,
+        right: 72,
+        top: 74,
+        height: 10,
+        background: "rgba(255,255,255,0.14)",
+      }}>
+        <div style={{ width: ((cut.index + progress) / total) * 100 + "%", height: "100%", background: accent }} />
+      </div>
+      <div style={{
+        position: "absolute",
+        right: 72,
+        top: 112,
+        color: accent,
+        fontSize: 26,
+        fontWeight: 800,
+        letterSpacing: 0,
+      }}>BEAT {cut.index + 1} / {total}</div>
+      <div style={{
+        position: "absolute",
+        left: 72,
+        top: 136,
+        color: accent,
+        fontSize: 29,
+        fontWeight: 900,
+        letterSpacing: 0,
+        opacity: fade,
+        transform: "translateY(" + entrance + "px)",
+      }}>{cut.eyebrow}</div>
+      <div style={{
+        position: "absolute",
+        left: 72,
+        top: 198,
+        right: 72,
+        color: "white",
+        fontSize: titleSize,
+        lineHeight: 1.02,
+        fontWeight: 950,
+        opacity: fade,
+        transform: "translateY(" + entrance + "px)",
+      }}>{cut.title}</div>
+      <div style={{
+        position: "absolute",
+        left: 72,
+        right: 72,
+        top: 438,
+        color: "#edf5ff",
+        fontSize: bodySize,
+        lineHeight: 1.18,
+        fontWeight: 620,
+        opacity: fade,
+        transform: "translateY(" + (entrance * 0.7) + "px)",
+      }}>{cut.body}</div>
+      <MotionDiagram cut={cut} progress={progress} accent={accent} orbit={orbit} />
+    </AbsoluteFill>
+  );
+}
+
+function MotionDiagram({ cut, progress, accent, orbit }) {
+  if (cut.index === 0) {
+    return <CommandFlow progress={progress} accent={accent} />;
+  }
+  if (cut.index === 1) {
+    return <PersonalUseCase progress={progress} accent={accent} orbit={orbit} />;
+  }
+  if (cut.index === 2) {
+    return <PipelineFlow progress={progress} accent={accent} />;
+  }
+  return <NextStep progress={progress} accent={accent} />;
+}
+
+function CommandFlow({ progress, accent }) {
+  const labels = ["init", "script", "render"];
+  return (
+    <div style={{ position: "absolute", left: 84, right: 84, bottom: 150, height: 230 }}>
+      {labels.map((label, index) => {
+        const local = interpolate(progress, [index * 0.18, index * 0.18 + 0.22], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+        return (
+          <div key={label} style={{
+            position: "absolute",
+            left: index * 310,
+            top: 52 + Math.sin(progress * Math.PI * 2 + index) * 12,
+            width: 238,
+            height: 108,
+            border: "3px solid " + accent,
+            background: "rgba(5,9,20,0.72)",
+            color: "white",
+            fontSize: 38,
+            fontWeight: 900,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: local,
+            transform: "scale(" + (0.84 + local * 0.16) + ")",
+          }}>{label}</div>
+        );
+      })}
+      <div style={{ position: "absolute", left: 220, top: 102, width: 560 * progress, height: 5, background: accent }} />
+    </div>
+  );
+}
+
+function PersonalUseCase({ progress, accent, orbit }) {
+  return (
+    <div style={{ position: "absolute", left: 92, right: 92, bottom: 120, height: 280 }}>
+      {[0, 1, 2].map((item) => (
+        <div key={item} style={{
+          position: "absolute",
+          left: 90 + item * 230 + orbit * (item - 1),
+          top: 62 + Math.sin(progress * Math.PI * 2 + item) * 30,
+          width: 132,
+          height: 132,
+          borderRadius: 66,
+          background: item === 1 ? accent : "rgba(255,255,255,0.12)",
+          border: "3px solid " + accent,
+          transform: "scale(" + (0.72 + progress * 0.28) + ")",
+        }} />
+      ))}
+      <div style={{ position: "absolute", left: 190, top: 124, width: 430, height: 6, background: accent, transform: "scaleX(" + progress + ")", transformOrigin: "left" }} />
+      <div style={{ position: "absolute", left: 182, top: 210, color: "white", fontSize: 30, fontWeight: 800 }}>user context to useful video</div>
+    </div>
+  );
+}
+
+function PipelineFlow({ progress, accent }) {
+  const steps = ["show", "episode", "assets", "review"];
+  return (
+    <div style={{ position: "absolute", left: 90, right: 90, bottom: 130, height: 290 }}>
+      {steps.map((step, index) => (
+        <div key={step} style={{
+          position: "absolute",
+          left: (index % 2) * 480,
+          top: Math.floor(index / 2) * 122,
+          width: 350,
+          height: 86,
+          background: "rgba(255,255,255,0.1)",
+          borderLeft: "9px solid " + accent,
+          color: "white",
+          fontSize: 34,
+          fontWeight: 900,
+          padding: "22px 28px",
+          opacity: interpolate(progress, [index * 0.12, index * 0.12 + 0.18], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+          transform: "translateX(" + (26 - progress * 26) + "px)",
+        }}>{step}</div>
+      ))}
+    </div>
+  );
+}
+
+function NextStep({ progress, accent }) {
+  return (
+    <div style={{ position: "absolute", left: 92, right: 92, bottom: 142, height: 270 }}>
+      <div style={{
+        position: "absolute",
+        left: 0,
+        top: 36,
+        width: 420 + progress * 360,
+        height: 92,
+        background: accent,
+      }} />
+      <div style={{
+        position: "absolute",
+        right: 0,
+        top: 0,
+        width: 250,
+        height: 250,
+        border: "8px solid white",
+        transform: "rotate(" + (45 + progress * 90) + "deg)",
+      }} />
+      <div style={{ position: "absolute", left: 28, top: 54, color: "#07111f", fontSize: 42, fontWeight: 950 }}>ready to iterate</div>
+    </div>
+  );
+}
+
 function PreditSample({ cuts, audioSrc }) {
   return (
     <AbsoluteFill style={{ backgroundColor: "#0b1020" }}>
@@ -269,6 +479,27 @@ export const RemotionRoot = () => (
 registerRoot(RemotionRoot);
 export default RemotionRoot;
 `;
+}
+
+function starterCardCopy(value: string): { eyebrow: string; title: string; body: string } {
+  const cleaned = value.replace(/^Generated deterministic zero-key idea card:\s*/iu, "");
+  const parts = cleaned.split("|").map((part) => part.trim()).filter(Boolean);
+
+  if (parts.length >= 3) {
+    return {
+      eyebrow: parts[0] ?? "NO-KEY FIRST VIDEO",
+      title: parts[1] ?? "Animated First Video",
+      body: parts.slice(2).join(" | "),
+    };
+  }
+
+  const fallbackTitle = parts[0] ?? cleaned.slice(0, 56);
+
+  return {
+    eyebrow: "NO-KEY FIRST VIDEO",
+    title: fallbackTitle || "Animated First Video",
+    body: parts[1] ?? cleaned,
+  };
 }
 
 type RemotionMediaSource = {

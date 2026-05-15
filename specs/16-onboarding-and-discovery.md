@@ -145,10 +145,10 @@ Protocol:
 2. Use only safe context the user has shared in the current session or project. Do not infer sensitive personal attributes or reveal private facts.
 3. Offer exactly three concrete video ideas the current setup can produce.
 4. If the user asked the agent to proceed, pick the strongest idea and use the `animated-explainer` starter because it has the zero-key narrated motion-graphics renderer.
-5. Write four short narrated-card lines to `shows/<show>/inputs/sample-episode/script.txt`: tailored hook, personal-use beat, predit workflow beat, next step. Keep `duration_s: 30`.
+5. Write four short narrated scene lines to `shows/<show>/inputs/sample-episode/script.txt`: tailored hook, personal-use beat, predit workflow beat, next step. Keep `duration_s: 30`.
 6. Run `predit build <show>/sample-episode --sample` without a paid provider profile, then export an editor handoff.
 
-The zero-key renderer turns the script lines into multiple procedural cards, generates local narration when a free local TTS path is available, and uses Remotion when installed. This keeps the first artifact free while making it feel specific to the operator.
+The zero-key renderer turns the script lines into multiple procedural motion-graphics scenes with visible layout animation, generates local narration when a free local TTS path is available, emits a voiceover cuesheet for export, and uses Remotion when installed. This keeps the first artifact free while making it feel specific to the operator.
 
 ### 6. Workflow summary (2–3 sentences)
 
@@ -191,4 +191,4 @@ Suggest the personalized zero-key animated explainer first. If the user explicit
 - **Don't apologize for missing capabilities.** Frame as "here's what you have" and optionally "here's a quick upgrade." Never "unfortunately you don't have..."
 - **Don't skip orientation when the user is uncertain.** 30 seconds of orientation saves 10 minutes of confusion.
 - **Don't suggest prompts that need tools the user doesn't have.** Every prompt must be achievable with the current setup.
-- **Don't render a generic first-video smoke sample for agent-guided onboarding.** Use safe user/project context to personalize the zero-key script cards.
+- **Don't render a generic first-video smoke sample for agent-guided onboarding.** Use safe user/project context to personalize the zero-key script scenes.

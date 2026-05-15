@@ -8,7 +8,7 @@ This walks a fresh machine from install to a 30-second personalized no-key anima
 - pnpm 9 or newer
 - `ffmpeg` on `PATH` for local media work
 
-The bundled `animated-explainer` starter sample is zero-key: it does not require API credentials. Its sample renderer turns the starter script lines into narrated animated cards, uses local TTS when available, and renders with Remotion when runtime setup is present. See [providers.md](providers.md) when you want to unlock paid image, premium TTS, music, or video generation for custom episodes.
+The bundled `animated-explainer` starter sample is zero-key: it does not require API credentials. Its sample renderer turns the starter script lines into narrated procedural motion-graphics scenes, uses local TTS when available, and renders with Remotion when runtime setup is present. See [providers.md](providers.md) when you want to unlock paid image, premium TTS, music, or video generation for custom episodes.
 
 ```bash
 node --version
@@ -42,7 +42,7 @@ Read AGENTS.md and .predit/skills/meta/onboarding.md. Ask me what I do, suggest 
 
 The agent contract tells Codex, Claude, or another agent to refresh/check `.predit/`, run `predit doctor --profile paid-demo`, explain available providers and runtimes, ask what you do, suggest three first-video ideas from safe project/session context, ask before paid generation, and record issues under `projects/<show>/<episode>/notes.md`.
 
-For the fastest no-key first video, the agent should scaffold the `animated-explainer` starter and rewrite `shows/<show>/inputs/sample-episode/script.txt` into four short narrated card lines: a tailored hook, a personal-use beat, a predit workflow beat, and the next step. Then `predit build <show>/sample-episode --sample` renders a free animated explainer that the user can inspect before adding paid providers.
+For the fastest no-key first video, the agent should scaffold the `animated-explainer` starter and rewrite `shows/<show>/inputs/sample-episode/script.txt` into four short narrated scene lines: a tailored hook, a personal-use beat, a predit workflow beat, and the next step. Then `predit build <show>/sample-episode --sample` renders a free animated explainer that the user can inspect before adding paid providers.
 
 The starter creates `shows/animated-explainer/` with:
 
@@ -82,8 +82,9 @@ Outputs and runtime state land under:
 projects/animated-explainer/sample-episode/
 ```
 
-That workspace holds checkpoints, generated assets, cost logs, decisions, and renders for the episode. The starter sample is designed as a short narrated motion-graphics explainer from the script-card fixture.
+That workspace holds checkpoints, generated assets, cost logs, decisions, cuesheets, and renders for the episode. The starter sample is designed as a short narrated motion-graphics explainer from the script fixture.
 The compose stage writes `projects/animated-explainer/sample-episode/renders/sample-preview.mp4`.
+The sample also writes `projects/animated-explainer/sample-episode/cuesheet.json` so captions and editor exports have voiceover timing without a separate repair step.
 
 ## Export for Editing
 
@@ -101,6 +102,8 @@ predit export animated-explainer/sample-episode --target edl
 
 Exports are written under `exports/` by default, and each export records `projects/animated-explainer/sample-episode/publish_log.json`.
 If the package already exists, re-run with `--overwrite`.
+
+If an older or custom voiceover episode is missing `cuesheet.json`, run `predit cuesheet <show>/<episode>` after a completed render. When there is no `episode.inputs.track`, the command derives a voiceover cuesheet from `script.json`, `scene_plan.json`, `edit_decisions.json`, and `render_report.json`.
 
 The generated `.gitignore` excludes `projects/`, `exports/`, `renders/`, `output/`, `outputs/`, `.predit/`, `.env`, and bulky local media folders. Commit `shows/`, `pipelines/`, `playbooks/`, `skills/`, and `.env.example` when you want to share the workflow without generated video assets or credentials.
 When another machine or agent clones the project, the first predit command restores the gitignored `.predit/` cache from the installed harness before running.

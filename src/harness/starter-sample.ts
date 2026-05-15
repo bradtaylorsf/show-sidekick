@@ -1,6 +1,7 @@
 import { execFile, spawn } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { CuesheetSchema, writeCuesheet } from "../artifacts/cuesheet.js";
 import type { CostEntry } from "../artifacts/cost-log.js";
 import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { RenderReport, RenderRuntime } from "../artifacts/index.js";
@@ -24,6 +25,8 @@ type StarterSampleArtifactSet = {
   render_report: unknown;
   publish_log: unknown;
   render_runtime: RenderRuntime;
+  narration_provider: StarterNarration["provider"] | "none";
+  music_present: boolean;
 };
 
 const SAMPLE_WIDTH = 540;
@@ -68,7 +71,7 @@ export function createStarterSampleDispatcher(): Dispatcher {
         budget_remaining_usd: ctx.runOptions.budget_usd ?? 0,
       },
       cost_entries: [zeroCostEntry(ctx)],
-      decisions: stageDecisions(ctx, artifacts.render_runtime),
+      decisions: stageDecisions(ctx, artifacts),
     };
   };
 }
@@ -119,13 +122,14 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
   const narrationPresent = narration !== undefined && narration.provider !== "ffmpeg-silence";
 
   const cuesheet = buildCuesheet({
-    audioPath: audioPath ?? firstCard.relativePath,
+    audioPath: audioPath ? mediaProjectPath(ctx.show.projectRoot, audioPath) : firstCard.relativePath,
     lyricText,
     durationS,
     masterClock: ctx.pipeline.master_clock === "voiceover" ? "voiceover" : "audio",
   });
+  await writeCuesheet(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug, CuesheetSchema.parse(cuesheet));
   const sourceMediaReview = buildSourceMediaReview({
-    audioPath: audioPath ?? firstCard.relativePath,
+    audioPath: audioPath ? mediaProjectPath(ctx.show.projectRoot, audioPath) : firstCard.relativePath,
     durationS,
     lyricText,
     narrationPresent,
@@ -139,7 +143,7 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
       kind: "image",
       path: card.relativePath,
       provider: "predit",
-      prompt: `Generated deterministic zero-key idea card: ${card.title}`,
+      prompt: starterCardPrompt(card),
       cost_usd: 0,
     })),
   };
@@ -202,6 +206,8 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
       musicPresent: trackPath !== undefined,
     }),
     render_runtime: runtime,
+    narration_provider: narration?.provider ?? "none",
+    music_present: trackPath !== undefined,
   };
 }
 
@@ -498,8 +504,10 @@ function buildFinalReview(input: {
   musicPresent?: boolean;
   width?: number;
   height?: number;
+  sampledRenderFrames?: boolean;
 }): unknown {
   const renderRuntime = input.renderRuntime ?? "ffmpeg";
+  const sampledRenderFrames = input.sampledRenderFrames ?? false;
 
   return {
     status: "pass",
@@ -523,8 +531,15 @@ function buildFinalReview(input: {
         frame_paths: input.frameRelativePaths,
         sample_points_pct: [10, 35, 65, 90],
         hero_frame_path: input.heroFrameRelativePath,
-        matched_elements: ["multi-card starter frames", "agent-script text cards", "beat-synced cuts"],
-        findings: [],
+        matched_elements:
+          renderRuntime === "remotion"
+            ? [
+                "procedural Remotion motion scenes",
+                "agent-script typography",
+                sampledRenderFrames ? "sampled render frames" : "fallback starter review frames",
+              ]
+            : ["multi-card starter frames", "agent-script text cards", "beat-synced cuts"],
+        findings: sampledRenderFrames ? [] : ["Render-frame sampling was unavailable; retained starter review frames."],
       },
       audio_spotcheck: {
         narration_present: input.narrationPresent ?? false,
@@ -603,6 +618,10 @@ function starterCards(input: { lyricText: string; workspace: string; projectRoot
   });
 }
 
+function starterCardPrompt(card: StarterCard): string {
+  return `Generated deterministic zero-key idea card: ${card.eyebrow} | ${card.title} | ${card.body}`;
+}
+
 function meaningfulLyricLines(value: string): string[] {
   return value
     .split(/\r?\n/u)
@@ -666,9 +685,9 @@ function starterCardPng(card: StarterCard, cardCount: number): Buffer {
   fillRect(data, 44, 690, 452, 108, [8, 12, 24, 116]);
   drawDecorativeGrid(data, card);
   drawWaveform(data, card);
-  drawText(data, card.eyebrow, 64, 126, 3, rgba(card.accent));
-  drawWrappedText(data, card.title, 64, 174, 410, 7, [255, 255, 248, 255], 2);
-  drawWrappedText(data, card.body, 64, 392, 410, 4, [238, 244, 255, 255], 5);
+  drawWrappedText(data, card.eyebrow, 64, 126, 410, 3, rgba(card.accent), 1);
+  drawWrappedTextFit(data, card.title, 64, 174, 410, 7, 4, [255, 255, 248, 255], 3);
+  drawWrappedTextFit(data, card.body, 64, 392, 410, 4, 2, [238, 244, 255, 255], 7);
   drawText(data, String(card.index + 1).padStart(2, "0"), 64, 714, 6, rgba(card.accent));
   drawText(data, "LOCAL / NO KEYS", 154, 724, 2, [229, 236, 246, 230]);
   drawTimeline(data, card.index, cardCount, card.accent);
@@ -744,6 +763,13 @@ async function renderStarterPreview(input: {
 
   args.push("-t", String(input.durationS), "-movflags", "+faststart", input.outputPath);
   await runFfmpeg(args);
+  const sampledRenderFrames = await writeReviewFramesFromVideo({
+    projectRoot: input.ctx.show.projectRoot,
+    videoPath: input.outputPath,
+    durationS: input.durationS,
+    frameRelativePaths: input.frameRelativePaths,
+    heroFrameRelativePath: input.heroFrameRelativePath,
+  });
 
   return {
     output_path: input.outputRelativePath,
@@ -771,6 +797,7 @@ async function renderStarterPreview(input: {
       renderRuntime: "ffmpeg",
       narrationPresent: input.narrationPresent,
       musicPresent: input.musicPresent,
+      sampledRenderFrames,
     }),
   };
 }
@@ -803,6 +830,13 @@ async function renderStarterPreviewWithRemotion(input: {
     },
     toolContext(input.ctx),
   )) as RenderReport;
+  const sampledRenderFrames = await writeReviewFramesFromVideo({
+    projectRoot: input.ctx.show.projectRoot,
+    videoPath: input.outputPath,
+    durationS: input.durationS,
+    frameRelativePaths: input.frameRelativePaths,
+    heroFrameRelativePath: input.heroFrameRelativePath,
+  });
 
   return {
     ...report,
@@ -825,8 +859,66 @@ async function renderStarterPreviewWithRemotion(input: {
       musicPresent: input.musicPresent,
       width: report.resolution.width,
       height: report.resolution.height,
+      sampledRenderFrames,
     }),
   };
+}
+
+async function writeReviewFramesFromVideo(input: {
+  projectRoot: string;
+  videoPath: string;
+  durationS: number;
+  frameRelativePaths: string[];
+  heroFrameRelativePath: string;
+}): Promise<boolean> {
+  try {
+    await access(input.videoPath);
+  } catch {
+    return false;
+  }
+
+  const samplePercents = [0.1, 0.35, 0.65, 0.9];
+  const samples = [
+    ...input.frameRelativePaths.map((relativePath, index) => ({
+      relativePath,
+      timeS: reviewSampleTime(input.durationS, samplePercents[index] ?? 0.5),
+    })),
+    {
+      relativePath: input.heroFrameRelativePath,
+      timeS: reviewSampleTime(input.durationS, 0.5),
+    },
+  ];
+
+  try {
+    await Promise.all(
+      samples.map(async (sample) => {
+        const outputPath = path.resolve(input.projectRoot, sample.relativePath);
+        await mkdir(path.dirname(outputPath), { recursive: true });
+        await runFfmpeg([
+          "ffmpeg",
+          "-hide_banner",
+          "-loglevel",
+          "error",
+          "-y",
+          "-ss",
+          String(sample.timeS),
+          "-i",
+          input.videoPath,
+          "-frames:v",
+          "1",
+          outputPath,
+        ]);
+      }),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function reviewSampleTime(durationS: number, percent: number): number {
+  const safeDuration = Math.max(0, durationS);
+  return roundTime(Math.min(Math.max(0, safeDuration * percent), Math.max(0, safeDuration - 0.05)));
 }
 
 function buildPublishLog(input: {
@@ -1077,6 +1169,29 @@ function drawWrappedText(
   lines.forEach((line, index) => drawText(data, line, x, y + index * lineHeight, scale, color));
 }
 
+function drawWrappedTextFit(
+  data: Uint8Array,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  preferredScale: number,
+  minScale: number,
+  color: Rgba,
+  maxLines: number,
+): void {
+  for (let scale = preferredScale; scale >= minScale; scale -= 1) {
+    const lines = wrapText(text, maxWidth, scale, maxLines);
+    if (!wrapTextTruncates(text, lines)) {
+      const lineHeight = (GLYPH_HEIGHT + 2) * scale;
+      lines.forEach((line, index) => drawText(data, line, x, y + index * lineHeight, scale, color));
+      return;
+    }
+  }
+
+  drawWrappedText(data, text, x, y, maxWidth, minScale, color, maxLines);
+}
+
 function drawText(data: Uint8Array, text: string, x: number, y: number, scale: number, color: Rgba): void {
   let cursorX = x;
   for (const char of normalizeText(text)) {
@@ -1127,12 +1242,14 @@ function wrapText(text: string, maxWidth: number, scale: number, maxLines: numbe
     lines.length = maxLines;
   }
 
-  const consumedWords = lines.join(" ").split(/\s+/u).filter(Boolean).length;
-  if (consumedWords < words.length && lines.length > 0) {
-    lines[lines.length - 1] = withEllipsis(lines[lines.length - 1] ?? "", maxChars);
-  }
-
   return lines.length > 0 ? lines : [""];
+}
+
+function wrapTextTruncates(text: string, lines: string[]): boolean {
+  const sourceWords = normalizeText(text).split(/\s+/u).filter(Boolean);
+  const renderedWords = lines.join(" ").split(/\s+/u).filter(Boolean);
+
+  return renderedWords.length < sourceWords.length;
 }
 
 function splitLongWord(word: string, maxChars: number): string[] {
@@ -1145,13 +1262,6 @@ function splitLongWord(word: string, maxChars: number): string[] {
     chunks.push(word.slice(index, index + maxChars));
   }
   return chunks;
-}
-
-function withEllipsis(value: string, maxChars: number): string {
-  if (value.length <= Math.max(0, maxChars - 3)) {
-    return `${value}...`;
-  }
-  return `${value.slice(0, Math.max(0, maxChars - 3))}...`;
 }
 
 function normalizeText(value: string): string {
@@ -1270,7 +1380,53 @@ function zeroCostEntry(ctx: StageContext): CostEntry {
   };
 }
 
-function stageDecisions(ctx: StageContext, renderRuntime: RenderRuntime): DecisionEntry[] {
+function stageDecisions(ctx: StageContext, artifacts: StarterSampleArtifactSet): DecisionEntry[] {
+  const renderRuntime = artifacts.render_runtime;
+
+  if (ctx.stage.slug === "proposal") {
+    return [
+      decisionEntry(ctx, "proposal", "concept_selection", "personalized-first-video", "Use the personalized first-video concept so the artifact teaches predit while speaking to the user's own work.", [
+        { label: "personalized-first-video", rejected_because: null, notes: "Selected for the zero-key onboarding path." },
+        { label: "workflow-walkthrough", rejected_because: "Less personal as the opening artifact.", notes: null },
+        { label: "provider-upgrade", rejected_because: "Better as the closing beat after the free sample proves the loop.", notes: null },
+      ]),
+      decisionEntry(
+        ctx,
+        "proposal",
+        "render_runtime_selection",
+        renderRuntime,
+        `Use ${renderRuntime} for the zero-key first video based on installed runtime availability and motion requirements.`,
+        runtimeOptions(renderRuntime),
+      ),
+      decisionEntry(ctx, "proposal", "renderer_family_selection", "animation-first", "Use animated typography, procedural graphics, and scene-specific layouts instead of image-only assembly.", [
+        { label: "animation-first", rejected_because: null, notes: "Best match for a no-key Remotion explainer." },
+        { label: "explainer-data", rejected_because: "Too chart/data oriented for a broad first-run tutorial.", notes: null },
+        { label: "cinematic-trailer", rejected_because: "Would imply generated video providers that are not part of the no-key path.", notes: null },
+      ]),
+      decisionEntry(ctx, "proposal", "playbook_selection", "flat-motion-graphics", "Use a clean motion-graphics style that renders locally and keeps onboarding text legible.", [
+        { label: "flat-motion-graphics", rejected_because: null, notes: "Selected starter playbook." },
+        { label: "playful-hip-hop-explainer", rejected_because: "More music-led than the voiceover onboarding path.", notes: null },
+      ]),
+      decisionEntry(ctx, "proposal", "motion_commitment", "motion-led", "Commit the sample to visible animated layout changes, not static cards with only camera zoom.", [
+        { label: "motion-led", rejected_because: null, notes: "Required for the first-video wow factor." },
+        { label: "still-led", rejected_because: "Too close to a slideshow and not representative of Remotion.", notes: null },
+      ]),
+      decisionEntry(ctx, "proposal", "music_source", artifacts.music_present ? "user-supplied-track" : "none", "Keep the no-key first video narration-led; add music only when the user supplied a track.", [
+        {
+          label: artifacts.music_present ? "user-supplied-track" : "none",
+          rejected_because: null,
+          notes: artifacts.music_present ? "Track input was present." : "No starter music is required for the explainer.",
+        },
+        { label: "generated-music", rejected_because: "Would require paid or external provider setup.", notes: null },
+      ]),
+      decisionEntry(ctx, "proposal", "voice_selection", artifacts.narration_provider, "Use the best local/free narration path available before falling back to silence.", [
+        { label: artifacts.narration_provider, rejected_because: null, notes: "Selected by local availability." },
+        { label: "elevenlabs", rejected_because: "Paid provider not used in the zero-key path.", notes: null },
+        { label: "openai_tts", rejected_because: "Requires OPENAI_API_KEY and is outside the no-key promise.", notes: null },
+      ]),
+    ];
+  }
+
   if (ctx.stage.slug === "assets") {
     return [
       decisionEntry(
@@ -1291,6 +1447,7 @@ function stageDecisions(ctx: StageContext, renderRuntime: RenderRuntime): Decisi
         "render_runtime_selection",
         renderRuntime,
         `Use ${renderRuntime} for the deterministic zero-key starter sample and editor handoff.`,
+        runtimeOptions(renderRuntime),
       ),
     ];
   }
@@ -1304,6 +1461,7 @@ function decisionEntry(
   category: DecisionEntry["category"],
   picked: string,
   reason: string,
+  optionsConsidered?: DecisionEntry["options_considered"],
 ): DecisionEntry {
   const timestamp = new Date().toISOString();
   const suffix = `${stage}-${category}-${picked}`.replace(/[^a-z0-9_-]+/giu, "-").replace(/^-+|-+$/gu, "").toLowerCase();
@@ -1313,7 +1471,7 @@ function decisionEntry(
     stage,
     timestamp,
     category,
-    options_considered: [
+    options_considered: optionsConsidered ?? [
       { label: picked, rejected_because: null, notes: "Selected for the zero-key starter sample." },
       { label: "paid-demo", rejected_because: "The zero-key demo lane must run without provider credentials.", notes: null },
     ],
@@ -1323,4 +1481,24 @@ function decisionEntry(
     user_visible: true,
     supersedes: null,
   };
+}
+
+function runtimeOptions(picked: RenderRuntime): DecisionEntry["options_considered"] {
+  return [
+    {
+      label: "remotion",
+      rejected_because: picked === "remotion" ? null : "runtime not available for this starter run",
+      notes: picked === "remotion" ? "Selected for code-authored animated explainer scenes." : null,
+    },
+    {
+      label: "hyperframes",
+      rejected_because: picked === "hyperframes" ? null : "not selected for the default no-key first-video starter",
+      notes: picked === "hyperframes" ? "Selected for GSAP-style animation." : null,
+    },
+    {
+      label: "ffmpeg",
+      rejected_because: picked === "ffmpeg" ? null : "fallback only; the brief asks for motion-led composition",
+      notes: picked === "ffmpeg" ? "Selected because no richer composition runtime was available." : null,
+    },
+  ];
 }

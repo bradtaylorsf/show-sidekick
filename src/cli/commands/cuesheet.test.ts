@@ -1,12 +1,22 @@
 import type { Command } from "commander";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { z } from "zod";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Cuesheet } from "../../artifacts/cuesheet.js";
 import type { DecisionEntry } from "../../artifacts/decision-log.js";
 import { defineTool, Registry } from "../../registry/index.js";
 import type { Episode } from "../../shows/episode.js";
 import type { LoadedEpisode, LoadedShow } from "../../shows/load.js";
 import { createCuesheetHandler, type CuesheetDeps } from "./cuesheet.js";
+
+let scratchDirs: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(scratchDirs.map((dir) => rm(dir, { recursive: true, force: true })));
+  scratchDirs = [];
+});
 
 describe("createCuesheetHandler", () => {
   it("builds, writes, and prints a cuesheet summary", async () => {
@@ -60,7 +70,9 @@ describe("createCuesheetHandler", () => {
     const io = captureIo();
     const handler = createCuesheetHandler(io, depsForEpisode(episode({})));
 
-    await expect(handler("show/episode", command())).rejects.toThrow("episode.inputs.track must be a non-empty audio path");
+    await expect(handler("show/episode", command())).rejects.toThrow(
+      "episode.inputs.track is missing and no completed voiceover artifacts were found to derive a cuesheet",
+    );
   });
 
   it("records provider-selection decisions emitted while building the cuesheet", async () => {
@@ -76,6 +88,40 @@ describe("createCuesheetHandler", () => {
     await handler("show/episode", command());
 
     expect(deps.recordDecision).toHaveBeenCalledWith({ show: "show", episode: "episode" }, decision, { root: "/project" });
+  });
+
+  it("accepts the real Commander action signature", async () => {
+    const io = captureIo();
+    const deps = depsForEpisode(episode({ track: "music_library/demo.mp3" }));
+    const handler = createCuesheetHandler(io, deps);
+
+    await handler("show/episode", {}, command());
+
+    expect(deps.writeCuesheet).toHaveBeenCalledWith("/project", "show", "episode", cuesheet());
+  });
+
+  it("derives a voiceover cuesheet from completed artifacts when there is no track input", async () => {
+    const root = await scratchRoot();
+    const deps = depsForEpisode(episode({}), root);
+    const handler = createCuesheetHandler(captureIo(), deps);
+    await writeCompletedVoiceoverArtifacts(root);
+
+    await handler("show/episode", command());
+
+    expect(deps.buildCuesheet).not.toHaveBeenCalled();
+    expect(deps.writeCuesheet).toHaveBeenCalledWith(
+      root,
+      "show",
+      "episode",
+      expect.objectContaining({
+        master_clock: "voiceover",
+        audio: expect.objectContaining({
+          path: "projects/show/episode/assets/narration.wav",
+          duration_s: 30,
+        }),
+        segments: expect.arrayContaining([expect.objectContaining({ text: "Make the first video useful." })]),
+      }),
+    );
   });
 
   it("preserves URL track inputs instead of resolving them as local paths", async () => {
@@ -101,16 +147,16 @@ describe("createCuesheetHandler", () => {
   });
 });
 
-function depsForEpisode(episodeValue: Episode): CuesheetDeps {
+function depsForEpisode(episodeValue: Episode, root = "/project"): CuesheetDeps {
   const show = loadedShow();
 
   return {
-    findProjectRoot: vi.fn(() => "/project"),
+    findProjectRoot: vi.fn(() => root),
     parseShowEpisode: vi.fn(() => ({
       show: "show",
       episode: "episode",
-      showDir: "/project/shows/show",
-      episodeFile: "/project/shows/show/episodes/episode.yaml",
+      showDir: path.join(root, "shows", "show"),
+      episodeFile: path.join(root, "shows", "show", "episodes", "episode.yaml"),
     })),
     loadShow: vi.fn(async () => show),
     loadEpisode: vi.fn(async () => loadedEpisode(episodeValue)),
@@ -167,6 +213,72 @@ function loadedEpisode(value: Episode): LoadedEpisode {
     ...value,
     filePath: "/project/shows/show/episodes/episode.yaml",
   };
+}
+
+async function scratchRoot(): Promise<string> {
+  const root = path.join(tmpdir(), `predit-cuesheet-command-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  scratchDirs.push(root);
+  await mkdir(root, { recursive: true });
+  return root;
+}
+
+async function writeCompletedVoiceoverArtifacts(root: string): Promise<void> {
+  const dir = path.join(root, "projects", "show", "episode");
+  await mkdir(dir, { recursive: true });
+  await writeFile(
+    path.join(dir, "script.json"),
+    JSON.stringify({
+      sections: [
+        {
+          slug: "hook",
+          role: "hook",
+          start_s: 0,
+          end_s: 10,
+          narration: "Make the first video useful.",
+        },
+        {
+          slug: "next",
+          role: "resolution",
+          start_s: 10,
+          end_s: 30,
+          narration: "Review it, edit the script, and render again.",
+        },
+      ],
+    }),
+  );
+  await writeFile(
+    path.join(dir, "scene_plan.json"),
+    JSON.stringify({
+      scenes: [
+        { slug: "hook", start_s: 0, end_s: 10 },
+        { slug: "next", start_s: 10, end_s: 30 },
+      ],
+    }),
+  );
+  await writeFile(
+    path.join(dir, "edit_decisions.json"),
+    JSON.stringify({
+      cuts: [],
+      overlays: [],
+      audio: { music: { track_path: "projects/show/episode/assets/narration.wav" } },
+      render_runtime: "remotion",
+      renderer_family: "animation-first",
+    }),
+  );
+  await writeFile(
+    path.join(dir, "render_report.json"),
+    JSON.stringify({
+      output_path: "projects/show/episode/renders/sample-preview.mp4",
+      encoding_profile: "remotion/h264-aac",
+      duration_s: 30,
+      resolution: { width: 1080, height: 1920 },
+      framerate: 30,
+      runtime_used: "remotion",
+      asset_count: 2,
+      warnings: [],
+      validation_steps: [],
+    }),
+  );
 }
 
 function registry(): Registry {

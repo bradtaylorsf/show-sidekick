@@ -144,10 +144,10 @@ When the user asks for a first video without a specific brief, use the no-key `a
 2. Use only context the user has shared in this session or project. It is fine to say "based on this project folder and what you've told me"; do not infer sensitive traits, private facts, or hidden preferences.
 3. Offer exactly three concrete video ideas that the current setup can produce.
 4. If the user told you to proceed, choose the strongest idea and scaffold `predit new show first-video --from animated-explainer` unless a suitable animated-explainer starter show already exists.
-5. Rewrite `shows/<show>/inputs/sample-episode/script.txt` into four concise lines: personalized hook, personal-use beat, predit workflow beat, next step. Keep `duration_s: 30`.
+5. Rewrite `shows/<show>/inputs/sample-episode/script.txt` into four concise narrated scene lines: personalized hook, personal-use beat, predit workflow beat, next step. Keep `duration_s: 30`.
 6. Run `predit build <show>/sample-episode --sample`, then export an editor handoff.
 
-The zero-key renderer turns those script lines into animated cards, generates local narration when a free local TTS path is available, and uses Remotion when installed. This path should feel like a useful first artifact, not only a technical smoke test.
+The zero-key renderer turns those script lines into procedural motion-graphics scenes with visible layout animation, generates local narration when a free local TTS path is available, writes a voiceover cuesheet for export, and uses Remotion when installed. This path should feel like a useful first artifact, not only a technical smoke test.
 
 ### Step 6: Summarize The Workflow
 
@@ -168,7 +168,7 @@ predit update --check
 predit doctor --profile paid-demo
 predit ls starters
 predit new show first-video --from animated-explainer
-# Edit shows/first-video/inputs/sample-episode/script.txt into four short narrated card lines.
+# Edit shows/first-video/inputs/sample-episode/script.txt into four short narrated scene lines.
 predit build first-video/sample-episode --sample
 predit export first-video/sample-episode --target premiere
 ```
@@ -206,4 +206,4 @@ Match it to the closest pipeline. If no existing pipeline fits, say so and expla
 - Do not skip onboarding when the user is uncertain.
 - Do not suggest prompts that need unavailable tools.
 - Do not choose Remotion or HyperFrames during onboarding.
-- Do not render a generic first-video smoke sample when the user asked an agent for help; personalize the zero-key script cards from safe user/project context.
+- Do not render a generic first-video smoke sample when the user asked an agent for help; personalize the zero-key script scenes from safe user/project context.

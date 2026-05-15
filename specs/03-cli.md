@@ -39,7 +39,7 @@ predit build <show>/<episode> --budget <usd>
 predit build <show>/<episode> --reference <url-or-path>
 predit build <show>/<episode> --provider-profile paid-demo
 
-predit cuesheet <show>/<episode>        # build/cache audio cuesheet for debugging
+predit cuesheet <show>/<episode>        # build/cache audio or derived voiceover cuesheet for debugging/export
 predit resume <show>/<episode>           # pick up at next checkpoint
 predit status [<show>[/<episode>]]       # state + cost + last decision
 predit approve <show>/<episode>          # advance past awaiting_human
@@ -109,6 +109,7 @@ The analysis writes `projects/<show>/<episode>/artifacts/video_analysis_brief.js
 - `--json` switches to NDJSON for streaming-friendly machine output. Each command documents its event schema in its source.
 - Errors always go to stderr; results to stdout.
 - Human-mode `predit init` prints first-run next steps: run `predit doctor --profile paid-demo`, choose or build a starter/show, and ask the user's agent to read `AGENTS.md` plus `.predit/skills/meta/onboarding.md` for a personalized no-key first video. `predit init` installs Remotion, the Remotion CLI stack, and HyperFrames by default when Node 22+ and npm are available; `--no-setup-runtimes` skips that install. It also mirrors bundled Layer 3 agent skills into `.agents/skills/` and `.claude/skills/` for native agent discovery.
+- `predit cuesheet` builds a normal audio-led cuesheet when `episode.inputs.track` is present. For completed voiceover-led episodes without a track input, it may derive a cuesheet from `script.json`, `scene_plan.json`, `edit_decisions.json`, and `render_report.json` so editor export can proceed from completed artifacts.
 
 ## Maintainer Demo Matrix
 

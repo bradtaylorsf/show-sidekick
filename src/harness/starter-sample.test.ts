@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { afterEach, describe, expect, it } from "vitest";
+import { CuesheetSchema } from "../artifacts/cuesheet.js";
 import { PipelineManifestSchema } from "../pipelines/manifest.js";
 import { defineTool, Registry } from "../registry/index.js";
 import type { LoadedEpisode, LoadedShow } from "../shows/index.js";
@@ -62,6 +63,11 @@ describe("starter sample dispatcher", () => {
       expect.arrayContaining([expect.objectContaining({ category: "render_runtime_selection", picked: "remotion" })]),
     );
     await expect(readFile(path.join(root, render.output_path))).resolves.toBeInstanceOf(Buffer);
+    const cuesheet = CuesheetSchema.parse(
+      JSON.parse(await readFile(path.join(root, "projects", "first-video", "sample-episode", "cuesheet.json"), "utf8")),
+    );
+    expect(cuesheet.master_clock).toBe("voiceover");
+    expect(cuesheet.audio.path).toBe("voice.wav");
   });
 
   it("produces proposal and publish artifacts for the full animated-explainer starter path", async () => {
@@ -121,6 +127,17 @@ describe("starter sample dispatcher", () => {
         render_runtime: "remotion",
       },
     });
+    expect(proposal.decisions?.map((decision) => decision.category)).toEqual(
+      expect.arrayContaining([
+        "concept_selection",
+        "render_runtime_selection",
+        "renderer_family_selection",
+        "playbook_selection",
+        "motion_commitment",
+        "music_source",
+        "voice_selection",
+      ]),
+    );
   });
 });
 

@@ -60,7 +60,7 @@ Run these one at a time in a user project so failures are easy to inspect and pr
 
 | Demo | Pipeline | Starter / setup | Primary coverage |
 |---|---|---|---|
-| Personalized no-key animated explainer | `animated-explainer` | `predit new show first-video --from animated-explainer`; ask what the user does; rewrite `script.txt` into four safe context-aware narrated card lines | Agent onboarding, local TTS, zero-key Remotion renderer, script-card personalization, export path |
+| Personalized no-key animated explainer | `animated-explainer` | `predit new show first-video --from animated-explainer`; ask what the user does; rewrite `script.txt` into four safe context-aware narrated scene lines | Agent onboarding, local TTS, zero-key procedural Remotion renderer, script personalization, cuesheet, export path |
 | Provider scratch explainer | `animated-explainer` | `predit new show explainer --from animated-explainer` | OpenAI start frames, ElevenLabs narration, Higgsfield Seedance clips, configured runtime render when available |
 | Audio-led supplied-track video | `music-video` or `news-song` | `predit new show audio-demo --from music-video` or `--from news-song` | Audio master clock, cuesheet, beat-synced edit, exports |
 | Hosted / talking-head follow-up | `talking-head` | `predit new show host-demo --pipelines talking-head` | Voiceover master clock, captions, support cards, Remotion-oriented runtime choice |
@@ -117,7 +117,7 @@ Read AGENTS.md, then read .predit/skills/meta/onboarding.md and .predit/skills/m
 
 Run `predit doctor --profile paid-demo --json` and summarize provider readiness. Do not spend credits until I approve.
 
-Create one benchmark sample for: <demo name>. Use pipeline <pipeline>. Keep it to sample scope. If this is the personalized no-key animated explainer, ask what the user does, use only safe context from this project/session, offer three ideas, write four short narrated-card lines to the starter script file, and do not use paid providers. Log every issue, confusing message, failed tool call, output path, and workaround in projects/<show>/<episode>/notes.md.
+Create one benchmark sample for: <demo name>. Use pipeline <pipeline>. Keep it to sample scope. If this is the personalized no-key animated explainer, ask what the user does, use only safe context from this project/session, offer three ideas, write four short narrated scene lines to the starter script file, and do not use paid providers. Log every issue, confusing message, failed tool call, output path, and workaround in projects/<show>/<episode>/notes.md.
 
 Before generation, present:
 - pipeline and runtime recommendation

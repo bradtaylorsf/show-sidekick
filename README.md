@@ -36,7 +36,7 @@ The scaffolded `AGENTS.md` tells the agent to run `predit doctor --profile paid-
 
 - Show-first model: each show owns its brand, characters, defaults, ingest rules, and episode workspace.
 - Audio-led pipelines: music videos, trailers, and news songs snap visual timing to beats, sections, and climax points.
-- Starter shows: bundled templates scaffold show folders and sample fixtures; `animated-explainer` includes a zero-key narrated Remotion first-video sample.
+- Starter shows: bundled templates scaffold show folders and sample fixtures; `animated-explainer` includes a zero-key narrated Remotion first-video sample with a voiceover cuesheet for editor export.
 - NLE handoff: Premiere XML, DaVinci XML, CapCut draft packages, and CMX 3600 EDL.
 - Registry-driven tools: concrete integrations live in `src/tools/` and are selected by capability, availability, cost, and runtime.
 - Integrated runner: checkpoints, approvals, resume state, first paid-call approval, and cost budget enforcement.
