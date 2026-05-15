@@ -26,14 +26,20 @@ export async function probeEnergy(
 
 export function findSectionBoundaries(
   windows: EnergyWindow[],
-  options: { section_boundary_lufs_threshold?: number } = {},
+  options: { section_boundary_lufs_threshold?: number; min_window_fill_ratio?: number } = {},
 ): SectionBoundary[] {
   const threshold = options.section_boundary_lufs_threshold ?? 5.0;
+  const minWindowFillRatio = options.min_window_fill_ratio ?? 0.5;
+  const expectedWindowDuration = maxWindowDuration(windows);
   const boundaries: SectionBoundary[] = [];
 
   for (let index = 1; index < windows.length; index += 1) {
     const previous = windows[index - 1] as EnergyWindow;
     const current = windows[index] as EnergyWindow;
+    if (index === windows.length - 1 && isShortWindow(current, expectedWindowDuration, minWindowFillRatio)) {
+      continue;
+    }
+
     const lufs_drop = previous.lufs - current.lufs;
 
     if (lufs_drop >= threshold) {
@@ -230,6 +236,18 @@ function flushDip(
 
 function rangesOverlap(leftStart: number, leftEnd: number, rightStart: number, rightEnd: number): boolean {
   return leftStart < rightEnd && rightStart < leftEnd;
+}
+
+function maxWindowDuration(windows: EnergyWindow[]): number {
+  return windows.reduce((max, window) => Math.max(max, Math.max(0, window.end_s - window.start_s)), 0);
+}
+
+function isShortWindow(window: EnergyWindow, expectedDuration: number, minFillRatio: number): boolean {
+  if (expectedDuration <= 0 || minFillRatio <= 0) {
+    return false;
+  }
+
+  return window.end_s - window.start_s < expectedDuration * minFillRatio;
 }
 
 function requirePositiveInteger(value: number, field: string): number {

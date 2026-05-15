@@ -42,6 +42,18 @@ describe("probeEnergy", () => {
     expect(findSectionBoundaries(windows)).toEqual([]);
   });
 
+  it("does not treat decoder-padding tail windows as section breaks", () => {
+    const windows = [
+      { start_s: 0, end_s: 0.5, rms: 0.05, lufs: -26 },
+      { start_s: 0.5, end_s: 1, rms: 0.05, lufs: -26 },
+      { start_s: 1, end_s: 1.5, rms: 0.037, lufs: -28.5 },
+      { start_s: 1.5, end_s: 2, rms: 0.037, lufs: -28.5 },
+      { start_s: 2, end_s: 2.02, rms: 0, lufs: -120 },
+    ];
+
+    expect(findSectionBoundaries(windows)).toEqual([]);
+  });
+
   it.skipIf(!hasAudioBins)("finds instrumental dips when music continues without overlapping transcript words", async () => {
     const track = await load(fixture("instrumental-break.mp3"));
     const windows = await probeEnergy(track, { window_s: 0.5 });
