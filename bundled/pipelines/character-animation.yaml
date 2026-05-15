@@ -1,0 +1,301 @@
+slug: character-animation
+display_name: Character Animation
+description: "Action-timeline-led 2D character animation pipeline with recurring-cast design, rig planning, pose libraries, and render QA."
+status: beta
+master_clock: action_timeline
+default_checkpoint_policy: guided
+defaults:
+  aspect: "16:9"
+  duration_strategy: brief
+  render_runtime: remotion
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/character-animation/executive-producer.md
+  - pipelines/character-animation/research-director.md
+  - pipelines/character-animation/proposal-director.md
+  - pipelines/character-animation/script-director.md
+  - pipelines/character-animation/character-design-director.md
+  - pipelines/character-animation/rig-plan-director.md
+  - pipelines/character-animation/scene-director.md
+  - pipelines/character-animation/asset-director.md
+  - pipelines/character-animation/edit-director.md
+  - pipelines/character-animation/compose-director.md
+  - pipelines/character-animation/publish-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+  - meta/sample-first
+  - agents/character-rigging
+  - agents/svg-character-animation
+  - agents/pose-library-design
+  - agents/character-animation-qa
+compatible_playbooks:
+  recommended:
+    - flat-motion-graphics
+    - playful-hip-hop-explainer
+  also_works:
+    - clean-professional
+    - anime-ghibli
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/character-animation/executive-producer.md
+  budget_default_usd: 3
+  max_revisions_per_stage: 3
+  max_send_backs: 3
+  max_wall_time_minutes: 24
+sample:
+  duration_s_min: 6
+  duration_s_max: 12
+  hint: "Animate one character action beat through design, rig, pose library, action timeline, and render QA before expanding."
+export:
+  supported_targets: [premiere, davinci, capcut, edl]
+  default_target: premiere
+  notes: |
+    Export packages include character design, rig package, pose library, action timeline, render output, source animation files, and NLE handoff metadata.
+stages:
+  - slug: research
+    skill: pipelines/character-animation/research-director.md
+    produces: research_brief
+    produces_artifacts:
+      - research_brief
+    tools_available:
+      - web_search
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Character references and motion references are grounded
+      - Required actions and emotional range are extracted for design
+      - Recurring cast folders are identified before new design work
+    success_criteria:
+      - Schema-valid research_brief artifact
+      - Research lists required actions and emotions
+  - slug: proposal
+    skill: pipelines/character-animation/proposal-director.md
+    produces: proposal_packet
+    produces_artifacts:
+      - proposal_packet
+      - decision_log
+    required_artifacts_in:
+      - research_brief
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Runtime choice is approved before compose
+      - Character complexity fits the requested actions
+      - Sample-first requirement is visible
+    success_criteria:
+      - Schema-valid proposal_packet artifact
+      - Render runtime is selected and logged
+  - slug: script
+    skill: pipelines/character-animation/script-director.md
+    produces: script
+    produces_artifacts:
+      - script
+    required_artifacts_in:
+      - proposal_packet
+    optional_artifacts_in:
+      - research_brief
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Script is action-led and animatable
+      - Required actions and emotional beats are explicit
+      - Timing can become action_timeline entries
+    success_criteria:
+      - Schema-valid script artifact
+      - Each section lists acting or motion intent
+  - slug: character_design
+    skill: pipelines/character-animation/character-design-director.md
+    produces: character_design
+    produces_artifacts:
+      - character_design
+    required_artifacts_in:
+      - script
+      - proposal_packet
+    optional_artifacts_in:
+      - research_brief
+    tools_available:
+      - image_generation
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - character_design lacks required actions or emotional range.
+      - Recurring cast references are checked before new character creation
+      - "New characters are flagged new: true"
+    success_criteria:
+      - Schema-valid character_design artifact
+      - Required actions and emotions are present
+  - slug: rig_plan
+    skill: pipelines/character-animation/rig-plan-director.md
+    produces: rig_plan
+    produces_artifacts:
+      - rig_plan
+    required_artifacts_in:
+      - character_design
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - rig_plan lacks pivots for moving parts.
+      - Every moving part has a parent or explicit root
+      - Motion ranges can support required actions
+    success_criteria:
+      - Schema-valid rig_plan artifact
+      - Every moving part has pivot coordinates
+  - slug: scene_plan
+    skill: pipelines/character-animation/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+      - action_timeline
+    required_artifacts_in:
+      - script
+      - character_design
+      - rig_plan
+    tools_available:
+      - character_animation
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - action_timeline has actions that cannot be rendered by the rig.
+      - Scene beats snap to action milestones
+      - Required actions map to character_design and rig_plan
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Schema-valid action_timeline artifact
+      - Timeline actions can be rendered by the rig
+  - slug: assets
+    skill: pipelines/character-animation/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+      - pose_library
+    required_artifacts_in:
+      - scene_plan
+      - action_timeline
+      - character_design
+      - rig_plan
+    optional_artifacts_in:
+      - script
+    optional_tools:
+      - character_animation
+      - image_generation
+      - bg_remove
+      - upscale
+      - code_snippet
+    tools_available:
+      - character_animation
+      - image_generation
+      - bg_remove
+      - upscale
+      - code_snippet
+    sample_mode_supported: true
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - pose_library has no readable acting poses.
+      - Pose library covers required actions and emotional range
+      - Source rig files remain editable
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - Schema-valid pose_library artifact
+      - Pose names cover character_design.required_actions
+  - slug: edit
+    skill: pipelines/character-animation/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - scene_plan
+      - action_timeline
+      - asset_manifest
+      - pose_library
+      - rig_plan
+    optional_artifacts_in:
+      - script
+      - proposal_packet
+    tools_available:
+      - character_animation
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Action timing matches action_timeline
+      - Pose holds remain readable
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - Edit decisions preserve action_timeline timing
+  - slug: compose
+    skill: pipelines/character-animation/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+      - character_qa_report
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+      - pose_library
+      - action_timeline
+      - proposal_packet
+    optional_artifacts_in:
+      - rig_plan
+      - scene_plan
+    required_tools:
+      - video_compose
+    optional_tools:
+      - character_animation
+      - audio_mixer
+      - composition_validator
+    tools_available:
+      - video_compose
+      - character_animation
+      - audio_mixer
+      - composition_validator
+    requires_runtime: any
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Compose used a runtime not approved in proposal.
+      - Character animation QA passes before presentation
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Schema-valid final_review artifact
+      - Schema-valid character_qa_report artifact
+  - slug: publish
+    skill: pipelines/character-animation/publish-director.md
+    produces: publish_log
+    produces_artifacts:
+      - publish_log
+    required_artifacts_in:
+      - render_report
+      - final_review
+      - character_qa_report
+    optional_artifacts_in:
+      - character_design
+      - rig_plan
+      - pose_library
+      - action_timeline
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Character package and runtime notes are included for handoff
+      - QA caveats are visible to the editor
+      - Recurring-cast updates are documented
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Export package includes character animation source files

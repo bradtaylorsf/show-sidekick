@@ -1,0 +1,209 @@
+slug: clip-factory
+display_name: Clip Factory
+description: "Footage-led clip factory pipeline for turning supplied long-form video into short platform variants. EP orchestration gates source review, input-media analysis, scene-detect clip windows, auto-reframe variants, and publish packaging."
+status: production
+master_clock: none
+default_checkpoint_policy: guided
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/clip-factory/executive-producer.md
+  - pipelines/clip-factory/source-review-director.md
+  - pipelines/clip-factory/idea-director.md
+  - pipelines/clip-factory/scene-director.md
+  - pipelines/clip-factory/asset-director.md
+  - pipelines/clip-factory/edit-director.md
+  - pipelines/clip-factory/compose-director.md
+  - pipelines/clip-factory/publish-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+compatible_playbooks:
+  recommended:
+    - clean-professional
+  also_works:
+    - flat-motion-graphics
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/clip-factory/executive-producer.md
+  budget_default_usd: 1.5
+  max_revisions_per_stage: 3
+  max_send_backs: 2
+  max_wall_time_minutes: 12
+export:
+  supported_targets: [premiere, davinci, capcut, edl]
+  default_target: capcut
+  notes: |
+    Export packages include selected clip windows, reframed variants, captions, edit decisions, render output, and NLE handoff metadata.
+stages:
+  - slug: source_review
+    skill: pipelines/clip-factory/source-review-director.md
+    produces: source_media_review
+    produces_artifacts:
+      - source_media_review
+    tools_available:
+      - source_media_review
+      - scene_detect
+      - frame_sampler
+      - transcriber
+      - video_understand
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Supplied footage is probed before idea selection
+      - scene_detect output identifies candidate cut windows
+      - Technical and content density constraints are explicit
+    success_criteria:
+      - Schema-valid source_media_review artifact for supplied footage
+      - scene_detect boundaries are ready for clip selection
+  - slug: idea
+    skill: pipelines/clip-factory/idea-director.md
+    produces: brief
+    produces_artifacts:
+      - brief
+      - decision_log
+    required_artifacts_in:
+      - source_media_review
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Input-media analysis precedes idea selection
+      - Clip strategy fits source length, framing, and content density
+      - Target platforms and aspect ratios are explicit
+    success_criteria:
+      - Schema-valid brief artifact
+      - Brief records selected clip strategy and source constraints
+  - slug: scene_plan
+    skill: pipelines/clip-factory/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - brief
+      - source_media_review
+    tools_available:
+      - scene_detect
+      - frame_sampler
+      - transcriber
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Scene plan entries reference scene_detect start/end windows
+      - Clip count and target aspects are feasible
+      - Each clip has a hook, hold, and exit
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Every scene_plan entry references a scene_detect window
+  - slug: assets
+    skill: pipelines/clip-factory/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - scene_plan
+      - source_media_review
+    optional_artifacts_in:
+      - brief
+    optional_tools:
+      - scene_detect
+      - auto_reframe
+      - subtitle_gen
+      - video_selector
+    tools_available:
+      - scene_detect
+      - auto_reframe
+      - subtitle_gen
+      - video_selector
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Asset stage uses scene_detect output (S-1) to select clip windows
+      - auto_reframe is planned for aspect-ratio variants
+      - Captions and support assets map to selected windows
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - Clip windows are selected from scene_detect output, not generated freshly.
+  - slug: edit
+    skill: pipelines/clip-factory/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - scene_plan
+      - asset_manifest
+      - source_media_review
+    optional_artifacts_in:
+      - brief
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Selected windows preserve source meaning
+      - Variant logic is consistent across platform outputs
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - Edit decisions cover every selected clip window
+  - slug: compose
+    skill: pipelines/clip-factory/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+    optional_artifacts_in:
+      - scene_plan
+      - source_media_review
+    required_tools:
+      - video_compose
+      - audio_mixer
+    optional_tools:
+      - auto_reframe
+      - subtitle_gen
+    tools_available:
+      - auto_reframe
+      - video_compose
+      - audio_mixer
+      - subtitle_gen
+    requires_runtime: any
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Reframed variants preserve speaker/action focus
+      - Captions remain readable in each aspect ratio
+      - Source timing and audio are preserved
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output files exist and pass ffprobe validation
+  - slug: publish
+    skill: pipelines/clip-factory/publish-director.md
+    produces: publish_log
+    produces_artifacts:
+      - publish_log
+    required_artifacts_in:
+      - render_report
+      - final_review
+    optional_artifacts_in:
+      - brief
+      - scene_plan
+      - source_media_review
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Multi-aspect deliverables are named by clip and platform
+      - Source window metadata is included
+      - Known source or reframing caveats are surfaced
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Export package contains rendered clips and handoff metadata

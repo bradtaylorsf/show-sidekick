@@ -1,0 +1,43 @@
+pipeline: documentary-montage
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline state machine"
+  - file: executive-producer.md
+    section: "## Mandatory locked decisions"
+  - file: executive-producer.md
+    section: "## When to stop and check with the human"
+  - file: scene-director.md
+    section: "## Corpus quality bar"
+  - file: asset-director.md
+    section: "## MMR diversification"
+required_phrases:
+  - file: executive-producer.md
+    phrase: "corpus size >= 8 * scene_plan.slots.length AND median(top_n_scores) >= 0.22"
+  - file: scene-director.md
+    phrase: "Grow the corpus with new queries."
+  - file: executive-producer.md
+    phrase: "No narration unless the user explicitly asks. Adding voice is a MAJOR change and requires user approval per the Decision Communication Contract."
+  - file: asset-director.md
+    phrase: "score(c) = (1 - λ) × sim(c, seed) - λ × max(sim(c, picked))"
+  - file: edit-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: scene-director.md
+    phrase: "missing `end_tag_plan` artifact is critical"
+  - file: asset-director.md
+    phrase: "fallback_decision"
+  - file: asset-director.md
+    phrase: "capability_extension"
+required_numerics:
+  - file: scene-director.md
+    numeric: "λ = 0.3"
+  - file: scene-director.md
+    numeric: "pool 30"
+  - file: scene-director.md
+    numeric: "0.22"
+  - file: scene-director.md
+    numeric: "8 *"
+required_modules:
+  - file: executive-producer.md
+    module: "Validated patterns"
+  - file: scene-director.md
+    module: "Corpus quality bar"

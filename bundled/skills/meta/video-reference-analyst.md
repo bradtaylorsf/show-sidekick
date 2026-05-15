@@ -68,7 +68,7 @@ the visual transitions, the narration style]
 Now let me check what I can do with your current setup..."
 ```
 
-The 5-aspect block above is the **canonical form** that `proposal-director`, `script-director`, and `scene-director` will read. Do not collapse it back into prose — keep the labels.
+The 5-aspect block above is the **canonical form** that `proposal-director`, `script-director`, and `scene-director` will read. Do not collapse it back into prose — keep the labels. The shared framework lives at `bundled/skills/_shared/video-prompting.md`, and downstream shot prompt composition uses `bundled/skills/_shared/shot-prompt-builder.md`.
 
 **Motion classification is critical.** The VideoAnalysisBrief now includes per-scene
 `motion_type` ("motion_clip", "animated_still", "static_image") and `flow_variance`.
@@ -111,7 +111,7 @@ The analyst's report MUST break down the reference video into the **five aspects
 >
 > **Mark any aspect explicitly as N/A** if it doesn't apply (e.g., "Subject: N/A — pure scenery shot," or "Scene overlays: N/A — no graphics"). **Silent omission is the most common analyst failure** and produces ambiguous downstream prompts.
 
-See `bundled/skills/creative/video-gen-prompting.md` for primitive definitions and the canonical vocabulary used at every aspect.
+See `bundled/skills/_shared/video-prompting.md` for the canonical five-aspect framework, `bundled/skills/_shared/shot-prompt-builder.md` for prompt composition, and `bundled/skills/creative/video-gen-prompting.md` for primitive definitions and the canonical vocabulary used at every aspect.
 
 ### Step 2: Capability Audit
 

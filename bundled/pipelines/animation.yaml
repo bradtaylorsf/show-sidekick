@@ -1,0 +1,243 @@
+slug: animation
+display_name: Animation
+description: "Voiceover-led animation-first pipeline for motion graphics, character-free narrative animation, kinetic type, Lottie/GSAP scenes, and Remotion or HyperFrames renders."
+status: production
+master_clock: voiceover
+default_checkpoint_policy: guided
+defaults:
+  aspect: "16:9"
+  duration_strategy: brief
+  render_runtime: remotion
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/animation/executive-producer.md
+  - pipelines/animation/idea-director.md
+  - pipelines/animation/script-director.md
+  - pipelines/animation/scene-director.md
+  - pipelines/animation/runtime-selector-director.md
+  - pipelines/animation/asset-director.md
+  - pipelines/animation/edit-director.md
+  - pipelines/animation/compose-director.md
+  - pipelines/animation/publish-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+  - meta/animation-runtime-selector
+compatible_playbooks:
+  recommended:
+    - flat-motion-graphics
+    - anime-ghibli
+  also_works:
+    - clean-professional
+    - minimalist-diagram
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/animation/executive-producer.md
+  budget_default_usd: 2
+  max_revisions_per_stage: 3
+  max_send_backs: 2
+  max_wall_time_minutes: 20
+sample:
+  duration_s_min: 10
+  duration_s_max: 18
+  hint: "Render the hook and one motion system before building all scenes."
+export:
+  supported_targets: [premiere, davinci, capcut, edl]
+  default_target: premiere
+  notes: |
+    Export packages include render output, source animation files, runtime decision notes, and reusable motion assets.
+stages:
+  - slug: idea
+    skill: pipelines/animation/idea-director.md
+    produces: brief
+    produces_artifacts:
+      - brief
+      - decision_log
+    tools_available:
+      - web_search
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Animation promise is specific and feasible
+      - Audience, tone, duration, and platform are explicit
+      - The idea does not require character rigging unless stated
+    success_criteria:
+      - Schema-valid brief artifact
+      - Animation style direction is selected
+  - slug: script
+    skill: pipelines/animation/script-director.md
+    produces: script
+    produces_artifacts:
+      - script
+    required_artifacts_in:
+      - brief
+    tools_available: []
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Voiceover sections have clear motion jobs
+      - Scene beats are animatable without overbuilding
+      - Timing supports readable motion
+    success_criteria:
+      - Schema-valid script artifact
+      - Script sections have timing estimates
+  - slug: scene_plan
+    skill: pipelines/animation/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - script
+    optional_artifacts_in:
+      - brief
+    tools_available:
+      - diagram_gen
+      - code_snippet
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Every scene has a motion grammar
+      - The five-aspect visual intent is present when generation is needed
+      - Complexity is justified by story value
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Every scene has duration and animation treatment
+  - slug: runtime_selection
+    skill: pipelines/animation/runtime-selector-director.md
+    produces: render_runtime
+    produces_artifacts:
+      - render_runtime
+      - decision_log
+    required_artifacts_in:
+      - scene_plan
+    optional_artifacts_in:
+      - script
+      - brief
+    tools_available: []
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Runtime choice follows scene needs
+      - Remotion, HyperFrames, Lottie, and GSAP tradeoffs are explicit
+      - '"keep it simple" bias is applied'
+    success_criteria:
+      - Schema-valid render_runtime artifact
+      - Runtime choice is recorded in the decision log
+  - slug: assets
+    skill: pipelines/animation/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - scene_plan
+      - render_runtime
+    optional_artifacts_in:
+      - script
+      - brief
+    optional_tools:
+      - image_selector
+      - video_selector
+      - diagram_gen
+      - code_snippet
+      - subtitle_gen
+      - tts_selector
+    tools_available:
+      - image_selector
+      - video_selector
+      - diagram_gen
+      - code_snippet
+      - subtitle_gen
+      - tts_selector
+    sample_mode_supported: true
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Layer 3 animation skills are read before building assets
+      - Motion assets match selected runtime
+      - Complex plugins are used only when needed
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - All referenced asset files exist on disk
+  - slug: edit
+    skill: pipelines/animation/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - scene_plan
+      - render_runtime
+      - asset_manifest
+    optional_artifacts_in:
+      - script
+    tools_available: []
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Timing matches script and runtime choice
+      - Motion density stays readable
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - edit_decisions.render_runtime matches render_runtime
+  - slug: compose
+    skill: pipelines/animation/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+      - render_runtime
+    optional_artifacts_in:
+      - scene_plan
+      - script
+    required_tools:
+      - video_compose
+      - audio_mixer
+    tools_available:
+      - video_compose
+      - audio_mixer
+      - hyperframes_compose
+    requires_runtime: any
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - HyperFrames validation gate passes when HyperFrames is selected
+      - GSAP-in-Remotion patterns are deterministic
+      - Final motion matches the delivery promise
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output file exists and passes ffprobe validation
+  - slug: publish
+    skill: pipelines/animation/publish-director.md
+    produces: publish_log
+    produces_artifacts:
+      - publish_log
+    required_artifacts_in:
+      - render_report
+      - final_review
+    optional_artifacts_in:
+      - brief
+      - script
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Source animation files are included
+      - Runtime and plugin caveats are documented
+      - Export package is usable by an editor
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Export package contains rendered video and animation source metadata

@@ -1,0 +1,239 @@
+slug: animated-explainer
+display_name: Animated Explainer
+description: "Voiceover-led animated explainer pipeline for compact educational, product, and concept videos. Uses an executive producer to lock the explanation promise, script, visual grammar, runtime, and sample-first gates before generation."
+status: production
+master_clock: voiceover
+default_checkpoint_policy: guided
+defaults:
+  aspect: "16:9"
+  duration_strategy: brief
+  render_runtime: remotion
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/explainer/executive-producer.md
+  - pipelines/explainer/idea-director.md
+  - pipelines/explainer/proposal-director.md
+  - pipelines/explainer/script-director.md
+  - pipelines/explainer/scene-director.md
+  - pipelines/explainer/asset-director.md
+  - pipelines/explainer/edit-director.md
+  - pipelines/explainer/compose-director.md
+  - pipelines/explainer/publish-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+compatible_playbooks:
+  recommended:
+    - flat-motion-graphics
+    - playful-hip-hop-explainer
+  also_works:
+    - clean-professional
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/explainer/executive-producer.md
+  budget_default_usd: 2
+  max_revisions_per_stage: 3
+  max_send_backs: 2
+  max_wall_time_minutes: 20
+sample:
+  duration_s_min: 12
+  duration_s_max: 20
+  hint: "Render the hook plus one explanatory beat before batching assets."
+export:
+  supported_targets: [premiere, davinci, capcut, edl]
+  default_target: premiere
+  notes: |
+    Export packages include the rendered explainer, VO, captions, reusable graphics, timing decisions, and NLE handoff metadata.
+stages:
+  - slug: idea
+    skill: pipelines/explainer/idea-director.md
+    produces: brief
+    produces_artifacts:
+      - brief
+      - decision_log
+    tools_available:
+      - web_search
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Core learner question is explicit
+      - Audience and prior knowledge are named
+      - The explanation promise can fit the target duration
+    success_criteria:
+      - Schema-valid brief artifact
+      - One clear explanation promise is selected
+  - slug: proposal
+    skill: pipelines/explainer/proposal-director.md
+    produces: proposal_packet
+    produces_artifacts:
+      - proposal_packet
+      - decision_log
+    required_artifacts_in:
+      - brief
+    tools_available: []
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - At least three concept options are materially different
+      - Runtime and renderer family are locked
+      - Delivery promise is concrete and testable
+    success_criteria:
+      - Schema-valid proposal_packet artifact
+      - render_runtime and audio_architecture are locked
+  - slug: script
+    skill: pipelines/explainer/script-director.md
+    produces: script
+    produces_artifacts:
+      - script
+    required_artifacts_in:
+      - brief
+      - proposal_packet
+    tools_available: []
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Voiceover is concise and teachable
+      - Every visual beat explains a script beat
+      - Jargon is introduced before use
+    success_criteria:
+      - Schema-valid script artifact
+      - Script has timed sections and VO text
+  - slug: scene_plan
+    skill: pipelines/explainer/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - script
+      - proposal_packet
+    optional_artifacts_in:
+      - brief
+    tools_available:
+      - diagram_gen
+      - code_snippet
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Scenes map to voiceover sections
+      - The five-aspect visual intent is present for generated shots
+      - Motion reinforces comprehension rather than decorating
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Every scene has duration and visual treatment
+  - slug: assets
+    skill: pipelines/explainer/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - scene_plan
+      - script
+    optional_artifacts_in:
+      - proposal_packet
+      - brief
+    optional_tools:
+      - tts_selector
+      - image_selector
+      - video_selector
+      - diagram_gen
+      - code_snippet
+      - subtitle_gen
+    tools_available:
+      - tts_selector
+      - image_selector
+      - video_selector
+      - diagram_gen
+      - code_snippet
+      - subtitle_gen
+    sample_mode_supported: true
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Layer 3 skills are read before generation
+      - VO and visuals are generated sample-first
+      - Assets preserve the selected visual system
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - All referenced asset files exist on disk
+  - slug: edit
+    skill: pipelines/explainer/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - scene_plan
+      - asset_manifest
+    optional_artifacts_in:
+      - script
+      - proposal_packet
+    tools_available: []
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - VO timing stays readable
+      - Captions and diagrams do not compete
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - edit_decisions.render_runtime matches proposal_packet
+  - slug: compose
+    skill: pipelines/explainer/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+    optional_artifacts_in:
+      - scene_plan
+      - script
+    required_tools:
+      - video_compose
+      - audio_mixer
+    tools_available:
+      - video_compose
+      - audio_mixer
+      - hyperframes_compose
+    requires_runtime: any
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Rendered timing matches VO within 0.5 seconds
+      - Text remains legible at delivery size
+      - Runtime matches edit decisions
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output file exists and passes ffprobe validation
+  - slug: publish
+    skill: pipelines/explainer/publish-director.md
+    produces: publish_log
+    produces_artifacts:
+      - publish_log
+    required_artifacts_in:
+      - render_report
+      - final_review
+    optional_artifacts_in:
+      - script
+      - brief
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Deliverables are named by audience and aspect ratio
+      - Captions and VO files are included
+      - Known caveats are surfaced
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Export package contains rendered video and handoff metadata

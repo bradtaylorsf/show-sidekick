@@ -1,0 +1,36 @@
+pipeline: podcast-repurpose
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline state machine"
+  - file: executive-producer.md
+    section: "## Mandatory locked decisions"
+  - file: executive-producer.md
+    section: "## When to stop and check with the human"
+  - file: scene-director.md
+    section: "## Chapter-Based Segmentation"
+required_phrases:
+  - file: scene-director.md
+    phrase: "chapter-based segmentation"
+  - file: source-review-director.md
+    phrase: "transcript"
+  - file: scene-director.md
+    phrase: "transcript"
+  - file: source-review-director.md
+    phrase: "scene_detect"
+  - file: scene-director.md
+    phrase: "scene_detect"
+  - file: edit-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: compose-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: executive-producer.md
+    phrase: "Podcast source remains the factual anchor."
+  - file: executive-producer.md
+    phrase: "Chapter markers outrank guesses when they exist."
+  - file: executive-producer.md
+    phrase: "A segment would turn a nuanced chapter into clickbait if the transcript does not support it."
+required_modules:
+  - file: executive-producer.md
+    module: "Validated patterns"
+  - file: scene-director.md
+    module: "Chapter-Based Segmentation"

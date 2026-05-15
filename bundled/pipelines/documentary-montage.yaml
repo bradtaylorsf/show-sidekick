@@ -1,0 +1,180 @@
+slug: documentary-montage
+display_name: Documentary Montage
+description: "Retrieval-led documentary montage pipeline for archive, stock, and public-domain footage assembled without narration by default."
+status: beta
+master_clock: none
+default_checkpoint_policy: guided
+defaults:
+  aspect: "16:9"
+  duration_strategy: brief
+  render_runtime: remotion
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/documentary-montage/executive-producer.md
+  - pipelines/documentary-montage/idea-director.md
+  - pipelines/documentary-montage/scene-director.md
+  - pipelines/documentary-montage/asset-director.md
+  - pipelines/documentary-montage/edit-director.md
+  - pipelines/documentary-montage/compose-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+  - meta/sample-first
+compatible_playbooks:
+  recommended:
+    - news-broadcast
+    - clean-professional
+  also_works:
+    - cinematic-documentary
+    - minimalist-diagram
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/documentary-montage/executive-producer.md
+  budget_default_usd: 2
+  max_revisions_per_stage: 3
+  max_send_backs: 2
+  max_wall_time_minutes: 18
+sample:
+  duration_s_min: 10
+  duration_s_max: 18
+  hint: "Build one retrieval-backed hero sequence plus the end tag before expanding the montage."
+export:
+  supported_targets: [premiere, davinci, capcut, edl]
+  default_target: premiere
+  notes: |
+    Export packages include retrieved source attributions, selected clips, edit decisions, end tag plan, render output, and NLE handoff metadata.
+stages:
+  - slug: idea
+    skill: pipelines/documentary-montage/idea-director.md
+    produces: brief
+    produces_artifacts:
+      - brief
+      - decision_log
+    tools_available:
+      - web_search
+      - stock_cross_search
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Topic, era, retrieval sources, length target, and rights posture are explicit
+      - No narration is added unless the user explicitly approved the major change
+      - The montage promise can be supported by searchable corpus material
+    success_criteria:
+      - Schema-valid brief artifact
+      - Retrieval strategy and no-narration default are recorded
+  - slug: scene_plan
+    skill: pipelines/documentary-montage/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+      - end_tag_plan
+    required_artifacts_in:
+      - brief
+    tools_available:
+      - stock_cross_search
+      - clip_search
+      - clip_embedder
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - corpus size >= 8 * scene_plan.slots.length AND median(top_n_scores) >= 0.22
+      - Missing end_tag_plan artifact is critical
+      - MMR diversification uses λ = 0.3 and pool 30
+      - Generated clips are absent unless fallback_decision or capability_extension is logged
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Schema-valid end_tag_plan artifact
+      - Grow the corpus with new queries.
+  - slug: assets
+    skill: pipelines/documentary-montage/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - scene_plan
+      - end_tag_plan
+    optional_artifacts_in:
+      - brief
+    optional_tools:
+      - stock_cross_search
+      - stock_video
+      - stock_image
+      - clip_search
+      - clip_embedder
+    tools_available:
+      - stock_cross_search
+      - stock_video
+      - stock_image
+      - clip_search
+      - clip_embedder
+      - clip_cache
+    sample_mode_supported: true
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Retrieved clips satisfy the corpus quality bar before selection
+      - Asset manifest includes source attribution and rights notes
+      - Generation appears only with logged fallback_decision or capability_extension
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - Every selected clip maps to a retrieval result or logged fallback
+  - slug: edit
+    skill: pipelines/documentary-montage/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - scene_plan
+      - end_tag_plan
+      - asset_manifest
+    optional_artifacts_in:
+      - brief
+    tools_available: []
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Edit rhythm preserves documentary meaning and source attribution
+      - End tag placement follows the approved end_tag_plan
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - edit_decisions reference the end tag placement
+  - slug: compose
+    skill: pipelines/documentary-montage/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+      - end_tag_plan
+    optional_artifacts_in:
+      - scene_plan
+      - brief
+    required_tools:
+      - video_compose
+    optional_tools:
+      - audio_mixer
+    tools_available:
+      - video_compose
+      - audio_mixer
+    requires_runtime: any
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Render output preserves source sequence and end tag
+      - End tag is rendered as overlay or concat exactly as planned
+      - Final review verifies no generated clips slipped in without logged approval
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output files exist and pass ffprobe validation

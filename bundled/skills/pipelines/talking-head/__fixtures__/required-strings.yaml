@@ -1,0 +1,52 @@
+pipeline: talking-head
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline state machine"
+  - file: executive-producer.md
+    section: "## Mandatory locked decisions"
+  - file: executive-producer.md
+    section: "## When to stop and check with the human"
+  - file: script-director.md
+    section: "## Transcript Confidence Requirement"
+  - file: edit-director.md
+    section: "## Subtitle Sync"
+required_phrases:
+  - file: executive-producer.md
+    phrase: "transcript confidence threshold 0.8"
+  - file: script-director.md
+    phrase: "transcript confidence threshold 0.8"
+  - file: asset-director.md
+    phrase: "transcript confidence threshold 0.8"
+  - file: executive-producer.md
+    phrase: "REVISE"
+  - file: script-director.md
+    phrase: "REVISE"
+  - file: edit-director.md
+    phrase: "subtitle sync tolerance ±0.3s"
+  - file: compose-director.md
+    phrase: "subtitle sync tolerance ±0.3s"
+  - file: script-director.md
+    phrase: "large-v3"
+  - file: asset-director.md
+    phrase: "large-v3"
+  - file: script-director.md
+    phrase: "bundled/skills/agents/whisperx.md"
+  - file: asset-director.md
+    phrase: "bundled/skills/agents/whisperx.md"
+  - file: source-review-director.md
+    phrase: "source_media_review"
+  - file: executive-producer.md
+    phrase: "User-supplied video produces source_media_review before script proceeds"
+  - file: source-review-director.md
+    phrase: "User-supplied video produces source_media_review before script proceeds"
+  - file: edit-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: compose-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+required_modules:
+  - file: executive-producer.md
+    module: "Pipeline state machine"
+  - file: script-director.md
+    module: "Transcript Confidence Requirement"
+  - file: edit-director.md
+    module: "Subtitle Sync"
