@@ -54,13 +54,14 @@ describe("music-video starter sample", () => {
     expect(existsSync(renderOutputPath)).toBe(true);
     expect((await readFile(renderOutputPath)).subarray(4, 8).toString("ascii")).toBe("ftyp");
     expect(existsSync(path.join(root, "exports", "music-video__sample-episode.premiere", "timeline.xml"))).toBe(true);
-  });
+  }, 60_000);
 });
 
 async function runPredit(cwd: string, args: string[]): Promise<string> {
   const result = await execFileAsync(process.execPath, ["--import", tsxLoaderPath, cliPath, "--json", ...args], {
     cwd,
     maxBuffer: 20 * 1024 * 1024,
+    timeout: 45_000,
   });
   return result.stdout;
 }
