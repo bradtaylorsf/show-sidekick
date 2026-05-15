@@ -29,7 +29,7 @@ ffmpeg -version
 ffprobe -version
 ```
 
-For repeatable agent runs, prefer copying `.env.example` to `.env` in the benchmark project and filling the same keys there. The CLI loads project `.env` files before `doctor` and each benchmark command, and `.env` remains gitignored.
+For repeatable agent runs, fill the generated `.env` in the benchmark project with the provider keys you want to test. The committed `.env.example` stays as the blank setup map for future agents. The CLI loads project `.env` files before `doctor` and each benchmark command, and `.env` remains gitignored.
 
 From a fresh user project:
 

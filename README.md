@@ -18,7 +18,7 @@ Requirements: Node 22+, pnpm 9+, and `ffmpeg` for local media work.
 mkdir my-shows
 cd my-shows
 predit init --starter music-video --git
-cp .env.example .env            # optional: add paid provider keys here
+# optional: add paid provider keys to the generated .env
 predit doctor --profile paid-demo
 predit setup runtimes            # optional: install Remotion + HyperFrames locally
 predit build music-video/sample-episode --sample
@@ -60,8 +60,10 @@ Global flags: `--json`, `--dry-run`, `--verbose`, `--no-color`, `--config <path>
 
 Common flows:
 
-- `predit init --starter music-video --git` scaffolds a user project, initializes git, writes `.env.example`, and clones the music-video starter into `shows/music-video/`.
+- `predit init --starter music-video --git` scaffolds a user project, initializes git, writes `.env.example` and gitignored `.env`, and clones the music-video starter into `shows/music-video/`.
 - `predit init` scaffolds a blank project with agent instructions, bundled pipeline cache, and first-run next steps.
+- The scaffolded `.gitignore` keeps generated workspaces, renders, exports, local media, `.predit/`, and `.env` out of git while leaving shows, pipelines, playbooks, skills, and `.env.example` shareable.
+- Shared project clones restore the gitignored `.predit/` cache automatically before commands run, using the locally installed harness version.
 - Commands load `.env`, `.env.<command>`, and `.env.local` from the project root; shell environment variables win over file values.
 - `predit doctor --profile paid-demo` checks OpenAI, ElevenLabs, Higgsfield, ffmpeg, and ffprobe readiness without spending provider credits.
 - `predit setup runtimes` installs Remotion and HyperFrames as project-local dev dependencies when the user wants rich composition beyond FFmpeg.

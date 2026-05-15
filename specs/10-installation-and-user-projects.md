@@ -43,7 +43,7 @@ Scaffolds a new user project in the current directory:
 
 ```bash
 cd ~/my-shows
-predit init                       # creates CLAUDE.md, AGENTS.md, .env.example, .predit/, .gitignore
+predit init                       # creates CLAUDE.md, AGENTS.md, .env.example, .env, .predit/, .gitignore
 predit init --git                 # same, plus `git init`
 predit init --starter music-video # scaffold a starter show alongside the project
 ```
@@ -56,8 +56,9 @@ Created files:
 my-shows/
 ├── CLAUDE.md                # tiny pointer → AGENTS.md
 ├── AGENTS.md                # agent operating contract for this project
-├── .gitignore               # excludes .predit/, projects/, music_library/, .env
-├── .env.example             # optional provider key template
+├── .gitignore               # excludes generated media, .predit/, .env
+├── .env                     # local provider keys, copied from .env.example, gitignored
+├── .env.example             # committed blank provider/tool setup template
 ├── .predit/                 # local cache of bundled harness content (gitignored)
 │   ├── version.json
 │   ├── pipelines/
@@ -70,14 +71,19 @@ my-shows/
 │   └── starters/
 ├── shows/                   # user content (initially empty)
 ├── music_library/           # gitignored drop zone
-└── projects/                # gitignored runtime workspace
+├── projects/                # gitignored runtime workspace
+└── exports/                 # gitignored editor handoff packages, created on export
 ```
 
-Every non-`init` command loads environment values from the project root in this order: `.env`, `.env.<command>`, `.env.local`, then the parent process environment. The shell environment wins, so CI and agent sessions can override local files without editing them. The scaffold gitignores `.env`, `.env.<command>`, and `.env.local`; `.env.example` is safe to commit.
+Every non-`init` command loads environment values from the project root in this order: `.env`, `.env.<command>`, `.env.local`, then the parent process environment. The shell environment wins, so CI and agent sessions can override local files without editing them. The scaffold gitignores `.env`, `.env.<command>`, and `.env.local`; `.env.example` is safe to commit and lists supported provider keys, CLI setup pointers, and official setup URLs with blank values.
 
-### `predit update`
+The scaffolded `.gitignore` keeps regenerable output out of source control by default: `.predit/`, `projects/`, `exports/`, `renders/`, `output/`, `outputs/`, `.predit-work/`, temp folders, local media drops, logs, `node_modules/`, and secret env files. User-authored workflows stay shareable: `shows/`, `pipelines/`, `playbooks/`, `skills/`, docs, and `.env.example` are not ignored.
 
-Refreshes `.predit/` from the currently installed harness version. Detects mismatch automatically on every command and warns when stale. The user runs `predit update` to sync.
+### Cache restore and `predit update`
+
+Non-`init` commands detect the user project root from `CLAUDE.md` plus either an existing `.predit/` cache or the committed scaffold pair `AGENTS.md` + `.env.example`. This lets a freshly cloned user project work even though `.predit/` is gitignored. Before a command runs, the CLI restores or refreshes `.predit/` automatically when the cache is missing, locked to a compatible older harness, or has a stale bundled checksum.
+
+`predit update` refreshes `.predit/` from the currently installed harness version on demand.
 
 `.predit/version.json` records the cache lock:
 
@@ -89,7 +95,7 @@ Refreshes `.predit/` from the currently installed harness version. Detects misma
 }
 ```
 
-`predit update --check` compares the installed harness version and bundled checksum against that file without writing. It exits non-zero when the cache is stale. Commands refuse to run when the cache was locked by an incompatible major version; the remediation is either `predit update` to refresh the project cache or installing a matching `predit` version.
+`predit update --check` compares the installed harness version and bundled checksum against that file without writing. It exits non-zero when the cache is stale. Commands still refuse to run when the cache was locked by an incompatible major version; the remediation is either `predit update` to refresh the project cache intentionally or installing a matching `predit` version.
 
 `predit.lock` is a post-v0.1.0 team-pinning feature. v0.1.0 does not write or enforce `predit.lock`; cache compatibility is tracked only by `.predit/version.json`. When implemented, `predit init` will write the lock with harness version and bundled checksum, `predit update` will error on lock mismatch unless forced, and `predit update --check` will remain non-mutating and exit non-zero on mismatch.
 
@@ -120,7 +126,9 @@ Creates a project-local pipeline manifest at `pipelines/<slug>.yaml` and the fir
 | Starters | `harness/starters/` → cached | No (cloned via `predit new show --from`, then user-edited) |
 | Shows, characters, brand, episodes | `<project>/shows/` | Yes — fully user-owned |
 | Capability-extension scripts/tools | `<project>/projects/<show>/<episode>/scripts/`, `<project>/projects/<show>/<episode>/tools/` | Yes — episode-scoped wrappers created through MET-11 |
-| Music files, render outputs | `<project>/music_library/`, `<project>/projects/` | Yes (gitignored) |
+| Env template | `<project>/.env.example` | Yes — blank, shareable setup map |
+| Secret env values | `<project>/.env`, `<project>/.env.local`, `<project>/.env.<command>` | Yes (gitignored) |
+| Music files, render outputs, editor packages | `<project>/music_library/`, `<project>/projects/`, `<project>/exports/`, `<project>/renders/` | Yes (gitignored) |
 
 ## Resolution order
 
@@ -139,7 +147,7 @@ The demo matrix runner validates the installed/local CLI from the same separatio
 ## Why a local cache instead of reading from `node_modules`
 
 - Agents (Claude Code, Codex) navigate via filesystem reads. `.predit/skills/...` is a stable, predictable path inside the project. `node_modules/predit/...` is brittle (depends on install method, pnpm hoisting, global vs local).
-- The cache is gitignored, so a fresh clone of the user's project doesn't carry stale harness content; `predit update` repopulates from whatever harness version is installed.
+- The cache is gitignored, so a fresh clone of the user's project doesn't carry stale harness content; the next non-`init` command restores it from whatever harness version is installed, and `predit update` remains the explicit refresh command.
 - The cache version is tracked in `.predit/version.json` so the harness can warn on mismatch and refuse to operate on a project cached against an incompatible major version.
 
 ## User project is user-owned

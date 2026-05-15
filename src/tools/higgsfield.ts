@@ -171,7 +171,7 @@ function buildWireRequest(input: HiggsfieldInput, imageUrl: string): WireRequest
   return {
     url: KLING_IMAGE_TO_VIDEO_URL,
     headers: {
-      Authorization: `Key ${process.env.HIGGSFIELD_API_KEY ?? "<key>"}:${process.env.HIGGSFIELD_API_SECRET ?? "<secret>"}`,
+      Authorization: `Key ${nonBlankEnv("HIGGSFIELD_API_KEY") ?? "<key>"}:${nonBlankEnv("HIGGSFIELD_API_SECRET") ?? "<secret>"}`,
       "Content-Type": "application/json",
     },
     body: {
@@ -253,6 +253,11 @@ function redactAuthorization(value: string): string {
   }
 
   return value.length > 0 ? "<redacted>" : value;
+}
+
+function nonBlankEnv(name: string): string | undefined {
+  const value = process.env[name];
+  return value !== undefined && value.trim() !== "" ? value : undefined;
 }
 
 function readHostedUrl(output: unknown): string {

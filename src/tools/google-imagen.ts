@@ -68,7 +68,7 @@ export default defineTool({
   async execute(params, ctx) {
     const input = GoogleImagenInputSchema.parse(params);
     const account = await readServiceAccount();
-    const project = input.project ?? process.env.GOOGLE_CLOUD_PROJECT ?? account.project_id;
+    const project = firstNonBlank(input.project, process.env.GOOGLE_CLOUD_PROJECT, account.project_id);
 
     if (!project) {
       throw new Error("missing Google Cloud project: set GOOGLE_CLOUD_PROJECT or project_id in the service account");
@@ -205,4 +205,8 @@ function firstPredictionBase64(response: ImagenPredictResponse): string {
 function hasEnv(name: string): boolean {
   const value = process.env[name];
   return value !== undefined && value.trim() !== "";
+}
+
+function firstNonBlank(...values: Array<string | undefined>): string | undefined {
+  return values.find((value) => value !== undefined && value.trim() !== "");
 }

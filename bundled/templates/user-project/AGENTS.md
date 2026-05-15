@@ -30,16 +30,25 @@ The intelligence is in the skills, not in improvised code. An agent that reads t
 
 When a user says "help me make the first video", "what can this project do?", or gives a broad creative goal, guide them through this path:
 
-1. Run `predit doctor --profile paid-demo --json` and `predit ls tools --json`, then summarize what is ready, what needs env vars, what needs CLI login, and which composition runtimes are available. If env vars are missing and `.env` does not exist, suggest copying `.env.example` to `.env` and filling the keys, or exporting the variables in the current shell.
-2. Run `predit ls starters` and recommend one starter or one pipeline based on the user's goal.
-3. If Remotion or HyperFrames is unavailable and the video would benefit from motion graphics, animated overlays, or runtime choice, ask whether to run `predit setup runtimes` before scaffolding. Run it only after approval; FFmpeg-only is still valid when the user wants the fastest path.
-4. If the project has no show yet, scaffold one with `predit new show <slug> --from <starter>` for starter-backed work, or `predit new show <slug> --pipelines <pipeline>` for a custom show.
-5. Create or select an episode with `predit new episode <show> <episode>`.
-6. Before spending provider credits, explain the selected pipeline, likely tools, rough cost, and expected output path.
-7. Run `predit build <show>/<episode> --sample --provider-profile paid-demo` for paid samples, or omit the provider profile for zero-key samples.
-8. Export with `predit export <show>/<episode> --target premiere` and, when useful, `predit export <show>/<episode> --format edl`.
+1. Run `predit update --check --json`. If the bundled cache is stale or missing, run `predit update` before reading `.predit/` skills, pipelines, playbooks, schemas, or starters. This keeps the project-local agent instructions aligned with the installed harness.
+2. Run `predit doctor --profile paid-demo --json` and `predit ls tools --json`, then summarize what is ready, what needs env vars, what needs CLI login, and which composition runtimes are available. If env vars are missing, point the user at the scaffolded `.env` file and the committed `.env.example`; shell exports are also valid and win over file values.
+3. Run `predit ls starters` and recommend one starter or one pipeline based on the user's goal.
+4. If Remotion or HyperFrames is unavailable and the video would benefit from motion graphics, animated overlays, or runtime choice, ask whether to run `predit setup runtimes` before scaffolding. Run it only after approval; FFmpeg-only is still valid when the user wants the fastest path.
+5. If the project has no show yet, scaffold one with `predit new show <slug> --from <starter>` for starter-backed work, or `predit new show <slug> --pipelines <pipeline>` for a custom show.
+6. Create or select an episode with `predit new episode <show> <episode>`.
+7. Before spending provider credits, explain the selected pipeline, likely tools, rough cost, and expected output path.
+8. Run `predit build <show>/<episode> --sample --provider-profile paid-demo` for paid samples, or omit the provider profile for zero-key samples.
+9. Export with `predit export <show>/<episode> --target premiere` and, when useful, `predit export <show>/<episode> --format edl`.
 
 Record any issue, confusing output, failed tool call, or manual fix in `projects/<show>/<episode>/notes.md` so a coding agent can improve the harness later.
+
+## Communication modes
+
+Match the user's comfort level without changing the production contract:
+
+- **Non-technical user:** use plain language first. Say which account, app, or login step is needed, what it unlocks, and whether it costs money. Avoid YAML explanations unless they ask.
+- **Technical user:** include exact commands, env var names, file paths, and failure output. Keep secrets redacted.
+- **Agent user:** prefer `--json` commands, record reproducible notes in `projects/<show>/<episode>/notes.md`, do not print secret values, and ask before installs, paid calls, or runtime changes.
 
 ## Where things live
 
@@ -56,7 +65,9 @@ Record any issue, confusing output, failed tool call, or manual fix in `projects
 ├── skills/                        # optional: project-local skill overrides
 ├── music_library/                 # gitignored — drop audio here
 ├── projects/<show>/<episode>/     # gitignored — runtime workspace, generated assets, renders
-├── .env.example                   # copy to .env for provider keys
+├── exports/                       # gitignored — editor handoff packages
+├── .env                           # gitignored — local provider keys
+├── .env.example                   # committed — blank provider key template
 └── .predit/                       # gitignored — bundled cache (read-only)
     ├── pipelines/
     ├── playbooks/
@@ -64,7 +75,7 @@ Record any issue, confusing output, failed tool call, or manual fix in `projects
     └── schemas/
 ```
 
-`predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before commands run. Shell-exported values win over file values. Never commit `.env`.
+`predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before commands run. Shell-exported values win over file values. Never commit `.env`. Commit `.env.example`, shows, pipelines, playbooks, and skills so workflows can be shared safely.
 
 `predit setup runtimes` installs Remotion and HyperFrames locally for this project. Offer it when those runtimes are unavailable and the user's video would benefit from richer composition, but do not run installs without approval.
 

@@ -24,9 +24,12 @@ Otherwise treat as **vague** and onboard. When the classification is genuinely u
 Before saying anything creative, the agent knows what it's working with. Call:
 
 ```bash
+predit update --check --json
 predit doctor --profile paid-demo --json
 predit ls tools --json
 ```
+
+If `predit update --check --json` reports the `.predit/` cache is stale, missing, or incompatible, run `predit update` before reading bundled skills, pipeline manifests, playbooks, schemas, or starters. Agents reason from the project-local cache, so onboarding must keep it aligned with the installed harness.
 
 Parse the output into three buckets:
 
@@ -58,6 +61,7 @@ Rules:
 - Keep it to 8–12 lines max.
 - Mention at most 2 quick-unlock suggestions. Don't nag.
 - Read install instructions from the registry — never hardcode provider names or env vars.
+- When env vars are missing, point to the generated `.env` file and committed `.env.example` instead of asking the user to create them from memory. Shell exports are still valid and override file values.
 
 Template:
 
@@ -91,6 +95,12 @@ Complex (GPU, model download):
 Composition runtimes appear as their own block, not folded into "capabilities" — because their per-runtime availability drives the present-both-runtimes rule downstream (see [`15-announce-and-escalate.md`](15-announce-and-escalate.md)).
 
 Setup offers are grouped by **effort tier** (env var / CLI login / install / complex), not by capability, so the user can scan for "what's cheapest to fix right now."
+
+Agents should adapt language to the operator:
+
+- Non-technical user: account/login needed, what it unlocks, and whether it may cost money.
+- Technical user: exact command, env var, file path, and failure output.
+- Agent user: `--json` commands, redacted secrets, and issue notes under `projects/<show>/<episode>/notes.md`.
 
 ### 4. Composition runtime reporting
 

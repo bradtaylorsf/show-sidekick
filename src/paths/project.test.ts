@@ -41,6 +41,15 @@ describe("project paths", () => {
     expect(findProjectRoot(child)).toBe(root);
   });
 
+  it("recognizes a shared scaffold before the gitignored .predit cache is restored", async () => {
+    const root = await scratchProject(false);
+    await writeFile(path.join(root, "CLAUDE.md"), "# project\n", "utf8");
+    await writeFile(path.join(root, "AGENTS.md"), "# agents\n", "utf8");
+    await writeFile(path.join(root, ".env.example"), "OPENAI_API_KEY=\n", "utf8");
+
+    expect(findProjectRoot(root)).toBe(root);
+  });
+
   it("throws a structured error when no project root is found", async () => {
     const root = await scratchProject(false);
 

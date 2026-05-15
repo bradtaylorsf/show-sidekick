@@ -25,6 +25,8 @@ cd my-shows
 predit init --starter music-video --git
 ```
 
+`predit init` creates both `.env.example` and a gitignored `.env`. Fill `.env` with any provider keys you want to use; keep `.env.example` committed as the blank setup map for collaborators and agents.
+
 For a blank, agent-guided project, run:
 
 ```bash
@@ -37,7 +39,7 @@ Then give your agent:
 Read AGENTS.md and .predit/skills/meta/onboarding.md, then guide me through my first predit video.
 ```
 
-The agent contract tells Codex, Claude, or another agent to run `predit doctor --profile paid-demo`, explain available providers and runtimes, recommend a starter or pipeline, ask before paid generation, and record issues under `projects/<show>/<episode>/notes.md`.
+The agent contract tells Codex, Claude, or another agent to refresh/check `.predit/`, run `predit doctor --profile paid-demo`, explain available providers and runtimes, recommend a starter or pipeline, ask before paid generation, and record issues under `projects/<show>/<episode>/notes.md`.
 
 The starter creates `shows/music-video/` with:
 
@@ -62,7 +64,7 @@ predit setup openai_tts
 predit ls tools
 ```
 
-Or keep credentials project-local by copying `.env.example` to `.env` and filling in the same keys. `predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before each command; exported shell variables still take precedence. `.env` is gitignored by the scaffold.
+Or keep credentials project-local by filling the generated `.env` with the same keys. `predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before each command; exported shell variables still take precedence. `.env` is gitignored by the scaffold, while `.env.example` is safe to commit.
 
 `predit setup runtimes` is optional but recommended before demos that need motion graphics, animated overlays, or runtime choice. It installs Remotion and HyperFrames into the user project so agents can offer them alongside FFmpeg before locking a render runtime.
 
@@ -97,6 +99,9 @@ predit export music-video/sample-episode --target edl
 
 Exports are written under `exports/` by default, and each export records `projects/music-video/sample-episode/publish_log.json`.
 If the package already exists, re-run with `--overwrite`.
+
+The generated `.gitignore` excludes `projects/`, `exports/`, `renders/`, `output/`, `outputs/`, `.predit/`, `.env`, and bulky local media folders. Commit `shows/`, `pipelines/`, `playbooks/`, `skills/`, and `.env.example` when you want to share the workflow without generated video assets or credentials.
+When another machine or agent clones the project, the first predit command restores the gitignored `.predit/` cache from the installed harness before running.
 
 ## Troubleshooting
 

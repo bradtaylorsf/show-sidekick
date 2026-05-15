@@ -27,12 +27,15 @@ If fewer than two signals are present, treat it as vague and onboard. If classif
 
 ### Step 1: Run Preflight Discovery
 
-Before saying anything creative, inspect the local setup:
+Before saying anything creative, make sure the project-local harness cache is current, then inspect the local setup:
 
 ```bash
+predit update --check --json
 predit doctor --profile paid-demo --json
 predit ls tools --json
 ```
+
+If `predit update --check --json` reports a stale, missing, or incompatible cache, run `predit update` before reading `.predit/` resources or recommending a pipeline. The cache owns the bundled skills, pipeline manifests, schemas, playbooks, and starters that agents use to guide production.
 
 Parse the result into:
 
@@ -97,7 +100,13 @@ Rules:
 - Keep it to 8-12 useful lines when possible.
 - Mention at most two suggestions per effort tier.
 - Read install instructions from the registry; do not hardcode provider names or environment variables.
-- When env vars are missing, tell the user they can either export them in the current shell/agent session or copy `.env.example` to `.env` and fill the values. The CLI loads project `.env`, `.env.<command>`, and `.env.local`; shell values win.
+- When env vars are missing, tell the user they can fill the scaffolded `.env` file, compare it with the committed `.env.example`, or export values in the current shell/agent session. The CLI loads project `.env`, `.env.<command>`, and `.env.local`; shell values win.
+
+Adapt your wording to the operator:
+
+- For a non-technical user, explain the account/login needed and what it unlocks in plain language.
+- For a technical user, include exact commands, env var names, and file paths.
+- For another agent, prefer `--json` commands, redact secrets, and record issues in `projects/<show>/<episode>/notes.md`.
 
 ### Step 4: Report Composition Runtimes Separately
 
@@ -141,6 +150,7 @@ When you give me a prompt, I will understand the brief, propose concepts with co
 Use this sequence for a first video:
 
 ```bash
+predit update --check
 predit doctor --profile paid-demo
 predit setup runtimes
 predit ls starters

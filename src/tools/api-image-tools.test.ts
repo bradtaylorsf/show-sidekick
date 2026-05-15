@@ -166,6 +166,26 @@ describe("API image generation tools", () => {
     });
   });
 
+  it("uses the service account project when GOOGLE_CLOUD_PROJECT is blank in .env", async () => {
+    originalEnv = { ...process.env };
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify(serviceAccount());
+    process.env.GOOGLE_CLOUD_PROJECT = "";
+    const root = await tempDir();
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse({ access_token: "google-token" }))
+      .mockResolvedValueOnce(jsonResponse({ predictions: [{ bytesBase64Encoded: imageBase64 }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await googleImagen.execute({ prompt: "a storyboard frame" }, testContext(root));
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("/v1/projects/service-project/locations/us-central1/"),
+      expect.any(Object),
+    );
+  });
+
   it("generates an OpenAI image and writes the decoded base64 bytes", async () => {
     originalEnv = { ...process.env };
     process.env.OPENAI_API_KEY = "openai-key";

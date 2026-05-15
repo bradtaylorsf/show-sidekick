@@ -9,6 +9,7 @@ import { resetLoggerMode } from "../log/mode.js";
 import { defineTool, Registry, type Availability, type Integration } from "../registry/index.js";
 import { VERSION } from "../version.js";
 import { computeBundledChecksum } from "../version/bundled.js";
+import { readCacheVersion } from "../version/cache.js";
 import { commandNames, createProgram, type ProgramOptions } from "./program.js";
 
 function captureProgram(options: Omit<ProgramOptions, "io"> = {}) {
@@ -222,7 +223,7 @@ describe("createProgram", () => {
     expect(output().stderr).toContain('unknown command "buid", did you mean "build"?');
   });
 
-  it("warns before commands when .predit was locked by a different installed version", async () => {
+  it("refreshes the project cache before commands when .predit was locked by a different installed version", async () => {
     const root = await scratchProject({
       harness_version: sameMajorDifferentVersion(),
       bundled_checksum: "cached",
@@ -233,11 +234,15 @@ describe("createProgram", () => {
 
     await program.parseAsync(["node", "predit", "tools", "fixture"], { from: "node" });
 
-    expect(output().stderr).toContain("run 'predit update'");
+    expect(output().stderr).toContain("refreshed .predit cache");
     expect(output().stdout).toContain("tools: not yet implemented");
+    await expect(readCacheVersion(root)).resolves.toMatchObject({
+      harness_version: VERSION,
+      bundled_checksum: await computeBundledChecksum(),
+    });
   });
 
-  it("warns before commands when the bundled checksum is stale", async () => {
+  it("refreshes the project cache before commands when the bundled checksum is stale", async () => {
     const root = await scratchProject({
       harness_version: VERSION,
       bundled_checksum: "stale",
@@ -248,8 +253,28 @@ describe("createProgram", () => {
 
     await program.parseAsync(["node", "predit", "tools", "fixture"], { from: "node" });
 
-    expect(output().stderr).toContain("checksum is stale");
+    expect(output().stderr).toContain("refreshed stale .predit bundled cache");
     expect(output().stdout).toContain("tools: not yet implemented");
+    await expect(readCacheVersion(root)).resolves.toMatchObject({
+      harness_version: VERSION,
+      bundled_checksum: await computeBundledChecksum(),
+    });
+  });
+
+  it("restores the gitignored .predit cache before commands in a shared scaffold clone", async () => {
+    const root = await scratchSharedProjectWithoutCache();
+    process.chdir(root);
+    const { program, output } = captureProgram();
+
+    await program.parseAsync(["node", "predit", "tools", "fixture"], { from: "node" });
+
+    expect(output().stderr).toContain("refreshed");
+    expect(output().stderr).toContain(".predit");
+    expect(output().stdout).toContain("tools: not yet implemented");
+    await expect(readCacheVersion(root)).resolves.toMatchObject({
+      harness_version: VERSION,
+      bundled_checksum: await computeBundledChecksum(),
+    });
   });
 
   it("does not warn before commands when cache version and checksum match", async () => {
@@ -302,6 +327,16 @@ async function scratchCurrentProject(): Promise<string> {
     bundled_checksum: await computeBundledChecksum(),
     locked_at: "2026-05-14T00:00:00.000Z",
   });
+}
+
+async function scratchSharedProjectWithoutCache(): Promise<string> {
+  const root = path.join(tmpdir(), `predit-program-${randomUUID()}`);
+  scratchDirs.push(root);
+  await mkdir(root, { recursive: true });
+  await writeFile(path.join(root, "CLAUDE.md"), "# project\n", "utf8");
+  await writeFile(path.join(root, "AGENTS.md"), "# agents\n", "utf8");
+  await writeFile(path.join(root, ".env.example"), "OPENAI_API_KEY=\n", "utf8");
+  return root;
 }
 
 async function scratchDir(): Promise<string> {

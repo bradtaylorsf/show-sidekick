@@ -142,6 +142,10 @@ async function copyUserProjectTemplates(sourceBundledRoot: string, projectRoot: 
     errorOnExist: true,
     force: false,
   });
+  await cp(path.join(templateRoot, ".env.example"), path.join(projectRoot, ".env"), {
+    errorOnExist: true,
+    force: false,
+  });
 }
 
 async function defaultRunGit(args: string[], cwd: string): Promise<void> {
@@ -189,6 +193,7 @@ function emitInitialized(io: CliIo, options: InitOptions, event: InitEvent): voi
   const nextSteps = event.starter
     ? [
         "next:",
+        "  edit .env with any provider keys you want to use",
         "  predit doctor --profile paid-demo",
         "  predit setup runtimes  # optional: install Remotion + HyperFrames locally",
         `  predit build ${event.starter}/sample-episode --sample`,
@@ -196,6 +201,7 @@ function emitInitialized(io: CliIo, options: InitOptions, event: InitEvent): voi
       ]
     : [
         "next:",
+        "  edit .env with any provider keys you want to use",
         "  predit doctor --profile paid-demo",
         "  predit setup runtimes  # optional: install Remotion + HyperFrames locally",
         "  predit ls starters",

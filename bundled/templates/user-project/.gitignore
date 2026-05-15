@@ -5,13 +5,27 @@
 # every collaborator's cache reflects their locally installed predit version.
 .predit/
 
-# Runtime workspace — generated assets, intermediate artifacts, renders.
+# Runtime workspace - generated assets, intermediate artifacts, renders.
 # Everything in here is regenerable. Do not commit.
 projects/
+
+# Default export/render scratch roots. Keep final videos in external storage or
+# commit them deliberately by overriding this ignore file for a specific path.
+exports/
+renders/
+output/
+outputs/
+.predit-work/
+tmp/
+temp/
 
 # Drop zone for input media (audio, source video). Often large binary files;
 # commit them separately if you want them in version control.
 music_library/
+
+# Keep source workflows shareable. The following project-local override folders
+# are intentionally not ignored:
+#   shows/ pipelines/ playbooks/ skills/
 
 # Editor / OS detritus
 .DS_Store

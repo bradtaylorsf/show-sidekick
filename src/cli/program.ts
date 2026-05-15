@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import path from "node:path";
 import { Command } from "commander";
 import { createApproveHandler } from "./commands/approve.js";
 import { createBuildHandler, type BuildHandlerOptions } from "./commands/build.js";
@@ -21,8 +24,8 @@ import { configure } from "../log/mode.js";
 import { loadEnvIntoProcess } from "../paths/env.js";
 import { ProjectRootNotFoundError } from "../paths/errors.js";
 import { findProjectRoot } from "../paths/project.js";
-import { computeBundledChecksum } from "../version/bundled.js";
-import { compareVersions, readCacheVersion } from "../version/cache.js";
+import { BUNDLED_CACHE_DIRS, bundledRoot, computeBundledChecksum, copyBundledInto } from "../version/bundled.js";
+import { compareVersions, readCacheVersion, writeCacheVersion } from "../version/cache.js";
 import { VERSION } from "../version.js";
 
 const CLI_DESCRIPTION = "AI pre-production for video - build the rough cut, finish in your NLE.";
@@ -266,19 +269,28 @@ async function checkProjectCache(commandName: string, projectRoot: string | null
 
   const cached = await readCacheVersion(projectRoot);
   if (cached === null) {
+    if (commandName !== "update" && !existsSync(path.join(projectRoot, ".predit"))) {
+      await refreshProjectCache(projectRoot);
+      io.stderr.write(`info: refreshed ${projectRoot}/.predit for predit v${VERSION}\n`);
+      return;
+    }
+
     io.stderr.write(`warning: ${projectRoot}/.predit/version.json is missing; run 'predit update'\n`);
     return;
   }
 
   const comparison = compareVersions(VERSION, cached);
-  if (comparison === "match" && cached.bundled_checksum === (await computeBundledChecksum())) {
+  const sourceBundledRoot = bundledRoot();
+  const bundledChecksum = await computeBundledChecksum(sourceBundledRoot);
+  if (comparison === "match" && cached.bundled_checksum === bundledChecksum) {
     return;
   }
 
   if (comparison === "mismatch") {
     if (commandName !== "update") {
+      await refreshProjectCache(projectRoot, sourceBundledRoot, bundledChecksum);
       io.stderr.write(
-        `warning: .predit cache is locked to predit v${cached.harness_version}, installed is v${VERSION}; run 'predit update'\n`,
+        `info: refreshed .predit cache from predit v${cached.harness_version} to installed v${VERSION}\n`,
       );
     }
     return;
@@ -286,7 +298,8 @@ async function checkProjectCache(commandName: string, projectRoot: string | null
 
   if (comparison === "match") {
     if (commandName !== "update") {
-      io.stderr.write("warning: .predit bundled cache checksum is stale; run 'predit update'\n");
+      await refreshProjectCache(projectRoot, sourceBundledRoot, bundledChecksum);
+      io.stderr.write("info: refreshed stale .predit bundled cache\n");
     }
     return;
   }
@@ -303,6 +316,25 @@ async function checkProjectCache(commandName: string, projectRoot: string | null
   }
 
   throw new Error(message);
+}
+
+async function refreshProjectCache(
+  projectRoot: string,
+  sourceBundledRoot: string = bundledRoot(),
+  bundledChecksum?: string,
+): Promise<void> {
+  const preditDir = path.join(projectRoot, ".predit");
+
+  for (const dirname of BUNDLED_CACHE_DIRS) {
+    await rm(path.join(preditDir, dirname), { recursive: true, force: true });
+  }
+
+  await copyBundledInto(preditDir, sourceBundledRoot);
+  await writeCacheVersion(projectRoot, {
+    harness_version: VERSION,
+    bundled_checksum: bundledChecksum ?? (await computeBundledChecksum(sourceBundledRoot)),
+    locked_at: new Date().toISOString(),
+  });
 }
 
 function requireProjectRoot(commandName: string): string | null {

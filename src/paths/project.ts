@@ -105,9 +105,11 @@ export function parseShowEpisode(spec: string, root: string = findProjectRoot())
 
 function isProjectRoot(candidate: string): boolean {
   const claudePath = path.join(candidate, "CLAUDE.md");
+  const agentsPath = path.join(candidate, "AGENTS.md");
+  const envExamplePath = path.join(candidate, ".env.example");
   const preditPath = path.join(candidate, ".predit");
 
-  return existsSync(claudePath) && isDirectory(preditPath);
+  return existsSync(claudePath) && (isDirectory(preditPath) || (existsSync(agentsPath) && existsSync(envExamplePath)));
 }
 
 function isDirectory(candidate: string): boolean {
