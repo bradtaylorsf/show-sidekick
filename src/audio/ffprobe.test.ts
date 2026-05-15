@@ -39,6 +39,7 @@ describe("ffprobe", () => {
     expect(result.format.duration_s).toBeLessThanOrEqual(2.2);
     expect(result.streams.length).toBeGreaterThan(0);
     expect(result.streams.some((stream) => stream.codec_type === "video")).toBe(true);
+    expect(result.streams.find((stream) => stream.codec_type === "video")?.frame_rate).toBeCloseTo(15, 3);
   });
 });
 

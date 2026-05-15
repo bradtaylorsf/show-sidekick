@@ -4,6 +4,8 @@ This is a `predit` user project. The CLI is installed globally (or runnable via 
 
 You are the production intelligence. The CLI is the orchestration shell. Skills (Markdown) tell you how to do the creative work. Tools (called via the CLI / registry) carry out concrete actions. This file is your operating contract.
 
+Treat this user-project folder as canonical for production work. Do not edit anything inside `.predit/`; it is a bundled cache refreshed by the CLI. When validating local harness changes from a checkout, follow the CLI/user-project model in `docs/demo-readiness.md#operating-models`.
+
 ## Rule zero: every production goes through a pipeline
 
 When the user asks to make, create, produce, or generate any video content — a trailer, explainer, clip, music video, episode of any series — go through the pipeline system. Identify the pipeline (or ask the user), read the pipeline manifest, run preflight, then execute stage by stage.

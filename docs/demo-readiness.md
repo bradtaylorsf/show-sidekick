@@ -1,15 +1,115 @@
-# Demo Readiness Inventory
+# Demo Readiness
+
+This guide is for reviewers and coding agents validating `predit` as a CLI-first harness. Default to the CLI/user-project model unless you are deliberately maintaining the harness internals.
+
+## Operating Models
+
+The legacy in-repo model runs from the harness checkout. Maintainers use it for source edits, schema tests, and matrix automation:
+
+```bash
+pnpm dev <args>
+pnpm demo-matrix --zero-key --keep-workdir
+pnpm demo-matrix --paid-demo --keep-workdir
+```
+
+This model is allowed for harness development, but it is not how reviewers should judge the product experience.
+
+The CLI/user-project model runs `predit` from a separate folder owned by the show operator. The harness provides the CLI and the `.predit/` bundled cache; the user project owns `shows/`, `projects/`, renders, exports, and local overrides. Reviewers and agents should use this model for demos:
+
+```bash
+predit init --starter music-video
+predit build music-video/sample-episode --sample
+predit export music-video/sample-episode --target premiere
+```
+
+Do not require operators to work inside the harness repo. Do not edit `.predit/` inside the user project; refresh it with `predit update` or override resources in project-local `pipelines/`, `playbooks/`, or `skills/`.
+
+## Local Development Without Publishing
+
+Use this path when validating local harness changes before publishing a package. The CLI is built once in the harness repo, then invoked by absolute `dist` path from a separate user project.
+
+```bash
+cd /Users/bradtaylor/Documents/GitHub/predit/.worktrees/issue-196
+pnpm install
+pnpm build
+
+HARNESS=/Users/bradtaylor/Documents/GitHub/predit/.worktrees/issue-196
+DEMO_ROOT=/tmp/predit-demo
+mkdir -p "$DEMO_ROOT"
+cd "$DEMO_ROOT"
+
+node "$HARNESS/dist/cli/index.js" init --starter music-video
+node "$HARNESS/dist/cli/index.js" build music-video/sample-episode --sample
+node "$HARNESS/dist/cli/index.js" export music-video/sample-episode --target premiere --overwrite
+node "$HARNESS/dist/cli/index.js" export music-video/sample-episode --format edl --overwrite
+```
+
+Expected local outputs:
+
+- Runtime workspace: `projects/music-video/sample-episode/`
+- Render: `projects/music-video/sample-episode/renders/sample-preview.mp4`
+- Premiere package: `exports/music-video__sample-episode.premiere/`
+- EDL package: `exports/music-video__sample-episode.edl/`
+
+## Provider Setup Without Storing Credentials In The Repo
+
+The zero-key `music-video` sample can run without provider credentials. Paid demo lanes use the `paid-demo` provider profile described in [Provider Profiles](provider-profiles.md).
+
+Use environment variables and provider CLIs. Do not store credentials in `show.yaml`, `episode.yaml`, `.predit/`, starter files, committed docs, or generated artifacts.
+
+```bash
+export OPENAI_API_KEY="sk-..."
+export ELEVENLABS_API_KEY="..."
+
+higgsfield login
+higgsfield whoami
+
+node "$HARNESS/dist/cli/index.js" doctor --profile paid-demo
+node "$HARNESS/dist/cli/index.js" build news-song/sample-episode --sample --provider-profile paid-demo
+```
+
+Provider expectations for `paid-demo`:
+
+- OpenAI: image generation and fallback TTS through `OPENAI_API_KEY`.
+- ElevenLabs: primary TTS through `ELEVENLABS_API_KEY`.
+- Higgsfield: image-to-video through the `higgsfield` CLI and an authenticated `higgsfield whoami`.
+- Local media: `ffmpeg` and `ffprobe` on `PATH`.
+
+## Green Paths And Known Blockers
+
+The demo matrix is starter-driven. It reads `bundled/starters/*/show.yaml`, selects starters whose `sample_support` matches the chosen mode, initializes each in a fresh user project, builds `sample-episode`, verifies artifacts/media/exports, and writes `demo-matrix-verification.json`.
+
+Current expected green paths:
+
+- `pnpm demo-matrix --zero-key --only music-video --keep-workdir`
+- `pnpm demo-matrix --paid-demo --keep-workdir` after `predit doctor --profile paid-demo` is green for OpenAI, ElevenLabs, Higgsfield, ffmpeg, and ffprobe.
+
+| Starter | Default Pipeline | sample_support | Expected Status | Notes |
+|---|---|---|---|---|
+| `music-video` | `music-video` | `both` | Green for zero-key; included in paid-demo | Zero-key starter sample and export path are the first validation lane. |
+| `ai-workflow-demo` | `screen-demo` | `paid` | Paid-demo only | Requires paid-demo provider setup; synthetic terminal fixture. |
+| `animated-explainer` | `animated-explainer` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
+| `cinematic-trailer` | `cinematic` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
+| `last-rev` | `screen-demo` | `paid` | Paid-demo only | Default lane is `screen-demo`; `talking-head` is also declared for follow-ups. |
+| `news-song` | `news-song` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
+| `rave-queen` | `cinematic` | `paid` | Paid-demo only | Show starter on `cinematic`, not an `animation` default. |
+| `thechaosfm` | `news-song` | `paid` | Paid-demo only | Ain't No Crowns is a show benchmark, not a default-pipeline benchmark. |
+| `documentary` | `documentary-montage` | `unsupported` | Blocked | Needs sample-support metadata and a verified sample provider path. |
+| `product-demo` | `screen-demo` | `unsupported` | Blocked | Needs sample-support metadata and a verified sample provider path. |
+| `ww2-diary` | `cinematic` | `unsupported` | Blocked | Show starter only; not a bundled pipeline type. |
+
+## Demo Readiness Inventory
 
 `src/pipelines/demo-inventory.ts` is the canonical inventory for bundled pipeline demo readiness. Update it in the same change as any bundled manifest or starter binding change.
 
-## Classifications
+### Classifications
 
 - `core_default`: primary bundled lanes that default starters may target directly.
 - `seeded_extension`: shipped extension lanes that are valid starter targets but are not the first demo path.
 - `test_only`: harness test fixtures. These may ship as manifests but must never be used by a default starter.
 - `show_starter_only`: show concepts that may exist as starters/playbooks but must not be added as bundled pipeline manifest types.
 
-## Current Bundled Manifest Slugs
+### Current Bundled Manifest Slugs
 
 Approved bundled manifest slugs:
 
@@ -35,16 +135,22 @@ Test-only lane:
 
 Show-starter-only concepts are denylisted in `SHOW_ONLY_DENYLIST`. Examples include `ww2-diary`, `thechaosfm`, `last-rev`, `rave-queen`, `gta-political`, and `aint-no-crowns`. These slugs may appear under `bundled/starters/`, playbooks, or demo briefs, but they must never appear as `bundled/pipelines/<slug>.yaml`.
 
-## Runnable Demo Matrix
+### Runnable Demo Matrix
 
 The maintainer demo matrix is starter-driven, not manifest-driven. It reads `bundled/starters/*/show.yaml`, keeps only fixture-backed starters whose declared `sample_support` matches the selected mode, initializes each starter in a fresh user project, and runs `build --sample` there. Seeded extension manifests with `sample_support: unsupported` remain approved bundled manifests, but they are not runnable demo lanes until a starter brief and sample provider path are added.
 
-## Show Starter Examples
+### Show Starter Examples
 
 - `ww2-diary` is a starter on `cinematic` with the `news-broadcast` playbook.
 - `thechaosfm` is a branded starter on `news-song` with the `thechaosfm-gta-political` playbook; the show-level Ain't No Crowns benchmark metadata lives in the starter README.
 - `last-rev` is a starter that declares `screen-demo` for synthetic terminal walkthroughs and `talking-head` for hosted follow-ups.
 - `rave-queen` is a starter on `cinematic`; its README records why `animation` was rejected as the default binding.
+
+## Baseline Comparison
+
+Use [Baseline Comparison Report](baseline-comparison.md) when comparing `predit` demo outputs against a reference baseline from equivalent inputs. The template is filled from `demo-matrix-verification.json`, the demo matrix NDJSON events, generated stage artifacts, and manual notes from the baseline run.
+
+The Ain't No Crowns reference is a [TheChaosFM](../bundled/starters/thechaosfm/README.md) show benchmark. It is not a default-pipeline benchmark and must not be used to judge every `news-song` or bundled default lane.
 
 ## Adding A Bundled Pipeline
 

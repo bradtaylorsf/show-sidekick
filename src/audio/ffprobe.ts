@@ -11,6 +11,7 @@ export const FfprobeStreamSchema = z.object({
   channels: z.number().int().positive().optional(),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
+  frame_rate: z.number().positive().optional(),
 });
 
 export const FfprobeResultSchema = z.object({
@@ -52,6 +53,8 @@ type RawFfprobeOutput = {
     channels?: number;
     width?: number;
     height?: number;
+    avg_frame_rate?: string;
+    r_frame_rate?: string;
     duration?: string;
   }>;
 };
@@ -94,6 +97,7 @@ function normalizeFfprobeOutput(raw: RawFfprobeOutput): FfprobeResult {
       channels: stream.channels,
       width: stream.width,
       height: stream.height,
+      frame_rate: frameRateFromRatio(stream.avg_frame_rate) ?? frameRateFromRatio(stream.r_frame_rate),
     }));
 
   const duration = numberFromString(raw.format?.duration) ?? maxStreamDuration(raw.streams ?? []) ?? 0;
@@ -132,6 +136,30 @@ function numberFromString(value: string | undefined): number | undefined {
 function integerFromString(value: string | undefined): number | undefined {
   const parsed = numberFromString(value);
   return parsed === undefined ? undefined : Math.trunc(parsed);
+}
+
+function frameRateFromRatio(value: string | undefined): number | undefined {
+  if (value === undefined || value === "0/0") {
+    return undefined;
+  }
+
+  const [rawNumerator, rawDenominator] = value.split("/");
+  const numerator = Number(rawNumerator);
+  const denominator = Number(rawDenominator);
+
+  if (!Number.isFinite(numerator) || numerator <= 0) {
+    return undefined;
+  }
+
+  if (rawDenominator === undefined) {
+    return numerator;
+  }
+
+  if (!Number.isFinite(denominator) || denominator <= 0) {
+    return undefined;
+  }
+
+  return numerator / denominator;
 }
 
 function runFfprobe(command: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string }> {

@@ -8,6 +8,14 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import YAML from "yaml";
 import { snapshotDemoMatrixEnv, type DemoMatrixEnvAvailability } from "./lib/preflight-env.ts";
 import { commandLine, defaultSpawnCommand, type SpawnCommand, type SpawnResult } from "./lib/spawn-cli.ts";
+import {
+  skippedVerification,
+  verifyLane,
+  writeDemoMatrixVerificationReport,
+  type DemoMatrixVerificationReport,
+  type LaneVerification,
+  type VerifyLaneInput,
+} from "./lib/verify-render.ts";
 
 export type DemoMatrixMode = "zero-key" | "paid-demo";
 export type SampleSupport = "zero-key" | "paid" | "both" | "unsupported";
@@ -45,6 +53,7 @@ export type DemoMatrixLaneResult = {
   readonly status: string;
   readonly last_event?: Record<string, unknown>;
   readonly artifact_paths: readonly string[];
+  readonly verification?: LaneVerification;
   readonly error?: string;
   readonly duration_ms: number;
 };
@@ -62,6 +71,8 @@ export type DemoMatrixResult = {
   readonly success_count: number;
   readonly failure_count: number;
   readonly duration_ms: number;
+  readonly verification_report_path: string;
+  readonly verification_report: DemoMatrixVerificationReport;
   readonly results: readonly DemoMatrixLaneResult[];
   readonly exitCode: number;
 };
@@ -73,6 +84,7 @@ export type DemoMatrixRunOptions = {
   readonly env?: NodeJS.ProcessEnv;
   readonly now?: () => Date;
   readonly runCommand?: SpawnCommand;
+  readonly verifyLane?: (input: VerifyLaneInput) => Promise<LaneVerification>;
   readonly write?: (line: string) => void;
 };
 
@@ -229,6 +241,7 @@ export async function runDemoMatrix(options: DemoMatrixRunOptions = {}): Promise
   const cli = await resolveCliInvocation(args.cliPath, repoRoot, runCommand, env);
   const envAvailability = await snapshotDemoMatrixEnv({ cwd: repoRoot, env, runCommand });
   const providerProfile = args.mode === "paid-demo" ? "paid-demo" : undefined;
+  const now = options.now ?? (() => new Date());
 
   output({
     event: "matrix_started",
@@ -238,11 +251,13 @@ export async function runDemoMatrix(options: DemoMatrixRunOptions = {}): Promise
     env: envAvailability,
     working_dir: workingDir,
     repo_root: repoRoot,
-    started_at: (options.now ?? (() => new Date()))().toISOString(),
+    started_at: now().toISOString(),
     lanes: lanes.map((lane) => lane.slug),
   });
 
   const results: DemoMatrixLaneResult[] = [];
+  let verificationReportPath = path.join(workingDir, "demo-matrix-verification.json");
+  let verificationReport: DemoMatrixVerificationReport | undefined;
   try {
     for (const lane of lanes) {
       const result = await runLane({
@@ -251,7 +266,9 @@ export async function runDemoMatrix(options: DemoMatrixRunOptions = {}): Promise
         cli,
         env,
         runCommand,
+        verify: options.verifyLane ?? verifyLane,
         workingDir,
+        now,
       });
       results.push(result);
       output({
@@ -261,12 +278,42 @@ export async function runDemoMatrix(options: DemoMatrixRunOptions = {}): Promise
         result,
       });
     }
+
+    const written = await writeDemoMatrixVerificationReport({
+      mode: args.mode,
+      workingDir,
+      lanes: results.map((result) =>
+        result.verification ??
+        skippedVerification({
+          slug: result.slug,
+          pipeline: result.pipeline,
+          target: result.target,
+          projectDir: result.project_dir,
+          reason: result.status === "completed" ? "verification was not run" : "build did not complete",
+          now,
+        }),
+      ),
+      now,
+    });
+    verificationReportPath = written.path;
+    verificationReport = written.report;
   } finally {
     if (!args.keepWorkdir) {
       await rm(workingDir, { recursive: true, force: true });
     }
   }
 
+  const finalVerificationReport =
+    verificationReport ??
+    ({
+      event: "demo_matrix_verification",
+      status: "failed",
+      mode: args.mode,
+      generated_at: now().toISOString(),
+      working_dir: workingDir,
+      summary: { total_lanes: 0, passed: 0, failed: 0, skipped: 0 },
+      lanes: [],
+    } satisfies DemoMatrixVerificationReport);
   const failureCount = results.filter((result) => result.status !== "completed").length;
   const finished: DemoMatrixResult = {
     event: "matrix_finished",
@@ -281,6 +328,8 @@ export async function runDemoMatrix(options: DemoMatrixRunOptions = {}): Promise
     success_count: results.length - failureCount,
     failure_count: failureCount,
     duration_ms: Date.now() - startedAt,
+    verification_report_path: verificationReportPath,
+    verification_report: finalVerificationReport,
     results,
     exitCode: failureCount === 0 ? 0 : 2,
   };
@@ -295,7 +344,9 @@ async function runLane(input: {
   readonly cli: CliInvocation;
   readonly env: NodeJS.ProcessEnv;
   readonly runCommand: SpawnCommand;
+  readonly verify: (input: VerifyLaneInput) => Promise<LaneVerification>;
   readonly workingDir: string;
+  readonly now: () => Date;
 }): Promise<DemoMatrixLaneResult> {
   const startedAt = Date.now();
   const projectDir = path.join(input.workingDir, input.lane.slug);
@@ -328,7 +379,7 @@ async function runLane(input: {
   });
   const status = build.exitCode === 0 && build.lastEvent?.status === "completed" ? "completed" : eventStatus(build);
 
-  return laneResultFromCommand({
+  const result = await laneResultFromCommand({
     lane: input.lane,
     projectDir,
     result: build,
@@ -336,6 +387,31 @@ async function runLane(input: {
     status,
     error: status === "completed" ? undefined : build.stderr.trim() || "build failed",
   });
+
+  if (status !== "completed") {
+    return result;
+  }
+
+  const verification = await input.verify({
+    slug: input.lane.slug,
+    showSlug: input.lane.showSlug,
+    pipeline: input.lane.pipeline,
+    target: input.lane.target,
+    projectDir,
+    cli: input.cli,
+    runCommand: input.runCommand,
+    env: input.env,
+    now: input.now,
+  });
+  const artifactPaths = await collectArtifactPaths(projectDir, input.lane);
+
+  return {
+    ...result,
+    status: verification.status === "passed" ? "completed" : "verification_failed",
+    artifact_paths: artifactPaths,
+    verification,
+    error: verification.status === "passed" ? undefined : verification.errors.join("; ") || "verification failed",
+  };
 }
 
 async function laneResultFromCommand(input: {
@@ -477,7 +553,7 @@ function createOutput(json: boolean, write: (line: string) => void): (event: Mat
       return;
     }
     write(
-      `demo-matrix: ${event.status}; ${event.success_count} completed, ${event.failure_count} failed` +
+      `demo-matrix: ${event.status}; ${event.success_count} completed, ${event.failure_count} failed; verification ${event.verification_report_path}` +
         `${event.kept_workdir ? `; kept ${event.working_dir}` : ""}\n`,
     );
   };

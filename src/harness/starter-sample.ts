@@ -1,5 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { CostEntry } from "../artifacts/cost-log.js";
+import type { DecisionEntry } from "../artifacts/decision-log.js";
 import { encodeRgbaPng } from "../media/png.js";
 import { projectDir } from "../checkpoints/paths.js";
 import { runFfmpeg } from "../media/ffmpeg-runner.js";
@@ -35,7 +37,8 @@ export function createStarterSampleDispatcher(): Dispatcher {
         total_so_far_usd: 0,
         budget_remaining_usd: ctx.runOptions.budget_usd ?? 0,
       },
-      decisions: [],
+      cost_entries: [zeroCostEntry(ctx)],
+      decisions: stageDecisions(ctx),
     };
   };
 }
@@ -296,4 +299,70 @@ function roundTime(value: number): number {
 
 function projectRelativePath(projectRoot: string, absolutePath: string): string {
   return path.relative(projectRoot, absolutePath).split(path.sep).join("/");
+}
+
+function zeroCostEntry(ctx: StageContext): CostEntry {
+  return {
+    tool: "starter_sample",
+    provider: "predit",
+    model: "deterministic-zero-key",
+    units: 1,
+    usd: 0,
+    mode: ctx.runOptions.sample ? "sample" : "full",
+  };
+}
+
+function stageDecisions(ctx: StageContext): DecisionEntry[] {
+  if (ctx.stage.slug === "assets") {
+    return [
+      decisionEntry(
+        ctx,
+        "assets",
+        "provider_selection",
+        "predit-zero-key",
+        "Use deterministic local starter assets so the zero-key demo lane can run without provider credentials.",
+      ),
+    ];
+  }
+
+  if (ctx.stage.slug === "edit" || ctx.stage.slug === "compose") {
+    return [
+      decisionEntry(
+        ctx,
+        ctx.stage.slug,
+        "render_runtime_selection",
+        "ffmpeg",
+        "Use ffmpeg for the deterministic starter sample rough cut and editor handoff.",
+      ),
+    ];
+  }
+
+  return [];
+}
+
+function decisionEntry(
+  ctx: StageContext,
+  stage: string,
+  category: DecisionEntry["category"],
+  picked: string,
+  reason: string,
+): DecisionEntry {
+  const timestamp = new Date().toISOString();
+  const suffix = `${stage}-${category}-${picked}`.replace(/[^a-z0-9_-]+/giu, "-").replace(/^-+|-+$/gu, "").toLowerCase();
+
+  return {
+    id: `starter-sample-${suffix}-${timestamp.replace(/[^0-9A-Z]/gu, "")}`,
+    stage,
+    timestamp,
+    category,
+    options_considered: [
+      { label: picked, rejected_because: null, notes: "Selected for the zero-key starter sample." },
+      { label: "paid-demo", rejected_because: "The zero-key demo lane must run without provider credentials.", notes: null },
+    ],
+    picked,
+    reason,
+    confidence: 0.86,
+    user_visible: true,
+    supersedes: null,
+  };
 }
