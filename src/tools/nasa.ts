@@ -21,7 +21,6 @@ export default defineTool({
   best_for: "Searching NASA Images video assets and preserving NASA public-domain attribution.",
   supports: ["stock-video", "space", "public-domain"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "nasa"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

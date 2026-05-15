@@ -66,6 +66,7 @@ The full enum, used as the `category` field on every decision entry. Naming is n
 | `downgrade_approval` | Any stage | when the deliverable is intentionally reduced in scope or quality |
 | `budget_tradeoff` | Any stage | choosing between cost-tier options (premium model vs faster cheap model) |
 | `capability_extension` | Any stage | the agent created a project-scoped tool / script / playbook / skill via `MET-11` |
+| `provider_profile_selection` | Preflight / run start | choosing a named provider setup lane such as `paid-demo` |
 | `visual_accuracy_check` | Asset stage | when a generated asset's visual fidelity was checked against a reference or character sheet |
 
 ## Rules

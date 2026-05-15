@@ -1,8 +1,9 @@
-import { readFile, readdir, stat } from "node:fs/promises";
+import { access, readFile, readdir, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { describe, expect, it } from "vitest";
+import { Registry } from "../registry/index.js";
 
 const bundledSkillsDir = fileURLToPath(new URL("../../bundled/skills/", import.meta.url));
 
@@ -232,6 +233,24 @@ describe("bundled Batch 8.B Layer 3 agent skills", () => {
         expect(content, `${name} should include ${heading}`).toMatch(new RegExp(`^## ${heading}$`, "mu"));
       }
     }
+  });
+
+  it("resolves every tool agent_skills reference to a bundled agent skill", async () => {
+    const registry = new Registry();
+    await registry.discover();
+    const missing: string[] = [];
+
+    for (const tool of registry.all()) {
+      for (const skillName of tool.agent_skills ?? []) {
+        try {
+          await access(path.join(bundledSkillsDir, "agents", `${skillName}.md`));
+        } catch {
+          missing.push(`${tool.name}: ${skillName}`);
+        }
+      }
+    }
+
+    expect(missing).toEqual([]);
   });
 
   it("preserves critical model names, defaults, and provider vocabulary", async () => {

@@ -22,7 +22,7 @@ export default defineTool({
   best_for: "Searching Pixabay royalty-free music beds with Pixabay Content License attribution.",
   supports: ["royalty-free", "music-search", "pixabay-content-license"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["music", "pixabay"],
+  agent_skills: ["music"],
   input: musicQueryInputSchema,
   output: musicProviderOutputSchema,
   async execute(params) {

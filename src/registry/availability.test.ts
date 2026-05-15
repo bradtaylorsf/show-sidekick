@@ -60,6 +60,22 @@ describe("probe", () => {
     });
   });
 
+  it("treats node-prefixed builtins as available library integrations", async () => {
+    for (const packageName of ["node:fetch", "node:crypto", "node:fs"]) {
+      await expect(probe({ kind: "library", package: packageName, install: "built into Node.js" })).resolves.toEqual({
+        available: true,
+      });
+    }
+
+    await expect(
+      probe({ kind: "library", package: "definitely-not-installed-predit-fixture", install: "pnpm add nope" }),
+    ).resolves.toEqual({
+      available: false,
+      reason: "package not installed: definitely-not-installed-predit-fixture",
+      fix: "install",
+    });
+  });
+
   it("bounds cli auth checks with a configurable timeout", async () => {
     const started = Date.now();
     const availability = await probe({

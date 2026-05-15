@@ -14,7 +14,7 @@ export default defineTool({
   best_for: "Grok text-to-video generations through the xAI API.",
   supports: ["grok-video-1", "text-to-video", "image-prompt"],
   cost: { unit: "clip", usd: COST_USD },
-  agent_skills: ["ai-video-gen", "grok"],
+  agent_skills: ["ai-video-gen", "grok-media"],
   input: videoProviderInputSchema,
   output: videoProviderOutputSchema,
   async execute(params, ctx) {

@@ -76,7 +76,6 @@ export default defineTool({
   best_for: "local SD/SDXL image generation on machines with a local model and LOCAL_GPU runtime",
   supports: ["sd15", "sdxl", "LOCAL_GPU"],
   cost: { unit: "image", usd: 0 },
-  agent_skills: ["local-diffusion"],
   input: LocalDiffusionInputSchema,
   output: LocalDiffusionOutputSchema,
   isAvailable: async () => localDiffusionAvailability(),

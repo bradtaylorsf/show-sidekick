@@ -14,7 +14,6 @@ export default defineTool({
   best_for: "Searching a configured NOAA public-domain science and weather video manifest.",
   supports: ["stock-video", "public-domain", "science", "manifest-search"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "noaa"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

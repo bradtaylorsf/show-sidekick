@@ -111,6 +111,10 @@ async function probeBinary(binary: string, timeoutMs: number): Promise<Availabil
 }
 
 function probeLibrary(packageName: string): Availability {
+  if (packageName.startsWith("node:")) {
+    return { available: true };
+  }
+
   try {
     requireFromRegistry.resolve(packageName);
     return { available: true };

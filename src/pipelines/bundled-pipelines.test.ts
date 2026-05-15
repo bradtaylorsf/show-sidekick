@@ -352,7 +352,7 @@ describe("bundled pipeline manifests", () => {
     expect(violations).toEqual([]);
   });
 
-  it("resolves every declared tool name through the registry", async () => {
+  it("resolves every declared tool name through the registry after alias resolution", async () => {
     const manifests = await loadAllBundledManifests();
     const registry = new Registry();
     await registry.discover();
@@ -368,7 +368,7 @@ describe("bundled pipeline manifests", () => {
 
         for (const [field, toolNames] of Object.entries(toolFields)) {
           for (const toolName of toolNames) {
-            if (!registry.get(toolName) && registry.byCapability(toolName).length === 0) {
+            if (!registry.get(toolName)) {
               unresolved.push(`${manifest.slug}.${stage.slug}.${field}: ${toolName}`);
             }
           }

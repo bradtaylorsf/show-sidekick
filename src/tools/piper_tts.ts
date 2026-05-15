@@ -14,7 +14,7 @@ export default defineTool({
   best_for: "Zero-cost local narration when a Piper voice model is installed.",
   supports: ["local-tts", "narration-audio"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["piper"],
+  agent_skills: ["text-to-speech"],
   input: ttsProviderInputSchema,
   output: ttsProviderOutputSchema,
   async execute(params, ctx) {

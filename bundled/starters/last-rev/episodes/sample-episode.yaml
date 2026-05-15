@@ -1,0 +1,17 @@
+slug: sample-episode
+title: Last Rev Sample Demo
+created: 2026-05-14
+pipeline: screen-demo
+playbook: clean-professional
+runtime: remotion
+aspect: 16:9
+budget_usd: 0.75
+inputs:
+  notes: shows/last-rev/inputs/sample-episode/demo-notes.txt
+  narration: shows/last-rev/inputs/sample-episode/host-script.txt
+cast:
+  - _template
+tags:
+  - last-rev
+  - screen-demo
+  - sample

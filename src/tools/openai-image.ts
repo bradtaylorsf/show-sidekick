@@ -40,7 +40,6 @@ export default defineTool({
   best_for: 'gpt-image-1 generations, especially images that require legible text',
   supports: ["gpt-image-1", "text-to-image", "legible-text"],
   cost: { unit: "image", usd: OPENAI_IMAGE_COST_USD },
-  agent_skills: ["openai-image-best-practices"],
   input: OpenAiImageInputSchema,
   output: OpenAiImageOutputSchema,
 

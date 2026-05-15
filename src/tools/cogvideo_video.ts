@@ -14,7 +14,7 @@ export default defineTool({
   best_for: "Open-source CogVideoX image-to-video experiments through Replicate.",
   supports: ["cogvideox-5b", "replicate", "image-to-video", "text-to-video"],
   cost: { unit: "clip", usd: COST_USD },
-  agent_skills: ["ai-video-gen", "cogvideo"],
+  agent_skills: ["ai-video-gen"],
   input: videoProviderInputSchema,
   output: videoProviderOutputSchema,
   async execute(params, ctx) {

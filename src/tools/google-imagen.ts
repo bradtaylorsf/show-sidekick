@@ -61,7 +61,6 @@ export default defineTool({
   best_for: "Google Imagen API generations through Vertex AI with service-account authentication",
   supports: ["imagen-3", "vertex-ai", "text-to-image"],
   cost: { unit: "image", usd: GOOGLE_IMAGEN_COST_USD },
-  agent_skills: ["imagen-api"],
   input: GoogleImagenInputSchema,
   output: GoogleImagenOutputSchema,
   isAvailable: async () => googleAvailability(),

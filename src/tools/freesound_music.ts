@@ -22,7 +22,7 @@ export default defineTool({
   best_for: "Searching Freesound music and loop previews with explicit license attribution.",
   supports: ["royalty-free", "music-search", "freesound"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["music", "freesound"],
+  agent_skills: ["music"],
   input: musicQueryInputSchema,
   output: musicProviderOutputSchema,
   async execute(params) {

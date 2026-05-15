@@ -17,7 +17,7 @@ const repoRoot = process.cwd();
 const startersRoot = path.join(repoRoot, "bundled", "starters");
 const requiredAudioLedStarters = ["cinematic-trailer", "music-video", "news-song", "thechaosfm"];
 const requiredVisualExplainerStarters = ["animated-explainer", "documentary", "product-demo"];
-const requiredSpecialtyStarters = ["ai-workflow-demo", "ww2-diary"];
+const requiredSpecialtyStarters = ["ai-workflow-demo", "last-rev", "rave-queen", "ww2-diary"];
 
 const StarterMetadataSchema = z.object({
   fixture_size_bytes: z.number().int().nonnegative(),

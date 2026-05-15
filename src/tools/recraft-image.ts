@@ -40,7 +40,6 @@ export default defineTool({
   best_for: "Recraft v3 prompt-to-image generation for design-forward still assets",
   supports: ["recraftv3", "text-to-image"],
   cost: { unit: "image", usd: RECRAFT_IMAGE_COST_USD },
-  agent_skills: ["recraft-image"],
   input: RecraftImageInputSchema,
   output: RecraftImageOutputSchema,
 

@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { createApproveHandler } from "./commands/approve.js";
 import { createBuildHandler, type BuildHandlerOptions } from "./commands/build.js";
 import { createCuesheetHandler } from "./commands/cuesheet.js";
+import { createDoctorHandler } from "./commands/doctor.js";
 import { createExportHandler } from "./commands/export.js";
 import { createInitHandler } from "./commands/init.js";
 import { createImportHandler } from "./commands/import.js";
@@ -118,7 +119,8 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
   program
     .command("doctor")
     .description("registry and tool preflight")
-    .action(createStubHandler("doctor", [], io));
+    .option("--profile <name>", "provider profile to preflight")
+    .action(createDoctorHandler(io));
 
   const newCommand = program.command("new").description("create shows, episodes, pipelines, or playbooks");
   const newHandlers = createNewHandlers(io);
@@ -153,6 +155,7 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
     .option("--budget <usd>", "set a budget in USD")
     .option("--cost-drift-threshold <multiplier>", "override the cumulative cost drift review threshold")
     .option("--reference <url-or-path>", "analyze a reference video URL or local file before running")
+    .option("--provider-profile <name>", "record a named provider profile selection for this run")
     .option("--non-interactive", "pause at required approvals and exit")
     .action(createBuildHandler(io, buildOptions));
 

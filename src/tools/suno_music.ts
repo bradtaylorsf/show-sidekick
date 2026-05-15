@@ -21,7 +21,7 @@ export default defineTool({
   best_for: "Generated music beds; when unavailable, use user-supplied tracks from music_library/ through the music-plan skill.",
   supports: ["generated-music", "music-bed"],
   cost: { unit: "call", usd: COST_USD },
-  agent_skills: ["music", "suno"],
+  agent_skills: ["music"],
   input: musicGenInputSchema,
   output: musicGenOutputSchema,
   async execute(params, ctx) {

@@ -32,6 +32,7 @@ export type StageFlagOptions = GlobalOptions & {
   budget?: string;
   costDriftThreshold?: string;
   reference?: string;
+  providerProfile?: string;
   nonInteractive?: boolean;
 };
 

@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -52,9 +52,25 @@ describe("demo-readiness pipeline inventory", () => {
   });
 
   it("guards show-only concepts from becoming bundled pipeline types", () => {
+    expect(SHOW_ONLY_DENYLIST).toEqual([
+      "ww2-diary",
+      "thechaosfm",
+      "last-rev",
+      "rave-queen",
+      "gta-political",
+      "aint-no-crowns",
+    ]);
+
+    const manifestSlugs = new Set(
+      readdirSync(bundledPipelinesDir)
+        .filter((entry) => entry.endsWith(".yaml"))
+        .map((entry) => path.basename(entry, ".yaml")),
+    );
+
     for (const slug of SHOW_ONLY_DENYLIST) {
       expect(isShowOnlyConcept(slug)).toBe(true);
       expect(isApprovedBundledPipeline(slug)).toBe(false);
+      expect(manifestSlugs.has(slug), `${slug} must not be present in bundled/pipelines/`).toBe(false);
       expect(existsSync(path.join(bundledPipelinesDir, `${slug}.yaml`)), `${slug} must not ship as a manifest`).toBe(
         false,
       );

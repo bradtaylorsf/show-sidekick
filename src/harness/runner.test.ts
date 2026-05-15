@@ -258,6 +258,71 @@ describe("Runner", () => {
     expect(output.stdout()).toContain('"estimate_usd":0.08');
   });
 
+  it("emits announce events before every paid provider call in a paid-demo sample run", async () => {
+    const root = await scratchProject();
+    const pipeline = pipelineManifest([stage("assets")]);
+    const show = loadedShow(root, "paid-demo");
+    const episode = loadedEpisode(show, "paid-demo");
+    const sequence: string[] = [];
+    const output = {
+      ...captureIo(),
+      io: {
+        stdout: {
+          write(value: string) {
+            if (value.includes('"event":"announce"')) {
+              sequence.push(`announce:${JSON.parse(value).tool}`);
+            }
+            return true;
+          },
+        },
+        stderr: { write: () => true },
+      },
+    };
+    const paidTools = [
+      paidGenerationTool("openai_image", "image_generation", "openai", 0.04),
+      paidGenerationTool("elevenlabs_tts", "tts", "elevenlabs", 0.0003),
+      paidGenerationTool("higgsfield", "image_to_video", "higgsfield", 0.3),
+    ];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "paid-demo",
+      registry: new Registry({ tools: paidTools }),
+      dispatcher: async (ctx) => {
+        for (const tool of paidTools) {
+          await tool.execute(
+            { prompt: tool.name, count: 1 },
+            {
+              projectRoot: root,
+              logger: logger(),
+              registry: ctx.registry,
+              execution: ctx.toolPolicy,
+            },
+          );
+          sequence.push(`execute:${tool.name}`);
+        }
+        return stageResult({ ok: true }, 0.35);
+      },
+      reviewer: passReviewer,
+      runOptions: { sample: true, nonInteractive: true },
+      io: output.io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(sequence).toEqual([
+      "announce:openai_image",
+      "execute:openai_image",
+      "announce:elevenlabs_tts",
+      "execute:elevenlabs_tts",
+      "announce:higgsfield",
+      "execute:higgsfield",
+    ]);
+  });
+
   it("dispatches only the planned stages for --only", async () => {
     const root = await scratchProject();
     const pipeline = pipelineManifest([stage("research"), stage("script"), stage("assets")]);
@@ -1490,4 +1555,22 @@ function tool(input: { name: string; available: boolean; reason?: string; fix?: 
       return params;
     },
   };
+}
+
+function paidGenerationTool(name: string, capability: string, provider: string, usd: number): Tool {
+  return defineTool({
+    name,
+    capability,
+    provider,
+    status: "production",
+    integration: { kind: "library", package: "test", install: "none" },
+    best_for: `${name} paid demo generation`,
+    supports: ["paid-demo"],
+    cost: { unit: "call", usd },
+    input: z.object({ prompt: z.string(), count: z.number() }),
+    output: z.object({ ok: z.boolean() }),
+    async execute() {
+      return { ok: true };
+    },
+  });
 }

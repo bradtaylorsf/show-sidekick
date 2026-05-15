@@ -11,6 +11,15 @@ describe("tool discovery", () => {
     expect(registry.get("frame_sampler")?.capability).toBe("frame_sampling");
     expect(registry.get("scene_detector")?.capability).toBe("scene_detection");
     expect(registry.get("scene_detect")?.capability).toBe("scene_detection");
+    expect(registry.get("higgsfield_video")?.capability).toBe("image_to_video");
+    expect(registry.get("direct_clip_search")?.capability).toBe("clip_search");
+    expect(registry.get("remotion_caption_burn")?.capability).toBe("video_compose");
+    expect(registry.get("character_spec_generator")?.capability).toBe("character_animation");
+    expect(registry.get("pose_library_builder")?.capability).toBe("character_animation");
+    expect(registry.get("svg_rig_builder")?.capability).toBe("character_animation");
+    expect(registry.get("character_rig_renderer")?.capability).toBe("character_animation");
+    expect(registry.get("character_animation_reviewer")?.capability).toBe("character_animation");
+    expect(registry.get("action_timeline_compiler")?.capability).toBe("character_animation");
     expect(registry.get("face_tracker")?.capability).toBe("face_tracking");
     expect(registry.get("transcriber")?.capability).toBe("transcriber");
     expect(registry.get("transcript_fetcher")?.capability).toBe("transcript_fetch");

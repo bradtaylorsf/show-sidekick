@@ -29,7 +29,7 @@ const providers = [
     capability: "music_generation",
     provider: "suno",
     integration: { kind: "api", env: ["SUNO_API_KEY"] },
-    skills: ["music", "suno"],
+    skills: ["music"],
     cost: { unit: "call", usd: 0.05 },
   },
   {
@@ -38,7 +38,7 @@ const providers = [
     capability: "music_search",
     provider: "freesound",
     integration: { kind: "api", env: ["FREESOUND_API_KEY"] },
-    skills: ["music", "freesound"],
+    skills: ["music"],
     cost: { unit: "call", usd: 0 },
   },
   {
@@ -47,7 +47,7 @@ const providers = [
     capability: "music_search",
     provider: "pixabay",
     integration: { kind: "api", env: ["PIXABAY_API_KEY"] },
-    skills: ["music", "pixabay"],
+    skills: ["music"],
     cost: { unit: "call", usd: 0 },
   },
   {
@@ -56,7 +56,7 @@ const providers = [
     capability: "music_generation",
     provider: "local",
     integration: { kind: "library", package: "node:fetch" },
-    skills: ["music-plan"],
+    skills: ["music"],
     cost: { unit: "call", usd: 0 },
   },
 ] as const;

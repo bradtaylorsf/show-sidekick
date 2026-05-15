@@ -17,7 +17,7 @@ export default defineTool({
   best_for: "Modal-hosted LTX image-to-video when local GPU capacity is unavailable.",
   supports: ["ltx-video", "modal", "image-to-video", "text-to-video"],
   cost: { unit: "clip", usd: COST_USD },
-  agent_skills: ["ai-video-gen", "ltx"],
+  agent_skills: ["ai-video-gen", "ltx2"],
   input: videoProviderInputSchema,
   output: videoProviderOutputSchema,
   async execute(params, ctx) {
