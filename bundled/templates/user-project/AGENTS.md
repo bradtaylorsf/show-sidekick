@@ -30,13 +30,14 @@ The intelligence is in the skills, not in improvised code. An agent that reads t
 
 When a user says "help me make the first video", "what can this project do?", or gives a broad creative goal, guide them through this path:
 
-1. Run `predit doctor --profile paid-demo --json` and summarize what is ready, what needs env vars, what needs CLI login, and which composition runtimes are available. If env vars are missing and `.env` does not exist, suggest copying `.env.example` to `.env` and filling the keys, or exporting the variables in the current shell.
+1. Run `predit doctor --profile paid-demo --json` and `predit ls tools --json`, then summarize what is ready, what needs env vars, what needs CLI login, and which composition runtimes are available. If env vars are missing and `.env` does not exist, suggest copying `.env.example` to `.env` and filling the keys, or exporting the variables in the current shell.
 2. Run `predit ls starters` and recommend one starter or one pipeline based on the user's goal.
-3. If the project has no show yet, scaffold one with `predit new show <slug> --from <starter>` for starter-backed work, or `predit new show <slug> --pipelines <pipeline>` for a custom show.
-4. Create or select an episode with `predit new episode <show> <episode>`.
-5. Before spending provider credits, explain the selected pipeline, likely tools, rough cost, and expected output path.
-6. Run `predit build <show>/<episode> --sample --provider-profile paid-demo` for paid samples, or omit the provider profile for zero-key samples.
-7. Export with `predit export <show>/<episode> --target premiere` and, when useful, `predit export <show>/<episode> --format edl`.
+3. If Remotion or HyperFrames is unavailable and the video would benefit from motion graphics, animated overlays, or runtime choice, ask whether to run `predit setup runtimes` before scaffolding. Run it only after approval; FFmpeg-only is still valid when the user wants the fastest path.
+4. If the project has no show yet, scaffold one with `predit new show <slug> --from <starter>` for starter-backed work, or `predit new show <slug> --pipelines <pipeline>` for a custom show.
+5. Create or select an episode with `predit new episode <show> <episode>`.
+6. Before spending provider credits, explain the selected pipeline, likely tools, rough cost, and expected output path.
+7. Run `predit build <show>/<episode> --sample --provider-profile paid-demo` for paid samples, or omit the provider profile for zero-key samples.
+8. Export with `predit export <show>/<episode> --target premiere` and, when useful, `predit export <show>/<episode> --format edl`.
 
 Record any issue, confusing output, failed tool call, or manual fix in `projects/<show>/<episode>/notes.md` so a coding agent can improve the harness later.
 
@@ -64,6 +65,8 @@ Record any issue, confusing output, failed tool call, or manual fix in `projects
 ```
 
 `predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before commands run. Shell-exported values win over file values. Never commit `.env`.
+
+`predit setup runtimes` installs Remotion and HyperFrames locally for this project. Offer it when those runtimes are unavailable and the user's video would benefit from richer composition, but do not run installs without approval.
 
 When resolving any resource (pipeline, playbook, skill, schema), check the project-local path first, then `.predit/`. Project-local always wins. For director skills, also check `shows/<show>/skills/` before either.
 
@@ -108,6 +111,8 @@ predit revise <show>/<episode> "<note>"    # loop the current stage with revisio
 predit export <show>/<episode> --target premiere|davinci|capcut  # NLE handoff
 predit export <show>/<episode> --format edl        # raw CMX 3600 EDL
 predit ls pipelines | playbooks | tools | starters | shows
+predit ls tools --json                    # machine-readable tool availability + install hints
+predit setup runtimes                     # install Remotion + HyperFrames locally after approval
 predit update                              # refresh .predit/ cache from the installed harness
 ```
 

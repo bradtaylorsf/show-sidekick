@@ -244,7 +244,7 @@ function registerCommands(program: Command, io: CliIo, options: RegisterCommandO
 
   program
     .command("setup <tool>")
-    .description("run tool native login or install")
+    .description("run tool native login/install, or setup runtimes")
     .action(createSetupHandler(io));
 
   program

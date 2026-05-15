@@ -138,7 +138,8 @@ agent or runner selects the real provider for the stage.
 
 ## Setup UX
 
-- `predit setup <tool>` reads the tool's setup metadata and shells out to the tool's own login/install commands. For `cli-login` tools whose binary is already installed, setup may run the login refresh command directly instead of repeating the install step.
+- `predit setup <tool>` reads the tool's setup metadata and shells out to the tool's own login/install commands. For `cli-login` tools whose binary is already installed, setup may run the login refresh command directly instead of repeating the install step. `predit setup runtimes` is a built-in setup alias for installing the rich composition runtimes `remotion` and `hyperframes` as project-local dev dependencies.
+- `predit ls tools --json` includes each tool's `install` string so agents can offer exact setup commands instead of paraphrasing registry metadata.
 - `predit` never collects, stores, or transmits credentials. CLI tools own their own auth (e.g. `higgsfield auth login` keeps a token in the CLI's own config dir; API tools rely on env vars in the user's shell).
 - The provider menu groups setup offers by 1-minute fixes (env var or `cli-login`), 5-minute installs, and complex setups (GPU, model downloads).
 

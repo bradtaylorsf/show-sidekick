@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Command } from "commander";
 import { z } from "zod";
 import { afterEach, describe, expect, it } from "vitest";
 import { BUNDLED_MANIFEST_INVENTORY_SLUGS } from "../../pipelines/demo-inventory.js";
-import { Registry, type Tool } from "../../registry/index.js";
+import { Registry, type Tool, type ToolAvailabilityContext } from "../../registry/index.js";
 import { createProgram } from "../program.js";
 import { createLsHandler } from "./ls.js";
 
@@ -210,6 +210,34 @@ describe("ls command", () => {
 
     const rows = parseLines(output().stdout);
     expect(rows.map((row) => row.name)).toEqual(["gamma", "alpha", "beta"]);
+    expect(rows.find((row) => row.name === "alpha")).toMatchObject({ install: "install alpha" });
+  });
+
+  it("passes the project root into tool availability checks", async () => {
+    const root = await scratchProject();
+    const expectedProjectRoot = await realpath(root);
+    const toolsDir = path.join(root, "empty-tools");
+    await mkdir(toolsDir);
+    process.chdir(root);
+    const { io, output } = captureIo();
+    const registry = new Registry({
+      toolsDir,
+      tools: [
+        {
+          ...tool("project-local-runtime", "video_compose", "runtime"),
+          async isAvailable(ctx?: ToolAvailabilityContext) {
+            return ctx?.projectRoot === expectedProjectRoot
+              ? { available: true }
+              : { available: false, reason: "missing project root", fix: "manual" };
+          },
+        },
+      ],
+    });
+    const command = { optsWithGlobals: () => ({ json: true }) };
+
+    await createLsHandler(io, { registryFactory: () => registry })("tools", undefined, command as unknown as Command);
+
+    expect(parseLines(output().stdout)[0]).toMatchObject({ name: "project-local-runtime", available: true });
   });
 
   it("emits no decision rows when the decision log is absent", async () => {

@@ -56,12 +56,15 @@ export OPENAI_API_KEY="sk-..."
 export ELEVENLABS_API_KEY="..."
 higgsfield auth login
 predit doctor --profile paid-demo
+predit setup runtimes
 predit setup openai_image
 predit setup openai_tts
 predit ls tools
 ```
 
 Or keep credentials project-local by copying `.env.example` to `.env` and filling in the same keys. `predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before each command; exported shell variables still take precedence. `.env` is gitignored by the scaffold.
+
+`predit setup runtimes` is optional but recommended before demos that need motion graphics, animated overlays, or runtime choice. It installs Remotion and HyperFrames into the user project so agents can offer them alongside FFmpeg before locking a render runtime.
 
 ## Render the Sample
 

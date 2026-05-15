@@ -64,6 +64,7 @@ predit watch                                    # detect drops and suggest impor
 
 # Tooling
 predit setup <tool>                      # shell out to the tool's native login/install
+predit setup runtimes                    # install Remotion + HyperFrames locally
 predit tools <name>                      # tool detail (CLI vs API, env vars, cost)
 ```
 

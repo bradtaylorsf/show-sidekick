@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { EditDecisionsSchema, RenderReportSchema, type RenderReport } from "../artifacts/index.js";
 import { emitComposeBlocker } from "../compose/blocker.js";
-import { defineTool, type ToolContext } from "../registry/index.js";
+import { defineTool, type ToolAvailabilityContext, type ToolContext } from "../registry/index.js";
 
 const HyperframesStepSchema = z.object({
   name: z.enum(["lint", "validate", "render"]),
@@ -44,13 +44,13 @@ export default defineTool({
     kind: "cli",
     binary: "npx",
     auth: { mode: "none" },
-    install: "npm i -g hyperframes",
+    install: "npm install --save-dev hyperframes",
   },
   best_for: "HyperFrames composition specs with mandatory lint and validate gates before render",
   supports: ["hyperframes", "lint", "validate", "render", "playbook-css-variables"],
   input: HyperframesComposeInputSchema,
   output: RenderReportSchema,
-  isAvailable: async () => hyperframesAvailable(),
+  isAvailable: async (ctx) => hyperframesAvailable(ctx),
 
   async execute(params, ctx) {
     const parsed = HyperframesComposeInputSchema.parse(params);
@@ -126,17 +126,24 @@ function runExecFile(binary: string, args: string[], options: { cwd: string }): 
   });
 }
 
-function hyperframesAvailable(): Promise<{ available: true } | { available: false; reason: string; fix: "install" }> {
+function hyperframesAvailable(
+  ctx?: ToolAvailabilityContext,
+): Promise<{ available: true } | { available: false; reason: string; fix: "install" }> {
   return new Promise((resolve) => {
-    execFile("npx", ["--no-install", "hyperframes", "--version"], { timeout: 2_500 }, (error, _stdout, stderr) => {
-      if (error) {
-        const reason = stderr.trim() || (error instanceof Error ? error.message : String(error));
-        resolve({ available: false, reason: `hyperframes not available via npx --no-install: ${reason}`, fix: "install" });
-        return;
-      }
+    execFile(
+      "npx",
+      ["--no-install", "hyperframes", "--version"],
+      { cwd: ctx?.projectRoot, timeout: 2_500 },
+      (error, _stdout, stderr) => {
+        if (error) {
+          const reason = stderr.trim() || (error instanceof Error ? error.message : String(error));
+          resolve({ available: false, reason: `hyperframes not available via npx --no-install: ${reason}`, fix: "install" });
+          return;
+        }
 
-      resolve({ available: true });
-    });
+        resolve({ available: true });
+      },
+    );
   });
 }
 

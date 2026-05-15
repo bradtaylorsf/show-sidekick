@@ -31,6 +31,7 @@ type ToolRow = BaseRow & {
   status: string;
   available: boolean;
   integration_kind: string;
+  install: string;
   reason?: string;
 };
 
@@ -90,7 +91,7 @@ async function loadRows(
     case "starters":
       return listStarters(projectRoot);
     case "tools":
-      return listTools(registryFactory());
+      return listTools(registryFactory(), projectRoot);
     default:
       throw new Error(`unknown ls kind '${kind}'; expected shows, episodes, pipelines, playbooks, starters, or tools`);
   }
@@ -183,9 +184,9 @@ async function listStarters(projectRoot: string): Promise<Row[]> {
   return sortByName(rows);
 }
 
-async function listTools(registry: Registry): Promise<Row[]> {
+async function listTools(registry: Registry, projectRoot: string): Promise<Row[]> {
   await registry.discover();
-  await registry.refreshAvailability();
+  await registry.refreshAvailability({ context: { projectRoot } });
 
   const tools = registry.all();
   return tools
@@ -214,6 +215,7 @@ function toolRow(tool: Tool, availability: Availability | undefined): ToolRow {
     status: tool.status,
     available: availability?.available === true,
     integration_kind: tool.integration.kind,
+    install: tool.integration.install,
     reason: unavailable,
   };
 }

@@ -190,12 +190,14 @@ function emitInitialized(io: CliIo, options: InitOptions, event: InitEvent): voi
     ? [
         "next:",
         "  predit doctor --profile paid-demo",
+        "  predit setup runtimes  # optional: install Remotion + HyperFrames locally",
         `  predit build ${event.starter}/sample-episode --sample`,
         `  predit export ${event.starter}/sample-episode --target premiere`,
       ]
     : [
         "next:",
         "  predit doctor --profile paid-demo",
+        "  predit setup runtimes  # optional: install Remotion + HyperFrames locally",
         "  predit ls starters",
         "  predit new show music-video --from music-video",
       ];

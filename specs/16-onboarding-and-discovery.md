@@ -24,7 +24,8 @@ Otherwise treat as **vague** and onboard. When the classification is genuinely u
 Before saying anything creative, the agent knows what it's working with. Call:
 
 ```bash
-predit doctor --json
+predit doctor --profile paid-demo --json
+predit ls tools --json
 ```
 
 Parse the output into three buckets:
@@ -33,7 +34,7 @@ Parse the output into three buckets:
 - **Quick unlocks** — tools that are 1-minute fixes (env var or `cli-login`).
 - **Hardware unlocks** — tools requiring local GPU or model downloads.
 
-Also check composition runtime availability — Remotion, HyperFrames, ffmpeg — surfaced as distinct entries.
+Also check composition runtime availability — Remotion, HyperFrames, ffmpeg — surfaced as distinct entries from `predit ls tools --json`. If Remotion or HyperFrames is unavailable, the setup offer is `predit setup runtimes`.
 
 ### 2. Setup-tier classification
 
@@ -95,7 +96,7 @@ Setup offers are grouped by **effort tier** (env var / CLI login / install / com
 
 If both Remotion and HyperFrames are available, name **both** explicitly. Do not pick one in onboarding — runtime selection happens at proposal time after the agent understands the brief. See [`15-announce-and-escalate.md`](15-announce-and-escalate.md) → present-both-runtimes hard rule.
 
-If only one is available, name it and mention what the other would unlock. If neither, the user is on ffmpeg only — say so and explain what's needed for HTML/React composition.
+If only one is available, name it and mention what the other would unlock. If neither, the user is on ffmpeg only. Ask whether the user wants to run `predit setup runtimes` for this video; explain that it installs project-local Remotion and HyperFrames dev dependencies and that FFmpeg remains available if they skip.
 
 ### 5. Offer three starter prompts
 

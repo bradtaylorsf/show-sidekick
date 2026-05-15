@@ -36,9 +36,10 @@ From a fresh user project:
 ```bash
 predit init
 predit doctor --profile paid-demo --json
+predit setup runtimes
 ```
 
-The benchmark can continue only when doctor reports `ok` for OpenAI, ElevenLabs, Higgsfield binary, Higgsfield login, ffmpeg, and ffprobe.
+The benchmark can continue only when doctor reports `ok` for OpenAI, ElevenLabs, Higgsfield binary, Higgsfield login, ffmpeg, and ffprobe. Run `predit setup runtimes` before Remotion or HyperFrames lanes; agents should ask first because this installs project-local dev dependencies.
 
 ## Suites
 
@@ -92,7 +93,7 @@ For Remotion:
 
 1. Choose a brief that needs captions, charts, support cards, presenter/avatar, or typed React scenes.
 2. Read `.predit/skills/meta/animation-runtime-selector.md` and `.predit/skills/core/remotion.md`.
-3. Confirm `remotion` availability through `predit doctor --json` or registry availability.
+3. Confirm `remotion` availability through `predit ls tools --json`; if unavailable, ask to run `predit setup runtimes`.
 4. Require the agent to log a `render_runtime_selection` decision with Remotion selected.
 5. Verify the resulting render report has `runtime_used: remotion` and caption/style validation steps when applicable.
 
@@ -100,7 +101,7 @@ For HyperFrames:
 
 1. Choose a brief that needs kinetic typography, product-promo HTML/CSS motion, website-to-video, or GSAP-heavy sequences.
 2. Read `.predit/skills/meta/animation-runtime-selector.md` and `.predit/skills/core/hyperframes.md`.
-3. Confirm `npx --no-install hyperframes --version` and `npx hyperframes doctor`.
+3. Confirm `npx --no-install hyperframes --version` and `npx hyperframes doctor`; if unavailable, ask to run `predit setup runtimes`.
 4. Require lint and validate before render.
 5. Verify the render report includes HyperFrames validation steps and `runtime_used: hyperframes`.
 

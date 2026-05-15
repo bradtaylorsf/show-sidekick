@@ -30,7 +30,8 @@ If fewer than two signals are present, treat it as vague and onboard. If classif
 Before saying anything creative, inspect the local setup:
 
 ```bash
-predit doctor --json
+predit doctor --profile paid-demo --json
+predit ls tools --json
 ```
 
 Parse the result into:
@@ -42,6 +43,8 @@ Parse the result into:
 - **Complex unlocks**: GPU, model downloads, or provider account setup.
 
 Composition runtimes are their own discovery block: Remotion, HyperFrames, and FFmpeg. Do not bury them inside a generic "video tools" list.
+
+If Remotion or HyperFrames is unavailable, offer `predit setup runtimes` before the first video that would benefit from motion graphics, animated overlays, or runtime choice. Explain that it installs project-local dev dependencies and only run it after user approval.
 
 ### Step 2: Determine Setup Tier
 
@@ -100,7 +103,7 @@ Rules:
 
 When both Remotion and HyperFrames are available, say so explicitly. Do not choose one during onboarding.
 
-When only one is available, name it and briefly say what the other would unlock. When neither is available, explain that the user is currently on ffmpeg-only composition and what install would unlock HTML/React composition.
+When only one is available, name it and briefly say what the other would unlock. When neither is available, explain that the user is currently on ffmpeg-only composition and ask whether they want to run `predit setup runtimes` for this video.
 
 This primes the later "present both runtimes" hard rule in `bundled/skills/meta/announce-and-escalate.md`.
 
@@ -139,6 +142,7 @@ Use this sequence for a first video:
 
 ```bash
 predit doctor --profile paid-demo
+predit setup runtimes
 predit ls starters
 predit new show <show> --from <starter>
 predit new episode <show> <episode>

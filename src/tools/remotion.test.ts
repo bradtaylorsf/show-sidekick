@@ -1,7 +1,27 @@
-import { describe, expect, it } from "vitest";
+import { randomUUID } from "node:crypto";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import remotion from "./remotion.js";
 
+let scratchDirs: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(scratchDirs.map((dir) => rm(dir, { recursive: true, force: true })));
+  scratchDirs = [];
+});
+
 describe("remotion tool", () => {
+  it("reports available when Remotion is installed in the user project", async () => {
+    const projectRoot = await scratchProject();
+    await mkdir(path.join(projectRoot, "node_modules", "remotion"), { recursive: true });
+    await writeFile(path.join(projectRoot, "node_modules", "remotion", "package.json"), '{"name":"remotion"}\n', "utf8");
+    await writeFile(path.join(projectRoot, "node_modules", "remotion", "index.js"), "module.exports = {};\n", "utf8");
+
+    await expect(remotion.isAvailable({ projectRoot })).resolves.toEqual({ available: true });
+  });
+
   it("records caption sync and shared style bridge validation steps", async () => {
     const result = await remotion.execute(
       {
@@ -74,4 +94,11 @@ function testContext() {
       event: () => undefined,
     },
   };
+}
+
+async function scratchProject(): Promise<string> {
+  const root = path.join(tmpdir(), `predit-remotion-${randomUUID()}`);
+  scratchDirs.push(root);
+  await mkdir(root, { recursive: true });
+  return root;
 }

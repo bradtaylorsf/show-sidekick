@@ -25,33 +25,45 @@ const defaultDeps: SetupDeps = {
   cwd: () => process.cwd(),
 };
 
+const SETUP_ALIASES: Record<string, string[]> = {
+  runtimes: ["remotion", "hyperframes"],
+  "composition-runtimes": ["remotion", "hyperframes"],
+};
+
 export function createSetupHandler(io: CliIo, deps: SetupDeps = defaultDeps) {
   return async (toolName: string, command: Command): Promise<void> => {
     const options = command.optsWithGlobals<GlobalOptions>();
     const registry = await deps.createRegistry();
-    const tool = registry.get(toolName);
-
-    if (!tool) {
-      throw new Error(`unknown tool "${toolName}"`);
-    }
+    const toolNames = SETUP_ALIASES[toolName] ?? [toolName];
+    const tools = toolNames.map((name) => {
+      const tool = registry.get(name);
+      if (!tool) {
+        throw new Error(`unknown tool "${name}"`);
+      }
+      return tool;
+    });
 
     const cwd = deps.cwd();
-    const setupCommand = await commandForSetup(tool.integration, deps, cwd);
-    await deps.runInstall(setupCommand, { cwd });
-
-    if (options.json) {
-      const event: SetupEvent = {
+    for (const tool of tools) {
+      const setupCommand = await commandForSetup(tool.integration, deps, cwd);
+      await deps.runInstall(setupCommand, { cwd });
+      emitSetupCompleted(io, options, {
         event: "tool_setup",
         tool: tool.name,
         install: setupCommand,
         status: "completed",
-      };
-      io.stdout.write(`${JSON.stringify(event)}\n`);
-      return;
+      });
     }
-
-    io.stdout.write(`setup ${tool.name}: completed\n`);
   };
+}
+
+function emitSetupCompleted(io: CliIo, options: GlobalOptions, event: SetupEvent): void {
+  if (options.json) {
+    io.stdout.write(`${JSON.stringify(event)}\n`);
+    return;
+  }
+
+  io.stdout.write(`setup ${event.tool}: completed\n`);
 }
 
 async function createDefaultRegistry(): Promise<Registry> {
@@ -62,7 +74,7 @@ async function createDefaultRegistry(): Promise<Registry> {
 
 function runShellCommand(command: string, options: { cwd: string }): Promise<void> {
   return new Promise((resolve, reject) => {
-    exec(command, { cwd: options.cwd }, (error, _stdout, stderr) => {
+    exec(command, { cwd: options.cwd, maxBuffer: 20 * 1024 * 1024 }, (error, _stdout, stderr) => {
       if (error) {
         reject(new Error(stderr.trim() || error.message));
         return;
