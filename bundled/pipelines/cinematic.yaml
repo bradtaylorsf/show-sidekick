@@ -1,0 +1,239 @@
+slug: cinematic
+display_name: Cinematic
+description: "Voiceover-led cinematic trailer pipeline for motion-first teasers, brand films, dramatic openers, and premium short narrative pieces. EP orchestration locks the cinematic direction, audio architecture, runtime, and sample-first motion gate before generation."
+status: production
+master_clock: voiceover
+default_checkpoint_policy: guided
+defaults:
+  aspect: "16:9"
+  duration_strategy: brief
+  render_runtime: remotion
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/cinematic/executive-producer.md
+  - pipelines/cinematic/idea-director.md
+  - pipelines/cinematic/proposal-director.md
+  - pipelines/cinematic/script-director.md
+  - pipelines/cinematic/scene-director.md
+  - pipelines/cinematic/asset-director.md
+  - pipelines/cinematic/edit-director.md
+  - pipelines/cinematic/compose-director.md
+  - pipelines/cinematic/publish-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+compatible_playbooks:
+  recommended:
+    - clean-professional
+  also_works:
+    - flat-motion-graphics
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/cinematic/executive-producer.md
+  budget_default_usd: 2
+  max_revisions_per_stage: 3
+  max_send_backs: 2
+  max_wall_time_minutes: 20
+sample:
+  duration_s_min: 10
+  duration_s_max: 15
+  hint: "Render the hook plus one motion beat before batching cinematic assets."
+export:
+  supported_targets: [premiere, davinci, capcut, edl]
+  default_target: premiere
+  notes: |
+    Export packages include render output, generated motion clips, VO/dialogue audio, caption files, prompt metadata, color notes, and NLE handoff metadata.
+stages:
+  - slug: idea
+    skill: pipelines/cinematic/idea-director.md
+    produces: brief
+    produces_artifacts:
+      - brief
+      - decision_log
+    tools_available:
+      - web_search
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Cinematic promise is concrete enough to evaluate
+      - Audience, platform, duration, and reference constraints are explicit
+      - Motion is central to the concept, not decorative
+    success_criteria:
+      - Schema-valid brief artifact
+      - One cinematic promise is selected
+  - slug: proposal
+    skill: pipelines/cinematic/proposal-director.md
+    produces: proposal_packet
+    produces_artifacts:
+      - proposal_packet
+      - decision_log
+    required_artifacts_in:
+      - brief
+    tools_available: []
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - At least 3 genuinely different cinematic directions in concept_options
+      - Audio architecture decision is locked at proposal stage
+      - motion is a hard requirement; still-image fallback is forbidden
+    success_criteria:
+      - Schema-valid proposal_packet artifact
+      - production_plan.renderer_family is cinematic-trailer
+      - production_plan.audio_architecture is one of single_narrator, character_dialogue, narrator_plus_characters
+  - slug: script
+    skill: pipelines/cinematic/script-director.md
+    produces: script
+    produces_artifacts:
+      - script
+    required_artifacts_in:
+      - brief
+      - proposal_packet
+    tools_available: []
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Script supports the locked audio architecture
+      - Lines are timed for cinematic pacing and silence
+      - VO/dialogue never explains what the motion must show
+    success_criteria:
+      - Schema-valid script artifact
+      - Script has timed sections and speech plan
+  - slug: scene_plan
+    skill: pipelines/cinematic/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - script
+      - proposal_packet
+    optional_artifacts_in:
+      - brief
+    tools_available:
+      - image_selector
+      - video_selector
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Every generated shot uses the five-aspect cinematic structure
+      - Shot-to-shot motion escalates rather than repeats
+      - Overlays are separated from scene depth and captions have safe space
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Every scene has duration, shot intent, and motion requirement
+  - slug: assets
+    skill: pipelines/cinematic/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - scene_plan
+      - script
+      - proposal_packet
+    optional_artifacts_in:
+      - brief
+    optional_tools:
+      - image_selector
+      - video_selector
+      - tts_selector
+      - diagram_gen
+      - subtitle_gen
+    tools_available:
+      - image_selector
+      - video_selector
+      - tts_selector
+      - diagram_gen
+      - subtitle_gen
+    sample_mode_supported: true
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - seedance-2-0, ai-video-gen, and remotion references are read before generation
+      - CHAI prompt review is complete before batch generation
+      - motion is a hard requirement; still-image fallback is forbidden
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - All referenced asset files exist on disk
+  - slug: edit
+    skill: pipelines/cinematic/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - scene_plan
+      - asset_manifest
+      - proposal_packet
+    optional_artifacts_in:
+      - script
+    tools_available: []
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Motion continuity is preserved across cuts
+      - Audio architecture and speech timing remain intact
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - edit_decisions.render_runtime matches proposal_packet
+  - slug: compose
+    skill: pipelines/cinematic/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+      - proposal_packet
+    optional_artifacts_in:
+      - scene_plan
+      - script
+    required_tools:
+      - video_compose
+      - audio_mixer
+    tools_available:
+      - video_compose
+      - audio_mixer
+      - hyperframes_compose
+    requires_runtime: any
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Final render preserves motion-led delivery promise
+      - Runtime matches edit decisions
+      - Audio mix supports locked audio architecture
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output file exists and passes ffprobe validation
+  - slug: publish
+    skill: pipelines/cinematic/publish-director.md
+    produces: publish_log
+    produces_artifacts:
+      - publish_log
+    required_artifacts_in:
+      - render_report
+      - final_review
+    optional_artifacts_in:
+      - brief
+      - script
+      - proposal_packet
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Motion assets, prompt metadata, and render notes are packaged
+      - Deliverables are named by platform and aspect ratio
+      - Caveats about generated footage are explicit
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Export package contains rendered video and handoff metadata
