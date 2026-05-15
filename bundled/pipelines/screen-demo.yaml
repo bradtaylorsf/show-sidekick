@@ -1,0 +1,207 @@
+slug: screen-demo
+display_name: Screen Demo
+description: "Capture-led screen-demo pipeline for CLI walkthroughs, install flows, app demos, and product UI tours. EP orchestration gates capture-mode selection, real or synthetic screen evidence, scene-library use, runtime locks, and publish packaging."
+status: production
+master_clock: none
+default_checkpoint_policy: guided
+reference_input:
+  supported: false
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: true
+required_skills:
+  - pipelines/screen-demo/executive-producer.md
+  - pipelines/screen-demo/idea-director.md
+  - pipelines/screen-demo/capture-director.md
+  - pipelines/screen-demo/scene-director.md
+  - pipelines/screen-demo/asset-director.md
+  - pipelines/screen-demo/edit-director.md
+  - pipelines/screen-demo/compose-director.md
+  - pipelines/screen-demo/publish-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+  - agents/synthetic-screen-recording
+  - agents/playwright-recording
+compatible_playbooks:
+  recommended:
+    - clean-professional
+    - flat-motion-graphics
+  also_works:
+    - news-broadcast
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/screen-demo/executive-producer.md
+  budget_default_usd: 1.5
+  max_revisions_per_stage: 3
+  max_send_backs: 2
+  max_wall_time_minutes: 15
+export:
+  supported_targets: [premiere, davinci, capcut, edl]
+  default_target: premiere
+  notes: |
+    Export packages include screen capture or synthetic terminal assets, scene props, captions, edit decisions, render output, and NLE handoff metadata.
+stages:
+  - slug: idea
+    skill: pipelines/screen-demo/idea-director.md
+    produces: brief
+    produces_artifacts:
+      - brief
+      - decision_log
+    tools_available: []
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Capture mode selection is logged before capture starts
+      - CLI, install, terminal, app UI, and live-behavior constraints are classified
+      - Target platform, aspect ratio, runtime, and demo promise are explicit
+    success_criteria:
+      - Schema-valid brief artifact
+      - Brief records capture_mode as synthetic_terminal or real_capture
+      - Capture-mode decision is written to decision_log
+  - slug: capture
+    skill: pipelines/screen-demo/capture-director.md
+    produces: capture_manifest
+    produces_artifacts:
+      - capture_manifest
+    required_artifacts_in:
+      - brief
+    optional_tools:
+      - playwright_recording
+    tools_available:
+      - playwright_recording
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - real_capture uses playwright_recording and records failures clearly
+      - synthetic_terminal uses declared commands, prompts, timings, and terminal_scene props
+      - Capture assets match the approved aspect ratio
+    success_criteria:
+      - Schema-valid capture_manifest artifact
+      - Captured or synthetic screen assets are ready for scene planning
+  - slug: scene_plan
+    skill: pipelines/screen-demo/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - brief
+      - capture_manifest
+    tools_available: []
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Scene library catalog includes terminal_scene for synthetic_terminal demos
+      - Real captures are segmented into clear product beats
+      - Every scene maps to a capture step or synthetic terminal moment
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Every scene references capture_manifest evidence or terminal_scene props
+  - slug: assets
+    skill: pipelines/screen-demo/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - scene_plan
+      - capture_manifest
+    optional_artifacts_in:
+      - brief
+    optional_tools:
+      - subtitle_gen
+      - frame_sampler
+      - video_understand
+    tools_available:
+      - subtitle_gen
+      - frame_sampler
+      - video_understand
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Captions, callouts, highlights, and cursor cues map to demo steps
+      - Synthetic terminal props stay editable for Remotion
+      - Real capture support assets do not fake app behavior
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - Every asset maps to a capture step or scene props entry
+  - slug: edit
+    skill: pipelines/screen-demo/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - scene_plan
+      - asset_manifest
+      - capture_manifest
+    optional_artifacts_in:
+      - brief
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Demo steps remain understandable and in order
+      - Cursor, zoom, callout, and caption timing are readable
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - Edit decisions cover every demo beat and selected output variant
+  - slug: compose
+    skill: pipelines/screen-demo/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+    optional_artifacts_in:
+      - scene_plan
+      - capture_manifest
+    required_tools:
+      - video_compose
+      - audio_mixer
+    optional_tools:
+      - subtitle_gen
+    tools_available:
+      - video_compose
+      - audio_mixer
+      - subtitle_gen
+    requires_runtime: any
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Synthetic terminal scenes and real captures render without readability loss
+      - Audio, captions, and callouts match demo timing
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output files exist and pass ffprobe validation
+  - slug: publish
+    skill: pipelines/screen-demo/publish-director.md
+    produces: publish_log
+    produces_artifacts:
+      - publish_log
+    required_artifacts_in:
+      - render_report
+      - final_review
+    optional_artifacts_in:
+      - brief
+      - scene_plan
+      - capture_manifest
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Deliverables are named by product, demo step, aspect, and platform
+      - Capture mode and known capture caveats are included
+      - Source commands, URLs, or app states needed for audit are packaged
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Export package contains rendered video, capture metadata, and handoff files

@@ -1,0 +1,36 @@
+pipeline: screen-demo
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline state machine"
+  - file: executive-producer.md
+    section: "## Mandatory locked decisions"
+  - file: executive-producer.md
+    section: "## When to stop and check with the human"
+  - file: idea-director.md
+    section: "## Capture Mode Selection"
+  - file: scene-director.md
+    section: "## Scene Library Catalog"
+required_phrases:
+  - file: idea-director.md
+    phrase: "Use synthetic_terminal when the demo is a CLI / install flow / terminal workflow. Use real_capture when the demo is a real app UI or requires unpredictable live behavior."
+  - file: idea-director.md
+    phrase: "synthetic-screen-recording"
+  - file: idea-director.md
+    phrase: "playwright-recording"
+  - file: capture-director.md
+    phrase: "Capture Tools"
+  - file: capture-director.md
+    phrase: "playwright_recording"
+  - file: scene-director.md
+    phrase: "terminal_scene"
+  - file: edit-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: compose-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+required_modules:
+  - file: executive-producer.md
+    module: "Validated patterns"
+  - file: idea-director.md
+    module: "Capture Mode Selection"
+  - file: scene-director.md
+    module: "Scene Library Catalog"

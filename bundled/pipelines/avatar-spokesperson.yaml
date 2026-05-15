@@ -1,0 +1,245 @@
+slug: avatar-spokesperson
+display_name: Avatar Spokesperson
+description: "Avatar-led spokesperson pipeline for scripted presenter videos, product updates, explainers, and short announcements. EP orchestration gates G1 pivot decisions, avatar capability availability, script readiness, presenter assets, runtime locks, and publish packaging."
+status: beta
+master_clock: none
+default_checkpoint_policy: guided
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/avatar-spokesperson/executive-producer.md
+  - pipelines/avatar-spokesperson/source-review-director.md
+  - pipelines/avatar-spokesperson/idea-director.md
+  - pipelines/avatar-spokesperson/script-director.md
+  - pipelines/avatar-spokesperson/scene-director.md
+  - pipelines/avatar-spokesperson/asset-director.md
+  - pipelines/avatar-spokesperson/edit-director.md
+  - pipelines/avatar-spokesperson/compose-director.md
+  - pipelines/avatar-spokesperson/publish-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+  - agents/heygen
+  - agents/avatar-video
+  - agents/faceswap
+compatible_playbooks:
+  recommended:
+    - clean-professional
+    - flat-motion-graphics
+  also_works:
+    - minimalist-diagram
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/avatar-spokesperson/executive-producer.md
+  budget_default_usd: 3
+  max_revisions_per_stage: 3
+  max_send_backs: 2
+  max_wall_time_minutes: 18
+export:
+  supported_targets: [premiere, davinci, capcut, edl]
+  default_target: premiere
+  notes: |
+    Export packages include avatar or lip-sync assets, presenter plates when used, script, captions, edit decisions, render output, and NLE handoff metadata.
+stages:
+  - slug: source_review
+    skill: pipelines/avatar-spokesperson/source-review-director.md
+    produces: source_media_review
+    produces_artifacts:
+      - source_media_review
+    tools_available:
+      - source_media_review
+      - frame_sampler
+      - video_understand
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - User-supplied presenter plates, brand references, or avatar references are reviewed before idea approval
+      - Rights, consent, framing, and plate quality risks are explicit
+      - Source constraints are available for the G1 pivot decision
+    success_criteria:
+      - Schema-valid source_media_review artifact when source media is supplied
+      - Reviewer can determine whether a presenter plate is viable for lip-sync path
+  - slug: idea
+    skill: pipelines/avatar-spokesperson/idea-director.md
+    produces: brief
+    produces_artifacts:
+      - brief
+      - decision_log
+    optional_artifacts_in:
+      - source_media_review
+    tools_available:
+      - talking_head
+      - lip_sync
+      - heygen_video
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Pivot Decision is logged at G1 after IDEA
+      - Avatar, lip-sync, or narration-over-graphics path matches available tools
+      - Target platform, aspect ratio, presenter identity, and runtime are explicit
+    success_criteria:
+      - Schema-valid brief artifact
+      - decision_log contains Pivot Decision before script promotion
+  - slug: script
+    skill: pipelines/avatar-spokesperson/script-director.md
+    produces: script
+    produces_artifacts:
+      - script
+    required_artifacts_in:
+      - brief
+    optional_artifacts_in:
+      - source_media_review
+    optional_tools:
+      - tts_selector
+    tools_available:
+      - tts_selector
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Script fits the approved avatar path and target runtime
+      - Presenter copy is speakable, brand-safe, and caption-ready
+      - Lip-sync path includes presenter-plate constraints
+    success_criteria:
+      - Schema-valid script artifact
+      - Script records avatar path and voice direction
+  - slug: scene_plan
+    skill: pipelines/avatar-spokesperson/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - brief
+      - script
+    optional_artifacts_in:
+      - source_media_review
+    optional_tools:
+      - frame_sampler
+    tools_available:
+      - frame_sampler
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Presenter framing, graphics, captions, and b-roll support the approved path
+      - Narration-over-graphics pivot is represented honestly when selected
+      - Scenes leave room for avatar-safe overlays and captions
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Every scene maps to the approved avatar path
+  - slug: assets
+    skill: pipelines/avatar-spokesperson/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - scene_plan
+      - script
+    optional_artifacts_in:
+      - brief
+      - source_media_review
+    optional_tools:
+      - talking_head
+      - heygen_video
+      - lip_sync
+      - tts_selector
+      - image_selector
+      - subtitle_gen
+    tools_available:
+      - talking_head
+      - heygen_video
+      - lip_sync
+      - tts_selector
+      - image_selector
+      - subtitle_gen
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Asset path follows the G1 Pivot Decision
+      - Avatar video, lip-sync presenter plate, or narration graphics assets exist as planned
+      - Captions and support graphics do not obscure the presenter
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - Every avatar or support asset maps to the approved path
+  - slug: edit
+    skill: pipelines/avatar-spokesperson/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - scene_plan
+      - asset_manifest
+    optional_artifacts_in:
+      - script
+      - source_media_review
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Avatar timing, captions, and support graphics preserve presenter readability
+      - Lip-sync timing and presenter plate constraints are respected
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - Edit decisions cover every planned avatar or pivot output
+  - slug: compose
+    skill: pipelines/avatar-spokesperson/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+    optional_artifacts_in:
+      - scene_plan
+      - script
+      - source_media_review
+    required_tools:
+      - video_compose
+      - audio_mixer
+    optional_tools:
+      - subtitle_gen
+    tools_available:
+      - video_compose
+      - audio_mixer
+      - subtitle_gen
+    requires_runtime: any
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Avatar, lip-sync, or pivot visuals render without caption or overlay collisions
+      - Audio and captions remain synced to the script
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output file exists and passes ffprobe validation
+  - slug: publish
+    skill: pipelines/avatar-spokesperson/publish-director.md
+    produces: publish_log
+    produces_artifacts:
+      - publish_log
+    required_artifacts_in:
+      - render_report
+      - final_review
+    optional_artifacts_in:
+      - brief
+      - script
+      - source_media_review
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Deliverables include avatar path, rights notes, and capability caveats
+      - Captions, script, and render metadata are packaged
+      - Pivot or blocked-production notes remain attached
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Export package contains rendered video and handoff metadata

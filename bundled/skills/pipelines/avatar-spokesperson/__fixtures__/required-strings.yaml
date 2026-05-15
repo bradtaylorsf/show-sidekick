@@ -1,0 +1,36 @@
+pipeline: avatar-spokesperson
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline state machine"
+  - file: executive-producer.md
+    section: "## Mandatory locked decisions"
+  - file: executive-producer.md
+    section: "## When to stop and check with the human"
+  - file: idea-director.md
+    section: "## Pivot Decision Matrix"
+required_phrases:
+  - file: idea-director.md
+    phrase: "If `talking_head` available → standard."
+  - file: idea-director.md
+    phrase: "If `talking_head` unavailable + `lip_sync` available → lip-sync path (presenter plate required)."
+  - file: idea-director.md
+    phrase: "If neither → Narration-Over-Graphics pivot offered or block production."
+  - file: idea-director.md
+    phrase: "The pivot decision happens at G1 (after IDEA). Do not wait until the ASSETS stage to discover the tool is missing."
+  - file: idea-director.md
+    phrase: "heygen"
+  - file: idea-director.md
+    phrase: "avatar-video"
+  - file: idea-director.md
+    phrase: "faceswap"
+  - file: idea-director.md
+    phrase: "Any avatar production proceeding past idea without a logged `Pivot Decision` in the decision_log is a CRITICAL reviewer finding"
+  - file: executive-producer.md
+    phrase: "Before `script`: `pivot_decision` must exist in decision_log as `Pivot Decision`"
+required_modules:
+  - file: executive-producer.md
+    module: "Validated patterns"
+  - file: idea-director.md
+    module: "Pivot Decision Matrix"
+  - file: idea-director.md
+    module: "Reviewer Gate"
