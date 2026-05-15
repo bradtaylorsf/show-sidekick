@@ -15,7 +15,7 @@
 # Project lifecycle
 predit init                              # scaffold a new predit project in cwd
 predit init --git                        # scaffold, git init, add, and commit
-predit init --starter music-video        # scaffold and clone a bundled starter show
+predit init --starter animated-explainer # scaffold and clone the first-video starter show
 predit init --no-setup-runtimes          # skip default Remotion CLI stack + HyperFrames install
 predit doctor                            # registry + tool preflight (capability menu)
 predit doctor --profile paid-demo        # preflight a named provider profile

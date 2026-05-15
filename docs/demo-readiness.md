@@ -17,9 +17,9 @@ This model is allowed for harness development, but it is not how reviewers shoul
 The CLI/user-project model runs `predit` from a separate folder owned by the show operator. The harness provides the CLI and the `.predit/` bundled cache; the user project owns `shows/`, `projects/`, renders, exports, and local overrides. Reviewers and agents should use this model for demos:
 
 ```bash
-predit init --starter music-video
-predit build music-video/sample-episode --sample
-predit export music-video/sample-episode --target premiere
+predit init --starter animated-explainer
+predit build animated-explainer/sample-episode --sample
+predit export animated-explainer/sample-episode --target premiere
 ```
 
 Do not require operators to work inside the harness repo. Do not edit `.predit/` inside the user project; refresh it with `predit update` or override resources in project-local `pipelines/`, `playbooks/`, or `skills/`.
@@ -39,22 +39,22 @@ pnpm build
 mkdir -p "$DEMO_ROOT"
 cd "$DEMO_ROOT"
 
-node "$HARNESS/dist/cli/index.js" init --starter music-video
-node "$HARNESS/dist/cli/index.js" build music-video/sample-episode --sample
-node "$HARNESS/dist/cli/index.js" export music-video/sample-episode --target premiere --overwrite
-node "$HARNESS/dist/cli/index.js" export music-video/sample-episode --format edl --overwrite
+node "$HARNESS/dist/cli/index.js" init --starter animated-explainer
+node "$HARNESS/dist/cli/index.js" build animated-explainer/sample-episode --sample
+node "$HARNESS/dist/cli/index.js" export animated-explainer/sample-episode --target premiere --overwrite
+node "$HARNESS/dist/cli/index.js" export animated-explainer/sample-episode --format edl --overwrite
 ```
 
 Expected local outputs:
 
-- Runtime workspace: `projects/music-video/sample-episode/`
-- Render: `projects/music-video/sample-episode/renders/sample-preview.mp4`
-- Premiere package: `exports/music-video__sample-episode.premiere/`
-- EDL package: `exports/music-video__sample-episode.edl/`
+- Runtime workspace: `projects/animated-explainer/sample-episode/`
+- Render: `projects/animated-explainer/sample-episode/renders/sample-preview.mp4`
+- Premiere package: `exports/animated-explainer__sample-episode.premiere/`
+- EDL package: `exports/animated-explainer__sample-episode.edl/`
 
 ## Provider Setup Without Storing Credentials In The Repo
 
-The zero-key `music-video` sample can run without provider credentials. Its renderer turns the starter lyrics/script lines into multiple procedural idea cards, so agent-guided onboarding can personalize the first artifact before any paid calls. Paid demo lanes use the `paid-demo` provider profile described in [Provider Profiles](provider-profiles.md).
+The zero-key `animated-explainer` sample can run without provider credentials. Its renderer turns the starter script lines into narrated animated cards, so agent-guided onboarding can personalize the first artifact before any paid calls. Paid demo lanes use the `paid-demo` provider profile described in [Provider Profiles](provider-profiles.md).
 
 Use environment variables and provider CLIs. Do not store credentials in `show.yaml`, `episode.yaml`, `.predit/`, starter files, committed docs, or generated artifacts.
 
@@ -86,14 +86,14 @@ The paid-demo sample dispatcher now honors the configured runtime when it is ins
 
 Current expected green paths:
 
-- `pnpm demo-matrix --zero-key --only music-video --keep-workdir`
+- `pnpm demo-matrix --zero-key --only animated-explainer --keep-workdir`
 - `pnpm demo-matrix --paid-demo --keep-workdir` after `predit doctor --profile paid-demo` is green for OpenAI, ElevenLabs, Higgsfield, ffmpeg, and ffprobe.
 
 | Starter | Default Pipeline | sample_support | Expected Status | Notes |
 |---|---|---|---|---|
-| `music-video` | `music-video` | `both` | Green for zero-key; included in paid-demo | Zero-key multi-card idea reel and export path are the first validation lane. |
+| `animated-explainer` | `animated-explainer` | `both` | Green for zero-key; included in paid-demo | Zero-key narrated Remotion first-video explainer and export path are the first validation lane. |
+| `music-video` | `music-video` | `both` | Green for zero-key; included in paid-demo | Audio-led multi-card idea reel remains available for track-oriented smoke tests. |
 | `ai-workflow-demo` | `screen-demo` | `paid` | Paid-demo only | Requires paid-demo provider setup; synthetic terminal fixture. |
-| `animated-explainer` | `animated-explainer` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
 | `cinematic-trailer` | `cinematic` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
 | `last-rev` | `screen-demo` | `paid` | Paid-demo only | Default lane is `screen-demo`; `talking-head` is also declared for follow-ups. |
 | `news-song` | `news-song` | `paid` | Paid-demo only | Requires paid-demo provider setup. |

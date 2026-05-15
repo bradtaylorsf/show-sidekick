@@ -43,7 +43,7 @@ describe("demo matrix runner", () => {
       repoRoot: process.cwd(),
       mode: "zero-key",
     });
-    expect(zeroKey.map((lane) => lane.slug)).toEqual(["music-video"]);
+    expect(zeroKey.map((lane) => lane.slug)).toEqual(["animated-explainer", "music-video"]);
   });
 
   it("runs selected paid-demo lanes through init and build commands", async () => {

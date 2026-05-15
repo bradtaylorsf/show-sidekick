@@ -45,7 +45,7 @@ Based on discovery, the agent classifies the user's setup:
 
 | Tier | Available | Best pipelines |
 |---|---|---|
-| **Zero-key** | ffmpeg, bundled fixtures, and no provider keys | Personalized music-video idea reel |
+| **Zero-key** | ffmpeg, local TTS where available, bundled fixtures, and no provider keys | Personalized animated-explainer first video |
 | **Starter** | One configured image provider + free TTS + at least one composition runtime | Animated explainer, animation (AI visuals) |
 | **Standard** | Image gen + paid TTS + music gen | Animated explainer, animation, screen demo, hybrid |
 | **Full** | Video gen + image gen + premium TTS + music | All pipelines including cinematic, avatar, talking head, music video |
@@ -110,12 +110,12 @@ If only one is available, name it and mention what the other would unlock. If ne
 
 ### 5. Offer three starter prompts
 
-Present exactly three prompts the user can copy now. Each targets a different pipeline or style. Mark each one for the pipeline it lands in.
+Present exactly three prompts the user can copy now. Each targets a different pipeline or style. Mark each one for the pipeline it lands in. For a vague first-video request, first ask: "What do you do, and what kind of videos would be useful for you?"
 
 Tier-specific examples:
 
 **Zero-key:**
-> "Make my first no-key predit video: use what you know from this project/session to suggest three video ideas, pick the strongest one, and render a 15-second idea reel." (music-video starter)
+> "Make my first no-key predit video: ask what I do, suggest three video ideas tailored to that answer, pick the strongest one, and render a 30-second animated explainer with local narration." (animated-explainer starter)
 
 **Starter:**
 > "Make a music video for the track I just dropped in `music_library/midnight-train/`." (music-video pipeline)
@@ -130,24 +130,25 @@ Rules:
 
 - Exactly 3 prompts.
 - First prompt is the most impressive thing the user's setup can produce.
-- For vague first-video requests, lead with the personalized zero-key idea reel when provider keys are missing or the user wants the fastest start.
+- For vague first-video requests, lead with the personalized zero-key animated explainer when provider keys are missing or the user wants the fastest start.
 - Each prompt targets a different pipeline.
 - Brief note explains what makes the prompt a good fit.
 - Use blockquote formatting so prompts are easy to copy.
 
 ### 5a. Personalized zero-key first video
 
-When a user asks an agent to help create the first video without giving a specific creative brief, the default no-key path is a personalized idea reel, not a generic smoke sample.
+When a user asks an agent to help create the first video without giving a specific creative brief, the default no-key path is a personalized animated explainer, not a generic smoke sample.
 
 Protocol:
 
-1. Use only safe context the user has shared in the current session or project. Do not infer sensitive personal attributes or reveal private facts.
-2. Offer exactly three concrete video ideas the current setup can produce.
-3. If the user asked the agent to proceed, pick the strongest idea and use the `music-video` starter because it has the zero-key renderer.
-4. Write four short visible-card lines to `shows/<show>/inputs/<episode>/lyrics.txt`: tailored hook, idea 1, idea 2, next step.
-5. Run `predit build <show>/<episode> --sample` without a paid provider profile, then export an editor handoff.
+1. Ask: "What do you do, and what kind of videos would be useful for you?"
+2. Use only safe context the user has shared in the current session or project. Do not infer sensitive personal attributes or reveal private facts.
+3. Offer exactly three concrete video ideas the current setup can produce.
+4. If the user asked the agent to proceed, pick the strongest idea and use the `animated-explainer` starter because it has the zero-key narrated motion-graphics renderer.
+5. Write four short narrated-card lines to `shows/<show>/inputs/sample-episode/script.txt`: tailored hook, personal-use beat, predit workflow beat, next step. Keep `duration_s: 30`.
+6. Run `predit build <show>/sample-episode --sample` without a paid provider profile, then export an editor handoff.
 
-The zero-key renderer turns the script lines into multiple procedural cards with local motion and ffmpeg audio/video assembly. This keeps the first artifact free while making it feel specific to the operator.
+The zero-key renderer turns the script lines into multiple procedural cards, generates local narration when a free local TTS path is available, and uses Remotion when installed. This keeps the first artifact free while making it feel specific to the operator.
 
 ### 6. Workflow summary (2–3 sentences)
 
@@ -180,7 +181,7 @@ Match to a pipeline. If it fits, name the pipeline and the tools you'd use. If i
 
 **"I just want to test it quickly"**
 
-Suggest the personalized zero-key idea reel first. If the user explicitly wants a pure smoke test, use the shortest zero-key starter sample the setup supports.
+Suggest the personalized zero-key animated explainer first. If the user explicitly wants a pure smoke test, use the shortest zero-key starter sample the setup supports.
 
 ## Anti-patterns
 

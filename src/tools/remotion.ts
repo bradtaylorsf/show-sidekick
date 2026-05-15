@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import {
@@ -25,6 +25,12 @@ export const RemotionComposeInputSchema = z.object({
   cuesheet: CuesheetSchema.optional(),
   playbook: PlaybookSchema.optional(),
   fps: z.number().positive().default(30),
+  resolution: z
+    .object({
+      width: z.number().int().positive(),
+      height: z.number().int().positive(),
+    })
+    .optional(),
 });
 
 export type RemotionComposeInput = z.infer<typeof RemotionComposeInputSchema>;
@@ -106,11 +112,14 @@ async function renderWithRemotionCli(
   const outputPath = resolveAssetPath(input.output_path ?? "renders/remotion.mp4", projectRoot);
   const workspace = join(projectRoot, ".predit-work", `remotion-${Date.now()}`);
   const entryPoint = join(workspace, "index.jsx");
+  const publicDir = join(workspace, "public");
   const durationInFrames = Math.max(1, Math.ceil(durationS * input.fps));
+  const resolution = input.resolution ?? { width: 1920, height: 1080 };
 
   await mkdir(dirname(outputPath), { recursive: true });
   await mkdir(workspace, { recursive: true });
-  await writeFile(entryPoint, remotionEntrySource(input, projectRoot, durationInFrames), "utf8");
+  const media = await prepareRemotionMedia(input, projectRoot, publicDir);
+  await writeFile(entryPoint, remotionEntrySource(input, projectRoot, durationInFrames, resolution, media), "utf8");
 
   try {
     await runRemotion(projectRoot, [
@@ -124,6 +133,8 @@ async function renderWithRemotionCli(
       "--audio-codec",
       "aac",
       "--overwrite",
+      "--public-dir",
+      publicDir,
     ]);
   } finally {
     await rm(workspace, { recursive: true, force: true });
@@ -133,7 +144,7 @@ async function renderWithRemotionCli(
     output_path: projectRelativePath(projectRoot, outputPath),
     encoding_profile: "remotion/h264-aac",
     duration_s: durationS,
-    resolution: { width: 1920, height: 1080 },
+    resolution,
     framerate: input.fps,
     runtime_used: "remotion",
     asset_count: input.asset_manifest?.assets.length ?? input.edit_decisions.cuts.length,
@@ -141,30 +152,46 @@ async function renderWithRemotionCli(
   };
 }
 
-function remotionEntrySource(input: RemotionComposeInput, projectRoot: string, durationInFrames: number): string {
+function remotionEntrySource(
+  input: RemotionComposeInput,
+  projectRoot: string,
+  durationInFrames: number,
+  resolution: { width: number; height: number },
+  media: RemotionMediaMap,
+): string {
   const assets = new Map(input.asset_manifest?.assets.map((asset) => [asset.id, asset]) ?? []);
   const audioPath = input.edit_decisions.audio?.music?.track_path;
+  const audioSource = audioPath ? mediaSrc(audioPath, projectRoot, media) : undefined;
   const props = {
     fps: input.fps,
     cuts: input.edit_decisions.cuts.map((cut, index) => {
       const asset = assets.get(cut.asset_id);
+      const source = asset?.path ? mediaSrc(asset.path, projectRoot, media) : undefined;
       return {
         index,
         startFrame: Math.round(cut.start_s * input.fps),
         durationFrames: Math.max(1, Math.round((cut.end_s - cut.start_s) * input.fps)),
-        src: asset?.path ? mediaSrc(asset.path, projectRoot) : undefined,
+        src: source?.src,
+        useStaticFile: source?.useStaticFile ?? false,
         kind: asset?.kind ?? "video",
         label: asset?.prompt ?? cut.asset_id,
       };
     }),
-    audioSrc: audioPath ? mediaSrc(audioPath, projectRoot) : undefined,
+    audioSrc: audioSource?.src,
+    audioUsesStaticFile: audioSource?.useStaticFile ?? false,
+    width: resolution.width,
+    height: resolution.height,
   };
 
   return `
 import React from "react";
-import { AbsoluteFill, Audio, Composition, Img, OffthreadVideo, Sequence, interpolate, registerRoot, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Audio, Composition, Img, OffthreadVideo, Sequence, interpolate, registerRoot, staticFile, useCurrentFrame } from "remotion";
 
 const props = ${JSON.stringify(props)};
+
+function mediaUrl(src, useStaticFile) {
+  return useStaticFile ? staticFile(src) : src;
+}
 
 function Scene({ cut, total }) {
   const frame = useCurrentFrame();
@@ -179,11 +206,12 @@ function Scene({ cut, total }) {
     objectFit: "cover",
     transform: "scale(" + scale + ") translate(" + x + "px, " + y + "px)",
   };
+  const src = cut.src ? mediaUrl(cut.src, cut.useStaticFile) : undefined;
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#0b1020", overflow: "hidden" }}>
-      {cut.src && cut.kind === "image" ? <Img src={cut.src} style={mediaStyle} /> : null}
-      {cut.src && cut.kind !== "image" ? <OffthreadVideo src={cut.src} muted={Boolean(props.audioSrc)} style={mediaStyle} /> : null}
+      {src && cut.kind === "image" ? <Img src={src} style={mediaStyle} /> : null}
+      {src && cut.kind !== "image" ? <OffthreadVideo src={src} muted={Boolean(props.audioSrc)} style={mediaStyle} /> : null}
       <AbsoluteFill style={{
         background: "linear-gradient(90deg, rgba(6,10,24,0.78), rgba(6,10,24,0.18) 48%, rgba(6,10,24,0.72))",
       }} />
@@ -222,7 +250,7 @@ function PreditSample({ cuts, audioSrc }) {
           <Scene cut={cut} total={cuts.length} />
         </Sequence>
       ))}
-      {audioSrc ? <Audio src={audioSrc} /> : null}
+      {audioSrc ? <Audio src={mediaUrl(audioSrc, props.audioUsesStaticFile)} /> : null}
     </AbsoluteFill>
   );
 }
@@ -233,14 +261,65 @@ export const RemotionRoot = () => (
     component={PreditSample}
     durationInFrames={${durationInFrames}}
     fps={props.fps}
-    width={1920}
-    height={1080}
+    width={props.width}
+    height={props.height}
     defaultProps={props}
   />
 );
 registerRoot(RemotionRoot);
 export default RemotionRoot;
 `;
+}
+
+type RemotionMediaSource = {
+  readonly src: string;
+  readonly useStaticFile: boolean;
+};
+
+type RemotionMediaMap = Map<string, RemotionMediaSource>;
+
+async function prepareRemotionMedia(
+  input: RemotionComposeInput,
+  projectRoot: string,
+  publicDir: string,
+): Promise<RemotionMediaMap> {
+  const media = new Map<string, RemotionMediaSource>();
+  const values = [
+    ...(input.asset_manifest?.assets.map((asset) => asset.path).filter(Boolean) ?? []),
+    input.edit_decisions.audio?.music?.track_path,
+  ].filter((value): value is string => Boolean(value));
+  const seen = new Set<string>();
+
+  await mkdir(publicDir, { recursive: true });
+
+  for (const value of values) {
+    if (/^https?:\/\//iu.test(value) || value.startsWith("data:")) {
+      media.set(value, { src: value, useStaticFile: false });
+      continue;
+    }
+
+    const absolutePath = resolveAssetPath(value, projectRoot);
+    if (seen.has(absolutePath)) {
+      const existing = media.get(absolutePath);
+      if (existing) {
+        media.set(value, existing);
+      }
+      continue;
+    }
+    seen.add(absolutePath);
+
+    const safeName = safeMediaName(seen.size, absolutePath);
+    const relativePublicPath = `media/${safeName}`;
+    const targetPath = join(publicDir, relativePublicPath);
+    await mkdir(dirname(targetPath), { recursive: true });
+    await copyFile(absolutePath, targetPath);
+
+    const source = { src: relativePublicPath, useStaticFile: true };
+    media.set(value, source);
+    media.set(absolutePath, source);
+  }
+
+  return media;
 }
 
 function runRemotion(cwd: string, args: string[]): Promise<void> {
@@ -255,12 +334,19 @@ function runRemotion(cwd: string, args: string[]): Promise<void> {
   });
 }
 
-function mediaSrc(value: string, projectRoot: string): string {
+function mediaSrc(value: string, projectRoot: string, media: RemotionMediaMap): RemotionMediaSource {
   if (/^https?:\/\//iu.test(value) || value.startsWith("data:")) {
-    return value;
+    return { src: value, useStaticFile: false };
   }
 
-  return pathToFileURL(resolveAssetPath(value, projectRoot)).href;
+  const absolutePath = resolveAssetPath(value, projectRoot);
+  return media.get(value) ?? media.get(absolutePath) ?? { src: pathToFileURL(absolutePath).href, useStaticFile: false };
+}
+
+function safeMediaName(index: number, value: string): string {
+  const extension = extname(value) || ".bin";
+  const base = basename(value, extension).replace(/[^a-z0-9_-]+/giu, "-").replace(/^-+|-+$/gu, "") || "asset";
+  return `${String(index).padStart(2, "0")}-${base}${extension}`;
 }
 
 function resolveAssetPath(value: string, projectRoot: string): string {

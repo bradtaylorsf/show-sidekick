@@ -45,7 +45,7 @@ Scaffolds a new user project in the current directory:
 cd ~/my-shows
 predit init                       # creates CLAUDE.md, AGENTS.md, .env.example, .env, .predit/, .gitignore
 predit init --git                 # same, plus `git init`
-predit init --starter music-video # scaffold a starter show alongside the project
+predit init --starter animated-explainer # scaffold the first-video starter show alongside the project
 predit init --no-setup-runtimes   # skip default Remotion, Remotion CLI deps, and HyperFrames install
 ```
 

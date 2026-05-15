@@ -1,17 +1,18 @@
 slug: sample-episode
-title: Sample Animated Explainer
+title: Personalized No-Key Predit Explainer
 created: 2026-05-14
 pipeline: animated-explainer
 playbook: flat-motion-graphics
 runtime: remotion
-aspect: 16:9
+aspect: 9:16
 budget_usd: 0.75
 inputs:
   script: shows/animated-explainer/inputs/sample-episode/script.txt
   reference_image: shows/animated-explainer/inputs/sample-episode/reference.jpg
+  duration_s: 30
   notes: |
-    Fifteen-second animated explainer sample built from a short script and a reference color card.
-    Build as a zero-key sample with flat shapes, labels, and simple motion beats.
+    Thirty-second personalized no-key explainer built from a short script.
+    The zero-key dispatcher renders animated cards with local narration and Remotion when available.
 cast: []
 tags:
   - animated-explainer

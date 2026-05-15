@@ -5,13 +5,14 @@ created: 2026-05-14
 pipeline: animated-explainer
 playbook: flat-motion-graphics
 runtime: remotion
-aspect: 16:9
+aspect: 9:16
 budget_usd: 0.75
 inputs:
   script: shows/animated-explainer/inputs/sample-episode/script.txt
   reference_image: shows/animated-explainer/inputs/sample-episode/reference.jpg
+  duration_s: 30
   notes: |
-    Replace with explainer goal, visual metaphor, and callout priorities.
+    Replace with explainer goal, audience context, visual metaphor, and callout priorities.
 cast: []
 tags:
   - animated-explainer

@@ -17,26 +17,26 @@ Requirements: Node 22+, pnpm 9+, and `ffmpeg` for local media work.
 ```bash
 mkdir my-shows
 cd my-shows
-predit init --starter music-video --git
+predit init --starter animated-explainer --git
 # optional: add paid provider keys to the generated .env
 predit doctor --profile paid-demo
-predit build music-video/sample-episode --sample
-predit export music-video/sample-episode --target premiere
+predit build animated-explainer/sample-episode --sample
+predit export animated-explainer/sample-episode --target premiere
 ```
 
 For an agent-guided blank project, run `predit init` and give Codex, Claude, or another agent this prompt:
 
 ```text
-Read AGENTS.md and .predit/skills/meta/onboarding.md, then guide me through a personalized no-key first predit video.
+Read AGENTS.md and .predit/skills/meta/onboarding.md. Ask me what I do, suggest three personalized no-key first-video ideas, then render a 30-second animated predit explainer.
 ```
 
-The scaffolded `AGENTS.md` tells the agent to run `predit doctor --profile paid-demo`, use safe project/session context to suggest three first-video ideas, render a free multi-card idea reel before paid generation, and export an editor handoff. The full walkthrough is in [docs/quickstart.md](docs/quickstart.md), including provider setup, sample outputs, and troubleshooting.
+The scaffolded `AGENTS.md` tells the agent to run `predit doctor --profile paid-demo`, ask what you do, use safe session context to suggest three first-video ideas, render a free narrated animated explainer before paid generation, and export an editor handoff. The full walkthrough is in [docs/quickstart.md](docs/quickstart.md), including provider setup, sample outputs, and troubleshooting.
 
 ## Features
 
 - Show-first model: each show owns its brand, characters, defaults, ingest rules, and episode workspace.
 - Audio-led pipelines: music videos, trailers, and news songs snap visual timing to beats, sections, and climax points.
-- Starter shows: nine bundled templates scaffold show folders and sample fixtures; `music-video` includes a zero-key multi-card idea reel sample.
+- Starter shows: bundled templates scaffold show folders and sample fixtures; `animated-explainer` includes a zero-key narrated Remotion first-video sample.
 - NLE handoff: Premiere XML, DaVinci XML, CapCut draft packages, and CMX 3600 EDL.
 - Registry-driven tools: concrete integrations live in `src/tools/` and are selected by capability, availability, cost, and runtime.
 - Integrated runner: checkpoints, approvals, resume state, first paid-call approval, and cost budget enforcement.
@@ -59,7 +59,7 @@ Global flags: `--json`, `--dry-run`, `--verbose`, `--no-color`, `--config <path>
 
 Common flows:
 
-- `predit init --starter music-video --git` scaffolds a user project, initializes git, writes `.env.example` and gitignored `.env`, and clones the music-video starter into `shows/music-video/`.
+- `predit init --starter animated-explainer --git` scaffolds a user project, initializes git, writes `.env.example` and gitignored `.env`, and clones the animated-explainer starter into `shows/animated-explainer/`.
 - `predit init` scaffolds a blank project with agent instructions, bundled pipeline cache, Codex/Claude skill mirrors, first-run next steps, and project-local Remotion/HyperFrames dependencies when npm is available. Use `--no-setup-runtimes` to skip the install.
 - The scaffolded `.gitignore` keeps generated workspaces, renders, exports, local media, `.predit/`, and `.env` out of git while leaving shows, pipelines, playbooks, skills, and `.env.example` shareable.
 - Shared project clones restore the gitignored `.predit/` cache automatically before commands run, using the locally installed harness version.

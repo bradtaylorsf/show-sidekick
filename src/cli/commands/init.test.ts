@@ -179,8 +179,9 @@ describe("init command", () => {
     expect(output().stdout).toContain("installed Remotion/HyperFrames");
     expect(output().stdout).toContain("edit .env with any provider keys");
     expect(output().stdout).toContain("predit ls starters");
+    expect(output().stdout).toContain("predit new show first-video --from animated-explainer");
     expect(output().stdout).toContain("Read AGENTS.md and .predit/skills/meta/onboarding.md");
-    expect(output().stdout).toContain("personalized no-key first predit video");
+    expect(output().stdout).toContain("30-second animated predit explainer");
   });
 
   it("clones a requested starter and normalizes show.yaml to the starter slug", async () => {

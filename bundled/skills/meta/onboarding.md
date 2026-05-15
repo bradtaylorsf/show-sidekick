@@ -53,7 +53,7 @@ If Remotion or HyperFrames is unavailable, offer `predit setup runtimes` before 
 
 | Tier | Available | Best pipelines |
 |---|---|---|
-| **Zero-key** | ffmpeg, optional local audio/fixtures, and no provider keys | personalized music-video idea reel |
+| **Zero-key** | ffmpeg, optional local TTS, bundled fixtures, and no provider keys | personalized animated-explainer first video |
 | **Starter** | One image provider, free TTS, and at least one composition runtime | animated-explainer, animation |
 | **Standard** | Image generation, paid TTS, and music generation | animated-explainer, animation, screen-demo, hybrid |
 | **Full** | Video generation, image generation, premium TTS, and music | cinematic, avatar, talking-head, music-video |
@@ -118,11 +118,11 @@ This primes the later "present both runtimes" hard rule in `bundled/skills/meta/
 
 ### Step 5: Offer Three Starter Prompts
 
-Offer exactly three prompts. Each should target a different pipeline or style and be achievable with the current setup.
+Offer exactly three prompts. Each should target a different pipeline or style and be achievable with the current setup. For a vague first-video request, ask this first: "What do you do, and what kind of videos would be useful for you?"
 
 Examples:
 
-> "Make my first no-key predit video: use what you know from this project/session to suggest three video ideas, pick the strongest one, and render a 15-second idea reel." (music-video starter)
+> "Make my first no-key predit video: ask what I do, suggest three video ideas tailored to that answer, pick the strongest one, and render a 30-second animated explainer with local narration." (animated-explainer starter)
 
 > "Make a 45-second animated explainer about why the sky is blue." (animated-explainer pipeline)
 
@@ -131,22 +131,23 @@ Examples:
 Rules:
 
 - The first prompt should be the most impressive thing the setup can produce now.
-- For vague first-video requests, lead with the personalized zero-key idea reel when the user wants the fastest start or provider keys are missing.
+- For vague first-video requests, lead with the personalized zero-key animated explainer when the user wants the fastest start or provider keys are missing.
 - Use blockquote formatting so prompts are easy to copy.
 - Add one brief note explaining why each prompt fits.
 - Do not suggest prompts that require unavailable tools.
 
 ### Personalized Zero-Key First Video
 
-When the user asks for a first video without a specific brief, use the no-key `music-video` starter as a personalized idea reel:
+When the user asks for a first video without a specific brief, use the no-key `animated-explainer` starter as a personalized 30-second predit explainer:
 
-1. Use only context the user has shared in this session or project. It is fine to say "based on this project folder and what you've told me"; do not infer sensitive traits, private facts, or hidden preferences.
-2. Offer exactly three concrete video ideas that the current setup can produce.
-3. If the user told you to proceed, choose the strongest idea and scaffold `predit new show first-video --from music-video` unless a suitable music-video starter show already exists.
-4. Rewrite `shows/<show>/inputs/<episode>/lyrics.txt` into four short lines: personalized hook, idea 1, idea 2, next step. The zero-key renderer turns those lines into visible cards, so keep each line punchy.
-5. Run `predit build <show>/<episode> --sample`, then export an editor handoff.
+1. Ask: "What do you do, and what kind of videos would be useful for you?"
+2. Use only context the user has shared in this session or project. It is fine to say "based on this project folder and what you've told me"; do not infer sensitive traits, private facts, or hidden preferences.
+3. Offer exactly three concrete video ideas that the current setup can produce.
+4. If the user told you to proceed, choose the strongest idea and scaffold `predit new show first-video --from animated-explainer` unless a suitable animated-explainer starter show already exists.
+5. Rewrite `shows/<show>/inputs/sample-episode/script.txt` into four concise lines: personalized hook, personal-use beat, predit workflow beat, next step. Keep `duration_s: 30`.
+6. Run `predit build <show>/sample-episode --sample`, then export an editor handoff.
 
-This path should feel like a useful first artifact, not only a technical smoke test.
+The zero-key renderer turns those script lines into animated cards, generates local narration when a free local TTS path is available, and uses Remotion when installed. This path should feel like a useful first artifact, not only a technical smoke test.
 
 ### Step 6: Summarize The Workflow
 
@@ -166,16 +167,15 @@ Use this sequence for a first video:
 predit update --check
 predit doctor --profile paid-demo
 predit ls starters
-predit new show first-video --from music-video
-# Edit shows/first-video/inputs/sample-episode/lyrics.txt into four short idea-card lines.
+predit new show first-video --from animated-explainer
+# Edit shows/first-video/inputs/sample-episode/script.txt into four short narrated card lines.
 predit build first-video/sample-episode --sample
 predit export first-video/sample-episode --target premiere
 ```
 
-For a zero-key starter, use `predit init --starter music-video`, then run
-`predit build music-video/sample-episode --sample`. Run `predit setup runtimes`
-when the user approves richer Remotion/HyperFrames composition for a paid or
-runtime-specific video. For custom workflows, use
+For a zero-key starter, use `predit init --starter animated-explainer`, then run
+`predit build animated-explainer/sample-episode --sample`. Run `predit setup runtimes`
+if runtime setup was skipped or blocked and the user approves installing project-local Remotion/HyperFrames. For custom workflows, use
 `predit new pipeline <slug>` to create a local manifest and first director skill,
 then bind a show to it with `predit new show <show> --pipelines <slug>`.
 

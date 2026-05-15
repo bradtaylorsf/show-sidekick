@@ -289,10 +289,10 @@ function emitInitialized(io: CliIo, options: InitOptions, event: InitEvent): voi
           ? []
           : ["  predit setup runtimes  # optional: install Remotion + HyperFrames locally"]),
         "  predit ls starters",
-        "  predit new show music-video --from music-video",
+        "  predit new show first-video --from animated-explainer",
       ];
   const agentPrompt = [
-    'agent prompt: "Read AGENTS.md and .predit/skills/meta/onboarding.md, then guide me through a personalized no-key first predit video."',
+    'agent prompt: "Read AGENTS.md and .predit/skills/meta/onboarding.md. Ask me what I do and what I want to make, suggest three personalized no-key first-video ideas, then render a 30-second animated predit explainer with local TTS and Remotion when available."',
   ];
 
   io.stdout.write(`init: scaffolded predit project at ${event.path}${starter}${git}${runtimes}\n${[...nextSteps, ...agentPrompt].join("\n")}\n`);

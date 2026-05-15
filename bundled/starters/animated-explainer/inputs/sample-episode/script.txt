@@ -1,5 +1,4 @@
-Start with a blank dashboard and reveal one simple bottleneck.
-Label the slow step, then show two duplicate handoffs fading out.
-Bring in the new workflow as three connected cards.
-Highlight the handoff that now happens automatically.
-End on the result: a cleaner review queue and a faster launch.
+Hook: Your agent can make a useful first video before you add any API keys.
+You: Tell the agent what you do, then it writes this middle beat around your real work.
+Workflow: predit turns the brief into script cards, scene timing, assets, runtime decisions, and a render.
+Next: Review the sample, improve the prompt, then add paid tools for generated images, voices, and video.

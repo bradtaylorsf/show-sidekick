@@ -1,6 +1,6 @@
 # Quickstart
 
-This walks a fresh machine from install to a 15-second personalized no-key idea reel and an editor handoff.
+This walks a fresh machine from install to a 30-second personalized no-key animated explainer and an editor handoff.
 
 ## Prerequisites
 
@@ -8,7 +8,7 @@ This walks a fresh machine from install to a 15-second personalized no-key idea 
 - pnpm 9 or newer
 - `ffmpeg` on `PATH` for local media work
 
-The bundled `music-video` starter sample is zero-key: it does not require API credentials. Its sample renderer turns the starter script lines into multiple visible idea cards with local ffmpeg assembly. See [providers.md](providers.md) when you want to unlock paid image, TTS, music, or video generation for custom episodes.
+The bundled `animated-explainer` starter sample is zero-key: it does not require API credentials. Its sample renderer turns the starter script lines into narrated animated cards, uses local TTS when available, and renders with Remotion when runtime setup is present. See [providers.md](providers.md) when you want to unlock paid image, premium TTS, music, or video generation for custom episodes.
 
 ```bash
 node --version
@@ -22,7 +22,7 @@ pnpm add -g predit
 ```bash
 mkdir my-shows
 cd my-shows
-predit init --starter music-video --git
+predit init --starter animated-explainer --git
 ```
 
 `predit init` creates both `.env.example` and a gitignored `.env`. Fill `.env` with any provider keys you want to use; keep `.env.example` committed as the blank setup map for collaborators and agents.
@@ -37,20 +37,20 @@ predit init
 Then give your agent:
 
 ```text
-Read AGENTS.md and .predit/skills/meta/onboarding.md, then guide me through a personalized no-key first predit video.
+Read AGENTS.md and .predit/skills/meta/onboarding.md. Ask me what I do, suggest three personalized no-key first-video ideas, then render a 30-second animated predit explainer.
 ```
 
-The agent contract tells Codex, Claude, or another agent to refresh/check `.predit/`, run `predit doctor --profile paid-demo`, explain available providers and runtimes, suggest three first-video ideas from safe project/session context, ask before paid generation, and record issues under `projects/<show>/<episode>/notes.md`.
+The agent contract tells Codex, Claude, or another agent to refresh/check `.predit/`, run `predit doctor --profile paid-demo`, explain available providers and runtimes, ask what you do, suggest three first-video ideas from safe project/session context, ask before paid generation, and record issues under `projects/<show>/<episode>/notes.md`.
 
-For the fastest no-key first video, the agent should scaffold the `music-video` starter and rewrite `shows/<show>/inputs/sample-episode/lyrics.txt` into four short card lines: a tailored hook, two concrete ideas, and the next step. Then `predit build <show>/sample-episode --sample` renders a free idea reel that the user can inspect before adding paid providers.
+For the fastest no-key first video, the agent should scaffold the `animated-explainer` starter and rewrite `shows/<show>/inputs/sample-episode/script.txt` into four short narrated card lines: a tailored hook, a personal-use beat, a predit workflow beat, and the next step. Then `predit build <show>/sample-episode --sample` renders a free animated explainer that the user can inspect before adding paid providers.
 
-The starter creates `shows/music-video/` with:
+The starter creates `shows/animated-explainer/` with:
 
-- `show.yaml` slug: `music-video`
-- sample episode: `shows/music-video/episodes/sample-episode.yaml`
-- sample inputs: `shows/music-video/inputs/sample-episode/track.wav` and `lyrics.txt`
-- expected sample duration: 15 seconds
-- fixture size: 120213 bytes
+- `show.yaml` slug: `animated-explainer`
+- sample episode: `shows/animated-explainer/episodes/sample-episode.yaml`
+- sample inputs: `shows/animated-explainer/inputs/sample-episode/script.txt` and `reference.jpg`
+- expected sample duration: 30 seconds
+- fixture size: 1979 bytes
 
 ## Optional Provider Setup
 
@@ -73,33 +73,33 @@ Or keep credentials project-local by filling the generated `.env` with the same 
 ## Render the Sample
 
 ```bash
-predit build music-video/sample-episode --sample
+predit build animated-explainer/sample-episode --sample
 ```
 
 Outputs and runtime state land under:
 
 ```text
-projects/music-video/sample-episode/
+projects/animated-explainer/sample-episode/
 ```
 
-That workspace holds checkpoints, generated assets, cost logs, decisions, and renders for the episode. The starter sample is designed as a short beat-synced rough cut from the bundled 15-second synthesized track and script-card fixture.
-The compose stage writes `projects/music-video/sample-episode/renders/sample-preview.mp4`.
+That workspace holds checkpoints, generated assets, cost logs, decisions, and renders for the episode. The starter sample is designed as a short narrated motion-graphics explainer from the script-card fixture.
+The compose stage writes `projects/animated-explainer/sample-episode/renders/sample-preview.mp4`.
 
 ## Export for Editing
 
 ```bash
-predit export music-video/sample-episode --target premiere
+predit export animated-explainer/sample-episode --target premiere
 ```
 
 Other targets:
 
 ```bash
-predit export music-video/sample-episode --target davinci
-predit export music-video/sample-episode --target capcut
-predit export music-video/sample-episode --target edl
+predit export animated-explainer/sample-episode --target davinci
+predit export animated-explainer/sample-episode --target capcut
+predit export animated-explainer/sample-episode --target edl
 ```
 
-Exports are written under `exports/` by default, and each export records `projects/music-video/sample-episode/publish_log.json`.
+Exports are written under `exports/` by default, and each export records `projects/animated-explainer/sample-episode/publish_log.json`.
 If the package already exists, re-run with `--overwrite`.
 
 The generated `.gitignore` excludes `projects/`, `exports/`, `renders/`, `output/`, `outputs/`, `.predit/`, `.env`, and bulky local media folders. Commit `shows/`, `pipelines/`, `playbooks/`, `skills/`, and `.env.example` when you want to share the workflow without generated video assets or credentials.
@@ -108,6 +108,6 @@ When another machine or agent clones the project, the first predit command resto
 ## Troubleshooting
 
 - `predit doctor` is the first command to try for project/tool preflight output.
-- `predit status music-video/sample-episode` shows the current stage, last checkpoint status, and cost summary.
+- `predit status animated-explainer/sample-episode` shows the current stage, last checkpoint status, and cost summary.
 - `predit update --check` verifies that `.predit/` matches the installed harness.
 - If a command says the project root is missing, run it from inside the folder created by `predit init`.

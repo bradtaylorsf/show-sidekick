@@ -1,10 +1,13 @@
+import { execFile, spawn } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { CostEntry } from "../artifacts/cost-log.js";
 import type { DecisionEntry } from "../artifacts/decision-log.js";
+import type { RenderReport, RenderRuntime } from "../artifacts/index.js";
 import { encodeRgbaPng } from "../media/png.js";
 import { projectDir } from "../checkpoints/paths.js";
 import { runFfmpeg } from "../media/ffmpeg-runner.js";
+import type { Tool, ToolContext } from "../registry/index.js";
 import type { StageContext } from "./context.js";
 import type { Dispatcher } from "./dispatcher.js";
 import type { StageResult } from "./result.js";
@@ -13,11 +16,14 @@ type StarterSampleArtifactSet = {
   cuesheet: unknown;
   source_media_review: unknown;
   brief: unknown;
+  proposal_packet: unknown;
   script: unknown;
   scene_plan: unknown;
   asset_manifest: unknown;
   edit_decisions: unknown;
   render_report: unknown;
+  publish_log: unknown;
+  render_runtime: RenderRuntime;
 };
 
 const SAMPLE_WIDTH = 540;
@@ -38,6 +44,12 @@ type StarterCard = {
   accent: readonly [number, number, number];
 };
 
+type StarterNarration = {
+  path: string;
+  provider: "provided" | "piper" | "macos-say" | "ffmpeg-silence";
+  warning?: string;
+};
+
 export function createStarterSampleDispatcher(): Dispatcher {
   const artifactsByEpisode = new Map<string, StarterSampleArtifactSet>();
 
@@ -56,7 +68,7 @@ export function createStarterSampleDispatcher(): Dispatcher {
         budget_remaining_usd: ctx.runOptions.budget_usd ?? 0,
       },
       cost_entries: [zeroCostEntry(ctx)],
-      decisions: stageDecisions(ctx),
+      decisions: stageDecisions(ctx, artifacts.render_runtime),
     };
   };
 }
@@ -64,8 +76,8 @@ export function createStarterSampleDispatcher(): Dispatcher {
 async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterSampleArtifactSet> {
   const durationS = sampleDuration(ctx);
   const trackPath = stringInput(ctx, "track");
-  const lyricsPath = stringInput(ctx, "lyrics");
-  const lyricText = lyricsPath ? await readFile(lyricsPath, "utf8") : "Fifteen seconds, right on time";
+  const scriptPath = starterScriptPath(ctx);
+  const lyricText = scriptPath ? await readFile(scriptPath, "utf8") : "Fifteen seconds, right on time";
   const workspace = projectDir(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug);
   const finalReviewFramesDir = path.join(workspace, "final_review", "frames");
   const renderPath = path.join(workspace, "renders", "sample-preview.mp4");
@@ -95,22 +107,28 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
     ),
   );
   await writeFile(path.resolve(ctx.show.projectRoot, heroFrameRelativePath), cardPngs[1]?.png ?? firstPng);
-  await renderStarterPreview({
-    framePaths: cards.map((card) => card.assetPath),
-    trackPath,
-    outputPath: renderPath,
+
+  const narration = await starterNarrationAudio({
+    ctx,
+    workspace,
+    text: starterNarrationText(cards),
     durationS,
+    trackPath,
   });
+  const audioPath = narration?.path ?? trackPath;
+  const narrationPresent = narration !== undefined && narration.provider !== "ffmpeg-silence";
 
   const cuesheet = buildCuesheet({
-    audioPath: trackPath ?? firstCard.relativePath,
+    audioPath: audioPath ?? firstCard.relativePath,
     lyricText,
     durationS,
+    masterClock: ctx.pipeline.master_clock === "voiceover" ? "voiceover" : "audio",
   });
   const sourceMediaReview = buildSourceMediaReview({
-    audioPath: trackPath ?? firstCard.relativePath,
+    audioPath: audioPath ?? firstCard.relativePath,
     durationS,
     lyricText,
+    narrationPresent,
   });
   const brief = buildBrief({ durationS, lyricText, cards });
   const script = buildScript({ durationS, cards });
@@ -125,44 +143,46 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
       cost_usd: 0,
     })),
   };
+  const runtime = await starterRenderRuntime(ctx);
+  const proposalPacket = buildProposalPacket({
+    ctx,
+    runtime,
+    narrationPresent,
+    musicPresent: trackPath !== undefined,
+  });
   const editDecisions = {
     cuts: sampleCuts(durationS, cards),
     overlays: [],
-    audio: trackPath
+    audio: audioPath
       ? {
           music: {
-            track_path: trackPath,
+            track_path: mediaProjectPath(ctx.show.projectRoot, audioPath),
           },
         }
       : undefined,
-    render_runtime: "ffmpeg",
+    render_runtime: runtime,
     renderer_family: "animation-first",
     brand: {
       slug: ctx.show.slug,
       name: ctx.show.display_name,
     },
   };
-  const renderReport = {
-    output_path: renderRelativePath,
-    encoding_profile: "h264-aac-mp4-starter-preview",
-    duration_s: durationS,
-    resolution: {
-      width: SAMPLE_WIDTH,
-      height: SAMPLE_HEIGHT,
-    },
-    framerate: SAMPLE_FRAMERATE,
-    runtime_used: "ffmpeg",
-    asset_count: cards.length,
-    warnings: [],
-    validation_steps: [
-      {
-        name: "starter-sample",
-        status: "pass",
-        notes: "Zero-key multi-card starter preview and NLE artifacts generated.",
-      },
-    ],
-    final_review: buildFinalReview({ durationS, frameRelativePaths, heroFrameRelativePath }),
-  };
+  const renderReport = await renderStarterPreview({
+    ctx,
+    runtime,
+    framePaths: cards.map((card) => card.assetPath),
+    audioPath,
+    outputPath: renderPath,
+    outputRelativePath: renderRelativePath,
+    durationS,
+    assetManifest,
+    editDecisions,
+    frameRelativePaths,
+    heroFrameRelativePath,
+    narrationPresent,
+    musicPresent: trackPath !== undefined,
+    warnings: narration?.warning ? [narration.warning] : [],
+  });
 
   return {
     cuesheet,
@@ -173,6 +193,15 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
     asset_manifest: assetManifest,
     edit_decisions: editDecisions,
     render_report: renderReport,
+    proposal_packet: proposalPacket,
+    publish_log: buildPublishLog({
+      ctx,
+      renderReport,
+      runtime,
+      narrationPresent,
+      musicPresent: trackPath !== undefined,
+    }),
+    render_runtime: runtime,
   };
 }
 
@@ -186,6 +215,11 @@ function artifactForStage(ctx: StageContext, artifacts: StarterSampleArtifactSet
 }
 
 function sampleDuration(ctx: StageContext): number {
+  const inputDuration = numberInput(ctx, "sample_duration_s") ?? numberInput(ctx, "duration_s");
+  if (inputDuration !== undefined && inputDuration > 0) {
+    return inputDuration;
+  }
+
   return ctx.pipeline.sample?.duration_s_min ?? 15;
 }
 
@@ -194,7 +228,21 @@ function stringInput(ctx: StageContext, key: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-function buildCuesheet(input: { audioPath: string; lyricText: string; durationS: number }): unknown {
+function numberInput(ctx: StageContext, key: string): number | undefined {
+  const value = ctx.episode.inputs[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function starterScriptPath(ctx: StageContext): string | undefined {
+  return stringInput(ctx, "script") ?? stringInput(ctx, "lyrics") ?? stringInput(ctx, "brief");
+}
+
+function buildCuesheet(input: {
+  audioPath: string;
+  lyricText: string;
+  durationS: number;
+  masterClock: "audio" | "voiceover";
+}): unknown {
   const words = lyricWords(input.lyricText);
   const wordDuration = words.length > 0 ? input.durationS / words.length : input.durationS;
   const wordCues = words.map((word, index) => ({
@@ -212,7 +260,7 @@ function buildCuesheet(input: { audioPath: string; lyricText: string; durationS:
       sample_rate: 48000,
       channels: 2,
     },
-    master_clock: "audio",
+    master_clock: input.masterClock,
     bpm: 120,
     transcription_confidence: {
       average: 1,
@@ -260,7 +308,12 @@ function buildCuesheet(input: { audioPath: string; lyricText: string; durationS:
   };
 }
 
-function buildSourceMediaReview(input: { audioPath: string; lyricText: string; durationS: number }): unknown {
+function buildSourceMediaReview(input: {
+  audioPath: string;
+  lyricText: string;
+  durationS: number;
+  narrationPresent: boolean;
+}): unknown {
   return {
     files: [
       {
@@ -271,10 +324,10 @@ function buildSourceMediaReview(input: { audioPath: string; lyricText: string; d
           sample_rate: 48000,
           channels: 2,
         },
-        content_summary: `duration_s ${input.durationS} and sample_rate 48000 are sufficient for the zero-key sample; lyrics/script contain ${lyricWords(input.lyricText).length} usable words.`,
+        content_summary: `duration_s ${input.durationS} and sample_rate 48000 are sufficient for the zero-key sample; script contains ${lyricWords(input.lyricText).length} usable words; narration ${input.narrationPresent ? "was generated locally" : "uses the supplied starter audio"}.`,
         planning_implications: [
-          "Use medium.en-style deterministic word timings from the starter cuesheet.",
-          "Turn the starter script into visible no-key idea cards before rendering.",
+          "Use deterministic word timings from the starter cuesheet.",
+          "Turn the starter script into visible no-key explainer cards before rendering.",
         ],
       },
     ],
@@ -291,14 +344,50 @@ function buildBrief(input: { durationS: number; lyricText: string; cards: Starte
     tone: "personalized, practical, and demo-ready",
     duration_s: input.durationS,
     hook: input.cards[0]?.title ?? fallbackHook,
-    key_points: [
-      `${SAMPLE_WIDTH}x${SAMPLE_HEIGHT} vertical sample`,
-      "agent-written script cards",
-      "multi-card no-key motion",
-    ],
+    key_points: ["vertical animated sample", "agent-written script cards", "local narration and no-key motion"],
     notes:
-      "Deterministic starter brief for a zero-key first-video experience. Agents can personalize the visible cards by rewriting the starter lyrics/script file before build.",
+      "Deterministic starter brief for a zero-key first-video experience. Agents can personalize the explainer by rewriting the starter script file before build.",
     decision_log: [],
+  };
+}
+
+function buildProposalPacket(input: {
+  ctx: StageContext;
+  runtime: RenderRuntime;
+  narrationPresent: boolean;
+  musicPresent: boolean;
+}): unknown {
+  return {
+    concept_options: [
+      {
+        slug: "personalized-first-video",
+        hook: "A no-key explainer that feels tailored to the user's work.",
+        treatment: "Turn the user's answer into one personal middle beat inside a fixed first-run predit tutorial.",
+      },
+      {
+        slug: "workflow-walkthrough",
+        hook: "Show the CLI path from prompt to render.",
+        treatment: "Use motion cards to explain show scaffolding, script timing, assets, runtime selection, and review.",
+      },
+      {
+        slug: "provider-upgrade",
+        hook: "End with the next paid-provider upgrade path.",
+        treatment: "Invite the user to add OpenAI, ElevenLabs, and video providers after the free sample is approved.",
+      },
+    ],
+    production_plan: {
+      render_runtime: input.runtime,
+      renderer_family: "animation-first",
+      audio_architecture: input.narrationPresent ? "single_narrator" : "no_narration",
+      sample_required: true,
+    },
+    delivery_promise: {
+      motion_led: true,
+      narration_present: input.narrationPresent,
+      music_present: input.musicPresent,
+      reference_driven: stringInput(input.ctx, "reference_image") !== undefined,
+    },
+    decision_log_ref: `projects/${input.ctx.show.slug}/${input.ctx.episode.slug}/decisions.json`,
   };
 }
 
@@ -340,6 +429,14 @@ function cardNarration(card: StarterCard): string {
   return `${title}. ${body}`;
 }
 
+function starterNarrationText(cards: StarterCard[]): string {
+  return cards
+    .map((card) => cardNarration(card))
+    .join(" ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
 function normalizeForNarration(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/gu, " ").trim();
 }
@@ -363,15 +460,15 @@ function buildScenePlan(input: { durationS: number; cards: StarterCard[] }): unk
         scene_anchor: index === 0 ? "opening script line" : index === input.cards.length - 1 ? "final action" : "idea beat",
         description:
           index === 0
-            ? "Vertical 9:16 no-key title card introducing the personalized first-video promise."
-            : `Procedural idea card: ${card.title}`,
+            ? "Animated no-key title card introducing the personalized first-video promise."
+            : `Procedural explainer card: ${card.title}`,
         shot_intent:
           index === 0
             ? "Show that a no-key first run can still feel tailored."
-            : "Give the user a concrete video direction they can improve next.",
+            : "Give the user a concrete predit direction they can improve next.",
         information_role: index === 0 ? "hook setup" : index === input.cards.length - 1 ? "next step" : "idea option",
         hero_moment: index === 1,
-        texture_keywords: ["starter", "agent-personalized", "no-key", "vertical"],
+        texture_keywords: ["starter", "agent-personalized", "no-key", "motion-graphics"],
         shot_language: {
           shot_size: "MS",
           camera_movement: index % 2 === 0 ? "push_in" : "pull_out",
@@ -396,7 +493,14 @@ function buildFinalReview(input: {
   durationS: number;
   frameRelativePaths: string[];
   heroFrameRelativePath: string;
+  renderRuntime?: RenderRuntime;
+  narrationPresent?: boolean;
+  musicPresent?: boolean;
+  width?: number;
+  height?: number;
 }): unknown {
+  const renderRuntime = input.renderRuntime ?? "ffmpeg";
+
   return {
     status: "pass",
     recommended_action: "present_to_user",
@@ -405,8 +509,8 @@ function buildFinalReview(input: {
         container: "mp4",
         duration_s: input.durationS,
         duration_promised_s: input.durationS,
-        width: SAMPLE_WIDTH,
-        height: SAMPLE_HEIGHT,
+        width: input.width ?? SAMPLE_WIDTH,
+        height: input.height ?? SAMPLE_HEIGHT,
         framerate: SAMPLE_FRAMERATE,
         video_codec: "h264",
         audio_codec: "aac",
@@ -423,8 +527,8 @@ function buildFinalReview(input: {
         findings: [],
       },
       audio_spotcheck: {
-        narration_present: false,
-        music_present: true,
+        narration_present: input.narrationPresent ?? false,
+        music_present: input.musicPresent ?? true,
         caption_sync_accuracy: 1,
         findings: [],
       },
@@ -432,9 +536,9 @@ function buildFinalReview(input: {
         delivery_promise_honored: true,
         silent_downgrade_detected: false,
         runtime_swap_detected: false,
-        runtime_swap_check: "Zero-key sample uses approved ffmpeg starter runtime.",
+        runtime_swap_check: `Zero-key sample uses approved ${renderRuntime} starter runtime.`,
         motion_ratio_actual: 1,
-        render_runtime_used: "ffmpeg",
+        render_runtime_used: renderRuntime,
         findings: [],
       },
       subtitle_check: {
@@ -573,11 +677,28 @@ function starterCardPng(card: StarterCard, cardCount: number): Buffer {
 }
 
 async function renderStarterPreview(input: {
+  ctx: StageContext;
+  runtime: RenderRuntime;
   framePaths: string[];
-  trackPath?: string;
+  audioPath?: string;
   outputPath: string;
+  outputRelativePath: string;
   durationS: number;
-}): Promise<void> {
+  assetManifest: unknown;
+  editDecisions: unknown;
+  frameRelativePaths: string[];
+  heroFrameRelativePath: string;
+  narrationPresent: boolean;
+  musicPresent: boolean;
+  warnings: string[];
+}): Promise<RenderReport & { final_review: unknown }> {
+  if (input.runtime === "remotion") {
+    const rendered = await renderStarterPreviewWithRemotion(input);
+    if (rendered !== undefined) {
+      return rendered;
+    }
+  }
+
   const framePaths = input.framePaths.length > 0 ? input.framePaths : [];
   if (framePaths.length === 0) {
     throw new Error("starter preview requires at least one frame");
@@ -594,8 +715,8 @@ async function renderStarterPreview(input: {
   for (const framePath of framePaths) {
     args.push("-i", framePath);
   }
-  if (input.trackPath !== undefined) {
-    args.push("-i", input.trackPath);
+  if (input.audioPath !== undefined) {
+    args.push("-i", input.audioPath);
   }
 
   const filters = frameCounts.map((count, index) => {
@@ -617,12 +738,285 @@ async function renderStarterPreview(input: {
     "yuv420p",
   );
 
-  if (input.trackPath !== undefined) {
+  if (input.audioPath !== undefined) {
     args.push("-map", `${framePaths.length}:a:0`, "-c:a", "aac", "-b:a", "128k", "-shortest");
   }
 
   args.push("-t", String(input.durationS), "-movflags", "+faststart", input.outputPath);
   await runFfmpeg(args);
+
+  return {
+    output_path: input.outputRelativePath,
+    encoding_profile: "h264-aac-mp4-starter-preview",
+    duration_s: input.durationS,
+    resolution: {
+      width: SAMPLE_WIDTH,
+      height: SAMPLE_HEIGHT,
+    },
+    framerate: SAMPLE_FRAMERATE,
+    runtime_used: "ffmpeg",
+    asset_count: input.framePaths.length,
+    warnings: input.warnings,
+    validation_steps: [
+      {
+        name: "starter-sample",
+        status: "pass",
+        notes: "Zero-key multi-card starter preview and NLE artifacts generated.",
+      },
+    ],
+    final_review: buildFinalReview({
+      durationS: input.durationS,
+      frameRelativePaths: input.frameRelativePaths,
+      heroFrameRelativePath: input.heroFrameRelativePath,
+      renderRuntime: "ffmpeg",
+      narrationPresent: input.narrationPresent,
+      musicPresent: input.musicPresent,
+    }),
+  };
+}
+
+async function renderStarterPreviewWithRemotion(input: {
+  ctx: StageContext;
+  framePaths: string[];
+  outputPath: string;
+  durationS: number;
+  assetManifest: unknown;
+  editDecisions: unknown;
+  frameRelativePaths: string[];
+  heroFrameRelativePath: string;
+  narrationPresent: boolean;
+  musicPresent: boolean;
+  warnings: string[];
+}): Promise<(RenderReport & { final_review: unknown }) | undefined> {
+  const remotion = input.ctx.registry.get("remotion") as Tool | undefined;
+  if (remotion === undefined) {
+    return undefined;
+  }
+
+  const report = (await remotion.execute(
+    {
+      edit_decisions: input.editDecisions,
+      asset_manifest: input.assetManifest,
+      output_path: input.outputPath,
+      fps: SAMPLE_FRAMERATE,
+      resolution: { width: SAMPLE_WIDTH * 2, height: SAMPLE_HEIGHT * 2 },
+    },
+    toolContext(input.ctx),
+  )) as RenderReport;
+
+  return {
+    ...report,
+    duration_s: input.durationS,
+    warnings: [...report.warnings, ...input.warnings],
+    validation_steps: [
+      ...report.validation_steps,
+      {
+        name: "starter-sample",
+        status: "pass",
+        notes: "Zero-key Remotion starter explainer and NLE artifacts generated.",
+      },
+    ],
+    final_review: buildFinalReview({
+      durationS: input.durationS,
+      frameRelativePaths: input.frameRelativePaths,
+      heroFrameRelativePath: input.heroFrameRelativePath,
+      renderRuntime: "remotion",
+      narrationPresent: input.narrationPresent,
+      musicPresent: input.musicPresent,
+      width: report.resolution.width,
+      height: report.resolution.height,
+    }),
+  };
+}
+
+function buildPublishLog(input: {
+  ctx: StageContext;
+  renderReport: RenderReport & { final_review: unknown };
+  runtime: RenderRuntime;
+  narrationPresent: boolean;
+  musicPresent: boolean;
+}): unknown {
+  return {
+    outputs: [
+      {
+        path: input.renderReport.output_path,
+        kind: "sample_render",
+        platform: "first-video-onboarding",
+        notes: "Zero-key personalized starter render.",
+      },
+      {
+        path: `projects/${input.ctx.show.slug}/${input.ctx.episode.slug}/final_review.json`,
+        kind: "final_review",
+        platform: "first-video-onboarding",
+      },
+    ],
+    metadata: {
+      sample: true,
+      provider_profile: "zero-key",
+      render_runtime: input.runtime,
+      narration_present: input.narrationPresent,
+      music_present: input.musicPresent,
+    },
+    notes: [
+      "Generated without paid provider calls.",
+      "Agents can improve the personalized middle beat by editing the starter script and rebuilding the sample.",
+    ],
+  };
+}
+
+async function starterNarrationAudio(input: {
+  ctx: StageContext;
+  workspace: string;
+  text: string;
+  durationS: number;
+  trackPath?: string;
+}): Promise<StarterNarration | undefined> {
+  const providedNarration = stringInput(input.ctx, "narration_audio") ?? stringInput(input.ctx, "voiceover");
+  if (providedNarration !== undefined) {
+    return { path: path.resolve(input.ctx.show.projectRoot, providedNarration), provider: "provided" };
+  }
+
+  if (input.trackPath !== undefined && input.ctx.pipeline.master_clock !== "voiceover") {
+    return undefined;
+  }
+
+  const outputPath = path.join(input.workspace, "assets", "narration.wav");
+  const text = input.text.trim();
+  if (text.length === 0) {
+    return fallbackNarration(outputPath, input.durationS, "local_tts_empty_script");
+  }
+
+  if (await commandAvailable("piper")) {
+    const piperPath = path.join(input.workspace, "assets", "narration-piper.wav");
+    try {
+      await runProcess("piper", ["--model", "en_US-lessac-medium", "--output_file", piperPath], { input: text });
+      await normalizeAudio(piperPath, outputPath);
+      return { path: outputPath, provider: "piper" };
+    } catch {
+      // Try the built-in macOS voice next; a Piper install without a voice model is common.
+    }
+  }
+
+  if (process.platform === "darwin" && (await commandAvailable("say"))) {
+    const sayPath = path.join(input.workspace, "assets", "narration.aiff");
+    try {
+      await runProcess("say", ["-v", "Samantha", "-r", "170", "-o", sayPath, text]);
+      await normalizeAudio(sayPath, outputPath);
+      return { path: outputPath, provider: "macos-say" };
+    } catch {
+      return fallbackNarration(outputPath, input.durationS, "local_tts_failed");
+    }
+  }
+
+  return fallbackNarration(outputPath, input.durationS, "local_tts_unavailable");
+}
+
+async function fallbackNarration(outputPath: string, durationS: number, warning: string): Promise<StarterNarration> {
+  await runFfmpeg([
+    "ffmpeg",
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-y",
+    "-f",
+    "lavfi",
+    "-i",
+    "anullsrc=channel_layout=stereo:sample_rate=48000",
+    "-t",
+    String(durationS),
+    outputPath,
+  ]);
+
+  return { path: outputPath, provider: "ffmpeg-silence", warning };
+}
+
+async function normalizeAudio(inputPath: string, outputPath: string): Promise<void> {
+  await runFfmpeg([
+    "ffmpeg",
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-y",
+    "-i",
+    inputPath,
+    "-ar",
+    "48000",
+    "-ac",
+    "2",
+    outputPath,
+  ]);
+}
+
+async function starterRenderRuntime(ctx: StageContext): Promise<RenderRuntime> {
+  const defaultRuntime = ctx.pipeline.defaults?.render_runtime;
+  const requested = ctx.episode.runtime ?? (defaultRuntime === "remotion" ? "remotion" : undefined);
+  if (requested === "remotion" && (await runtimeAvailable(ctx, "remotion"))) {
+    return "remotion";
+  }
+
+  return "ffmpeg";
+}
+
+async function runtimeAvailable(ctx: StageContext, runtime: RenderRuntime): Promise<boolean> {
+  const cached = ctx.registry.getAvailability(runtime);
+  if (cached !== undefined) {
+    return cached.available === true;
+  }
+
+  const tool = ctx.registry.get(runtime);
+  if (tool === undefined) {
+    return false;
+  }
+
+  return (await tool.isAvailable({ projectRoot: ctx.show.projectRoot })).available === true;
+}
+
+function toolContext(ctx: StageContext): ToolContext {
+  return {
+    projectRoot: ctx.show.projectRoot,
+    registry: ctx.registry,
+    logger: {
+      info() {},
+      warn() {},
+      error() {},
+      debug() {},
+      event() {},
+    },
+  };
+}
+
+async function commandAvailable(command: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    execFile("which", [command], (error) => {
+      resolve(error === null);
+    });
+  });
+}
+
+function runProcess(command: string, args: string[], options: { input?: string } = {}): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { stdio: ["pipe", "ignore", "pipe"] });
+    let stderr = "";
+
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(`${command} ${args.join(" ")} failed${stderr.trim() ? `: ${stderr.trim()}` : ""}`));
+    });
+
+    if (options.input !== undefined) {
+      child.stdin.end(options.input);
+    } else {
+      child.stdin.end();
+    }
+  });
 }
 
 function starterFrameCounts(durationS: number, cardCount: number): number[] {
@@ -861,6 +1255,10 @@ function projectRelativePath(projectRoot: string, absolutePath: string): string 
   return path.relative(projectRoot, absolutePath).split(path.sep).join("/");
 }
 
+function mediaProjectPath(projectRoot: string, value: string): string {
+  return path.isAbsolute(value) ? projectRelativePath(projectRoot, value) : value;
+}
+
 function zeroCostEntry(ctx: StageContext): CostEntry {
   return {
     tool: "starter_sample",
@@ -872,7 +1270,7 @@ function zeroCostEntry(ctx: StageContext): CostEntry {
   };
 }
 
-function stageDecisions(ctx: StageContext): DecisionEntry[] {
+function stageDecisions(ctx: StageContext, renderRuntime: RenderRuntime): DecisionEntry[] {
   if (ctx.stage.slug === "assets") {
     return [
       decisionEntry(
@@ -891,8 +1289,8 @@ function stageDecisions(ctx: StageContext): DecisionEntry[] {
         ctx,
         ctx.stage.slug,
         "render_runtime_selection",
-        "ffmpeg",
-        "Use ffmpeg for the deterministic starter sample rough cut and editor handoff.",
+        renderRuntime,
+        `Use ${renderRuntime} for the deterministic zero-key starter sample and editor handoff.`,
       ),
     ];
   }
