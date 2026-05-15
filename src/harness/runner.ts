@@ -585,7 +585,11 @@ async function runStage(input: {
 
     const totalCostUsd = roundUsd(input.cumulativeCost + stageCostUsd);
     const overBudget = totalCostUsd > input.budget;
-    const status = checkpointStatusForStage(stage, overBudget);
+    const status = checkpointStatusForStage(
+      stage,
+      overBudget,
+      opts.runOptions.sample === true && usesZeroKeyStarterSample(opts.pipeline),
+    );
     const checkpoint = checkpointForStage({
       stage,
       status,
@@ -1362,8 +1366,8 @@ async function checkpointStatusMap(opts: RunnerOptions): Promise<CheckpointStatu
   return statuses;
 }
 
-function checkpointStatusForStage(stage: Stage, overBudget: boolean): CheckpointStatus {
-  if (overBudget || stage.human_approval !== "required") {
+function checkpointStatusForStage(stage: Stage, overBudget: boolean, zeroKeySample = false): CheckpointStatus {
+  if (overBudget || zeroKeySample || stage.human_approval !== "required") {
     return "completed";
   }
 

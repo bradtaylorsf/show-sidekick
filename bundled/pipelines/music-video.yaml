@@ -1,70 +1,284 @@
 slug: music-video
 display_name: Music Video
-description: "Zero-key audio-led starter pipeline for the bundled music-video sample. It creates a short beat-synced rough-cut artifact set from the supplied track and lyrics, then exports to common NLE handoff formats."
+description: "Audio-led vertical music-video pipeline for lyric-timed, beat-aligned shorts with source review, RAG Shelf Sprint governance, generated assets, and HyperFrames-aware compose."
 status: production
 master_clock: audio
-default_checkpoint_policy: automatic
-orchestration:
-  mode: starter-sample
-  skill: pipelines/music-video/compose-director.md
-  budget_default_usd: 0.5
-  max_revisions_per_stage: 0
-  max_send_backs: 0
-  max_wall_time_minutes: 5
+stage_order: manifest
+default_checkpoint_policy: guided
+defaults:
+  aspect: "9:16"
+  canvas: "1080×1920 vertical (9:16)"
+  duration_strategy: track_length
+  max_scene_duration_s: 5.0
+  render_runtime: hyperframes
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/music-video/executive-producer.md
+  - pipelines/_shared/cuesheet-director.md
+  - pipelines/music-video/source-review-director.md
+  - pipelines/music-video/idea-director.md
+  - pipelines/music-video/script-director.md
+  - pipelines/music-video/scene-director.md
+  - pipelines/music-video/asset-director.md
+  - pipelines/music-video/edit-director.md
+  - pipelines/music-video/compose-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+  - meta/sample-first
+  - meta/announce-and-escalate
+  - core/hyperframes
+  - agents/higgsfield-generate
 compatible_playbooks:
   recommended:
     - news-song
     - playful-hip-hop-explainer
   also_works:
     - thechaosfm-gta-political
+    - clean-professional
   custom_allowed: true
-export:
-  supported_targets: [premiere, davinci, capcut, edl]
-  default_target: premiere
+orchestration:
+  mode: executive-producer
+  skill: pipelines/music-video/executive-producer.md
+  budget_default_usd: 5
+  max_revisions_per_stage: 2
+  max_send_backs: 1
+  max_wall_time_minutes: 30
 sample:
   duration_s_min: 15
   duration_s_max: 20
-  hint: "Use the bundled track and lyrics to create a zero-key sample rough cut."
+  hint: "Use the bundled track and lyrics to create a 15-20s zero-key sample rough cut."
 metadata:
   starter_sample_dispatcher: zero-key
+  visual_benchmark: "Brad's reference music-video"
+export:
+  supported_targets: [premiere, davinci, capcut, edl]
+  default_target: premiere
+  notes: |
+    Export packages include cuesheet, source review, lyric timing, scene plan, asset manifest, edit decisions, render output, and NLE handoff metadata.
 stages:
   - slug: cuesheet
     skill: pipelines/_shared/cuesheet-director.md
     produces: cuesheet
-    human_approval: never
+    produces_artifacts:
+      - cuesheet
+    audio_sync: build
+    tools_available:
+      - whisper
+      - aubio
+      - audio_energy
     checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
     estimated_cost:
       sample: { usd: 0 }
       full: { usd: 0 }
+    review_focus:
+      - Whisper word timestamps are available for caption timing
+      - Beat grid and downbeats are usable for scene snapping
+      - Climax and section labels are plausible
+    success_criteria:
+      - Schema-valid cuesheet artifact
+      - Word timestamps and beats are present
+  - slug: source_review
+    skill: pipelines/music-video/source-review-director.md
+    produces: source_media_review
+    produces_artifacts:
+      - source_media_review
+    required_artifacts_in:
+      - cuesheet
+    tools_available:
+      - source_media_review
+      - transcriber
+      - audio_energy
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+    review_focus:
+      - Track, lyrics, and provided references are actually inspected
+      - medium.en transcript is the default and large-v3 retry is documented when needed
+      - NEVER guess timing from lyric structure alone — the whisper word timestamps drive caption timing
+    success_criteria:
+      - Schema-valid source_media_review artifact
+      - Word-level timing source is named
+  - slug: idea
+    skill: pipelines/music-video/idea-director.md
+    produces: brief
+    produces_artifacts:
+      - brief
+      - decision_log
+    required_artifacts_in:
+      - cuesheet
+      - source_media_review
+    tools_available:
+      - web_search
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0.25, comment: "Reference and concept review only; no generation." }
+    review_focus:
+      - Canvas is locked to 1080×1920 vertical (9:16)
+      - Scene duration cap is 5.0 seconds
+      - Sample-first requirement is visible for estimates over $0.50 or 15 min
+    success_criteria:
+      - Schema-valid brief artifact
+      - Concept locks visual benchmark and beat-aligned promise
+  - slug: script
+    skill: pipelines/music-video/script-director.md
+    produces: script
+    produces_artifacts:
+      - script
+    required_artifacts_in:
+      - brief
+      - cuesheet
+      - source_media_review
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+    review_focus:
+      - Lyrics and captions are keyed to whisper word timestamps
+      - Section names use actual concepts rather than generic verse labels
+      - No scene exceeds the 5.0 seconds maximum
+    success_criteria:
+      - Schema-valid script artifact
+      - Script sections cite word timing anchors
+  - slug: scene_plan
+    skill: pipelines/music-video/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - script
+      - cuesheet
+    optional_artifacts_in:
+      - brief
+      - source_media_review
+    audio_sync: required
+    tools_available:
+      - image_generation
+      - image_to_video
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+    review_focus:
+      - Every scene is anchored to beats, sections, or word timestamps
+      - Beat-drop hype tags use actual concept names
+      - White-flash transitions are planned at major beat drops
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - All scenes are <= 5.0 seconds
   - slug: assets
     skill: pipelines/music-video/asset-director.md
     produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
     required_artifacts_in:
+      - scene_plan
+    optional_artifacts_in:
+      - brief
+      - script
       - cuesheet
-    human_approval: never
+    optional_tools:
+      - image_generation
+      - image_to_video
+      - image_hosting
+      - clip_cache
+    tools_available:
+      - image_generation
+      - image_to_video
+      - image_hosting
+      - clip_cache
+    sample_mode_supported: true
     checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
     estimated_cost:
       sample: { usd: 0 }
-      full: { usd: 0 }
+      full: { usd: 5, comment: "Representative full run uses image generation plus selected hero image-to-video clips." }
+    review_focus:
+      - Imagen text-rendering artifacts are hidden by bottom and top masks
+      - Higgsfield image-to-video is used for hero scene animations only
+      - Kling cost assumptions use $0.30/clip
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - All referenced asset files exist or have approved generation tasks
   - slug: edit
     skill: pipelines/music-video/edit-director.md
     produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
     required_artifacts_in:
-      - cuesheet
+      - scene_plan
       - asset_manifest
-    human_approval: never
+      - cuesheet
+    optional_artifacts_in:
+      - script
+      - brief
+    tools_available:
+      - subtitle_gen
     checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
     estimated_cost:
       sample: { usd: 0 }
       full: { usd: 0 }
+    review_focus:
+      - White-flash timing is 0.06s in / 0.18s out at 0.65 opacity
+      - Long holds over 5.0 seconds are split into quick cuts
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - Caption timing follows whisper word timestamps
   - slug: compose
     skill: pipelines/music-video/compose-director.md
     produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
     required_artifacts_in:
       - edit_decisions
       - asset_manifest
-    human_approval: never
+      - cuesheet
+    optional_artifacts_in:
+      - scene_plan
+      - script
+      - brief
+    required_tools:
+      - video_compose
+    optional_tools:
+      - audio_mixer
+      - subtitle_gen
+      - hyperframes_compose
+    tools_available:
+      - video_compose
+      - audio_mixer
+      - subtitle_gen
+      - hyperframes_compose
+    requires_runtime: any
     checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
     estimated_cost:
       sample: { usd: 0 }
       full: { usd: 0 }
+    review_focus:
+      - HyperFrames intro animation is preferred over Higgsfield text-to-video for opening title cards
+      - Runtime matches the locked decision
+      - Final render matches Brad's reference music-video benchmark
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output files exist and pass ffprobe validation
