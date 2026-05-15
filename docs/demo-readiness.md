@@ -29,12 +29,13 @@ Do not require operators to work inside the harness repo. Do not edit `.predit/`
 Use this path when validating local harness changes before publishing a package. The CLI is built once in the harness repo, then invoked by absolute `dist` path from a separate user project.
 
 ```bash
-cd /Users/bradtaylor/Documents/GitHub/predit/.worktrees/issue-196
+HARNESS=/absolute/path/to/predit            # your harness checkout
+DEMO_ROOT=/tmp/predit-demo
+
+cd "$HARNESS"
 pnpm install
 pnpm build
 
-HARNESS=/Users/bradtaylor/Documents/GitHub/predit/.worktrees/issue-196
-DEMO_ROOT=/tmp/predit-demo
 mkdir -p "$DEMO_ROOT"
 cd "$DEMO_ROOT"
 
