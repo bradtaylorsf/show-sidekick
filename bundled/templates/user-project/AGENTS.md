@@ -24,7 +24,7 @@ The intelligence is in the skills, not in improvised code. An agent that reads t
 2. The user's request. If it is vague or exploratory, run the onboarding flow described in `.predit/skills/meta/onboarding.md`. If it is specific and actionable, go straight to pipeline selection.
 3. The pipeline's manifest (`.predit/pipelines/<pipeline>.yaml` or `./pipelines/<pipeline>.yaml` if overridden locally).
 4. The director skill for the stage you are about to run (`.predit/skills/pipelines/<pipeline>/<stage>-director.md`, or the local / show-level override if one exists).
-5. The Layer 3 vendor skill for every generation tool you are about to call (`.predit/skills/agents/<vendor>.md`).
+5. The Layer 3 vendor skill for every generation tool you are about to call (`.predit/skills/agents/<vendor>/SKILL.md`, with `.predit/skills/agents/<vendor>.md` kept as a flat-file fallback).
 
 ## First-run flow for agents
 
@@ -79,7 +79,7 @@ Match the user's comfort level without changing the production contract:
 
 `predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before commands run. Shell-exported values win over file values. Never commit `.env`. Commit `.env.example`, shows, pipelines, playbooks, and skills so workflows can be shared safely.
 
-`predit setup runtimes` installs Remotion and HyperFrames locally for this project. Offer it when those runtimes are unavailable and the user's video would benefit from richer composition, but do not run installs without approval.
+`predit setup runtimes` installs Remotion, the Remotion CLI, aligned Remotion support deps, and HyperFrames locally for this project. Offer it when those runtimes are unavailable and the user's video would benefit from richer composition, but do not run installs without approval.
 
 When resolving any resource (pipeline, playbook, skill, schema), check the project-local path first, then `.predit/`. Project-local always wins. For director skills, also check `shows/<show>/skills/` before either.
 

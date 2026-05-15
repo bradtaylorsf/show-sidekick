@@ -47,7 +47,7 @@ Parse the result into:
 
 Composition runtimes are their own discovery block: Remotion, HyperFrames, and FFmpeg. Do not bury them inside a generic "video tools" list.
 
-If Remotion or HyperFrames is unavailable, offer `predit setup runtimes` before the first video that would benefit from motion graphics, animated overlays, or runtime choice. Explain that it installs project-local dev dependencies and only run it after user approval.
+If Remotion or HyperFrames is unavailable, offer `predit setup runtimes` before the first video that would benefit from motion graphics, animated overlays, or runtime choice. Explain that it installs project-local Remotion, the Remotion CLI, aligned support deps, and HyperFrames; only run it after user approval.
 
 ### Step 2: Determine Setup Tier
 

@@ -92,7 +92,7 @@ describe("setup command", () => {
         toolWithIntegration("remotion", {
           kind: "library",
           package: "remotion",
-          install: "npm install --save-dev remotion react react-dom @remotion/renderer",
+          install: "npm install --save-dev remotion react react-dom @remotion/renderer @remotion/cli zod@4.3.6",
         }),
         toolWithIntegration("hyperframes", {
           kind: "cli",
@@ -111,10 +111,28 @@ describe("setup command", () => {
     })("runtimes", command());
 
     expect(runInstall.mock.calls).toEqual([
-      ["npm install --save-dev remotion react react-dom @remotion/renderer", { cwd: "/project" }],
+      ["npm install --save-dev remotion react react-dom @remotion/renderer @remotion/cli zod@4.3.6", { cwd: "/project" }],
       ["npm install --save-dev hyperframes", { cwd: "/project" }],
     ]);
     expect(capture.stdout()).toBe("setup remotion: completed\nsetup hyperframes: completed\n");
+  });
+
+  it("does not crash if commander passes an unexpected action object", async () => {
+    const capture = io();
+    const runInstall = vi.fn(async () => undefined);
+    const registry = new Registry({
+      tools: [tool("higgsfield", "higgsfield auth login")],
+    });
+
+    await createSetupHandler(capture.io, {
+      createRegistry: async () => registry,
+      runInstall,
+      commandExists: async () => false,
+      cwd: () => "/project",
+    })("higgsfield", {});
+
+    expect(runInstall).toHaveBeenCalledWith("higgsfield auth login", { cwd: "/project" });
+    expect(capture.stdout()).toBe("setup higgsfield: completed\n");
   });
 
   it("emits a machine-readable completion event in json mode", async () => {

@@ -158,6 +158,80 @@ describe("paid sample dispatcher", () => {
     });
   });
 
+  it("uses available Remotion runtime and creates multiple generated motion clips from script beats", async () => {
+    const root = await scratchProject();
+    const show = loadedShow(root, "remotion");
+    const episode = loadedEpisode(show, "remotion", [
+      "Start with the contract: pipeline first.",
+      "Check readiness: doctor, tools, runtimes.",
+      "Build the sample: voice, frame, motion, review.",
+      "Export the handoff: Premiere, EDL, logs.",
+    ].join("\n"));
+    const pipeline = pipelineManifest();
+    const videoComposeInputs: unknown[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "paid-demo",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          includeRemotionRuntime: true,
+          onVideoComposeInput: (input) => videoComposeInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", budget_usd: 0.75, nonInteractive: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
+      artifact: {
+        assets: expect.arrayContaining([
+          expect.objectContaining({ id: "paid_sample_clip", model: "seedance_2_0" }),
+          expect.objectContaining({ id: "paid_sample_clip_2", model: "seedance_2_0" }),
+        ]),
+      },
+    });
+    await expect(readCheckpoint(root, "show", "episode", "edit")).resolves.toMatchObject({
+      artifact: {
+        render_runtime: "remotion",
+        cuts: [
+          expect.objectContaining({ asset_id: "paid_sample_clip", start_s: 0, end_s: 7.5 }),
+          expect.objectContaining({ asset_id: "paid_sample_clip_2", start_s: 7.5, end_s: 15 }),
+        ],
+      },
+    });
+    await expect(readCheckpoint(root, "show", "episode", "compose")).resolves.toMatchObject({
+      artifact: {
+        runtime_used: "remotion",
+        final_review: {
+          checks: {
+            promise_preservation: {
+              render_runtime_used: "remotion",
+            },
+          },
+        },
+      },
+    });
+    expect(videoComposeInputs).toHaveLength(1);
+    expect(videoComposeInputs[0]).toMatchObject({
+      edit_decisions: {
+        render_runtime: "remotion",
+      },
+      asset_manifest: {
+        assets: expect.arrayContaining([
+          expect.objectContaining({ id: "paid_sample_clip_2", path: "projects/show/episode/clips/higgsfield-sample-2.mp4" }),
+        ]),
+      },
+    });
+  });
+
   it("hydrates checkpointed paid-sample artifacts when starting at compose", async () => {
     const root = await scratchProject();
     const show = loadedShow(root);
@@ -245,7 +319,11 @@ function loadedShow(projectRoot: string, runtime: "ffmpeg" | "remotion" = "ffmpe
   };
 }
 
-function loadedEpisode(show: LoadedShow, runtime: "ffmpeg" | "remotion" = "ffmpeg"): LoadedEpisode {
+function loadedEpisode(
+  show: LoadedShow,
+  runtime: "ffmpeg" | "remotion" = "ffmpeg",
+  narration = "A concise narration fixture for the paid sample dispatcher.",
+): LoadedEpisode {
   return {
     slug: "episode",
     title: "Paid Sample",
@@ -254,7 +332,7 @@ function loadedEpisode(show: LoadedShow, runtime: "ffmpeg" | "remotion" = "ffmpe
     runtime,
     aspect: "16:9",
     inputs: {
-      narration: "A concise narration fixture for the paid sample dispatcher.",
+      narration,
     },
     cast: [],
     filePath: path.join(show.rootDir, "episodes", "episode.yaml"),
@@ -306,7 +384,12 @@ function stage(slug: string, produces: string): Stage {
 
 function paidSampleTools(
   root: string,
-  options: { higgsfieldCacheHit?: boolean; onFfmpegInput?: (input: unknown) => void } = {},
+  options: {
+    higgsfieldCacheHit?: boolean;
+    includeRemotionRuntime?: boolean;
+    onFfmpegInput?: (input: unknown) => void;
+    onVideoComposeInput?: (input: unknown) => void;
+  } = {},
 ): Tool[] {
   const imagePath = path.join(root, "fixtures", "openai.png");
   const audioPath = path.join(root, "fixtures", "narration.mp3");
@@ -341,6 +424,27 @@ function paidSampleTools(
         validation_steps: [],
       };
     }),
+    ...(options.includeRemotionRuntime
+      ? [
+          fixtureTool("remotion", "video_compose", "remotion", 0, async () => ({})),
+          fixtureTool("video_compose", "video_compose", "predit", 0, async (input) => {
+            options.onVideoComposeInput?.(input);
+            const outputPath = path.join(root, "projects", "show", "episode", "renders", "paid-sample.mp4");
+            await writeFixture(outputPath, "render");
+            return {
+              output_path: outputPath,
+              encoding_profile: "remotion/h264-aac",
+              duration_s: 15,
+              resolution: { width: 1920, height: 1080 },
+              framerate: 30,
+              runtime_used: "remotion",
+              asset_count: 5,
+              warnings: [],
+              validation_steps: [],
+            };
+          }),
+        ]
+      : []),
   ];
 }
 
@@ -361,6 +465,9 @@ function fixtureTool(
     cost: usd > 0 ? { unit: "call", usd } : undefined,
     input: z.unknown(),
     output: z.unknown(),
+    async isAvailable() {
+      return { available: true };
+    },
     execute,
   });
 }

@@ -82,7 +82,7 @@ Provider expectations for `paid-demo`:
 
 The demo matrix is starter-driven. It reads `bundled/starters/*/show.yaml`, selects starters whose `sample_support` matches the chosen mode, initializes each in a fresh user project, builds `sample-episode`, verifies artifacts/media/exports, and writes `demo-matrix-verification.json`.
 
-The paid-demo sample dispatcher assembles provider-backed samples with ffmpeg even when the show declares Remotion or HyperFrames. That keeps provider smoke tests fast and consistent, but it does not prove full runtime-specific composition quality. Use [Full Demo Benchmark Plan](full-demo-benchmark.md) for agent-led Remotion and HyperFrames demos.
+The paid-demo sample dispatcher now honors the configured runtime when it is installed in the user project. If Remotion or HyperFrames is unavailable, it logs the unavailable runtime and uses ffmpeg as an explicit rough-cut fallback. Use [Full Demo Benchmark Plan](full-demo-benchmark.md) for agent-led Remotion and HyperFrames demos that inspect runtime-specific composition quality.
 
 Current expected green paths:
 

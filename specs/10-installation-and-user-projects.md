@@ -66,7 +66,8 @@ my-shows/
 │   ├── skills/
 │   │   ├── pipelines/<pipeline>/<stage>-director.md
 │   │   ├── meta/<name>.md
-│   │   └── agents/<name>.md
+│   │   ├── agents/<name>.md
+│   │   └── agents/<name>/SKILL.md   # agent-native mirror for Codex/Claude skill discovery
 │   ├── schemas/
 │   └── starters/
 ├── shows/                   # user content (initially empty)

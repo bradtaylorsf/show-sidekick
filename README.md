@@ -66,7 +66,7 @@ Common flows:
 - Shared project clones restore the gitignored `.predit/` cache automatically before commands run, using the locally installed harness version.
 - Commands load `.env`, `.env.<command>`, and `.env.local` from the project root; shell environment variables win over file values.
 - `predit doctor --profile paid-demo` checks OpenAI, ElevenLabs, Higgsfield, ffmpeg, and ffprobe readiness without spending provider credits.
-- `predit setup runtimes` installs Remotion and HyperFrames as project-local dev dependencies when the user wants rich composition beyond FFmpeg.
+- `predit setup runtimes` installs Remotion, the Remotion CLI, aligned support deps, and HyperFrames as project-local dev dependencies when the user wants rich composition beyond FFmpeg.
 - `predit new show <slug> --from <starter>` clones a starter-backed show; `predit new show <slug> --pipelines <pipeline>` creates a custom show bound to existing manifests.
 - `predit new pipeline <slug>` creates `pipelines/<slug>.yaml` plus `skills/pipelines/<slug>/idea-director.md`.
 - `predit update --check` verifies the local `.predit/` cache against the installed harness without writing.

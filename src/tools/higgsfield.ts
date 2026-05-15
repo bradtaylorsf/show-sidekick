@@ -8,8 +8,8 @@ import { defaultRunCli } from "../tool-support/cli-runner.js";
 import { lookupClipCache, rememberClipCache } from "../tool-support/clip-cache.js";
 
 const HIGGSFIELD_COST_USD = 0.3;
-const KLING_IMAGE_TO_VIDEO_URL = "https://api.higgsfield.ai/kling-video/v2.1/pro/image-to-video";
-const MODEL = "kling-v2.1-pro";
+const HIGGSFIELD_GENERATE_CREATE_URL = "https://api.higgsfield.ai/generate/create/seedance_2_0";
+const MODEL = "seedance_2_0";
 
 const durationSchema = z.union([z.literal(5), z.literal(10)]);
 
@@ -43,7 +43,8 @@ const wireRequestSchema = z.object({
   headers: z.record(z.string()),
   body: z
     .object({
-      image_url: z.string().url(),
+      model: z.string(),
+      start_image: z.string(),
       prompt: z.string(),
       duration: durationSchema,
     })
@@ -72,8 +73,8 @@ export default defineTool({
     auth: { mode: "cli-login", check: "higgsfield account status --json" },
     install: "npm i -g @higgsfield/cli && higgsfield auth login",
   },
-  best_for: "Kling v2.1 Pro image-to-video through the Higgsfield CLI.",
-  supports: ["kling-v2.1-pro", "image-to-video", "reference-image-animation"],
+  best_for: "Seedance 2.0 image-to-video through the current Higgsfield CLI.",
+  supports: ["seedance_2_0", "image-to-video", "reference-image-animation"],
   cost: { unit: "clip", usd: HIGGSFIELD_COST_USD },
   agent_skills: ["higgsfield-generate", "ai-video-gen"],
   input: inputSchema,
@@ -169,13 +170,14 @@ async function resolvePreparedImageUrl(input: PreparedImageSource, ctx: ToolCont
 
 function buildWireRequest(input: HiggsfieldInput, imageUrl: string): WireRequest {
   return {
-    url: KLING_IMAGE_TO_VIDEO_URL,
+    url: HIGGSFIELD_GENERATE_CREATE_URL,
     headers: {
       Authorization: `Key ${nonBlankEnv("HIGGSFIELD_API_KEY") ?? "<key>"}:${nonBlankEnv("HIGGSFIELD_API_SECRET") ?? "<secret>"}`,
       "Content-Type": "application/json",
     },
     body: {
-      image_url: imageUrl,
+      model: MODEL,
+      start_image: imageUrl,
       prompt: input.prompt,
       duration: input.duration,
     },
@@ -194,16 +196,15 @@ async function runHiggsfield(
     "higgsfield",
     [
       "generate",
-      "kling-video",
-      "v2.1",
-      "pro",
-      "image-to-video",
-      "--image-url",
+      "create",
+      MODEL,
+      "--start-image",
       imageUrl,
       "--prompt",
       input.prompt,
       "--duration",
       String(input.duration),
+      "--wait",
       "--json",
     ],
     {
@@ -219,7 +220,7 @@ async function runHiggsfield(
 
 function readVideoPath(stdout: string): string {
   const parsed = parseJsonObject(stdout);
-  const videoPath = parsed?.video_path ?? parsed?.path ?? parsed?.output_path;
+  const videoPath = firstStringAtKeys(parsed, ["video_path", "path", "output_path", "url", "result_url", "download_url"]);
 
   if (typeof videoPath !== "string" || videoPath.length === 0) {
     throw new Error("Higgsfield CLI did not return a video_path");
@@ -275,10 +276,48 @@ function readHostedUrl(output: unknown): string {
 function parseJsonObject(stdout: string): Record<string, unknown> | undefined {
   try {
     const parsed: unknown = JSON.parse(stdout);
-    return isRecord(parsed) ? parsed : undefined;
+    if (isRecord(parsed)) {
+      return parsed;
+    }
+    if (Array.isArray(parsed)) {
+      return { items: parsed };
+    }
+    return undefined;
   } catch {
     return undefined;
   }
+}
+
+function firstStringAtKeys(value: unknown, keys: readonly string[]): string | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const match = firstStringAtKeys(item, keys);
+      if (match !== undefined) {
+        return match;
+      }
+    }
+    return undefined;
+  }
+
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  for (const key of keys) {
+    const candidate = value[key];
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate;
+    }
+  }
+
+  for (const candidate of Object.values(value)) {
+    const match = firstStringAtKeys(candidate, keys);
+    if (match !== undefined) {
+      return match;
+    }
+  }
+
+  return undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

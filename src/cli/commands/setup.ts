@@ -31,8 +31,9 @@ const SETUP_ALIASES: Record<string, string[]> = {
 };
 
 export function createSetupHandler(io: CliIo, deps: SetupDeps = defaultDeps) {
-  return async (toolName: string, command: Command): Promise<void> => {
-    const options = command.optsWithGlobals<GlobalOptions>();
+  return async (...actionArgs: unknown[]): Promise<void> => {
+    const toolName = readToolName(actionArgs);
+    const options = readGlobalOptions(actionArgs.at(-1));
     const registry = await deps.createRegistry();
     const toolNames = SETUP_ALIASES[toolName] ?? [toolName];
     const tools = toolNames.map((name) => {
@@ -55,6 +56,27 @@ export function createSetupHandler(io: CliIo, deps: SetupDeps = defaultDeps) {
       });
     }
   };
+}
+
+function readToolName(actionArgs: unknown[]): string {
+  const value = actionArgs[0];
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error("setup requires a tool name");
+  }
+
+  return value;
+}
+
+function readGlobalOptions(command: unknown): GlobalOptions {
+  if (isCommand(command)) {
+    return command.optsWithGlobals<GlobalOptions>();
+  }
+
+  return {};
+}
+
+function isCommand(value: unknown): value is Command {
+  return typeof value === "object" && value !== null && typeof (value as { optsWithGlobals?: unknown }).optsWithGlobals === "function";
 }
 
 function emitSetupCompleted(io: CliIo, options: GlobalOptions, event: SetupEvent): void {

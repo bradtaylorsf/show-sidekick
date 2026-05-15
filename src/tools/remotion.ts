@@ -1,6 +1,11 @@
+import { execFile } from "node:child_process";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import {
+  AssetManifestSchema,
   CuesheetSchema,
   EditDecisionsSchema,
   PlaybookSchema,
@@ -15,6 +20,7 @@ const require = createRequire(import.meta.url);
 
 export const RemotionComposeInputSchema = z.object({
   edit_decisions: EditDecisionsSchema,
+  asset_manifest: AssetManifestSchema.optional(),
   output_path: z.string().optional(),
   cuesheet: CuesheetSchema.optional(),
   playbook: PlaybookSchema.optional(),
@@ -31,7 +37,7 @@ export default defineTool({
   integration: {
     kind: "library",
     package: "remotion",
-    install: "npm install --save-dev remotion react react-dom @remotion/renderer",
+    install: "npm install --save-dev remotion react react-dom @remotion/renderer @remotion/cli zod@4.3.6",
   },
   best_for: "typed Remotion-compatible scene catalog validation with word-level caption checks; renderer invocation lands with the compose runner",
   supports: ["scene-catalog", "caption-burn", "playbook-css-variables"],
@@ -39,7 +45,7 @@ export default defineTool({
   output: RenderReportSchema,
   isAvailable: async (ctx) => remotionAvailable(ctx),
 
-  async execute(params) {
+  async execute(params, ctx) {
     const parsed = RemotionComposeInputSchema.parse(params);
     const validationSteps: RenderReport["validation_steps"] = [];
 
@@ -64,6 +70,20 @@ export default defineTool({
 
     const duration = parsed.edit_decisions.cuts.reduce((max, cut) => Math.max(max, cut.end_s), 0);
 
+    if (parsed.asset_manifest !== undefined) {
+      const rendered = await renderWithRemotionCli(parsed, ctx.projectRoot, duration);
+      validationSteps.push({
+        name: "remotion_render",
+        status: "pass",
+        notes: "Rendered a project-local Remotion composition from edit_decisions and asset_manifest.",
+      });
+
+      return RenderReportSchema.parse({
+        ...rendered,
+        validation_steps: validationSteps,
+      });
+    }
+
     return RenderReportSchema.parse({
       output_path: parsed.output_path ?? "renders/remotion.mp4",
       encoding_profile: "remotion/default",
@@ -77,6 +97,179 @@ export default defineTool({
     });
   },
 });
+
+async function renderWithRemotionCli(
+  input: RemotionComposeInput,
+  projectRoot: string,
+  durationS: number,
+): Promise<Omit<RenderReport, "validation_steps">> {
+  const outputPath = resolveAssetPath(input.output_path ?? "renders/remotion.mp4", projectRoot);
+  const workspace = join(projectRoot, ".predit-work", `remotion-${Date.now()}`);
+  const entryPoint = join(workspace, "index.jsx");
+  const durationInFrames = Math.max(1, Math.ceil(durationS * input.fps));
+
+  await mkdir(dirname(outputPath), { recursive: true });
+  await mkdir(workspace, { recursive: true });
+  await writeFile(entryPoint, remotionEntrySource(input, projectRoot, durationInFrames), "utf8");
+
+  try {
+    await runRemotion(projectRoot, [
+      "remotion",
+      "render",
+      entryPoint,
+      "PreditSample",
+      outputPath,
+      "--codec",
+      "h264",
+      "--audio-codec",
+      "aac",
+      "--overwrite",
+    ]);
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
+  }
+
+  return {
+    output_path: projectRelativePath(projectRoot, outputPath),
+    encoding_profile: "remotion/h264-aac",
+    duration_s: durationS,
+    resolution: { width: 1920, height: 1080 },
+    framerate: input.fps,
+    runtime_used: "remotion",
+    asset_count: input.asset_manifest?.assets.length ?? input.edit_decisions.cuts.length,
+    warnings: [],
+  };
+}
+
+function remotionEntrySource(input: RemotionComposeInput, projectRoot: string, durationInFrames: number): string {
+  const assets = new Map(input.asset_manifest?.assets.map((asset) => [asset.id, asset]) ?? []);
+  const audioPath = input.edit_decisions.audio?.music?.track_path;
+  const props = {
+    fps: input.fps,
+    cuts: input.edit_decisions.cuts.map((cut, index) => {
+      const asset = assets.get(cut.asset_id);
+      return {
+        index,
+        startFrame: Math.round(cut.start_s * input.fps),
+        durationFrames: Math.max(1, Math.round((cut.end_s - cut.start_s) * input.fps)),
+        src: asset?.path ? mediaSrc(asset.path, projectRoot) : undefined,
+        kind: asset?.kind ?? "video",
+        label: asset?.prompt ?? cut.asset_id,
+      };
+    }),
+    audioSrc: audioPath ? mediaSrc(audioPath, projectRoot) : undefined,
+  };
+
+  return `
+import React from "react";
+import { AbsoluteFill, Audio, Composition, Img, OffthreadVideo, Sequence, interpolate, registerRoot, useCurrentFrame } from "remotion";
+
+const props = ${JSON.stringify(props)};
+
+function Scene({ cut, total }) {
+  const frame = useCurrentFrame();
+  const progress = interpolate(frame, [0, Math.max(1, cut.durationFrames - 1)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const scale = 1.02 + progress * (cut.index % 2 === 0 ? 0.08 : 0.04);
+  const x = (cut.index % 2 === 0 ? -1 : 1) * progress * 36;
+  const y = Math.sin(progress * Math.PI) * -18;
+  const title = String(cut.label || "").replace(/^Generated deterministic /, "").slice(0, 96);
+  const mediaStyle = {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    transform: "scale(" + scale + ") translate(" + x + "px, " + y + "px)",
+  };
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: "#0b1020", overflow: "hidden" }}>
+      {cut.src && cut.kind === "image" ? <Img src={cut.src} style={mediaStyle} /> : null}
+      {cut.src && cut.kind !== "image" ? <OffthreadVideo src={cut.src} muted={Boolean(props.audioSrc)} style={mediaStyle} /> : null}
+      <AbsoluteFill style={{
+        background: "linear-gradient(90deg, rgba(6,10,24,0.78), rgba(6,10,24,0.18) 48%, rgba(6,10,24,0.72))",
+      }} />
+      <div style={{
+        position: "absolute",
+        left: 76,
+        bottom: 70,
+        maxWidth: 1120,
+        color: "white",
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: 48,
+        fontWeight: 700,
+        lineHeight: 1.08,
+        textShadow: "0 4px 18px rgba(0,0,0,0.5)",
+        opacity: interpolate(frame, [0, 12, Math.max(18, cut.durationFrames - 10), cut.durationFrames], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+      }}>{title}</div>
+      <div style={{
+        position: "absolute",
+        right: 76,
+        top: 64,
+        color: "#8ee8ff",
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: 24,
+        letterSpacing: 0,
+        fontWeight: 700,
+      }}>BEAT {cut.index + 1} / {total}</div>
+    </AbsoluteFill>
+  );
+}
+
+function PreditSample({ cuts, audioSrc }) {
+  return (
+    <AbsoluteFill style={{ backgroundColor: "#0b1020" }}>
+      {cuts.map((cut) => (
+        <Sequence key={cut.index} from={cut.startFrame} durationInFrames={cut.durationFrames}>
+          <Scene cut={cut} total={cuts.length} />
+        </Sequence>
+      ))}
+      {audioSrc ? <Audio src={audioSrc} /> : null}
+    </AbsoluteFill>
+  );
+}
+
+export const RemotionRoot = () => (
+  <Composition
+    id="PreditSample"
+    component={PreditSample}
+    durationInFrames={${durationInFrames}}
+    fps={props.fps}
+    width={1920}
+    height={1080}
+    defaultProps={props}
+  />
+);
+registerRoot(RemotionRoot);
+export default RemotionRoot;
+`;
+}
+
+function runRemotion(cwd: string, args: string[]): Promise<void> {
+  return new Promise((resolvePromise, reject) => {
+    execFile("npx", args, { cwd, maxBuffer: 20 * 1024 * 1024, timeout: 10 * 60_000 }, (error, _stdout, stderr) => {
+      if (error) {
+        reject(new Error(stderr.trim() || error.message));
+        return;
+      }
+      resolvePromise();
+    });
+  });
+}
+
+function mediaSrc(value: string, projectRoot: string): string {
+  if (/^https?:\/\//iu.test(value) || value.startsWith("data:")) {
+    return value;
+  }
+
+  return pathToFileURL(resolveAssetPath(value, projectRoot)).href;
+}
+
+function resolveAssetPath(value: string, projectRoot: string): string {
+  return isAbsolute(value) ? value : resolve(projectRoot, value);
+}
+
+function projectRelativePath(projectRoot: string, value: string): string {
+  return isAbsolute(value) ? value.replace(resolve(projectRoot) + "/", "") : value;
+}
 
 function remotionAvailable(
   ctx?: ToolAvailabilityContext,

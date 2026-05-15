@@ -78,7 +78,7 @@ describe("higgsfield tool", () => {
     ).toThrow();
   });
 
-  it("records the Kling v2.1 Pro image-to-video wire shape", async () => {
+  it("records the Seedance 2.0 image-to-video wire shape", async () => {
     vi.stubEnv("HIGGSFIELD_API_KEY", "live-key");
     vi.stubEnv("HIGGSFIELD_API_SECRET", "live-secret");
     const ctx = context();
@@ -94,18 +94,19 @@ describe("higgsfield tool", () => {
 
     expect(ctx.runCli).toHaveBeenCalledWith(
       "higgsfield",
-      expect.arrayContaining(["kling-video", "v2.1", "pro", "image-to-video"]),
+      expect.arrayContaining(["generate", "create", "seedance_2_0", "--start-image", "https://cdn.example.com/reference.png", "--wait"]),
       expect.objectContaining({
         env: expect.objectContaining({ HIGGSFIELD_RECORD_HTTP: "1" }),
       }),
     );
-    expect(result.request.url.endsWith("kling-video/v2.1/pro/image-to-video")).toBe(true);
+    expect(result.request.url.endsWith("generate/create/seedance_2_0")).toBe(true);
     expect(result.request.headers.Authorization).toBe("Key <redacted>:<redacted>");
     expect(result.request.headers.Authorization).not.toContain("live-key");
     expect(result.request.headers.Authorization).not.toContain("live-secret");
     expect(result.request.headers.Authorization).not.toMatch(/^Bearer /);
     expect(result.request.body).toEqual({
-      image_url: "https://cdn.example.com/reference.png",
+      model: "seedance_2_0",
+      start_image: "https://cdn.example.com/reference.png",
       prompt: "animate the subject with gentle camera drift",
       duration: 5,
     });
@@ -115,13 +116,14 @@ describe("higgsfield tool", () => {
 
   it("uses the recorded CLI request when the CLI returns one", async () => {
     const recordedRequest = {
-      url: "https://api.higgsfield.ai/kling-video/v2.1/pro/image-to-video",
+      url: "https://api.higgsfield.ai/generate/create/seedance_2_0",
       headers: {
         Authorization: "Key live-key:live-secret",
         "Content-Type": "application/json",
       },
       body: {
-        image_url: "https://cdn.example.com/reference.png",
+        model: "seedance_2_0",
+        start_image: "https://cdn.example.com/reference.png",
         prompt: "high energy motion",
         duration: 10,
       },
@@ -220,6 +222,32 @@ describe("higgsfield tool", () => {
       "https://catbox.moe/user/api.php",
       expect.objectContaining({ method: "POST", body: expect.any(FormData) }),
     );
-    expect(result.request.body.image_url).toBe("https://assets.example.com/hosted-reference.png");
+    expect(result.request.body.start_image).toBe("https://assets.example.com/hosted-reference.png");
+  });
+
+  it("extracts a result URL from the current wait JSON response shape", async () => {
+    const ctx = context({
+      runCli: vi.fn(async () => ({
+        stdout: JSON.stringify([
+          {
+            id: "job",
+            result: {
+              url: "https://cdn.higgsfield.example/video.mp4",
+            },
+          },
+        ]),
+        stderr: "",
+      })),
+    });
+
+    const result = await higgsfield.execute(
+      higgsfield.input.parse({
+        image_url: "https://cdn.example.com/reference.png",
+        prompt: "camera move",
+      }),
+      ctx,
+    );
+
+    expect(result.video_path).toBe("https://cdn.higgsfield.example/video.mp4");
   });
 });

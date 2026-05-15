@@ -1,7 +1,8 @@
-import { access, copyFile, mkdir, readFile } from "node:fs/promises";
+import { access, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { CostEntry } from "../artifacts/cost-log.js";
 import type { DecisionEntry } from "../artifacts/decision-log.js";
+import type { RenderRuntime } from "../artifacts/enums.js";
 import type { Tool, ToolContext } from "../registry/index.js";
 import { projectDir } from "../checkpoints/paths.js";
 import type { StageContext } from "./context.js";
@@ -27,7 +28,16 @@ type PaidSampleState = {
   publish_log?: unknown;
   imagePath?: string;
   clipPath?: string;
+  imagePaths?: string[];
+  clipPaths?: string[];
   narrationPath?: string;
+};
+
+type SampleBeat = {
+  index: number;
+  title: string;
+  body: string;
+  narration: string;
 };
 
 const STATE_ARTIFACT_KEYS = [
@@ -107,6 +117,10 @@ function hydrateStateFromPriorArtifacts(ctx: StageContext, state: PaidSampleStat
 
   state.imagePath ??= assetPath(state.asset_manifest, "paid_sample_image");
   state.clipPath ??= assetPath(state.asset_manifest, "paid_sample_clip");
+  state.imagePaths ??= assetPaths(state.asset_manifest, /^paid_sample_image(?:_\d+)?$/u);
+  state.clipPaths ??= assetPaths(state.asset_manifest, /^paid_sample_clip(?:_\d+)?$/u);
+  state.imagePath ??= state.imagePaths[0];
+  state.clipPath ??= state.clipPaths[0];
   state.narrationPath ??= assetPath(state.asset_manifest, "paid_sample_narration");
 }
 
@@ -147,7 +161,7 @@ async function artifactForStage(
       state.capture_manifest ??= await buildCaptureManifest(ctx);
       return state.capture_manifest;
     case "scene_plan":
-      state.scene_plan ??= buildScenePlan(ctx);
+      state.scene_plan ??= await buildScenePlan(ctx);
       return state.scene_plan;
     case "asset_manifest":
       state.asset_manifest ??= await buildAssets(ctx, state, costEntries, decisions, options);
@@ -222,21 +236,24 @@ function buildProposalPacket(ctx: StageContext): unknown {
 }
 
 async function buildScript(ctx: StageContext): Promise<unknown> {
-  const text = await narrationText(ctx);
+  const beats = await sampleBeats(ctx);
   const duration = sampleDuration(ctx);
+  const cuts = sampleBeatCuts(duration, beats);
 
   return {
-    sections: [
-      {
-        slug: "sample",
-        role: "hook",
-        start_s: 0,
-        end_s: duration,
-        narration: text,
-        dialogue: [],
-        enhancement_cues: ["keep the provider sample focused and reviewable"],
-      },
-    ],
+    sections: beats.map((beat, index) => ({
+      slug: `sample-${index + 1}`,
+      role: scriptRole(index, beats.length),
+      start_s: cuts[index]?.start_s ?? 0,
+      end_s: cuts[index]?.end_s ?? duration,
+      narration: beat.narration,
+      dialogue: [],
+      enhancement_cues: [
+        index === 0
+          ? "Open with a specific promise and clear animated metaphor."
+          : "Use a distinct motion idea, not another still frame.",
+      ],
+    })),
   };
 }
 
@@ -295,32 +312,40 @@ async function buildCaptureManifest(ctx: StageContext): Promise<unknown> {
   };
 }
 
-function buildScenePlan(ctx: StageContext): unknown {
+async function buildScenePlan(ctx: StageContext): Promise<unknown> {
   const duration = sampleDuration(ctx);
-  const maxScenes = ctx.pipeline.sample?.max_scenes ?? 3;
-  const sceneCount = Math.max(1, Math.min(maxScenes, Math.ceil(duration / 5)));
-  const sceneDuration = duration / sceneCount;
+  const beats = await sampleBeats(ctx);
+  const cuts = sampleBeatCuts(duration, beats);
 
   return {
-    scenes: Array.from({ length: sceneCount }, (_value, index) => ({
+    scenes: beats.map((beat, index) => ({
       slug: `sample-${index + 1}`,
       order: index,
-      start_s: roundTime(index * sceneDuration),
-      end_s: roundTime(index === sceneCount - 1 ? duration : (index + 1) * sceneDuration),
-      narrative_role: index === 0 ? "hook" : index === sceneCount - 1 ? "tag" : "setup",
-      scene_anchor: `Paid sample beat ${index + 1}`,
+      start_s: cuts[index]?.start_s ?? 0,
+      end_s: cuts[index]?.end_s ?? duration,
+      narrative_role: scriptRole(index, beats.length),
+      scene_anchor: beat.title,
       hero_moment: index === 0,
-      texture_keywords: ["provider-backed", rendererFamily(ctx)],
+      description: beat.body,
+      shot_intent: "Make the explanation legible through a generated motion clip.",
+      information_role: index === 0 ? "hook setup" : index === beats.length - 1 ? "takeaway" : "explanatory beat",
+      texture_keywords: ["provider-backed", rendererFamily(ctx), "animated-explainer"],
       character_actions: [],
       shot_language: {
         shot_size: "MS",
-        camera_movement: "push_in",
+        camera_movement: index % 2 === 0 ? "push_in" : "orbit_cw",
         lighting_key: "soft",
         lens_mm: 35,
         depth_of_field: "deep",
         color_temperature: "daylight",
       },
-      required_assets: [{ id: "paid_sample_clip", source: "generated", notes: "OpenAI image plus Higgsfield motion clip." }],
+      required_assets: [
+        {
+          id: clipAssetId(index),
+          source: "generated",
+          notes: "OpenAI start frame plus Higgsfield motion clip for this explainer beat.",
+        },
+      ],
     })),
   };
 }
@@ -333,21 +358,86 @@ async function buildAssets(
   options: PaidSampleDispatcherOptions,
 ): Promise<unknown> {
   const imageTool = await toolFor(ctx, "openai_image", "image_generation");
-  const imageResult = await imageTool.execute(
-    {
-      prompt: imagePrompt(ctx),
-      size: imageSize(ctx),
-      quality: "low",
-    },
-    toolContext(ctx, {
-      reason: "Generate the paid-demo sample hero frame.",
-      model: "gpt-image-1",
-      units: 1,
-    }),
-  );
-  const image = recordValue(imageResult);
-  state.imagePath = await episodeMediaPath(ctx, stringValue(image?.image_path), "assets", "openai-sample.png");
-  costEntries.push(costEntry("openai_image", "openai", stringValue(image?.model) ?? "gpt-image-1", 1, numberValue(image?.cost_usd) ?? 0));
+  const videoTool = await toolFor(ctx, "higgsfield", "image_to_video");
+  const beats = await sampleBeats(ctx);
+  const imageAssets: Array<Record<string, unknown>> = [];
+  const clipAssets: Array<Record<string, unknown>> = [];
+  const imagePaths: string[] = [];
+  const clipPaths: string[] = [];
+
+  for (const beat of beats) {
+    const imagePromptText = imagePrompt(ctx, beat);
+    const imageResult = await imageTool.execute(
+      {
+        prompt: imagePromptText,
+        size: imageSize(ctx),
+        quality: "low",
+      },
+      toolContext(ctx, {
+        reason: `Generate paid-demo explainer start frame ${beat.index + 1}.`,
+        model: "gpt-image-1",
+        units: 1,
+      }),
+    );
+    const image = recordValue(imageResult);
+    const imageFileName = beat.index === 0 ? "openai-sample.png" : `openai-sample-${beat.index + 1}.png`;
+    const imagePath = await episodeMediaPath(ctx, stringValue(image?.image_path), "assets", imageFileName);
+    imagePaths.push(imagePath);
+    costEntries.push(
+      costEntry("openai_image", "openai", stringValue(image?.model) ?? "gpt-image-1", 1, numberValue(image?.cost_usd) ?? 0),
+    );
+
+    const videoInput =
+      typeof image?.url === "string"
+        ? { image_url: image.url, prompt: motionPrompt(ctx, beat), duration: higgsfieldDuration(ctx) }
+        : { image_path: imagePath, prompt: motionPrompt(ctx, beat), duration: higgsfieldDuration(ctx) };
+    const videoResult = await videoTool.execute(
+      videoInput,
+      toolContext(ctx, {
+        reason: `Generate paid-demo explainer motion clip ${beat.index + 1}.`,
+        model: "seedance_2_0",
+        units: 1,
+      }),
+    );
+    const video = recordValue(videoResult);
+    const clipFileName = beat.index === 0 ? "higgsfield-sample.mp4" : `higgsfield-sample-${beat.index + 1}.mp4`;
+    const clipPath = await episodeMediaPath(ctx, stringValue(video?.video_path), "clips", clipFileName);
+    clipPaths.push(clipPath);
+    const cacheHit = video?.cache_hit === true || numberValue(video?.cost_usd) === 0;
+    costEntries.push(
+      costEntry("higgsfield", "higgsfield", "seedance_2_0", cacheHit ? 0 : 1, numberValue(video?.cost_usd) ?? 0, cacheHit),
+    );
+
+    imageAssets.push({
+      id: imageAssetId(beat.index),
+      kind: "image",
+      path: imagePath,
+      scene_ref: `sample-${beat.index + 1}`,
+      provider: "openai",
+      model: stringValue(image?.model) ?? "gpt-image-1",
+      prompt: imagePromptText,
+      cost_usd: numberValue(image?.cost_usd) ?? 0,
+    });
+    clipAssets.push({
+      id: clipAssetId(beat.index),
+      kind: "video",
+      path: clipPath,
+      scene_ref: `sample-${beat.index + 1}`,
+      provider: "higgsfield",
+      model: "seedance_2_0",
+      prompt: motionPrompt(ctx, beat),
+      cost_usd: numberValue(video?.cost_usd) ?? 0,
+    });
+
+    if (cacheHit) {
+      decisions.push(cacheHitDecision(ctx, options));
+    }
+  }
+
+  state.imagePaths = imagePaths;
+  state.clipPaths = clipPaths;
+  state.imagePath = imagePaths[0];
+  state.clipPath = clipPaths[0];
 
   if (ctx.pipeline.master_clock === "voiceover" || hasNarrationInput(ctx)) {
     const tts = await preferredTtsTool(ctx);
@@ -378,58 +468,17 @@ async function buildAssets(
     decisions.push(voiceDecision(ctx, tts, options));
   }
 
-  const videoTool = await toolFor(ctx, "higgsfield", "image_to_video");
-  const videoInput =
-    typeof image?.url === "string"
-      ? { image_url: image.url, prompt: motionPrompt(ctx), duration: higgsfieldDuration(ctx) }
-      : { image_path: state.imagePath, prompt: motionPrompt(ctx), duration: higgsfieldDuration(ctx) };
-  const videoResult = await videoTool.execute(
-    videoInput,
-    toolContext(ctx, {
-      reason: "Generate the paid-demo sample motion clip.",
-      model: "kling-v2.1-pro",
-      units: 1,
-    }),
-  );
-  const video = recordValue(videoResult);
-  state.clipPath = await episodeMediaPath(ctx, stringValue(video?.video_path), "clips", "higgsfield-sample.mp4");
-  const cacheHit = video?.cache_hit === true || numberValue(video?.cost_usd) === 0;
-  costEntries.push(
-    costEntry("higgsfield", "higgsfield", "kling-v2.1-pro", cacheHit ? 0 : 1, numberValue(video?.cost_usd) ?? 0, cacheHit),
-  );
-
   decisions.push(
     providerDecision(ctx, "image_generation", "openai", options),
     modelDecision(ctx, "openai", "gpt-image-1", options),
     providerDecision(ctx, "image_to_video", "higgsfield", options),
-    modelDecision(ctx, "higgsfield", "kling-v2.1-pro", options),
+    modelDecision(ctx, "higgsfield", "seedance_2_0", options),
   );
-  if (cacheHit) {
-    decisions.push(cacheHitDecision(ctx, options));
-  }
 
   return {
     assets: [
-      {
-        id: "paid_sample_image",
-        kind: "image",
-        path: state.imagePath,
-        scene_ref: "sample-1",
-        provider: "openai",
-        model: "gpt-image-1",
-        prompt: imagePrompt(ctx),
-        cost_usd: numberValue(image?.cost_usd) ?? 0,
-      },
-      {
-        id: "paid_sample_clip",
-        kind: "video",
-        path: state.clipPath,
-        scene_ref: "sample-1",
-        provider: "higgsfield",
-        model: "kling-v2.1-pro",
-        prompt: motionPrompt(ctx),
-        cost_usd: numberValue(video?.cost_usd) ?? 0,
-      },
+      ...imageAssets,
+      ...clipAssets,
       ...(state.narrationPath === undefined
         ? []
         : [
@@ -449,16 +498,17 @@ async function buildAssets(
 
 function buildEditDecisions(ctx: StageContext, state: PaidSampleState): unknown {
   const duration = sampleDuration(ctx);
+  const clipPaths = state.clipPaths && state.clipPaths.length > 0 ? state.clipPaths : state.clipPath ? [state.clipPath] : [];
+  const clipCount = Math.max(1, clipPaths.length);
+  const cutDuration = duration / clipCount;
 
   return {
-    cuts: [
-      {
-        start_s: 0,
-        end_s: duration,
-        asset_id: "paid_sample_clip",
-        provider: "higgsfield",
-      },
-    ],
+    cuts: Array.from({ length: clipCount }, (_value, index) => ({
+      start_s: roundTime(index * cutDuration),
+      end_s: roundTime(index === clipCount - 1 ? duration : (index + 1) * cutDuration),
+      asset_id: clipAssetId(index),
+      provider: "higgsfield",
+    })),
     overlays: [],
     audio:
       state.narrationPath === undefined
@@ -482,24 +532,36 @@ async function buildRenderReport(
   decisions: DecisionEntry[],
   options: PaidSampleDispatcherOptions,
 ): Promise<unknown> {
-  const ffmpeg = await toolFor(ctx, "ffmpeg", "video_compose");
+  const runtime = renderRuntime(ctx);
+  const composeTool = runtime === "ffmpeg" ? await toolFor(ctx, "ffmpeg", "video_compose") : await toolFor(ctx, "video_compose", "video_compose");
   const outputPath = `projects/${ctx.show.slug}/${ctx.episode.slug}/renders/paid-sample.mp4`;
-  const renderResult = await ffmpeg.execute(
-    {
-      operation: "compose",
-      asset_manifest: state.asset_manifest,
-      edit_decisions: state.edit_decisions,
-      output_path: outputPath,
-    },
+  const composeInput =
+    runtime === "ffmpeg"
+      ? {
+          operation: "compose",
+          asset_manifest: state.asset_manifest,
+          edit_decisions: state.edit_decisions,
+          output_path: outputPath,
+        }
+      : {
+          asset_manifest: state.asset_manifest,
+          edit_decisions: state.edit_decisions,
+          proposal_packet: state.proposal_packet,
+          decision_log: [renderRuntimeDecision(ctx, "compose", options)],
+          output_path: outputPath,
+          planned_duration_s: sampleDuration(ctx),
+        };
+  const renderResult = await composeTool.execute(
+    composeInput,
     toolContext(ctx, {
-      reason: "Assemble the paid-demo sample rough cut inside the Runner.",
-      model: "ffmpeg",
+      reason: `Assemble the paid-demo sample rough cut with ${runtime}.`,
+      model: runtime,
       units: 1,
     }),
   );
   const report = normalizeRenderReport(ctx, renderResult, state);
   decisions.push(renderRuntimeDecision(ctx, "compose", options));
-  costEntries.push(costEntry("ffmpeg", "ffmpeg", "ffmpeg", 1, 0));
+  costEntries.push(costEntry(composeTool.name, composeTool.provider, runtime, 1, 0));
 
   return {
     ...report,
@@ -656,9 +718,14 @@ async function episodeMediaPath(
     return path.posix.join("projects", ctx.show.slug, ctx.episode.slug, dirName, fileName);
   }
 
-  const absoluteSource = path.isAbsolute(sourcePath) ? sourcePath : path.resolve(ctx.show.projectRoot, sourcePath);
   const workspace = projectDir(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug);
   const destination = path.join(workspace, dirName, fileName);
+  if (isHttpUrl(sourcePath)) {
+    await downloadMedia(sourcePath, destination);
+    return projectRelativePath(ctx.show.projectRoot, destination);
+  }
+
+  const absoluteSource = path.isAbsolute(sourcePath) ? sourcePath : path.resolve(ctx.show.projectRoot, sourcePath);
 
   if (path.resolve(absoluteSource) === path.resolve(destination)) {
     return projectRelativePath(ctx.show.projectRoot, destination);
@@ -675,17 +742,130 @@ async function episodeMediaPath(
   return projectRelativePath(ctx.show.projectRoot, destination);
 }
 
+async function downloadMedia(url: string, destination: string): Promise<void> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`failed to download generated media: ${response.status} ${response.statusText}`);
+  }
+
+  await mkdir(path.dirname(destination), { recursive: true });
+  await writeFile(destination, Buffer.from(await response.arrayBuffer()));
+}
+
+function isHttpUrl(value: string): boolean {
+  return /^https?:\/\//iu.test(value);
+}
+
 async function narrationText(ctx: StageContext): Promise<string> {
-  const direct =
+  const direct = await sourceText(ctx);
+
+  return trimForNarration(direct ?? `${ctx.episode.title}. This short provider-backed sample demonstrates the visual direction.`);
+}
+
+async function sampleBeats(ctx: StageContext): Promise<SampleBeat[]> {
+  const direct = await sourceText(ctx);
+  const source =
+    direct ??
+    [
+      `${ctx.episode.title}: show the core promise.`,
+      "Reveal the workflow as a simple moving system.",
+      "End with the next action and a clean handoff.",
+    ].join("\n");
+  const lines = meaningfulTextLines(source);
+  const segments = lines.length > 0 ? lines : splitSentences(source);
+  const desiredCount = paidSampleSceneCount(ctx, segments.length);
+  const selected = segments.slice(0, desiredCount);
+
+  return selected.map((line, index) => {
+    const split = splitBeatLine(line, index);
+    return {
+      index,
+      title: split.title,
+      body: split.body,
+      narration: split.body || split.title,
+    };
+  });
+}
+
+async function sourceText(ctx: StageContext): Promise<string | undefined> {
+  return (
     (await textInput(ctx, "narration")) ??
     (await textInput(ctx, "script")) ??
     (await textInput(ctx, "host_script")) ??
     (await textInput(ctx, "brief")) ??
     (await textInput(ctx, "diary")) ??
     (await textInput(ctx, "notes")) ??
-    (await textInput(ctx, "lyrics"));
+    (await textInput(ctx, "lyrics"))
+  );
+}
 
-  return trimForNarration(direct ?? `${ctx.episode.title}. This short provider-backed sample demonstrates the visual direction.`);
+function meaningfulTextLines(value: string): string[] {
+  return value
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith("[") && !line.startsWith("#"));
+}
+
+function splitSentences(value: string): string[] {
+  return value
+    .replace(/\s+/gu, " ")
+    .split(/(?<=[.!?])\s+/u)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+function splitBeatLine(value: string, index: number): { title: string; body: string } {
+  const labeled = /^(?<label>(?:idea|option|step|beat)\s*\d*|next|hook)[:.\-\s]+(?<body>.+)$/iu.exec(value);
+  const clean = labeled?.groups?.body?.trim() ?? value.trim();
+  const [head, ...tail] = clean.split(":");
+
+  if (tail.length > 0 && head !== undefined && head.trim().length > 0 && head.trim().length <= 42) {
+    return { title: head.trim(), body: tail.join(":").trim() || clean };
+  }
+
+  const words = clean.match(/[A-Za-z0-9']+/gu) ?? [];
+  const fallbackTitle = words.slice(0, Math.min(5, words.length)).join(" ") || `Beat ${index + 1}`;
+  return {
+    title: labeled?.groups?.label?.trim() ?? fallbackTitle,
+    body: clean,
+  };
+}
+
+function paidSampleSceneCount(ctx: StageContext, availableSegments: number): number {
+  const maxScenes = Math.max(1, ctx.pipeline.sample?.max_scenes ?? 3);
+  const budget = ctx.runOptions.budget_usd ?? ctx.pipeline.sample?.max_cost_usd;
+  const affordableScenes =
+    budget === undefined ? maxScenes : Math.max(1, Math.floor(Math.max(0.34, budget - 0.05) / 0.34));
+
+  return Math.max(1, Math.min(maxScenes, affordableScenes, Math.max(1, availableSegments)));
+}
+
+function sampleBeatCuts(duration: number, beats: readonly SampleBeat[]): Array<{ start_s: number; end_s: number }> {
+  const beatCount = Math.max(1, beats.length);
+  const beatDuration = duration / beatCount;
+
+  return Array.from({ length: beatCount }, (_value, index) => ({
+    start_s: roundTime(index * beatDuration),
+    end_s: roundTime(index === beatCount - 1 ? duration : (index + 1) * beatDuration),
+  }));
+}
+
+function scriptRole(index: number, count: number): "hook" | "setup" | "rising_action" | "resolution" {
+  if (index === 0) {
+    return "hook";
+  }
+  if (index === count - 1) {
+    return "resolution";
+  }
+  return index === 1 ? "setup" : "rising_action";
+}
+
+function imageAssetId(index: number): string {
+  return index === 0 ? "paid_sample_image" : `paid_sample_image_${index + 1}`;
+}
+
+function clipAssetId(index: number): string {
+  return index === 0 ? "paid_sample_clip" : `paid_sample_clip_${index + 1}`;
 }
 
 async function textInput(ctx: StageContext, key: string): Promise<string | undefined> {
@@ -731,17 +911,21 @@ function trimForNarration(value: string): string {
   return value.replace(/\s+/gu, " ").trim().slice(0, 700);
 }
 
-function imagePrompt(ctx: StageContext): string {
+function imagePrompt(ctx: StageContext, beat?: SampleBeat): string {
   return [
-    `Create a polished sample frame for ${ctx.episode.title}.`,
+    `Create a polished animated-explainer start frame for ${ctx.episode.title}.`,
     `Pipeline: ${ctx.pipeline.slug}.`,
+    beat === undefined ? undefined : `Explainer beat: ${beat.title}. ${beat.body}`,
     `Aspect ratio: ${aspect(ctx)}.`,
-    "No logos or copyrighted characters. Clear editorial composition.",
-  ].join(" ");
+    "Use clean visual metaphors, diagram-friendly composition, layered foreground/background depth, and no copyrighted characters.",
+  ]
+    .filter((part): part is string => typeof part === "string")
+    .join(" ");
 }
 
-function motionPrompt(ctx: StageContext): string {
-  return `Animate the sample frame with restrained ${rendererFamily(ctx)} motion, clean camera drift, and demo-safe pacing.`;
+function motionPrompt(ctx: StageContext, beat?: SampleBeat): string {
+  const beatText = beat === undefined ? "the sample frame" : `"${beat.title}"`;
+  return `Animate ${beatText} as a short ${rendererFamily(ctx)} explainer beat with distinct subject motion, moving diagram elements, clean camera drift, and readable demo-safe pacing.`;
 }
 
 function hasReferenceInput(ctx: StageContext): boolean {
@@ -770,8 +954,35 @@ function resolution(ctx: StageContext): [number, number] {
   return aspect(ctx).startsWith("9:16") ? [1080, 1920] : [1920, 1080];
 }
 
-function renderRuntime(_ctx: StageContext): "ffmpeg" | "remotion" | "hyperframes" {
+function renderRuntime(ctx: StageContext): RenderRuntime {
+  const configured = configuredRenderRuntime(ctx);
+  if (runtimeAvailable(ctx, configured)) {
+    return configured;
+  }
+
   return "ffmpeg";
+}
+
+function configuredRenderRuntime(ctx: StageContext): RenderRuntime {
+  const configured =
+    ctx.episode.runtime ??
+    ctx.show.pipelines[ctx.pipeline.slug]?.runtime ??
+    stringValue(ctx.pipeline.defaults?.render_runtime);
+
+  return isRenderRuntime(configured) ? configured : "ffmpeg";
+}
+
+function runtimeAvailable(ctx: StageContext, runtime: RenderRuntime): boolean {
+  const availability = ctx.registry.getAvailability(runtime);
+  if (availability !== undefined) {
+    return availability.available === true;
+  }
+
+  return runtime === "ffmpeg";
+}
+
+function isRenderRuntime(value: unknown): value is RenderRuntime {
+  return value === "ffmpeg" || value === "remotion" || value === "hyperframes";
 }
 
 function rendererFamily(ctx: StageContext): string {
@@ -817,6 +1028,20 @@ function assetPath(assetManifest: unknown, id: string): string | undefined {
   return stringValue(match?.path);
 }
 
+function assetPaths(assetManifest: unknown, idPattern: RegExp): string[] {
+  const assets = recordValue(assetManifest)?.assets;
+  if (!Array.isArray(assets)) {
+    return [];
+  }
+
+  return assets
+    .map(recordValue)
+    .filter((asset): asset is Record<string, unknown> => asset !== undefined && typeof asset.id === "string" && idPattern.test(asset.id))
+    .sort((left, right) => String(left.id).localeCompare(String(right.id), undefined, { numeric: true }))
+    .map((asset) => stringValue(asset.path))
+    .filter((value): value is string => value !== undefined);
+}
+
 function costEntry(
   tool: string,
   provider: string,
@@ -842,7 +1067,14 @@ function proposalDecisions(ctx: StageContext, options: PaidSampleDispatcherOptio
     decision(ctx, "proposal", "renderer_family_selection", rendererFamily(ctx), "Renderer family matches the bundled paid sample lane.", options),
     decision(ctx, "proposal", "playbook_selection", ctx.episode.playbook ?? "show-default", "Use the configured starter playbook for the demo.", options),
     decision(ctx, "proposal", "motion_commitment", "motion_led", "Paid samples exercise image-to-video instead of a still-only downgrade.", options),
-    decision(ctx, "proposal", "concept_selection", "provider-sample", "The provider sample concept validates OpenAI, ElevenLabs, Higgsfield, and ffmpeg.", options),
+    decision(
+      ctx,
+      "proposal",
+      "concept_selection",
+      "provider-sample",
+      "The provider sample concept validates OpenAI, ElevenLabs, Higgsfield, and the selected composition runtime.",
+      options,
+    ),
     ...(ctx.pipeline.master_clock === "audio"
       ? [decision(ctx, "proposal", "music_source", stringInput(ctx, "track") ?? "sample-track", "Use the starter audio fixture as the sample master clock.", options)]
       : []),
@@ -878,7 +1110,11 @@ function voiceDecision(ctx: StageContext, tool: Tool, options: PaidSampleDispatc
 }
 
 function renderRuntimeDecision(ctx: StageContext, stage: string, options: PaidSampleDispatcherOptions): DecisionEntry {
-  return decision(ctx, stage, "render_runtime_selection", renderRuntime(ctx), "Use the configured sample render runtime for editor handoff.", options);
+  const picked = renderRuntime(ctx);
+  return {
+    ...decision(ctx, stage, "render_runtime_selection", picked, runtimeDecisionReason(ctx, picked), options),
+    options_considered: runtimeOptionsConsidered(ctx, picked),
+  };
 }
 
 function cacheHitDecision(ctx: StageContext, options: PaidSampleDispatcherOptions): DecisionEntry {
@@ -911,6 +1147,43 @@ function decision(
     user_visible: true,
     supersedes: null,
   };
+}
+
+function runtimeDecisionReason(ctx: StageContext, picked: RenderRuntime): string {
+  const configured = configuredRenderRuntime(ctx);
+  if (picked === configured) {
+    return `Use the configured ${picked} sample render runtime for editor handoff.`;
+  }
+
+  return `${configured} is configured but unavailable in this project, so the paid sample uses ffmpeg as an explicit rough-cut fallback.`;
+}
+
+function runtimeOptionsConsidered(ctx: StageContext, picked: RenderRuntime): DecisionEntry["options_considered"] {
+  const configured = configuredRenderRuntime(ctx);
+  const motionLed = true;
+  return (["remotion", "hyperframes", "ffmpeg"] as const).map((runtime) => {
+    const available = runtimeAvailable(ctx, runtime);
+    const rejected =
+      runtime === picked
+        ? null
+        : !available
+          ? "runtime not available on this machine"
+          : runtime === "ffmpeg" && motionLed
+          ? "rough-cut fallback; richer composition runtime was available"
+            : runtime === configured
+              ? "configured runtime not selected"
+              : "not selected for this sample";
+    return {
+      label: runtime,
+      rejected_because: rejected,
+      notes:
+        runtime === configured
+          ? "Configured by the episode, show, or pipeline defaults."
+          : available
+            ? "Available runtime."
+            : null,
+    };
+  });
 }
 
 function projectRelativePath(projectRoot: string, absolutePath: string): string {

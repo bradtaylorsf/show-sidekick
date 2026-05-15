@@ -10,13 +10,13 @@ Layer A: product confidence
 - Paid provider setup is clear before any credits are spent.
 - The first no-key artifact is a personalized idea reel derived from safe project/session context, not a generic smoke sample.
 - The harness can produce representative samples across source-free, audio-led, voiceover-led, screen-demo, talking-head, and mixed-source workflows.
-- Remotion and HyperFrames decisions are made explicitly instead of hidden behind ffmpeg sample assembly.
+- Remotion and HyperFrames decisions are made explicitly, and paid samples use the configured runtime when it is installed.
 
 Layer B: technical coverage
 
 - CLI lifecycle: `init`, `doctor`, `new show`, `new episode`, `new pipeline`, `build`, `resume`, `export`.
 - Providers: OpenAI image/TTS fallback, ElevenLabs narration, Higgsfield image-to-video, ffmpeg/ffprobe.
-- Runtimes: ffmpeg rough cuts, Remotion composition validation, HyperFrames lint/validate/render checks where available.
+- Runtimes: ffmpeg rough cuts, Remotion renders, HyperFrames lint/validate/render checks where available.
 - Artifacts: checkpoints, render reports, final review, decision log, cost log, Premiere XML, EDL, contact sheet.
 
 ## Prerequisites
@@ -62,7 +62,7 @@ Run these one at a time in a user project so failures are easy to inspect and pr
 | Demo | Pipeline | Starter / setup | Primary coverage |
 |---|---|---|---|
 | Personalized no-key idea reel | `music-video` | `predit new show first-video --from music-video`; rewrite `lyrics.txt` into four safe context-aware card lines | Agent onboarding, zero-key renderer, script-card personalization, export path |
-| Provider scratch explainer | `animated-explainer` | `predit new show explainer --from animated-explainer` | OpenAI image, ElevenLabs narration, Higgsfield clip, ffmpeg sample assembly |
+| Provider scratch explainer | `animated-explainer` | `predit new show explainer --from animated-explainer` | OpenAI start frames, ElevenLabs narration, Higgsfield Seedance clips, configured runtime render when available |
 | Audio-led supplied-track video | `music-video` or `news-song` | `predit new show audio-demo --from music-video` or `--from news-song` | Audio master clock, cuesheet, beat-synced edit, exports |
 | Hosted / talking-head follow-up | `talking-head` | `predit new show host-demo --pipelines talking-head` | Voiceover master clock, captions, support cards, Remotion-oriented runtime choice |
 | Screen / workflow walkthrough | `screen-demo` | `predit new show workflow --from ai-workflow-demo` | Synthetic terminal, UI demo structure, Remotion or HyperFrames proposal discussion |
@@ -89,7 +89,7 @@ Some manifests are not demo-matrix lanes yet. Treat failures here as product-rea
 
 ## Runtime-Specific Plan
 
-Paid-demo samples currently assemble through ffmpeg for cost and consistency. That is fine for provider smoke, but it does not prove Remotion or HyperFrames production quality.
+Paid-demo samples create multiple generated motion clips from script beats. They render with the episode/show/pipeline runtime when that runtime is available; otherwise they log the unavailable runtime and use ffmpeg as a rough-cut fallback.
 
 For Remotion:
 
@@ -165,5 +165,5 @@ Create `projects/<show>/<episode>/notes.md` with:
 ## First Three Recommended Demos
 
 1. Personalized no-key idea reel: best first UX smoke because it proves a blank project plus an agent can create a useful first video without API keys.
-2. `animated-explainer`: best first paid provider smoke because it exercises OpenAI image, ElevenLabs narration, Higgsfield motion, and ffmpeg composition from a simple source-free brief.
+2. `animated-explainer`: best first paid provider smoke because it exercises OpenAI image, ElevenLabs narration, Higgsfield Seedance motion clips, and the configured composition runtime from a simple source-free brief.
 3. `screen-demo` plus a manual `hybrid` follow-up: best route to test recorded/source media plus generated support assets and runtime selection. Use the screen demo for the first Remotion/HyperFrames conversation, then use `hybrid` once source-media review is stable.

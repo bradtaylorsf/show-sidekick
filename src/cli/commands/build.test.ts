@@ -138,7 +138,7 @@ describe("build command", () => {
     expect(events.at(-1)).toMatchObject({
       event: "build_finished",
       status: "completed",
-      total_cost_usd: 0.34,
+      total_cost_usd: 1.02,
     });
     await expect(readDecisionLog({ show: "show", episode: "episode" }, { root })).resolves.toEqual(
       expect.arrayContaining([

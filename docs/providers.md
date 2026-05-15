@@ -168,7 +168,7 @@ pnpm run docs:providers
 | `seedance_video` | beta | api | bytedance | `BYTEDANCE_API_KEY` | Direct Seedance 2.0 image-to-video generation. | $0.4 / clip |
 | `wan_video` | experimental | api | replicate | `REPLICATE_API_TOKEN` | Open-source Wan 2.1 image-to-video experiments through Replicate. | $0.5 / clip |
 | `ltx_video_local` | experimental | binary | ltx-video | none | Local LTX video generation on a CUDA GPU with no per-clip provider charge. | $0 / clip |
-| `higgsfield` | production | cli | higgsfield / higgsfield | cli-login (higgsfield account status --json) | Kling v2.1 Pro image-to-video through the Higgsfield CLI. | $0.3 / clip |
+| `higgsfield` | production | cli | higgsfield / higgsfield | cli-login (higgsfield account status --json) | Seedance 2.0 image-to-video through the current Higgsfield CLI. | $0.3 / clip |
 | `higgsfield_video` | production | cli | higgsfield / higgsfield | cli-login (higgsfield account status --json) | Compatibility alias for Higgsfield image-to-video generation | $0.3 / clip |
 | `image_to_video` | beta | library | predit | none | Compatibility alias for selecting a concrete image-to-video provider. | not declared |
 | `video_selector` | beta | library | predit | none | Provider-selection marker for choosing a concrete image-to-video tool at runtime | not declared |

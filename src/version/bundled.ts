@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, statSync } from "node:fs";
-import { cp, mkdir, readdir, readFile, stat } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -42,6 +42,8 @@ export async function copyBundledInto(targetPreditDir: string, sourceBundledRoot
 
     await cp(source, target, { recursive: true, force: true });
   }
+
+  await materializeAgentNativeSkillFolders(path.join(targetPreditDir, "skills"));
 }
 
 export async function computeBundledChecksum(sourceBundledRoot: string = bundledRoot()): Promise<string> {
@@ -93,6 +95,56 @@ async function collectFiles(absoluteDir: string, relativeDir: string, files: str
       files.push(relativePath);
     }
   }
+}
+
+async function materializeAgentNativeSkillFolders(skillsDir: string): Promise<void> {
+  if (!(await exists(skillsDir))) {
+    return;
+  }
+
+  await materializeSkillFolders(skillsDir);
+}
+
+async function materializeSkillFolders(dir: string): Promise<void> {
+  const entries = (await readdir(dir, { withFileTypes: true })).sort((left, right) =>
+    left.name.localeCompare(right.name),
+  );
+
+  for (const entry of entries) {
+    const absolutePath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      if (!isReferenceMaterialDirectory(entry.name)) {
+        await materializeSkillFolders(absolutePath);
+      }
+      continue;
+    }
+
+    if (!entry.isFile() || !entry.name.endsWith(".md") || isNonSkillMarkdown(entry.name)) {
+      continue;
+    }
+
+    const content = await readFile(absolutePath, "utf8");
+    if (!hasSkillFrontmatter(content)) {
+      continue;
+    }
+
+    const skillDir = path.join(dir, path.basename(entry.name, ".md"));
+    await mkdir(skillDir, { recursive: true });
+    await writeFile(path.join(skillDir, "SKILL.md"), content, "utf8");
+  }
+}
+
+function isReferenceMaterialDirectory(name: string): boolean {
+  return new Set(["assets", "examples", "palettes", "references", "rules", "scripts", "templates"]).has(name);
+}
+
+function isNonSkillMarkdown(name: string): boolean {
+  return name === "README.md" || name === "TEMPLATE.md" || name === "AGENTS.md";
+}
+
+function hasSkillFrontmatter(content: string): boolean {
+  return /^---\n[\s\S]*?name:\s*['"]?[^'"\n]+['"]?[\s\S]*?\n---/u.test(content);
 }
 
 async function exists(targetPath: string): Promise<boolean> {

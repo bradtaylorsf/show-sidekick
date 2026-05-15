@@ -68,7 +68,7 @@ predit ls tools
 
 Or keep credentials project-local by filling the generated `.env` with the same keys. `predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before each command; exported shell variables still take precedence. `.env` is gitignored by the scaffold, while `.env.example` is safe to commit.
 
-`predit setup runtimes` is optional but recommended before demos that need motion graphics, animated overlays, or runtime choice. It installs Remotion and HyperFrames into the user project so agents can offer them alongside FFmpeg before locking a render runtime.
+`predit setup runtimes` is optional but recommended before demos that need motion graphics, animated overlays, or runtime choice. It installs Remotion, the Remotion CLI, aligned support deps, and HyperFrames into the user project so agents can offer them alongside FFmpeg before locking a render runtime.
 
 ## Render the Sample
 

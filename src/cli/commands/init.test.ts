@@ -59,6 +59,9 @@ describe("init command", () => {
         `${dirname}\n`,
       );
     }
+    await expect(
+      readFile(path.join(projectRoot, ".predit", "skills", "agents", "threejs-animation", "SKILL.md"), "utf8"),
+    ).resolves.toContain("name: threejs-animation");
 
     await expect(readCacheVersion(projectRoot)).resolves.toEqual({
       harness_version: VERSION,
@@ -216,6 +219,12 @@ async function writeFakeBundled(root: string): Promise<void> {
     await mkdir(path.join(root, dirname), { recursive: true });
     await writeFile(path.join(root, dirname, `${dirname}.txt`), `${dirname}\n`, "utf8");
   }
+  await mkdir(path.join(root, "skills", "agents"), { recursive: true });
+  await writeFile(
+    path.join(root, "skills", "agents", "threejs-animation.md"),
+    "---\nname: threejs-animation\ndescription: Test skill.\n---\n# Three.js Animation\n",
+    "utf8",
+  );
 
   await writeFile(
     path.join(root, "pipelines", "cinematic.yaml"),
