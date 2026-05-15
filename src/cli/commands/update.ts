@@ -2,7 +2,7 @@ import { rm } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
 import { findProjectRoot } from "../../paths/project.js";
-import { BUNDLED_CACHE_DIRS, bundledRoot, computeBundledChecksum, copyBundledInto } from "../../version/bundled.js";
+import { BUNDLED_CACHE_DIRS, bundledRoot, computeBundledChecksum, copyBundledInto, syncAgentSkillMirrors } from "../../version/bundled.js";
 import { compareVersions, readCacheVersion, writeCacheVersion, type VersionComparison } from "../../version/cache.js";
 import { VERSION } from "../../version.js";
 import type { CacheVersion } from "../../version/cache.js";
@@ -72,6 +72,7 @@ export function createUpdateHandler(io: CliIo, deps: UpdateDeps = {}) {
 
     const copyCache = deps.copyBundledInto ?? ((targetPreditDir: string) => copyBundledInto(targetPreditDir, sourceBundledRoot));
     await copyCache(preditDir);
+    await syncAgentSkillMirrors(projectRoot);
 
     const bundledChecksum = await computeChecksum();
     await (deps.writeCacheVersion ?? writeCacheVersion)(projectRoot, {

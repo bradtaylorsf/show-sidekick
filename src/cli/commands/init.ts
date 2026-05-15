@@ -5,7 +5,7 @@ import type { Command } from "commander";
 import { loadYaml } from "../../config/loader.js";
 import { ProjectAlreadyInitializedError } from "../../paths/errors.js";
 import { ShowSchema, type Show } from "../../shows/show.js";
-import { bundledRoot, computeBundledChecksum, copyBundledInto } from "../../version/bundled.js";
+import { bundledRoot, computeBundledChecksum, copyBundledInto, syncAgentSkillMirrors } from "../../version/bundled.js";
 import { writeCacheVersion } from "../../version/cache.js";
 import { VERSION } from "../../version.js";
 import { safeSlug, scaffoldShow } from "../scaffold/index.js";
@@ -16,6 +16,7 @@ type ErrorWithCode = Error & { code?: string };
 type InitOptions = GlobalOptions & {
   git?: boolean;
   starter?: string;
+  setupRuntimes?: boolean;
 };
 
 type InitEvent = {
@@ -23,6 +24,7 @@ type InitEvent = {
   path: string;
   starter?: string;
   git: boolean;
+  setup_runtimes?: boolean;
 };
 
 export type RunGit = (args: string[], cwd: string) => Promise<void>;
@@ -34,6 +36,7 @@ export type InitHandlerDeps = {
   writeCacheVersion?: typeof writeCacheVersion;
   scaffoldShow?: typeof scaffoldShow;
   runGit?: RunGit;
+  setupRuntimes?: (projectRoot: string) => Promise<void>;
   now?: () => Date;
   cwd?: () => string;
 };
@@ -60,6 +63,7 @@ export function createInitHandler(io: CliIo, deps: InitHandlerDeps = {}) {
 
     const copyCache = deps.copyBundledInto ?? ((targetPreditDir: string) => copyBundledInto(targetPreditDir, sourceBundledRoot));
     await copyCache(path.join(projectRoot, ".predit"));
+    await syncAgentSkillMirrors(projectRoot);
 
     const bundledChecksum = await (deps.computeBundledChecksum ?? (() => computeBundledChecksum(sourceBundledRoot)))();
     await (deps.writeCacheVersion ?? writeCacheVersion)(projectRoot, {
@@ -70,6 +74,10 @@ export function createInitHandler(io: CliIo, deps: InitHandlerDeps = {}) {
 
     if (starter) {
       await (deps.scaffoldShow ?? scaffoldShow)(projectRoot, { slug: starter, fromStarter: starter });
+    }
+
+    if (options.setupRuntimes) {
+      await (deps.setupRuntimes ?? defaultSetupRuntimes)(projectRoot);
     }
 
     if (options.git) {
@@ -84,6 +92,7 @@ export function createInitHandler(io: CliIo, deps: InitHandlerDeps = {}) {
       path: projectRoot,
       starter,
       git: options.git === true,
+      setup_runtimes: options.setupRuntimes === true ? true : undefined,
     });
   };
 }
@@ -169,6 +178,44 @@ async function defaultRunGit(args: string[], cwd: string): Promise<void> {
   });
 }
 
+async function defaultSetupRuntimes(projectRoot: string): Promise<void> {
+  await runCommand(
+    [
+      "install",
+      "--save-dev",
+      "remotion",
+      "react",
+      "react-dom",
+      "@remotion/renderer",
+      "@remotion/cli",
+      "zod@4.3.6",
+    ],
+    projectRoot,
+  );
+  await runCommand(["install", "--save-dev", "hyperframes"], projectRoot);
+}
+
+async function runCommand(args: string[], cwd: string): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn("npm", args, { cwd, stdio: ["ignore", "ignore", "pipe"] });
+    let stderr = "";
+
+    child.stderr?.setEncoding("utf8");
+    child.stderr?.on("data", (chunk: string) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(new Error(`npm ${args.join(" ")} failed${stderr.trim() ? `: ${stderr.trim()}` : ""}`));
+    });
+  });
+}
+
 async function exists(targetPath: string): Promise<boolean> {
   try {
     await stat(targetPath);
@@ -190,12 +237,15 @@ function emitInitialized(io: CliIo, options: InitOptions, event: InitEvent): voi
 
   const starter = event.starter ? ` with starter '${event.starter}'` : "";
   const git = event.git ? " and initialized git" : "";
+  const runtimes = event.setup_runtimes ? " and installed Remotion/HyperFrames" : "";
   const nextSteps = event.starter
     ? [
         "next:",
         "  edit .env with any provider keys you want to use",
         "  predit doctor --profile paid-demo",
-        "  predit setup runtimes  # optional: install Remotion + HyperFrames locally",
+        ...(event.setup_runtimes
+          ? []
+          : ["  predit setup runtimes  # optional: install Remotion + HyperFrames locally"]),
         `  predit build ${event.starter}/sample-episode --sample`,
         `  predit export ${event.starter}/sample-episode --target premiere`,
       ]
@@ -203,7 +253,9 @@ function emitInitialized(io: CliIo, options: InitOptions, event: InitEvent): voi
         "next:",
         "  edit .env with any provider keys you want to use",
         "  predit doctor --profile paid-demo",
-        "  predit setup runtimes  # optional: install Remotion + HyperFrames locally",
+        ...(event.setup_runtimes
+          ? []
+          : ["  predit setup runtimes  # optional: install Remotion + HyperFrames locally"]),
         "  predit ls starters",
         "  predit new show music-video --from music-video",
       ];
@@ -211,5 +263,5 @@ function emitInitialized(io: CliIo, options: InitOptions, event: InitEvent): voi
     'agent prompt: "Read AGENTS.md and .predit/skills/meta/onboarding.md, then guide me through a personalized no-key first predit video."',
   ];
 
-  io.stdout.write(`init: scaffolded predit project at ${event.path}${starter}${git}\n${[...nextSteps, ...agentPrompt].join("\n")}\n`);
+  io.stdout.write(`init: scaffolded predit project at ${event.path}${starter}${git}${runtimes}\n${[...nextSteps, ...agentPrompt].join("\n")}\n`);
 }

@@ -46,6 +46,23 @@ export async function copyBundledInto(targetPreditDir: string, sourceBundledRoot
   await materializeAgentNativeSkillFolders(path.join(targetPreditDir, "skills"));
 }
 
+export async function syncAgentSkillMirrors(projectRoot: string): Promise<void> {
+  const sourceAgentsDir = path.join(projectRoot, ".predit", "skills", "agents");
+  if (!(await exists(sourceAgentsDir))) {
+    return;
+  }
+
+  const entries = (await readdir(sourceAgentsDir, { withFileTypes: true })).sort((left, right) =>
+    left.name.localeCompare(right.name),
+  );
+  const skillDirs = entries.filter((entry) => entry.isDirectory());
+
+  await Promise.all([
+    syncAgentSkillMirror(sourceAgentsDir, path.join(projectRoot, ".agents", "skills"), skillDirs),
+    syncAgentSkillMirror(sourceAgentsDir, path.join(projectRoot, ".claude", "skills"), skillDirs),
+  ]);
+}
+
 export async function computeBundledChecksum(sourceBundledRoot: string = bundledRoot()): Promise<string> {
   const files = await collectBundledFiles(sourceBundledRoot);
   const digest = createHash("sha256");
@@ -145,6 +162,20 @@ function isNonSkillMarkdown(name: string): boolean {
 
 function hasSkillFrontmatter(content: string): boolean {
   return /^---\n[\s\S]*?name:\s*['"]?[^'"\n]+['"]?[\s\S]*?\n---/u.test(content);
+}
+
+async function syncAgentSkillMirror(sourceAgentsDir: string, targetSkillsDir: string, entries: Array<{ name: string }>): Promise<void> {
+  await mkdir(targetSkillsDir, { recursive: true });
+
+  for (const entry of entries) {
+    const source = path.join(sourceAgentsDir, entry.name);
+    const skillPath = path.join(source, "SKILL.md");
+    if (!(await exists(skillPath))) {
+      continue;
+    }
+
+    await cp(source, path.join(targetSkillsDir, entry.name), { recursive: true, force: true });
+  }
 }
 
 async function exists(targetPath: string): Promise<boolean> {

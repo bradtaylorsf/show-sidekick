@@ -5,6 +5,11 @@
 # every collaborator's cache reflects their locally installed predit version.
 .predit/
 
+# Agent-native mirrors generated from .predit/skills/agents for Codex/Claude
+# discovery. Author reusable project overrides in ./skills/ instead.
+.agents/skills/
+.claude/skills/
+
 # Runtime workspace - generated assets, intermediate artifacts, renders.
 # Everything in here is regenerable. Do not commit.
 projects/

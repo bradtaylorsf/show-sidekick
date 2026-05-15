@@ -61,7 +61,7 @@ Global flags: `--json`, `--dry-run`, `--verbose`, `--no-color`, `--config <path>
 Common flows:
 
 - `predit init --starter music-video --git` scaffolds a user project, initializes git, writes `.env.example` and gitignored `.env`, and clones the music-video starter into `shows/music-video/`.
-- `predit init` scaffolds a blank project with agent instructions, bundled pipeline cache, and first-run next steps.
+- `predit init` scaffolds a blank project with agent instructions, bundled pipeline cache, Codex/Claude skill mirrors, and first-run next steps. Add `--setup-runtimes` to install Remotion, the Remotion CLI stack, and HyperFrames during init.
 - The scaffolded `.gitignore` keeps generated workspaces, renders, exports, local media, `.predit/`, and `.env` out of git while leaving shows, pipelines, playbooks, skills, and `.env.example` shareable.
 - Shared project clones restore the gitignored `.predit/` cache automatically before commands run, using the locally installed harness version.
 - Commands load `.env`, `.env.<command>`, and `.env.local` from the project root; shell environment variables win over file values.

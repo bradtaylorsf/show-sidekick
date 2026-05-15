@@ -26,6 +26,7 @@ predit init --starter music-video --git
 ```
 
 `predit init` creates both `.env.example` and a gitignored `.env`. Fill `.env` with any provider keys you want to use; keep `.env.example` committed as the blank setup map for collaborators and agents.
+It also mirrors bundled Layer 3 agent skills into `.agents/skills/` and `.claude/skills/` so Codex and Claude-style agents can discover provider/runtime skills natively. Add `--setup-runtimes` to install Remotion, the Remotion CLI stack, and HyperFrames during init instead of running `predit setup runtimes` later.
 
 For a blank, agent-guided project, run:
 

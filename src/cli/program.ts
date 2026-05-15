@@ -127,6 +127,7 @@ function registerCommands(program: Command, io: CliIo, options: RegisterCommandO
     .description("scaffold a new predit project in cwd")
     .option("--git", "initialize git and commit the scaffold")
     .option("--starter <name>", "clone a bundled starter show into shows/<name>/")
+    .option("--setup-runtimes", "install Remotion, Remotion CLI deps, and HyperFrames during init")
     .action(createInitHandler(io));
 
   program

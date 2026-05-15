@@ -62,6 +62,12 @@ describe("init command", () => {
     await expect(
       readFile(path.join(projectRoot, ".predit", "skills", "agents", "threejs-animation", "SKILL.md"), "utf8"),
     ).resolves.toContain("name: threejs-animation");
+    await expect(
+      readFile(path.join(projectRoot, ".agents", "skills", "threejs-animation", "SKILL.md"), "utf8"),
+    ).resolves.toContain("name: threejs-animation");
+    await expect(
+      readFile(path.join(projectRoot, ".claude", "skills", "threejs-animation", "SKILL.md"), "utf8"),
+    ).resolves.toContain("name: threejs-animation");
 
     await expect(readCacheVersion(projectRoot)).resolves.toEqual({
       harness_version: VERSION,
@@ -101,6 +107,30 @@ describe("init command", () => {
     })(command({ git: true }));
 
     expect(calls).toEqual([["init"], ["add", "."], ["commit", "-m", "Initial predit project scaffold."]]);
+  });
+
+  it("can install rich composition runtimes during init when requested", async () => {
+    const projectRoot = await scratchDir("project");
+    const bundledRoot = await scratchDir("bundled");
+    await writeFakeBundled(bundledRoot);
+    const setupRuntimes = vi.fn(async () => undefined);
+    const { io, output } = captureIo();
+
+    await createInitHandler(io, {
+      bundledRoot: () => bundledRoot,
+      copyBundledInto: (target) => copyBundledInto(target, bundledRoot),
+      computeBundledChecksum: () => computeBundledChecksum(bundledRoot),
+      cwd: () => projectRoot,
+      setupRuntimes,
+    })(command({ json: true, setupRuntimes: true }));
+
+    expect(setupRuntimes).toHaveBeenCalledWith(projectRoot);
+    expect(JSON.parse(output().stdout.trim())).toEqual(
+      expect.objectContaining({
+        event: "project_initialized",
+        setup_runtimes: true,
+      }),
+    );
   });
 
   it("prints first-run CLI and agent guidance in human mode", async () => {
