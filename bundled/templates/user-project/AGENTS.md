@@ -34,7 +34,7 @@ When a user says "help me make the first video", "what can this project do?", or
 2. Run `predit doctor --profile paid-demo --json` and `predit ls tools --json`, then summarize what is ready, what needs env vars, what needs CLI login, and which composition runtimes are available. If env vars are missing, point the user at the scaffolded `.env` file and the committed `.env.example`; shell exports are also valid and win over file values.
 3. For a broad first-video request, make the first deliverable a zero-key personalized idea reel unless the user has already chosen a different format. Use only safe context the user has shared in this session or project. Do not infer or reveal sensitive personal attributes. Offer exactly three specific video ideas, then pick the strongest one if the user asked you to proceed without another choice.
 4. Run `predit ls starters` and recommend one starter or one pipeline based on the user's goal.
-5. If Remotion or HyperFrames is unavailable and the video would benefit from motion graphics, animated overlays, or runtime choice, ask whether to run `predit setup runtimes` before scaffolding. Run it only after approval; FFmpeg-only is still valid when the user wants the fastest path.
+5. If Remotion or HyperFrames is unavailable and the video would benefit from motion graphics, animated overlays, or runtime choice, explain that runtime setup may have been skipped or blocked by missing npm. Ask before installing system-level prerequisites such as Node/npm; after approval, run `predit setup runtimes`. FFmpeg-only is still valid when the user wants the fastest path.
 6. If the project has no show yet, scaffold one with `predit new show <slug> --from <starter>` for starter-backed work, or `predit new show <slug> --pipelines <pipeline>` for a custom show.
 7. Create or select an episode with `predit new episode <show> <episode>`.
 8. For a zero-key personalized idea reel, use the `music-video` starter and rewrite `shows/<show>/inputs/<episode>/lyrics.txt` into four short visible card lines: a tailored hook, idea 1, idea 2, and the next step. Then run `predit build <show>/<episode> --sample`.
@@ -81,7 +81,7 @@ Match the user's comfort level without changing the production contract:
 
 `predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before commands run. Shell-exported values win over file values. Never commit `.env`. Commit `.env.example`, shows, pipelines, playbooks, and skills so workflows can be shared safely.
 
-`predit init --setup-runtimes` or `predit setup runtimes` installs Remotion, the Remotion CLI, aligned Remotion support deps, and HyperFrames locally for this project. Offer runtime setup when those runtimes are unavailable and the user's video would benefit from richer composition, but do not run installs without approval.
+`predit init` installs Remotion, the Remotion CLI, aligned Remotion support deps, and HyperFrames locally for this project by default when npm is available. `predit setup runtimes` repairs or adds those dependencies later if setup was skipped or blocked. Ask before installing system-level prerequisites such as Node/npm; project-local npm dependencies are expected during init unless the user passed `--no-setup-runtimes`.
 
 When resolving any resource (pipeline, playbook, skill, schema), check the project-local path first, then `.predit/`. Project-local always wins. For director skills, also check `shows/<show>/skills/` before either.
 

@@ -1141,7 +1141,8 @@ async function freshInitializedProject(): Promise<string> {
     computeBundledChecksum: () => computeBundledChecksum(bundledRootDir),
     cwd: () => projectRoot,
     now: () => new Date("2026-05-14T12:00:00.000Z"),
-  })(command({}));
+    setupRuntimes: async () => undefined,
+  })(command({ setupRuntimes: false }));
 
   return projectRoot;
 }

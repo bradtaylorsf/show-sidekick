@@ -46,7 +46,7 @@ cd ~/my-shows
 predit init                       # creates CLAUDE.md, AGENTS.md, .env.example, .env, .predit/, .gitignore
 predit init --git                 # same, plus `git init`
 predit init --starter music-video # scaffold a starter show alongside the project
-predit init --setup-runtimes      # also installs Remotion, Remotion CLI deps, and HyperFrames
+predit init --no-setup-runtimes   # skip default Remotion, Remotion CLI deps, and HyperFrames install
 ```
 
 When `--starter` is used, the starter's `show.yaml` is checked before any files are written. Every key in `show.pipelines` must resolve to a bundled manifest in the installed harness cache source. A default bundled starter cannot rely on `pending_pipelines`; missing or undecided pipeline bindings fail early with an error naming the starter and unresolved pipeline slug.
@@ -80,6 +80,8 @@ my-shows/
 ```
 
 Every non-`init` command loads environment values from the project root in this order: `.env`, `.env.<command>`, `.env.local`, then the parent process environment. The shell environment wins, so CI and agent sessions can override local files without editing them. The scaffold gitignores `.env`, `.env.<command>`, `.env.local`, `.agents/skills/`, and `.claude/skills/`; `.env.example` is safe to commit and lists supported provider keys, CLI setup pointers, and official setup URLs with blank values.
+
+`predit init` installs the rich composition runtime dependencies by default when Node 22+ and npm are available: Remotion, `@remotion/cli`, `@remotion/renderer`, React, aligned `zod`, and HyperFrames. These are written as normal project-local npm dependencies so the project actually has the runtimes available after initialization. If the user passes `--no-setup-runtimes`, or if a system prerequisite is missing, the agent should ask before installing system-level prerequisites such as Node/npm and then run `predit setup runtimes` after approval.
 
 The scaffolded `.gitignore` keeps regenerable output out of source control by default: `.predit/`, `projects/`, `exports/`, `renders/`, `output/`, `outputs/`, `.predit-work/`, temp folders, local media drops, logs, `node_modules/`, and secret env files. User-authored workflows stay shareable: `shows/`, `pipelines/`, `playbooks/`, `skills/`, docs, and `.env.example` are not ignored.
 

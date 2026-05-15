@@ -70,7 +70,7 @@ describe("ls command", () => {
     process.chdir(root);
 
     const { program, output } = captureProgram();
-    await program.parseAsync(["node", "predit", "--json", "init"], { from: "node" });
+    await program.parseAsync(["node", "predit", "--json", "init", "--no-setup-runtimes"], { from: "node" });
     await program.parseAsync(["node", "predit", "--json", "ls", "pipelines"], { from: "node" });
 
     const rows = parseLines(output().stdout).filter((row) => row.event === "pipeline_listed");

@@ -16,7 +16,7 @@
 predit init                              # scaffold a new predit project in cwd
 predit init --git                        # scaffold, git init, add, and commit
 predit init --starter music-video        # scaffold and clone a bundled starter show
-predit init --setup-runtimes             # also install Remotion CLI stack + HyperFrames
+predit init --no-setup-runtimes          # skip default Remotion CLI stack + HyperFrames install
 predit doctor                            # registry + tool preflight (capability menu)
 predit doctor --profile paid-demo        # preflight a named provider profile
 predit update                            # refresh .predit/ from the installed harness
@@ -108,7 +108,7 @@ The analysis writes `projects/<show>/<episode>/artifacts/video_analysis_brief.js
 - Default output is human-readable with picocolors.
 - `--json` switches to NDJSON for streaming-friendly machine output. Each command documents its event schema in its source.
 - Errors always go to stderr; results to stdout.
-- Human-mode `predit init` prints first-run next steps: run `predit doctor --profile paid-demo`, choose or build a starter/show, optionally install runtimes, and ask the user's agent to read `AGENTS.md` plus `.predit/skills/meta/onboarding.md` for a personalized no-key first video. `predit init` also mirrors bundled Layer 3 agent skills into `.agents/skills/` and `.claude/skills/` for native agent discovery.
+- Human-mode `predit init` prints first-run next steps: run `predit doctor --profile paid-demo`, choose or build a starter/show, and ask the user's agent to read `AGENTS.md` plus `.predit/skills/meta/onboarding.md` for a personalized no-key first video. `predit init` installs Remotion, the Remotion CLI stack, and HyperFrames by default when Node 22+ and npm are available; `--no-setup-runtimes` skips that install. It also mirrors bundled Layer 3 agent skills into `.agents/skills/` and `.claude/skills/` for native agent discovery.
 
 ## Maintainer Demo Matrix
 

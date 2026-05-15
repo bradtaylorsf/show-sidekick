@@ -37,10 +37,9 @@ From a fresh user project:
 ```bash
 predit init
 predit doctor --profile paid-demo --json
-predit setup runtimes
 ```
 
-The benchmark can continue only when doctor reports `ok` for OpenAI, ElevenLabs, Higgsfield binary, Higgsfield login, ffmpeg, and ffprobe. Run `predit setup runtimes` before Remotion or HyperFrames lanes; agents should ask first because this installs project-local dev dependencies.
+The benchmark can continue only when doctor reports `ok` for OpenAI, ElevenLabs, Higgsfield binary, Higgsfield login, ffmpeg, and ffprobe. `predit init` installs Remotion and HyperFrames by default when npm is available; rerun `predit setup runtimes` before Remotion or HyperFrames lanes only if runtime setup was skipped, failed, or needs repair.
 
 ## Suites
 

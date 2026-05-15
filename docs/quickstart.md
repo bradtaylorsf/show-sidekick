@@ -26,7 +26,7 @@ predit init --starter music-video --git
 ```
 
 `predit init` creates both `.env.example` and a gitignored `.env`. Fill `.env` with any provider keys you want to use; keep `.env.example` committed as the blank setup map for collaborators and agents.
-It also mirrors bundled Layer 3 agent skills into `.agents/skills/` and `.claude/skills/` so Codex and Claude-style agents can discover provider/runtime skills natively. Add `--setup-runtimes` to install Remotion, the Remotion CLI stack, and HyperFrames during init instead of running `predit setup runtimes` later.
+It also mirrors bundled Layer 3 agent skills into `.agents/skills/` and `.claude/skills/` so Codex and Claude-style agents can discover provider/runtime skills natively, then installs Remotion, the Remotion CLI stack, and HyperFrames as project-local dev dependencies when npm is available. Use `--no-setup-runtimes` only when you want a scaffold without npm installs.
 
 For a blank, agent-guided project, run:
 
@@ -61,7 +61,6 @@ export OPENAI_API_KEY="sk-..."
 export ELEVENLABS_API_KEY="..."
 higgsfield auth login
 predit doctor --profile paid-demo
-predit setup runtimes
 predit setup openai_image
 predit setup openai_tts
 predit ls tools
@@ -69,7 +68,7 @@ predit ls tools
 
 Or keep credentials project-local by filling the generated `.env` with the same keys. `predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before each command; exported shell variables still take precedence. `.env` is gitignored by the scaffold, while `.env.example` is safe to commit.
 
-`predit setup runtimes` is optional but recommended before demos that need motion graphics, animated overlays, or runtime choice. It installs Remotion, the Remotion CLI, aligned support deps, and HyperFrames into the user project so agents can offer them alongside FFmpeg before locking a render runtime.
+`predit setup runtimes` can be rerun if runtime setup was skipped, failed because npm was unavailable, or needs repair. It installs Remotion, the Remotion CLI, aligned support deps, and HyperFrames into the user project so agents can offer them alongside FFmpeg before locking a render runtime.
 
 ## Render the Sample
 

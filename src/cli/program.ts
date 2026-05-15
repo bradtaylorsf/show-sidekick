@@ -128,6 +128,7 @@ function registerCommands(program: Command, io: CliIo, options: RegisterCommandO
     .option("--git", "initialize git and commit the scaffold")
     .option("--starter <name>", "clone a bundled starter show into shows/<name>/")
     .option("--setup-runtimes", "install Remotion, Remotion CLI deps, and HyperFrames during init")
+    .option("--no-setup-runtimes", "skip runtime dependency installation during init")
     .action(createInitHandler(io));
 
   program

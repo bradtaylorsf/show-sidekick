@@ -28,7 +28,7 @@ describe("music-video starter sample", () => {
     scratchDirs.push(root);
     await mkdir(root, { recursive: true });
 
-    const initEvents = parseEvents(await runPredit(root, ["init", "--starter", "music-video"]));
+    const initEvents = parseEvents(await runPredit(root, ["init", "--starter", "music-video", "--no-setup-runtimes"]));
     await writeFile(
       path.join(root, "shows", "music-video", "inputs", "sample-episode", "lyrics.txt"),
       [

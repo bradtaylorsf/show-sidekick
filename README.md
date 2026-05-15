@@ -20,7 +20,6 @@ cd my-shows
 predit init --starter music-video --git
 # optional: add paid provider keys to the generated .env
 predit doctor --profile paid-demo
-predit setup runtimes            # optional: install Remotion + HyperFrames locally
 predit build music-video/sample-episode --sample
 predit export music-video/sample-episode --target premiere
 ```
@@ -61,12 +60,12 @@ Global flags: `--json`, `--dry-run`, `--verbose`, `--no-color`, `--config <path>
 Common flows:
 
 - `predit init --starter music-video --git` scaffolds a user project, initializes git, writes `.env.example` and gitignored `.env`, and clones the music-video starter into `shows/music-video/`.
-- `predit init` scaffolds a blank project with agent instructions, bundled pipeline cache, Codex/Claude skill mirrors, and first-run next steps. Add `--setup-runtimes` to install Remotion, the Remotion CLI stack, and HyperFrames during init.
+- `predit init` scaffolds a blank project with agent instructions, bundled pipeline cache, Codex/Claude skill mirrors, first-run next steps, and project-local Remotion/HyperFrames dependencies when npm is available. Use `--no-setup-runtimes` to skip the install.
 - The scaffolded `.gitignore` keeps generated workspaces, renders, exports, local media, `.predit/`, and `.env` out of git while leaving shows, pipelines, playbooks, skills, and `.env.example` shareable.
 - Shared project clones restore the gitignored `.predit/` cache automatically before commands run, using the locally installed harness version.
 - Commands load `.env`, `.env.<command>`, and `.env.local` from the project root; shell environment variables win over file values.
 - `predit doctor --profile paid-demo` checks OpenAI, ElevenLabs, Higgsfield, ffmpeg, and ffprobe readiness without spending provider credits.
-- `predit setup runtimes` installs Remotion, the Remotion CLI, aligned support deps, and HyperFrames as project-local dev dependencies when the user wants rich composition beyond FFmpeg.
+- `predit setup runtimes` can be rerun later to repair or add Remotion, the Remotion CLI, aligned support deps, and HyperFrames as project-local dev dependencies when they were skipped or unavailable at init.
 - `predit new show <slug> --from <starter>` clones a starter-backed show; `predit new show <slug> --pipelines <pipeline>` creates a custom show bound to existing manifests.
 - `predit new pipeline <slug>` creates `pipelines/<slug>.yaml` plus `skills/pipelines/<slug>/idea-director.md`.
 - `predit update --check` verifies the local `.predit/` cache against the installed harness without writing.

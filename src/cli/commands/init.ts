@@ -55,6 +55,11 @@ export function createInitHandler(io: CliIo, deps: InitHandlerDeps = {}) {
       await assertStarterPipelinesResolve(sourceBundledRoot, starter);
     }
 
+    const setupRuntimes = shouldSetupRuntimes(options);
+    if (setupRuntimes && deps.setupRuntimes === undefined) {
+      await assertRuntimeSetupPrerequisites(projectRoot);
+    }
+
     await mkdir(path.join(projectRoot, ".predit"), { recursive: true });
     await mkdir(path.join(projectRoot, "shows"), { recursive: true });
     await mkdir(path.join(projectRoot, "projects"), { recursive: true });
@@ -76,7 +81,7 @@ export function createInitHandler(io: CliIo, deps: InitHandlerDeps = {}) {
       await (deps.scaffoldShow ?? scaffoldShow)(projectRoot, { slug: starter, fromStarter: starter });
     }
 
-    if (options.setupRuntimes) {
+    if (setupRuntimes) {
       await (deps.setupRuntimes ?? defaultSetupRuntimes)(projectRoot);
     }
 
@@ -92,7 +97,7 @@ export function createInitHandler(io: CliIo, deps: InitHandlerDeps = {}) {
       path: projectRoot,
       starter,
       git: options.git === true,
-      setup_runtimes: options.setupRuntimes === true ? true : undefined,
+      setup_runtimes: setupRuntimes,
     });
   };
 }
@@ -179,6 +184,7 @@ async function defaultRunGit(args: string[], cwd: string): Promise<void> {
 }
 
 async function defaultSetupRuntimes(projectRoot: string): Promise<void> {
+  await assertRuntimeSetupPrerequisites(projectRoot);
   await runCommand(
     [
       "install",
@@ -193,6 +199,28 @@ async function defaultSetupRuntimes(projectRoot: string): Promise<void> {
     projectRoot,
   );
   await runCommand(["install", "--save-dev", "hyperframes"], projectRoot);
+}
+
+async function assertRuntimeSetupPrerequisites(projectRoot: string): Promise<void> {
+  const major = Number(process.versions.node.split(".")[0] ?? "0");
+  if (!Number.isFinite(major) || major < 22) {
+    throw new Error(
+      `runtime setup requires Node 22+; current Node is ${process.versions.node}. ` +
+        "Install or switch to Node 22+, then rerun `predit init`. " +
+        "If an agent is helping, it should ask before installing system prerequisites.",
+    );
+  }
+
+  try {
+    await runCommand(["--version"], projectRoot);
+  } catch (error) {
+    throw new Error(
+      "runtime setup requires npm on PATH so Remotion and HyperFrames can be installed locally. " +
+        "Install Node 22+ from https://nodejs.org/ or through your preferred package manager, then rerun `predit init`. " +
+        "If an agent is helping, it should ask before installing system prerequisites.",
+      { cause: error },
+    );
+  }
 }
 
 async function runCommand(args: string[], cwd: string): Promise<void> {
@@ -214,6 +242,10 @@ async function runCommand(args: string[], cwd: string): Promise<void> {
       reject(new Error(`npm ${args.join(" ")} failed${stderr.trim() ? `: ${stderr.trim()}` : ""}`));
     });
   });
+}
+
+function shouldSetupRuntimes(options: InitOptions): boolean {
+  return options.setupRuntimes !== false;
 }
 
 async function exists(targetPath: string): Promise<boolean> {

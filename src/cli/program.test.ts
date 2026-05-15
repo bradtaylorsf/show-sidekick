@@ -149,7 +149,9 @@ describe("createProgram", () => {
     const init = program.commands.find((command) => command.name() === "init");
     const update = program.commands.find((command) => command.name() === "update");
 
-    expect(init?.options.map((option) => option.long)).toEqual(expect.arrayContaining(["--git", "--starter"]));
+    expect(init?.options.map((option) => option.long)).toEqual(
+      expect.arrayContaining(["--git", "--starter", "--setup-runtimes", "--no-setup-runtimes"]),
+    );
     expect(update?.options.map((option) => option.long)).toEqual(expect.arrayContaining(["--check"]));
   });
 
@@ -209,7 +211,7 @@ describe("createProgram", () => {
     process.chdir(root);
     const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "init"], { from: "node" });
+    await program.parseAsync(["node", "predit", "init", "--no-setup-runtimes"], { from: "node" });
 
     expect(output().stdout).toContain("init: scaffolded predit project at");
     await expect(access(path.join(root, ".predit", "version.json"))).resolves.toBeUndefined();

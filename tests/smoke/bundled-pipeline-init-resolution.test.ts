@@ -27,7 +27,8 @@ describe("bundled pipeline init resolution", () => {
       computeBundledChecksum: () => computeBundledChecksum(sourceBundledRoot),
       cwd: () => projectRoot,
       now: () => new Date("2026-05-14T12:00:00.000Z"),
-    })(command({}));
+      setupRuntimes: async () => undefined,
+    })(command({ setupRuntimes: false }));
 
     for (const slug of BUNDLED_MANIFEST_INVENTORY_SLUGS) {
       expect(existsSync(path.join(projectRoot, ".predit", "pipelines", `${slug}.yaml`)), slug).toBe(true);

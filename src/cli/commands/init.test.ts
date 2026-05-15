@@ -30,6 +30,7 @@ describe("init command", () => {
     const projectRoot = await scratchDir("project");
     const bundledRoot = await scratchDir("bundled");
     await writeFakeBundled(bundledRoot);
+    const setupRuntimes = vi.fn(async () => undefined);
     const { io, output } = captureIo();
 
     await createInitHandler(io, {
@@ -38,10 +39,12 @@ describe("init command", () => {
       computeBundledChecksum: () => computeBundledChecksum(bundledRoot),
       cwd: () => projectRoot,
       now: () => new Date("2026-05-14T12:00:00.000Z"),
+      setupRuntimes,
     })(command({ json: true }));
 
-    const event = JSON.parse(output().stdout.trim()) as { event: string; path: string; git: boolean };
-    expect(event).toEqual({ event: "project_initialized", path: projectRoot, git: false });
+    const event = JSON.parse(output().stdout.trim()) as { event: string; path: string; git: boolean; setup_runtimes: boolean };
+    expect(event).toEqual({ event: "project_initialized", path: projectRoot, git: false, setup_runtimes: true });
+    expect(setupRuntimes).toHaveBeenCalledWith(projectRoot);
     await expect(readFile(path.join(projectRoot, "CLAUDE.md"), "utf8")).resolves.toContain("AGENTS.md");
     await expect(readFile(path.join(projectRoot, "AGENTS.md"), "utf8")).resolves.toContain("user project");
     await expect(readFile(path.join(projectRoot, ".gitignore"), "utf8")).resolves.toContain(".predit/");
@@ -104,12 +107,13 @@ describe("init command", () => {
       computeBundledChecksum: () => computeBundledChecksum(bundledRoot),
       cwd: () => projectRoot,
       runGit,
+      setupRuntimes: vi.fn(async () => undefined),
     })(command({ git: true }));
 
     expect(calls).toEqual([["init"], ["add", "."], ["commit", "-m", "Initial predit project scaffold."]]);
   });
 
-  it("can install rich composition runtimes during init when requested", async () => {
+  it("installs rich composition runtimes during init by default", async () => {
     const projectRoot = await scratchDir("project");
     const bundledRoot = await scratchDir("bundled");
     await writeFakeBundled(bundledRoot);
@@ -122,13 +126,37 @@ describe("init command", () => {
       computeBundledChecksum: () => computeBundledChecksum(bundledRoot),
       cwd: () => projectRoot,
       setupRuntimes,
-    })(command({ json: true, setupRuntimes: true }));
+    })(command({ json: true }));
 
     expect(setupRuntimes).toHaveBeenCalledWith(projectRoot);
     expect(JSON.parse(output().stdout.trim())).toEqual(
       expect.objectContaining({
         event: "project_initialized",
         setup_runtimes: true,
+      }),
+    );
+  });
+
+  it("skips runtime installation when --no-setup-runtimes is used", async () => {
+    const projectRoot = await scratchDir("project");
+    const bundledRoot = await scratchDir("bundled");
+    await writeFakeBundled(bundledRoot);
+    const setupRuntimes = vi.fn(async () => undefined);
+    const { io, output } = captureIo();
+
+    await createInitHandler(io, {
+      bundledRoot: () => bundledRoot,
+      copyBundledInto: (target) => copyBundledInto(target, bundledRoot),
+      computeBundledChecksum: () => computeBundledChecksum(bundledRoot),
+      cwd: () => projectRoot,
+      setupRuntimes,
+    })(command({ json: true, setupRuntimes: false }));
+
+    expect(setupRuntimes).not.toHaveBeenCalled();
+    expect(JSON.parse(output().stdout.trim())).toEqual(
+      expect.objectContaining({
+        event: "project_initialized",
+        setup_runtimes: false,
       }),
     );
   });
@@ -144,9 +172,11 @@ describe("init command", () => {
       copyBundledInto: (target) => copyBundledInto(target, bundledRoot),
       computeBundledChecksum: () => computeBundledChecksum(bundledRoot),
       cwd: () => projectRoot,
+      setupRuntimes: vi.fn(async () => undefined),
     })(command({}));
 
     expect(output().stdout).toContain("predit doctor --profile paid-demo");
+    expect(output().stdout).toContain("installed Remotion/HyperFrames");
     expect(output().stdout).toContain("edit .env with any provider keys");
     expect(output().stdout).toContain("predit ls starters");
     expect(output().stdout).toContain("Read AGENTS.md and .predit/skills/meta/onboarding.md");
@@ -164,6 +194,7 @@ describe("init command", () => {
       copyBundledInto: (target) => copyBundledInto(target, bundledRoot),
       computeBundledChecksum: () => computeBundledChecksum(bundledRoot),
       cwd: () => projectRoot,
+      setupRuntimes: vi.fn(async () => undefined),
     })(command({ json: true, starter: "music-video" }));
 
     const event = JSON.parse(output().stdout.trim()) as { starter: string };
