@@ -132,7 +132,7 @@ For the full breakdown, read `.predit/skills/agents/gsap-react/SKILL.md`.
 ## Check against the pipeline's stage director
 
 Every pipeline's asset-director has animation-specific guidance. If you're in:
-- **animated-explainer** -> read `skills/pipelines/animated-explainer/asset-director.md` - it references text/SVG options for kinetic typography
+- **animated-explainer** -> read `skills/pipelines/explainer/asset-director.md` - it references text/SVG options for kinetic typography
 - **animation** -> read `skills/pipelines/animation/asset-director.md` - it references MorphSVG and MotionPath for logo/motion-graphics work
 - **cinematic** -> read `skills/pipelines/cinematic/asset-director.md` - it references MotionPath for cinematic camera moves
 

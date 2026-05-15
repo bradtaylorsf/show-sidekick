@@ -71,6 +71,97 @@ describe("bundled pipeline manifests", () => {
     expect(existsSync(path.join(hybridSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
   });
 
+  it("ships the animated-explainer manifest with eight directors plus an executive producer", async () => {
+    const manifest = await loadBundledManifest("animated-explainer");
+    const explainerSkillsDir = path.join(bundledPipelineSkillsDir, "explainer");
+    const directorFiles = [
+      "idea-director.md",
+      "proposal-director.md",
+      "script-director.md",
+      "scene-director.md",
+      "asset-director.md",
+      "edit-director.md",
+      "compose-director.md",
+      "publish-director.md",
+    ];
+
+    expect(manifest).toMatchObject({
+      slug: "animated-explainer",
+      status: "production",
+      master_clock: "voiceover",
+      orchestration: {
+        mode: "executive-producer",
+        skill: "pipelines/explainer/executive-producer.md",
+        budget_default_usd: 2,
+        max_revisions_per_stage: 3,
+        max_send_backs: 2,
+        max_wall_time_minutes: 20,
+      },
+    });
+    expect(manifest.stages.map((stage) => stage.slug)).toEqual([
+      "idea",
+      "proposal",
+      "script",
+      "scene_plan",
+      "assets",
+      "edit",
+      "compose",
+      "publish",
+    ]);
+
+    for (const fileName of directorFiles) {
+      expect(existsSync(path.join(explainerSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
+    }
+    expect(existsSync(path.join(explainerSkillsDir, "executive-producer.md"))).toBe(true);
+    expect(existsSync(path.join(explainerSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+  });
+
+  it("ships the animation manifest with eight directors plus an executive producer", async () => {
+    const manifest = await loadBundledManifest("animation");
+    const animationSkillsDir = path.join(bundledPipelineSkillsDir, "animation");
+    const directorFiles = [
+      "idea-director.md",
+      "script-director.md",
+      "scene-director.md",
+      "runtime-selector-director.md",
+      "asset-director.md",
+      "edit-director.md",
+      "compose-director.md",
+      "publish-director.md",
+    ];
+
+    expect(manifest).toMatchObject({
+      slug: "animation",
+      status: "production",
+      master_clock: "voiceover",
+      orchestration: {
+        mode: "executive-producer",
+        skill: "pipelines/animation/executive-producer.md",
+        budget_default_usd: 2,
+        max_revisions_per_stage: 3,
+        max_send_backs: 2,
+        max_wall_time_minutes: 20,
+      },
+    });
+    expect(manifest.stages.map((stage) => stage.slug)).toEqual([
+      "idea",
+      "script",
+      "scene_plan",
+      "runtime_selection",
+      "assets",
+      "edit",
+      "compose",
+      "publish",
+    ]);
+    expect(manifest.required_skills).toContain("meta/animation-runtime-selector");
+
+    for (const fileName of directorFiles) {
+      expect(existsSync(path.join(animationSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
+    }
+    expect(existsSync(path.join(animationSkillsDir, "executive-producer.md"))).toBe(true);
+    expect(existsSync(path.join(animationSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+  });
+
   it("ships the localization-dub manifest with eight directors plus an executive producer", async () => {
     const manifest = await loadBundledManifest("localization-dub");
     const localizationSkillsDir = path.join(bundledPipelineSkillsDir, "localization-dub");

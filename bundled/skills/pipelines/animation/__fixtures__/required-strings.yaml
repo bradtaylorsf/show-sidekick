@@ -1,0 +1,56 @@
+pipeline: animation
+required_sections:
+  - file: executive-producer.md
+    section: "## \"keep it simple\" bias"
+  - file: runtime-selector-director.md
+    section: "## Required References"
+  - file: compose-director.md
+    section: "## HyperFrames Gate"
+  - file: compose-director.md
+    section: "## GSAP Inside Remotion"
+required_phrases:
+  - file: executive-producer.md
+    phrase: "\"keep it simple\" bias"
+  - file: runtime-selector-director.md
+    phrase: "bundled/skills/meta/animation-runtime-selector.md"
+  - file: runtime-selector-director.md
+    phrase: "bundled/skills/core/remotion.md"
+  - file: asset-director.md
+    phrase: "bundled/skills/agents/gsap-timeline.md"
+  - file: asset-director.md
+    phrase: "bundled/skills/agents/gsap-plugins.md"
+  - file: asset-director.md
+    phrase: "bundled/skills/agents/framer-motion.md"
+  - file: asset-director.md
+    phrase: "bundled/skills/agents/lottie-bodymovin.md"
+  - file: asset-director.md
+    phrase: "SplitText"
+  - file: asset-director.md
+    phrase: "MorphSVG"
+  - file: asset-director.md
+    phrase: "MotionPath"
+  - file: asset-director.md
+    phrase: "DrawSVG"
+  - file: asset-director.md
+    phrase: "Flip"
+  - file: asset-director.md
+    phrase: "CustomEase"
+  - file: compose-director.md
+    phrase: "HyperFrames renders MUST pass `hyperframes lint` and `hyperframes validate` before render"
+  - file: compose-director.md
+    phrase: "bundled/skills/core/hyperframes.md"
+  - file: compose-director.md
+    phrase: "bundled/skills/agents/hyperframes-cli.md"
+  - file: edit-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: compose-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: compose-director.md
+    phrase: "tl.progress(frame / durationInFrames)"
+  - file: compose-director.md
+    phrase: "GSAP as value calculator"
+required_modules:
+  - file: executive-producer.md
+    module: "\"keep it simple\" bias"
+  - file: compose-director.md
+    module: "GSAP Inside Remotion"

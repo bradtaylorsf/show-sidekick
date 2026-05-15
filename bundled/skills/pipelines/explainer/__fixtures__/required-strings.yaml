@@ -1,0 +1,46 @@
+pipeline: animated-explainer
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline state machine"
+  - file: executive-producer.md
+    section: "## Mandatory locked decisions"
+  - file: executive-producer.md
+    section: "## Validated patterns"
+  - file: executive-producer.md
+    section: "## When to stop and check with the human"
+required_phrases:
+  - file: executive-producer.md
+    phrase: "Layer 3 skills are mandatory before generation"
+  - file: asset-director.md
+    phrase: "Layer 3 skills are mandatory before generation"
+  - file: edit-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: compose-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: compose-director.md
+    phrase: "bundled/skills/core/remotion.md"
+  - file: asset-director.md
+    phrase: "bundled/skills/agents/flux-best-practices.md"
+  - file: asset-director.md
+    phrase: "bundled/skills/agents/bfl-api.md"
+  - file: idea-director.md
+    phrase: "bundled/skills/_shared/video-prompting.md"
+  - file: proposal-director.md
+    phrase: "bundled/skills/_shared/video-prompting.md"
+  - file: script-director.md
+    phrase: "bundled/skills/_shared/video-prompting.md"
+  - file: scene-director.md
+    phrase: "bundled/skills/_shared/video-prompting.md"
+  - file: asset-director.md
+    phrase: "bundled/skills/_shared/video-prompting.md"
+  - file: edit-director.md
+    phrase: "bundled/skills/_shared/video-prompting.md"
+  - file: compose-director.md
+    phrase: "bundled/skills/_shared/video-prompting.md"
+  - file: publish-director.md
+    phrase: "bundled/skills/_shared/video-prompting.md"
+required_modules:
+  - file: executive-producer.md
+    module: "Validated patterns"
+  - file: compose-director.md
+    module: "Runtime Lock"
