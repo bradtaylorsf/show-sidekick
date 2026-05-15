@@ -1,0 +1,264 @@
+slug: clip-factory
+display_name: Clip Factory
+description: Batch clip pipeline for searching, selecting, caching, and composing reusable short-form clips from stock or generated sources.
+status: beta
+master_clock: none
+default_checkpoint_policy: guided
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/clip-factory/executive-producer.md
+  - pipelines/clip-factory/research-director.md
+  - pipelines/clip-factory/idea-director.md
+  - pipelines/clip-factory/scene-director.md
+  - pipelines/clip-factory/asset-director.md
+  - pipelines/clip-factory/edit-director.md
+  - pipelines/clip-factory/compose-director.md
+  - pipelines/clip-factory/publish-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+compatible_playbooks:
+  recommended:
+    - clean-professional
+  also_works:
+    - minimalist-diagram
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/clip-factory/executive-producer.md
+  budget_default_usd: 1
+  max_revisions_per_stage: 2
+  max_send_backs: 2
+  max_wall_time_minutes: 20
+sample:
+  duration_s_min: 8
+  duration_s_max: 12
+  hint: One searchable clip lane and one assembled preview.
+export:
+  supported_targets:
+    - premiere
+    - davinci
+    - capcut
+    - edl
+  default_target: premiere
+  notes: Export packages include edit decisions, linked assets, render notes, and NLE handoff metadata.
+stages:
+  - slug: research
+    skill: pipelines/clip-factory/research-director.md
+    produces: research_brief
+    produces_artifacts:
+      - research_brief
+    required_artifacts_in: []
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools:
+      - stock_cross_search
+      - clip_search
+    tools_available:
+      - stock_cross_search
+      - clip_search
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Research output fits the clip-factory lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid research_brief artifact
+      - Research handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: required
+  - slug: idea
+    skill: pipelines/clip-factory/idea-director.md
+    produces: brief
+    produces_artifacts:
+      - brief
+    required_artifacts_in:
+      - research_brief
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Idea output fits the clip-factory lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid brief artifact
+      - Idea handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: required
+  - slug: scene_plan
+    skill: pipelines/clip-factory/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - research_brief
+      - brief
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Scene Plan output fits the clip-factory lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Scene Plan handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: required
+  - slug: assets
+    skill: pipelines/clip-factory/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - research_brief
+      - brief
+      - scene_plan
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools:
+      - clip_cache
+      - video_selector
+    tools_available:
+      - clip_cache
+      - video_selector
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Assets output fits the clip-factory lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - Assets handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0.25
+        comment: sample-scope asset generation or capture
+      full:
+        usd: 2
+        comment: full asset generation, capture, or processing pass
+    human_approval: optional
+  - slug: edit
+    skill: pipelines/clip-factory/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - research_brief
+      - brief
+      - scene_plan
+      - asset_manifest
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Edit output fits the clip-factory lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - Edit handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: optional
+  - slug: compose
+    skill: pipelines/clip-factory/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - research_brief
+      - brief
+      - scene_plan
+      - asset_manifest
+      - edit_decisions
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools:
+      - video_compose
+      - video_stitch
+    tools_available:
+      - video_compose
+      - video_stitch
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Compose output fits the clip-factory lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Compose handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0.05
+        comment: local render validation
+      full:
+        usd: 0.25
+        comment: full render and export pass
+    human_approval: optional
+  - slug: publish
+    skill: pipelines/clip-factory/publish-director.md
+    produces: publish_log
+    produces_artifacts:
+      - publish_log
+    required_artifacts_in:
+      - research_brief
+      - brief
+      - scene_plan
+      - asset_manifest
+      - edit_decisions
+      - render_report
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Publish output fits the clip-factory lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Publish handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: required

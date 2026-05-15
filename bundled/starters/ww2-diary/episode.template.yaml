@@ -1,11 +1,11 @@
 # Copy this file to episodes/<slug>.yaml and replace the title, inputs, and notes.
 slug: new-ww2-diary
-title: "New WW2 Diary"
+title: New WW2 Diary
 created: 2026-05-14
-pipeline: ww2-diary
+pipeline: cinematic
 playbook: news-broadcast
 runtime: ffmpeg
-aspect: "16:9"
+aspect: 16:9
 budget_usd: 0.75
 inputs:
   diary: shows/ww2-diary/inputs/sample-episode/diary.txt

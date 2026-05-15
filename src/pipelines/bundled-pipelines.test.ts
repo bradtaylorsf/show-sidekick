@@ -1,29 +1,76 @@
 import { existsSync } from "node:fs";
-import { readdir, readFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import type { Command } from "commander";
 import { parse as parseYaml } from "yaml";
-import { describe, expect, it } from "vitest";
-import { PipelineManifestSchema } from "./manifest.js";
+import { afterEach, describe, expect, it } from "vitest";
+import { BUNDLED_MANIFEST_INVENTORY_SLUGS, SHOW_ONLY_DENYLIST } from "./demo-inventory.js";
+import { PipelineManifestSchema, type PipelineManifest } from "./manifest.js";
+import { createInitHandler } from "../cli/commands/init.js";
 import { Registry } from "../registry/index.js";
+import { computeBundledChecksum, copyBundledInto } from "../version/bundled.js";
 
 const bundledPipelinesDir = fileURLToPath(new URL("../../bundled/pipelines/", import.meta.url));
 const bundledPipelineSkillsDir = fileURLToPath(new URL("../../bundled/skills/pipelines/", import.meta.url));
 const bundledArtifactSchemasDir = fileURLToPath(new URL("../../bundled/schemas/artifacts/", import.meta.url));
+const bundledRootDir = fileURLToPath(new URL("../../bundled/", import.meta.url));
+let scratchDirs: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(scratchDirs.map((dir) => rm(dir, { recursive: true, force: true })));
+  scratchDirs = [];
+});
 
 describe("bundled pipeline manifests", () => {
+  it("does not ship unclassified bundled pipeline manifests", async () => {
+    const files = await readdir(bundledPipelinesDir);
+    const manifestSlugs = files
+      .filter((file) => file.endsWith(".yaml"))
+      .map((file) => path.basename(file, ".yaml"))
+      .sort((left, right) => left.localeCompare(right));
+    const knownManifestSlugs = new Set<string>(BUNDLED_MANIFEST_INVENTORY_SLUGS);
+
+    expect(manifestSlugs).toEqual(manifestSlugs.filter((slug) => knownManifestSlugs.has(slug)));
+  });
+
+  it("does not ship show-only concepts as pipeline manifests", () => {
+    for (const slug of SHOW_ONLY_DENYLIST) {
+      expect(existsSync(path.join(bundledPipelinesDir, `${slug}.yaml`)), `${slug} must remain show-only`).toBe(false);
+    }
+  });
+
   it("ships the framework-smoke manifest as a minimal two-stage pipeline", async () => {
     const manifestPath = path.join(bundledPipelinesDir, "framework-smoke.yaml");
     const raw = await readFile(manifestPath, "utf8");
     const manifest = PipelineManifestSchema.parse(parseYaml(raw));
 
-    expect(raw.trimEnd().split(/\r?\n/u).length).toBeLessThan(30);
     expect(raw).not.toMatch(/^orchestration:/mu);
     expect(raw).not.toMatch(/^metadata:/mu);
     expect(manifest.slug).toBe("framework-smoke");
     expect(manifest.stages.map((stage) => stage.slug)).toEqual(["research", "script"]);
     expect(manifest.stages.map((stage) => stage.human_approval)).toEqual(["never", "never"]);
+    expect(manifest.stages.every((stage) => stage.estimated_cost?.sample.usd === 0)).toBe(true);
     expect(existsSync(path.join(bundledPipelineSkillsDir, "framework-smoke", "executive-producer.md"))).toBe(false);
+  });
+
+  it("validates every bundled manifest through PipelineManifestSchema", async () => {
+    const manifests = await loadAllBundledManifests();
+
+    expect(manifests.map((manifest) => manifest.slug).sort((left, right) => left.localeCompare(right))).toEqual(
+      [...BUNDLED_MANIFEST_INVENTORY_SLUGS].sort((left, right) => left.localeCompare(right)),
+    );
+  });
+
+  it("ships a manifest for every inventory slug and no extras", async () => {
+    const files = await readdir(bundledPipelinesDir);
+    const manifestSlugs = files
+      .filter((file) => file.endsWith(".yaml"))
+      .map((file) => path.basename(file, ".yaml"))
+      .sort((left, right) => left.localeCompare(right));
+
+    expect(manifestSlugs).toEqual([...BUNDLED_MANIFEST_INVENTORY_SLUGS].sort((left, right) => left.localeCompare(right)));
   });
 
   it("ships the hybrid manifest with eight directors plus an executive producer", async () => {
@@ -204,6 +251,107 @@ describe("bundled pipeline manifests", () => {
     expect(missing).toEqual([]);
   });
 
+  it("resolves every declared skill from a freshly initialized user project", async () => {
+    const projectRoot = await freshInitializedProject();
+    const manifests = await loadAllBundledManifests();
+    const missing: string[] = [];
+
+    for (const manifest of manifests) {
+      for (const skillPath of declaredSkillPaths(manifest)) {
+        const resolved = resolveProjectSkill(projectRoot, skillPath);
+        if (!existsSync(resolved)) {
+          missing.push(`${manifest.slug}: ${skillPath} -> ${resolved}`);
+        }
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
+
+  it("declares complete audit metadata on every bundled stage", async () => {
+    const files = await readdir(bundledPipelinesDir);
+    const missing: string[] = [];
+
+    for (const file of files.filter((candidate) => candidate.endsWith(".yaml"))) {
+      const rawManifest = parseYaml(await readFile(path.join(bundledPipelinesDir, file), "utf8")) as unknown;
+      if (!isRecord(rawManifest) || !Array.isArray(rawManifest.stages)) {
+        missing.push(`${file}: stages must be an array`);
+        continue;
+      }
+
+      rawManifest.stages.forEach((stage, index) => {
+        if (!isRecord(stage)) {
+          missing.push(`${file}: stages[${index}] must be an object`);
+          return;
+        }
+
+        const stageName = typeof stage.slug === "string" ? stage.slug : `stages[${index}]`;
+        for (const field of ["required_artifacts_in", "produces", "review_focus", "success_criteria", "estimated_cost", "human_approval"]) {
+          if (!(field in stage)) {
+            missing.push(`${file}.${stageName}: missing ${field}`);
+          }
+        }
+
+        if (!Array.isArray(stage.required_artifacts_in)) {
+          missing.push(`${file}.${stageName}: required_artifacts_in must be explicit array`);
+        }
+        if (typeof stage.produces !== "string" || stage.produces.length === 0) {
+          missing.push(`${file}.${stageName}: produces must be non-empty`);
+        }
+        if (!Array.isArray(stage.review_focus) || stage.review_focus.length === 0) {
+          missing.push(`${file}.${stageName}: review_focus must be non-empty`);
+        }
+        if (!Array.isArray(stage.success_criteria) || stage.success_criteria.length === 0) {
+          missing.push(`${file}.${stageName}: success_criteria must be non-empty`);
+        }
+        if (!hasEstimatedCost(stage.estimated_cost)) {
+          missing.push(`${file}.${stageName}: estimated_cost must include sample.usd and full.usd`);
+        }
+        if (!["required", "optional", "never"].includes(String(stage.human_approval))) {
+          missing.push(`${file}.${stageName}: human_approval must be explicit`);
+        }
+      });
+    }
+
+    expect(missing).toEqual([]);
+  });
+
+  it("ships a required-string fixture for every pipeline skill set", async () => {
+    const missing: string[] = [];
+
+    for (const slug of BUNDLED_MANIFEST_INVENTORY_SLUGS) {
+      const fixturePath = path.join(bundledPipelineSkillsDir, slug, "__fixtures__", "required-strings.yaml");
+      if (!existsSync(fixturePath)) {
+        missing.push(`${slug}: ${fixturePath}`);
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
+
+  it("keeps bundled pipeline directors predit-native", async () => {
+    const files = await markdownFiles(bundledPipelineSkillsDir);
+    const banned = [
+      { label: ".migration", pattern: /\.migration/u },
+      { label: "OpenMontage", pattern: /openmontage/iu },
+      { label: "predit-showcase", pattern: /predit-showcase/u },
+      { label: "harness worktree path", pattern: /\.worktrees\/issue-\d+/u },
+      { label: "absolute harness path", pattern: /\/Users\/bradtaylor\/Documents\/GitHub\/predit/u },
+    ];
+    const violations: string[] = [];
+
+    for (const file of files) {
+      const content = await readFile(file, "utf8");
+      for (const { label, pattern } of banned) {
+        if (pattern.test(content)) {
+          violations.push(`${path.relative(bundledRootDir, file)} contains ${label}`);
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
   it("resolves every declared tool name through the registry", async () => {
     const manifests = await loadAllBundledManifests();
     const registry = new Registry();
@@ -270,4 +418,80 @@ function resolvePipelineSkill(skillPath: string): string {
   const normalized = skillPath.endsWith(".md") ? skillPath : `${skillPath}.md`;
   const relative = normalized.startsWith("pipelines/") ? normalized.slice("pipelines/".length) : normalized;
   return path.join(bundledPipelineSkillsDir, relative);
+}
+
+function declaredSkillPaths(manifest: PipelineManifest): string[] {
+  return [
+    ...(manifest.orchestration.skill ? [manifest.orchestration.skill] : []),
+    ...manifest.stages.map((stage) => stage.skill),
+    ...(manifest.required_skills ?? []),
+  ];
+}
+
+function resolveProjectSkill(projectRoot: string, skillPath: string): string {
+  const normalized = skillPath.endsWith(".md") ? skillPath : `${skillPath}.md`;
+
+  if (normalized.startsWith("pipelines/")) {
+    return path.join(projectRoot, ".predit", "skills", normalized);
+  }
+
+  if (normalized.startsWith("meta/")) {
+    return path.join(projectRoot, ".predit", "skills", normalized);
+  }
+
+  return path.join(projectRoot, ".predit", "skills", normalized);
+}
+
+async function freshInitializedProject(): Promise<string> {
+  const projectRoot = await mkdtemp(path.join(tmpdir(), "predit-bundled-pipelines-"));
+  scratchDirs.push(projectRoot);
+  const io = {
+    stdout: { write: () => true },
+    stderr: { write: () => true },
+  };
+
+  await createInitHandler(io, {
+    bundledRoot: () => bundledRootDir,
+    copyBundledInto: (target) => copyBundledInto(target, bundledRootDir),
+    computeBundledChecksum: () => computeBundledChecksum(bundledRootDir),
+    cwd: () => projectRoot,
+    now: () => new Date("2026-05-14T12:00:00.000Z"),
+  })(command({}));
+
+  return projectRoot;
+}
+
+function command(options: Record<string, unknown>): Command {
+  return {
+    optsWithGlobals: () => options,
+  } as unknown as Command;
+}
+
+function hasEstimatedCost(value: unknown): boolean {
+  if (!isRecord(value) || !isRecord(value.sample) || !isRecord(value.full)) {
+    return false;
+  }
+
+  return typeof value.sample.usd === "number" && typeof value.full.usd === "number";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function markdownFiles(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files = await Promise.all(
+    entries.map(async (entry) => {
+      const entryPath = path.join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        return entry.name === "__fixtures__" ? [] : markdownFiles(entryPath);
+      }
+
+      return entry.isFile() && entry.name.endsWith(".md") ? [entryPath] : [];
+    }),
+  );
+
+  return files.flat().sort((left, right) => left.localeCompare(right));
 }

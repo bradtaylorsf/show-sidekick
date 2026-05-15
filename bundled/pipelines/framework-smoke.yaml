@@ -1,6 +1,6 @@
 slug: framework-smoke
-display_name: "Framework Smoke"
-description: "Minimal pipeline manifest used to exercise the Phase 0 framework contracts."
+display_name: Framework Smoke
+description: Minimal pipeline manifest used to exercise the Phase 0 framework contracts.
 status: beta
 master_clock: none
 stages:
@@ -8,11 +8,43 @@ stages:
     skill: pipelines/framework-smoke/research-director.md
     produces: research_brief
     success_criteria:
-      - "Produces a schema-valid research_brief artifact"
+      - Produces a schema-valid research_brief artifact
     human_approval: never
+    produces_artifacts:
+      - research_brief
+    required_artifacts_in: []
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    review_focus:
+      - research output is complete and reviewable
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
   - slug: script
     skill: pipelines/framework-smoke/script-director.md
     produces: script
     success_criteria:
-      - "Produces a schema-valid script artifact"
+      - Produces a schema-valid script artifact
     human_approval: never
+    produces_artifacts:
+      - script
+    required_artifacts_in: []
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    review_focus:
+      - script output is complete and reviewable
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only

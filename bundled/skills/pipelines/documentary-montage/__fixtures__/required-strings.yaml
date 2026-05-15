@@ -1,0 +1,21 @@
+pipeline: documentary-montage
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline State"
+  - file: executive-producer.md
+    section: "## Quality Gates"
+  - file: idea-director.md
+    section: "## Workflow"
+required_phrases:
+  - file: executive-producer.md
+    phrase: "demo readiness lane: documentary-montage"
+  - file: executive-producer.md
+    phrase: Do not swap render_runtime silently
+required_numerics:
+  - file: executive-producer.md
+    numeric: "max_revisions_per_stage: 2"
+  - file: executive-producer.md
+    numeric: "max_wall_time_minutes: 20"
+required_modules:
+  - file: executive-producer.md
+    module: Quality Gates

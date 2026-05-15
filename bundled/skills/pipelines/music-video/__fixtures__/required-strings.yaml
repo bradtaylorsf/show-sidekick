@@ -1,0 +1,17 @@
+pipeline: music-video
+required_sections:
+  - file: asset-director.md
+    section: "# Music Video Asset Director"
+  - file: edit-director.md
+    section: "# Music Video Edit Director"
+  - file: compose-director.md
+    section: "# Music Video Compose Director"
+required_phrases:
+  - file: asset-director.md
+    phrase: zero-key sample
+  - file: compose-director.md
+    phrase: The canonical compose artifact is `render_report.json`
+required_numerics: []
+required_modules:
+  - file: compose-director.md
+    module: Music Video Compose Director

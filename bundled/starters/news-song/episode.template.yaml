@@ -1,11 +1,11 @@
 # Copy this file to episodes/<slug>.yaml and replace the title, inputs, and notes.
 slug: new-news-song
-title: "New News Song"
+title: New News Song
 created: 2026-05-14
 pipeline: news-song
 playbook: news-song
 runtime: ffmpeg
-aspect: "16:9"
+aspect: 16:9
 budget_usd: 0.75
 inputs:
   track: shows/news-song/inputs/sample-episode/track.wav
@@ -16,4 +16,3 @@ cast: []
 tags:
   - news-song
   - audio-led
-

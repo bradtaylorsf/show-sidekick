@@ -40,7 +40,6 @@ const StarterMetadataSchema = z
   .object({
     fixture_size_bytes: z.number().int().nonnegative().optional(),
     expected_sample_duration_s: z.number().positive().optional(),
-    pending_pipelines: z.array(z.string()).default([]),
   })
   .default({});
 
@@ -161,6 +160,8 @@ async function listStarters(projectRoot: string): Promise<Row[]> {
       const { show, metadata } = await loadStarterShow(showPath);
       const fixtureSizeBytes =
         metadata.fixture_size_bytes ?? (await directorySize(path.join(entry.path, "inputs")));
+      const pipelineKeys = Object.keys(show.pipelines).sort();
+      const sampleSupported = await starterSampleSupported(projectRoot, pipelineKeys);
 
       return {
         event: "starter_listed",
@@ -169,10 +170,11 @@ async function listStarters(projectRoot: string): Promise<Row[]> {
         path: entry.path,
         source: "bundled" as const,
         description: show.description,
-        pipelines: Object.keys(show.pipelines).sort(),
+        pipelines: pipelineKeys,
         fixture_size: formatBytes(fixtureSizeBytes),
         fixture_size_bytes: fixtureSizeBytes,
         sample_duration_s: metadata.expected_sample_duration_s,
+        sample_supported: sampleSupported,
       };
     }),
   );
@@ -301,6 +303,24 @@ function parseStarterMetadata(value: unknown): StarterMetadata {
   return StarterMetadataSchema.parse(value.starter);
 }
 
+async function starterSampleSupported(projectRoot: string, pipelineKeys: string[]): Promise<boolean> {
+  if (pipelineKeys.length === 0) {
+    return false;
+  }
+
+  const support = await Promise.all(pipelineKeys.map((pipeline) => pipelineSampleSupported(projectRoot, pipeline)));
+  return support.every(Boolean);
+}
+
+async function pipelineSampleSupported(projectRoot: string, pipelineKey: string): Promise<boolean> {
+  const pipeline = await loadPipeline(projectRoot, pipelineKey);
+  if (pipeline.sample === undefined) {
+    return false;
+  }
+
+  return pipeline.stages.every((stage) => stage.sample_mode_supported !== false);
+}
+
 async function directorySize(dir: string): Promise<number> {
   try {
     const entries = await readdir(dir, { withFileTypes: true });
@@ -385,7 +405,7 @@ function pickColumns(rows: Row[]): string[] {
   }
 
   if (first?.kind === "starters") {
-    return ["name", "description", "pipelines", "fixture_size", "sample_duration_s"];
+    return ["name", "description", "pipelines", "fixture_size", "sample_duration_s", "sample_supported"];
   }
 
   return ["name", "source", "path"];

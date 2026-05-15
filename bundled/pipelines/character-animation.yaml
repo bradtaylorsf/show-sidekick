@@ -1,0 +1,363 @@
+slug: character-animation
+display_name: Character Animation
+description: Character animation pipeline for designing a character, planning a rig, building an action timeline, and rendering animated beats.
+status: beta
+master_clock: action_timeline
+default_checkpoint_policy: guided
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/character-animation/executive-producer.md
+  - pipelines/character-animation/research-director.md
+  - pipelines/character-animation/proposal-director.md
+  - pipelines/character-animation/script-director.md
+  - pipelines/character-animation/character-design-director.md
+  - pipelines/character-animation/rig-plan-director.md
+  - pipelines/character-animation/scene-director.md
+  - pipelines/character-animation/asset-director.md
+  - pipelines/character-animation/edit-director.md
+  - pipelines/character-animation/compose-director.md
+  - pipelines/character-animation/publish-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+compatible_playbooks:
+  recommended:
+    - playful-hip-hop-explainer
+  also_works:
+    - flat-motion-graphics
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/character-animation/executive-producer.md
+  budget_default_usd: 1
+  max_revisions_per_stage: 2
+  max_send_backs: 2
+  max_wall_time_minutes: 20
+sample:
+  duration_s_min: 8
+  duration_s_max: 14
+  hint: One character, two poses, and one readable action beat.
+export:
+  supported_targets:
+    - premiere
+    - davinci
+    - capcut
+    - edl
+  default_target: premiere
+  notes: Export packages include edit decisions, linked assets, render notes, and NLE handoff metadata.
+stages:
+  - slug: research
+    skill: pipelines/character-animation/research-director.md
+    produces: research_brief
+    produces_artifacts:
+      - research_brief
+    required_artifacts_in: []
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Research output fits the character-animation lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid research_brief artifact
+      - Research handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: required
+  - slug: proposal
+    skill: pipelines/character-animation/proposal-director.md
+    produces: proposal_packet
+    produces_artifacts:
+      - proposal_packet
+    required_artifacts_in:
+      - research_brief
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Proposal output fits the character-animation lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid proposal_packet artifact
+      - Proposal handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0.25
+        comment: sample-scope asset generation or capture
+      full:
+        usd: 2
+        comment: full asset generation, capture, or processing pass
+    human_approval: required
+  - slug: script
+    skill: pipelines/character-animation/script-director.md
+    produces: script
+    produces_artifacts:
+      - script
+    required_artifacts_in:
+      - research_brief
+      - proposal_packet
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Script output fits the character-animation lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid script artifact
+      - Script handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: required
+  - slug: character_design
+    skill: pipelines/character-animation/character-design-director.md
+    produces: character_design
+    produces_artifacts:
+      - character_design
+    required_artifacts_in:
+      - research_brief
+      - proposal_packet
+      - script
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Character Design output fits the character-animation lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid character_design artifact
+      - Character Design handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0.25
+        comment: sample-scope asset generation or capture
+      full:
+        usd: 2
+        comment: full asset generation, capture, or processing pass
+    human_approval: required
+  - slug: rig_plan
+    skill: pipelines/character-animation/rig-plan-director.md
+    produces: rig_plan
+    produces_artifacts:
+      - rig_plan
+    required_artifacts_in:
+      - research_brief
+      - proposal_packet
+      - script
+      - character_design
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Rig Plan output fits the character-animation lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid rig_plan artifact
+      - Rig Plan handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0.25
+        comment: sample-scope asset generation or capture
+      full:
+        usd: 2
+        comment: full asset generation, capture, or processing pass
+    human_approval: required
+  - slug: scene_plan
+    skill: pipelines/character-animation/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - research_brief
+      - proposal_packet
+      - script
+      - character_design
+      - rig_plan
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Scene Plan output fits the character-animation lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Scene Plan handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: required
+  - slug: assets
+    skill: pipelines/character-animation/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - research_brief
+      - proposal_packet
+      - script
+      - character_design
+      - rig_plan
+      - scene_plan
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools:
+      - image_selector
+    tools_available:
+      - image_selector
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Assets output fits the character-animation lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - Assets handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0.25
+        comment: sample-scope asset generation or capture
+      full:
+        usd: 2
+        comment: full asset generation, capture, or processing pass
+    human_approval: optional
+  - slug: edit
+    skill: pipelines/character-animation/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - research_brief
+      - proposal_packet
+      - script
+      - character_design
+      - rig_plan
+      - scene_plan
+      - asset_manifest
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Edit output fits the character-animation lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - Edit handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: optional
+  - slug: compose
+    skill: pipelines/character-animation/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - research_brief
+      - proposal_packet
+      - script
+      - character_design
+      - rig_plan
+      - scene_plan
+      - asset_manifest
+      - edit_decisions
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools:
+      - character_animation
+      - video_compose
+    tools_available:
+      - character_animation
+      - video_compose
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Compose output fits the character-animation lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Compose handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0.05
+        comment: local render validation
+      full:
+        usd: 0.25
+        comment: full render and export pass
+    human_approval: optional
+  - slug: publish
+    skill: pipelines/character-animation/publish-director.md
+    produces: publish_log
+    produces_artifacts:
+      - publish_log
+    required_artifacts_in:
+      - research_brief
+      - proposal_packet
+      - script
+      - character_design
+      - rig_plan
+      - scene_plan
+      - asset_manifest
+      - edit_decisions
+      - render_report
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Publish output fits the character-animation lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Publish handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: required

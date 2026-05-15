@@ -1,6 +1,6 @@
 slug: news-song
-display_name: "News Song"
-description: "Audio-led news-song starter with a synthesized track and lyric fixture."
+display_name: News Song
+description: Audio-led news-song starter with a synthesized track and lyric fixture.
 created: 2026-05-14
 brand: ./brand/
 characters: ./characters/
@@ -9,7 +9,7 @@ pipelines:
   news-song:
     playbook: news-song
     runtime: ffmpeg
-    aspect: "16:9"
+    aspect: 16:9
     budget_usd: 0.75
 defaults:
   pipeline: news-song
@@ -24,5 +24,3 @@ ingest:
 starter:
   fixture_size_bytes: 120225
   expected_sample_duration_s: 15
-  pending_pipelines:
-    - news-song

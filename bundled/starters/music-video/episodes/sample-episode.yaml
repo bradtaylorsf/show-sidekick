@@ -1,10 +1,10 @@
 slug: sample-episode
-title: "Sample Audio-Led Music Video"
+title: Sample Audio-Led Music Video
 created: 2026-05-14
 pipeline: music-video
 playbook: news-song
 runtime: ffmpeg
-aspect: "9:16"
+aspect: 9:16
 budget_usd: 0.5
 inputs:
   track: shows/music-video/inputs/sample-episode/track.wav
@@ -17,4 +17,3 @@ tags:
   - music-video
   - sample
   - audio-led
-

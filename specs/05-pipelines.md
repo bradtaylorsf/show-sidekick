@@ -6,6 +6,8 @@ Pipelines are bundled with the harness and cached locally inside the user projec
 
 A pipeline is *referenced* from a show via the `show.pipelines: { <name>: { ... } }` map (see [`04-shows-and-episodes.md`](04-shows-and-episodes.md) → "Pipeline binding"). A show may reference multiple pipelines. The harness rejects an episode that names a pipeline the show doesn't declare in its `pipelines` map.
 
+Bundled demo-readiness slugs are governed by `src/pipelines/demo-inventory.ts` and documented in [`docs/demo-readiness.md`](../docs/demo-readiness.md). New bundled manifests must be added to that inventory in the same change, and show-only concepts must stay out of `bundled/pipelines/`.
+
 ## Manifest schema
 
 Pipelines are declarative YAML manifests at `pipelines/<slug>.yaml` (or the bundled equivalent in `.predit/pipelines/<slug>.yaml`). They describe the workflow; how-to lives in stage director skills (Markdown).

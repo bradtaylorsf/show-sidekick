@@ -1,10 +1,10 @@
 slug: sample-episode
-title: "Sample Chaos FM News Song"
+title: Sample Chaos FM News Song
 created: 2026-05-14
 pipeline: news-song
 playbook: thechaosfm-gta-political
 runtime: ffmpeg
-aspect: "16:9"
+aspect: 16:9
 budget_usd: 0.75
 inputs:
   track: shows/thechaosfm/inputs/sample-episode/track.wav
@@ -17,4 +17,3 @@ tags:
   - thechaosfm
   - sample
   - audio-led
-
