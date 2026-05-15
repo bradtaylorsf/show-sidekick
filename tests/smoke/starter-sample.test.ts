@@ -28,24 +28,16 @@ describe("music-video starter sample", () => {
     scratchDirs.push(root);
     await mkdir(root, { recursive: true });
 
-    const stdout = [
-      await runPredit(root, ["init", "--starter", "music-video"]),
-      await runPredit(root, ["build", "music-video/sample-episode", "--sample"]),
-      await runPredit(root, ["export", "music-video/sample-episode", "--target", "premiere"]),
-    ].join("");
-
-    const events = stdout
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line) as { event: string; status?: string; package_path?: string });
-    const lifecycleEvents = events.filter((event) => event.event === "build_finished" || event.event === "exported");
-    expect(events.map((event) => event.event)).not.toContain("registry_warnings");
-    expect(lifecycleEvents).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ event: "build_finished", status: "completed" }),
-        expect.objectContaining({ event: "exported" }),
-      ]),
+    const initEvents = parseEvents(await runPredit(root, ["init", "--starter", "music-video"]));
+    const buildEvents = parseEvents(await runPredit(root, ["build", "music-video/sample-episode", "--sample"]));
+    expect(buildEvents).toEqual(
+      expect.arrayContaining([expect.objectContaining({ event: "build_finished", status: "completed" })]),
     );
+
+    const exportEvents = parseEvents(await runPredit(root, ["export", "music-video/sample-episode", "--target", "premiere"]));
+    const events = [...initEvents, ...buildEvents, ...exportEvents];
+    expect(events.map((event) => event.event)).not.toContain("registry_warnings");
+    expect(exportEvents).toEqual(expect.arrayContaining([expect.objectContaining({ event: "exported" })]));
 
     const renderReportPath = path.join(root, "projects", "music-video", "sample-episode", "render_report.json");
     const renderReport = RenderReportSchema.parse(JSON.parse(await readFile(renderReportPath, "utf8")));
@@ -64,4 +56,12 @@ async function runPredit(cwd: string, args: string[]): Promise<string> {
     timeout: 45_000,
   });
   return result.stdout;
+}
+
+function parseEvents(stdout: string): Array<{ event: string; status?: string; package_path?: string }> {
+  return stdout
+    .trim()
+    .split("\n")
+    .filter((line) => line.length > 0)
+    .map((line) => JSON.parse(line) as { event: string; status?: string; package_path?: string });
 }
