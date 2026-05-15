@@ -1,6 +1,6 @@
 slug: music-video
 display_name: Music Video
-description: "Zero-key audio-led starter pipeline for the bundled music-video sample. It creates a short beat-synced rough-cut artifact set from the supplied track and lyrics, then exports to common NLE handoff formats."
+description: Zero-key audio-led starter pipeline for the bundled music-video sample. It creates a short beat-synced rough-cut artifact set from the supplied track and lyrics, then exports to common NLE handoff formats.
 status: production
 master_clock: audio
 default_checkpoint_policy: automatic
@@ -19,12 +19,16 @@ compatible_playbooks:
     - thechaosfm-gta-political
   custom_allowed: true
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets:
+    - premiere
+    - davinci
+    - capcut
+    - edl
   default_target: premiere
 sample:
   duration_s_min: 15
   duration_s_max: 20
-  hint: "Use the bundled track and lyrics to create a zero-key sample rough cut."
+  hint: Use the bundled track and lyrics to create a zero-key sample rough cut.
 metadata:
   starter_sample_dispatcher: zero-key
 stages:
@@ -34,8 +38,22 @@ stages:
     human_approval: never
     checkpoint_required: true
     estimated_cost:
-      sample: { usd: 0 }
-      full: { usd: 0 }
+      sample:
+        usd: 0
+      full:
+        usd: 0
+    produces_artifacts:
+      - cuesheet
+    required_artifacts_in: []
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    review_focus:
+      - cuesheet output is complete and reviewable
+    success_criteria:
+      - Schema-valid cuesheet artifact
+    sample_mode_supported: true
   - slug: assets
     skill: pipelines/music-video/asset-director.md
     produces: asset_manifest
@@ -44,8 +62,21 @@ stages:
     human_approval: never
     checkpoint_required: true
     estimated_cost:
-      sample: { usd: 0 }
-      full: { usd: 0 }
+      sample:
+        usd: 0
+      full:
+        usd: 0
+    produces_artifacts:
+      - asset_manifest
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    review_focus:
+      - assets output is complete and reviewable
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+    sample_mode_supported: true
   - slug: edit
     skill: pipelines/music-video/edit-director.md
     produces: edit_decisions
@@ -55,8 +86,21 @@ stages:
     human_approval: never
     checkpoint_required: true
     estimated_cost:
-      sample: { usd: 0 }
-      full: { usd: 0 }
+      sample:
+        usd: 0
+      full:
+        usd: 0
+    produces_artifacts:
+      - edit_decisions
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    review_focus:
+      - edit output is complete and reviewable
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+    sample_mode_supported: true
   - slug: compose
     skill: pipelines/music-video/compose-director.md
     produces: render_report
@@ -66,5 +110,18 @@ stages:
     human_approval: never
     checkpoint_required: true
     estimated_cost:
-      sample: { usd: 0 }
-      full: { usd: 0 }
+      sample:
+        usd: 0
+      full:
+        usd: 0
+    produces_artifacts:
+      - render_report
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    review_focus:
+      - compose output is complete and reviewable
+    success_criteria:
+      - Schema-valid render_report artifact
+    sample_mode_supported: true

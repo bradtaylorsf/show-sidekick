@@ -2,7 +2,9 @@ import { spawn } from "node:child_process";
 import { cp, mkdir, stat } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
+import { loadYaml } from "../../config/loader.js";
 import { ProjectAlreadyInitializedError } from "../../paths/errors.js";
+import { ShowSchema, type Show } from "../../shows/show.js";
 import { bundledRoot, computeBundledChecksum, copyBundledInto } from "../../version/bundled.js";
 import { writeCacheVersion } from "../../version/cache.js";
 import { VERSION } from "../../version.js";
@@ -47,6 +49,7 @@ export function createInitHandler(io: CliIo, deps: InitHandlerDeps = {}) {
     await assertNotInitialized(projectRoot);
     if (starter) {
       await assertStarterExists(sourceBundledRoot, starter);
+      await assertStarterPipelinesResolve(sourceBundledRoot, starter);
     }
 
     await mkdir(path.join(projectRoot, ".predit"), { recursive: true });
@@ -95,6 +98,28 @@ async function assertStarterExists(sourceBundledRoot: string, starter: string): 
   const showPath = path.join(sourceBundledRoot, "starters", starter, "show.yaml");
   if (!(await exists(showPath))) {
     throw new Error(`starter '${starter}' not found at ${showPath}`);
+  }
+}
+
+export class StarterPipelineMissingError extends Error {
+  constructor(starter: string, pipeline: string, manifestPath: string) {
+    super(
+      `starter '${starter}' references bundled pipeline '${pipeline}', but no bundled manifest exists at ${manifestPath}. ` +
+        "Update the starter show.yaml to use a real bundled pipeline slug or remove the starter from the bundled set.",
+    );
+    this.name = "StarterPipelineMissingError";
+  }
+}
+
+async function assertStarterPipelinesResolve(sourceBundledRoot: string, starter: string): Promise<void> {
+  const showPath = path.join(sourceBundledRoot, "starters", starter, "show.yaml");
+  const show = (await loadYaml(showPath, ShowSchema)) as Show;
+
+  for (const pipeline of Object.keys(show.pipelines)) {
+    const manifestPath = path.join(sourceBundledRoot, "pipelines", `${pipeline}.yaml`);
+    if (!(await exists(manifestPath))) {
+      throw new StarterPipelineMissingError(starter, pipeline, manifestPath);
+    }
   }
 }
 

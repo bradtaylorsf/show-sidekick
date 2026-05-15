@@ -1,10 +1,10 @@
 slug: sample-episode
-title: "Sample AI Workflow Demo"
+title: Sample AI Workflow Demo
 created: 2026-05-14
 pipeline: screen-demo
 playbook: clean-professional
 runtime: remotion
-aspect: "16:9"
+aspect: 16:9
 budget_usd: 0.5
 inputs:
   terminal_steps: shows/ai-workflow-demo/inputs/sample-episode/terminal-steps.yaml

@@ -1,0 +1,294 @@
+slug: screen-demo
+display_name: Screen Demo
+description: Screen-demo pipeline for product walkthroughs, terminal demos, UI recordings, synthetic screen fixtures, captions, and callouts.
+status: production
+master_clock: voiceover
+default_checkpoint_policy: guided
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/screen-demo/executive-producer.md
+  - pipelines/screen-demo/idea-director.md
+  - pipelines/screen-demo/script-director.md
+  - pipelines/screen-demo/capture-director.md
+  - pipelines/screen-demo/scene-director.md
+  - pipelines/screen-demo/asset-director.md
+  - pipelines/screen-demo/edit-director.md
+  - pipelines/screen-demo/compose-director.md
+  - pipelines/screen-demo/publish-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+compatible_playbooks:
+  recommended:
+    - clean-professional
+  also_works:
+    - minimalist-diagram
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/screen-demo/executive-producer.md
+  budget_default_usd: 2
+  max_revisions_per_stage: 2
+  max_send_backs: 2
+  max_wall_time_minutes: 20
+sample:
+  duration_s_min: 12
+  duration_s_max: 18
+  hint: A short synthetic terminal or screen walkthrough with timed callouts.
+export:
+  supported_targets:
+    - premiere
+    - davinci
+    - capcut
+    - edl
+  default_target: premiere
+  notes: Export packages include edit decisions, linked assets, render notes, and NLE handoff metadata.
+stages:
+  - slug: idea
+    skill: pipelines/screen-demo/idea-director.md
+    produces: brief
+    produces_artifacts:
+      - brief
+    required_artifacts_in: []
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Idea output fits the screen-demo lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid brief artifact
+      - Idea handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: required
+  - slug: script
+    skill: pipelines/screen-demo/script-director.md
+    produces: script
+    produces_artifacts:
+      - script
+    required_artifacts_in:
+      - brief
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Script output fits the screen-demo lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid script artifact
+      - Script handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: required
+  - slug: capture
+    skill: pipelines/screen-demo/capture-director.md
+    produces: capture_manifest
+    produces_artifacts:
+      - capture_manifest
+    required_artifacts_in:
+      - brief
+      - script
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools:
+      - playwright_recording
+      - screen_capture_selector
+    tools_available:
+      - playwright_recording
+      - screen_capture_selector
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Capture output fits the screen-demo lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid capture_manifest artifact
+      - Capture handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0.25
+        comment: sample-scope asset generation or capture
+      full:
+        usd: 2
+        comment: full asset generation, capture, or processing pass
+    human_approval: optional
+  - slug: scene_plan
+    skill: pipelines/screen-demo/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - brief
+      - script
+      - capture_manifest
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Scene Plan output fits the screen-demo lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Scene Plan handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: required
+  - slug: assets
+    skill: pipelines/screen-demo/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - brief
+      - script
+      - capture_manifest
+      - scene_plan
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools:
+      - subtitle_gen
+    tools_available:
+      - subtitle_gen
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Assets output fits the screen-demo lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - Assets handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0.25
+        comment: sample-scope asset generation or capture
+      full:
+        usd: 2
+        comment: full asset generation, capture, or processing pass
+    human_approval: optional
+  - slug: edit
+    skill: pipelines/screen-demo/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - brief
+      - script
+      - capture_manifest
+      - scene_plan
+      - asset_manifest
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Edit output fits the screen-demo lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - Edit handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: optional
+  - slug: compose
+    skill: pipelines/screen-demo/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - brief
+      - script
+      - capture_manifest
+      - scene_plan
+      - asset_manifest
+      - edit_decisions
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools:
+      - video_compose
+    tools_available:
+      - video_compose
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Compose output fits the screen-demo lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Compose handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0.05
+        comment: local render validation
+      full:
+        usd: 0.25
+        comment: full render and export pass
+    human_approval: optional
+  - slug: publish
+    skill: pipelines/screen-demo/publish-director.md
+    produces: publish_log
+    produces_artifacts:
+      - publish_log
+    required_artifacts_in:
+      - brief
+      - script
+      - capture_manifest
+      - scene_plan
+      - asset_manifest
+      - edit_decisions
+      - render_report
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    checkpoint_required: true
+    sample_mode_supported: true
+    review_focus:
+      - Publish output fits the screen-demo lane
+      - Assumptions, risks, and handoff details are explicit
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Publish handoff is ready for the next stage
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    human_approval: required

@@ -48,6 +48,8 @@ predit init --git                 # same, plus `git init`
 predit init --starter music-video # scaffold a starter show alongside the project
 ```
 
+When `--starter` is used, the starter's `show.yaml` is checked before any files are written. Every key in `show.pipelines` must resolve to a bundled manifest in the installed harness cache source. A default bundled starter cannot rely on `pending_pipelines`; missing or undecided pipeline bindings fail early with an error naming the starter and unresolved pipeline slug.
+
 Created files:
 
 ```
@@ -94,7 +96,7 @@ Creates `shows/<slug>/`. With `--from <starter>`, copies a starter template from
 
 Available starters listed by `predit ls starters`.
 
-`predit ls starters` reports each starter's name, description, declared pipeline keys, fixture size, and expected sample duration. Starter metadata is read from the bundled starter's `show.yaml` when present, with fixture size derived from `inputs/` as a fallback.
+`predit ls starters` reports each starter's name, description, declared pipeline keys, fixture size, expected sample duration, and whether the referenced pipeline manifests support sample mode. Starter metadata is read from the bundled starter's `show.yaml` when present, with fixture size derived from `inputs/` as a fallback.
 
 ## What is bundled vs user-owned
 

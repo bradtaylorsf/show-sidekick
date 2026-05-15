@@ -1,10 +1,10 @@
 slug: sample-episode
-title: "Sample Cinematic Trailer"
+title: Sample Cinematic Trailer
 created: 2026-05-14
 pipeline: cinematic
 playbook: clean-professional
 runtime: ffmpeg
-aspect: "16:9"
+aspect: 16:9
 budget_usd: 0.75
 inputs:
   reference_image: shows/cinematic-trailer/inputs/sample-episode/reference.jpg
@@ -16,4 +16,3 @@ tags:
   - cinematic-trailer
   - sample
   - audio-led
-

@@ -1,0 +1,28 @@
+---
+name: "documentary-montage-executive-producer"
+description: "Orchestrate the Documentary Montage bundled pipeline."
+applies_to: "pipelines/documentary-montage"
+---
+# Executive Producer - Documentary Montage
+
+This is the demo readiness lane: documentary-montage. Keep the workflow predit-native and resolve all skills from the user project's .predit cache or explicit project overrides.
+
+## Pipeline State
+
+Track the active stage, required inputs, prior artifacts, budget posture, and unresolved approvals before delegating work.
+
+## Quality Gates
+
+- Confirm each stage produced its declared artifact before moving forward.
+- Confirm review findings are handled or logged with a concrete rationale.
+- Do not swap render_runtime silently; escalate before changing composition strategy.
+
+## Orchestration Limits
+
+- max_revisions_per_stage: 2
+- max_send_backs: 2
+- max_wall_time_minutes: 20
+
+## Handoff
+
+Pass the next director only the current brief, prior artifacts, playbook defaults, and known constraints.

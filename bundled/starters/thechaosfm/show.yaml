@@ -1,6 +1,6 @@
 slug: thechaosfm
-display_name: "The Chaos FM"
-description: "Audio-led The Chaos FM starter using the news-song pipeline with the GTA-political playbook."
+display_name: The Chaos FM
+description: Audio-led The Chaos FM starter using the news-song pipeline with the GTA-political playbook.
 created: 2026-05-14
 brand: ./brand/
 characters: ./characters/
@@ -9,7 +9,7 @@ pipelines:
   news-song:
     playbook: thechaosfm-gta-political
     runtime: ffmpeg
-    aspect: "16:9"
+    aspect: 16:9
     budget_usd: 0.75
 defaults:
   pipeline: news-song
@@ -24,5 +24,3 @@ ingest:
 starter:
   fixture_size_bytes: 120211
   expected_sample_duration_s: 15
-  pending_pipelines:
-    - news-song

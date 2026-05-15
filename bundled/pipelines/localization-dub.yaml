@@ -35,7 +35,11 @@ orchestration:
   max_send_backs: 3
   max_wall_time_minutes: 15
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets:
+    - premiere
+    - davinci
+    - capcut
+    - edl
   default_target: premiere
   notes: |
     Export packages include cut timing, linked assets, narration/music audio, and word timing captions where the target supports them.
@@ -60,6 +64,18 @@ stages:
       - Speech, subtitle, and on-screen text risks are ready for localization planning
     human_approval: optional
     human_approval_default: false
+    required_artifacts_in: []
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    estimated_cost:
+      sample:
+        usd: 0.25
+        comment: sample-scope asset generation or capture
+      full:
+        usd: 2
+        comment: full asset generation, capture, or processing pass
+    sample_mode_supported: true
   - slug: idea
     skill: pipelines/localization-dub/idea-director.md
     produces: brief
@@ -76,6 +92,19 @@ stages:
     success_criteria:
       - Schema-valid brief artifact
       - Brief records localization scope and dub mode
+    required_artifacts_in: []
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
   - slug: script
     skill: pipelines/localization-dub/script-director.md
     produces: script
@@ -99,6 +128,15 @@ stages:
     success_criteria:
       - Schema-valid script artifact
       - Script contains source transcript structure and translated sections
+    optional_tools: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
   - slug: scene_plan
     skill: pipelines/localization-dub/scene-director.md
     produces: scene_plan
@@ -124,6 +162,15 @@ stages:
     success_criteria:
       - Schema-valid scene_plan artifact
       - Every deliverable has a defined localization treatment
+    required_tools: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
   - slug: assets
     skill: pipelines/localization-dub/asset-director.md
     produces: asset_manifest
@@ -156,6 +203,14 @@ stages:
     success_criteria:
       - Schema-valid asset_manifest artifact
       - All referenced asset files exist on disk
+    estimated_cost:
+      sample:
+        usd: 0.25
+        comment: sample-scope asset generation or capture
+      full:
+        usd: 2
+        comment: full asset generation, capture, or processing pass
+    sample_mode_supported: true
   - slug: edit
     skill: pipelines/localization-dub/edit-director.md
     produces: edit_decisions
@@ -176,6 +231,17 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - Edit decisions cover all planned language outputs
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
   - slug: compose
     skill: pipelines/localization-dub/compose-director.md
     produces: render_report
@@ -208,6 +274,14 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output file exists and passes ffprobe validation
+    estimated_cost:
+      sample:
+        usd: 0.05
+        comment: local render validation
+      full:
+        usd: 0.25
+        comment: full render and export pass
+    sample_mode_supported: true
   - slug: publish
     skill: pipelines/localization-dub/publish-director.md
     produces: publish_log
@@ -229,3 +303,18 @@ stages:
     success_criteria:
       - Schema-valid publish_log artifact
       - Export package contains localized video and metadata outputs
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
+sample:
+  duration_s_min: 12
+  duration_s_max: 18
+  hint: One source segment with subtitle or dub timing proof.

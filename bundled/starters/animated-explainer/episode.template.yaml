@@ -1,11 +1,11 @@
 # Copy this file to episodes/<slug>.yaml and replace the title, inputs, and notes.
 slug: new-animated-explainer
-title: "New Animated Explainer"
+title: New Animated Explainer
 created: 2026-05-14
 pipeline: animated-explainer
 playbook: flat-motion-graphics
 runtime: remotion
-aspect: "16:9"
+aspect: 16:9
 budget_usd: 0.75
 inputs:
   script: shows/animated-explainer/inputs/sample-episode/script.txt

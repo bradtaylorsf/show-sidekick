@@ -1,6 +1,6 @@
 slug: animated-explainer
-display_name: "Animated Explainer"
-description: "Visual-led animated explainer starter with a sample script and reference image fixture."
+display_name: Animated Explainer
+description: Visual-led animated explainer starter with a sample script and reference image fixture.
 created: 2026-05-14
 brand: ./brand/
 characters: ./characters/
@@ -9,7 +9,7 @@ pipelines:
   animated-explainer:
     playbook: flat-motion-graphics
     runtime: remotion
-    aspect: "16:9"
+    aspect: 16:9
     budget_usd: 0.75
 defaults:
   pipeline: animated-explainer
@@ -24,5 +24,3 @@ ingest:
 starter:
   fixture_size_bytes: 1900
   expected_sample_duration_s: 15
-  pending_pipelines:
-    - animated-explainer
