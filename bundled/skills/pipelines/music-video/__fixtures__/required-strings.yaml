@@ -1,0 +1,89 @@
+pipeline: music-video
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline state machine"
+  - file: executive-producer.md
+    section: "## Mandatory locked decisions"
+  - file: executive-producer.md
+    section: "## Validated patterns from named productions"
+  - file: executive-producer.md
+    section: "## When to stop and check with the human"
+  - file: executive-producer.md
+    section: "## Reference materials"
+  - file: source-review-director.md
+    section: "## Whisper Timing"
+  - file: scene-director.md
+    section: "## Beat-Drop Planning"
+  - file: asset-director.md
+    section: "## Mask Defaults"
+  - file: edit-director.md
+    section: "## White-Flash Transition"
+required_phrases:
+  - file: executive-producer.md
+    phrase: "Per-section accent color"
+  - file: executive-producer.md
+    phrase: "Beat-drop hype tags between sections — name them after the actual concept (RAG, AGENTIC SEARCH, GRAPH DB), NOT generic VERSE 1/2/3"
+  - file: executive-producer.md
+    phrase: "White-flash transitions at major beat drops"
+  - file: executive-producer.md
+    phrase: "Long holds (>5 sec) split into 2-3 quick cuts of the SAME image with different framing/scale"
+  - file: executive-producer.md
+    phrase: "Bottom mask + top mask to hide Imagen text-rendering artifacts"
+  - file: executive-producer.md
+    phrase: "HyperFrames intro animation > Higgsfield text-to-video for opening title cards"
+  - file: executive-producer.md
+    phrase: "Higgsfield image-to-video for hero scene animations only"
+  - file: executive-producer.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: executive-producer.md
+    phrase: "NEVER guess timing from lyric structure alone — the whisper word timestamps drive caption timing"
+  - file: executive-producer.md
+    phrase: "Sample-first is not optional for any production estimated > $0.50 or > 15 min"
+  - file: executive-producer.md
+    phrase: ".predit/skills/meta/announce-and-escalate.md"
+  - file: executive-producer.md
+    phrase: ".predit/skills/meta/reviewer.md"
+  - file: executive-producer.md
+    phrase: ".predit/skills/core/hyperframes.md"
+  - file: executive-producer.md
+    phrase: ".predit/skills/agents/higgsfield-generate.md"
+required_numerics:
+  - file: executive-producer.md
+    numeric: "1080×1920 vertical (9:16)"
+  - file: executive-producer.md
+    numeric: "5.0 seconds"
+  - file: executive-producer.md
+    numeric: "medium.en"
+  - file: executive-producer.md
+    numeric: "large-v3"
+  - file: executive-producer.md
+    numeric: "$0.50"
+  - file: executive-producer.md
+    numeric: "15 min"
+  - file: executive-producer.md
+    numeric: "$0.30/clip"
+  - file: executive-producer.md
+    numeric: "0.06s in / 0.18s out"
+  - file: executive-producer.md
+    numeric: "0.65 opacity"
+  - file: executive-producer.md
+    numeric: "220px solid + 180px gradient"
+  - file: executive-producer.md
+    numeric: "110px solid + 90px gradient"
+  - file: executive-producer.md
+    numeric: "1.5-2 sec"
+required_modules:
+  - file: executive-producer.md
+    module: "Per-section accent color"
+  - file: executive-producer.md
+    module: "Beat-drop hype tags between sections — name them after the actual concept (RAG, AGENTIC SEARCH, GRAPH DB), NOT generic VERSE 1/2/3"
+  - file: executive-producer.md
+    module: "White-flash transitions at major beat drops"
+  - file: executive-producer.md
+    module: "Long holds (>5 sec) split into 2-3 quick cuts of the SAME image with different framing/scale"
+  - file: executive-producer.md
+    module: "Bottom mask + top mask to hide Imagen text-rendering artifacts"
+  - file: executive-producer.md
+    module: "HyperFrames intro animation > Higgsfield text-to-video for opening title cards"
+  - file: executive-producer.md
+    module: "Higgsfield image-to-video for hero scene animations only"

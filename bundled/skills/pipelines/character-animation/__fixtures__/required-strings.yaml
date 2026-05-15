@@ -1,0 +1,42 @@
+pipeline: character-animation
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline state machine"
+  - file: executive-producer.md
+    section: "## Send-back triggers"
+  - file: character-design-director.md
+    section: "## Recurring cast respect"
+  - file: rig-plan-director.md
+    section: "## Pivots for moving parts"
+required_phrases:
+  - file: executive-producer.md
+    phrase: "character_design lacks required actions or emotional range."
+  - file: executive-producer.md
+    phrase: "rig_plan lacks pivots for moving parts."
+  - file: executive-producer.md
+    phrase: "pose_library has no readable acting poses."
+  - file: executive-producer.md
+    phrase: "action_timeline has actions that cannot be rendered by the rig."
+  - file: executive-producer.md
+    phrase: "Compose used a runtime not approved in proposal."
+  - file: character-design-director.md
+    phrase: "character-design director consults `shows/<show>/characters/<slug>/` first; new characters flagged `new: true`."
+  - file: character-design-director.md
+    phrase: "shows/<show>/characters/<slug>/"
+  - file: character-design-director.md
+    phrase: "new: true"
+  - file: character-design-director.md
+    phrase: "bundled/skills/agents/character-rigging.md"
+  - file: character-design-director.md
+    phrase: "bundled/skills/agents/svg-character-animation.md"
+  - file: character-design-director.md
+    phrase: "bundled/skills/agents/pose-library-design.md"
+  - file: character-design-director.md
+    phrase: "bundled/skills/agents/character-animation-qa.md"
+  - file: compose-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+required_modules:
+  - file: executive-producer.md
+    module: "Send-back triggers"
+  - file: character-design-director.md
+    module: "Recurring cast respect"
