@@ -7,9 +7,11 @@ import {
   buildCapabilityExtensionDecision,
 } from "../announce/index.js";
 import type { CostLog } from "../artifacts/cost-log.js";
+import { EditDecisionsSchema } from "../artifacts/edit-decisions.js";
 import { FinalReviewSchema, type FinalReview } from "../artifacts/final-review.js";
 import type { DecisionEntry, DecisionLog } from "../artifacts/decision-log.js";
 import { ProposalPacketSchema } from "../artifacts/proposal-packet.js";
+import { RenderReportSchema } from "../artifacts/render-report.js";
 import { ReviewSchema, type Review } from "../artifacts/review.js";
 import type { VideoAnalysisBrief } from "../artifacts/video-analysis-brief.js";
 import {
@@ -435,6 +437,7 @@ async function runStage(input: {
         cumulativeActualUsd: roundUsd(input.cumulativeCost + stageCostUsd),
         cumulativeEstimatedUsd: cumulativeEstimatedCost(opts.pipeline, stage.slug, opts.runOptions),
         costLog,
+        priorArtifacts: input.priorArtifacts,
       });
     } catch (error) {
       if (error instanceof AwaitingHuman) {
@@ -916,10 +919,16 @@ async function runStageReview(
   result: StageResult,
   round: number,
   priorReviews: Review[],
-  cumulative: { cumulativeActualUsd: number; cumulativeEstimatedUsd: number; costLog?: CostLog },
+  cumulative: {
+    cumulativeActualUsd: number;
+    cumulativeEstimatedUsd: number;
+    costLog?: CostLog;
+    priorArtifacts: Record<string, unknown>;
+  },
 ): Promise<Review> {
   const existingDecisionLog = await readDecisionLog({ show: opts.show.slug, episode: opts.episode.slug }, { root: opts.projectRoot });
   const decisionLog: DecisionLog = [...existingDecisionLog, ...result.decisions];
+  const artifactContext = artifactReviewContext(stage, result, cumulative.priorArtifacts);
   const review = await reviewer(stage.slug, result.artifact, {
     pipeline: opts.pipeline,
     round,
@@ -940,9 +949,38 @@ async function runStageReview(
     episode: opts.episode.slug,
     projectRoot: opts.projectRoot,
     playbook: reviewPlaybook(opts.playbook),
+    ...artifactContext,
   });
 
   return ReviewSchema.parse(review);
+}
+
+function artifactReviewContext(
+  stage: Stage,
+  result: StageResult,
+  priorArtifacts: Record<string, unknown>,
+): Pick<ReviewContext, "proposalPacket" | "editDecisions" | "renderReport" | "finalReviewArtifact"> {
+  return {
+    proposalPacket: parsedProposalPacket(priorArtifacts.proposal ?? priorArtifacts.proposal_packet),
+    editDecisions: parsedEditDecisions(priorArtifacts.edit ?? priorArtifacts.edit_decisions),
+    renderReport: parsedRenderReport(result.artifact),
+    finalReviewArtifact: finalReviewFromStageResult(stage, result),
+  };
+}
+
+function parsedProposalPacket(value: unknown): ReviewContext["proposalPacket"] {
+  const parsed = ProposalPacketSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function parsedEditDecisions(value: unknown): ReviewContext["editDecisions"] {
+  const parsed = EditDecisionsSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function parsedRenderReport(value: unknown): ReviewContext["renderReport"] {
+  const parsed = RenderReportSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
 }
 
 function failFromError(input: {

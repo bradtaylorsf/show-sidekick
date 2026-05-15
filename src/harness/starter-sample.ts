@@ -51,14 +51,25 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
   const lyricText = lyricsPath ? await readFile(lyricsPath, "utf8") : "Fifteen seconds, right on time";
   const workspace = projectDir(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug);
   const assetPath = path.join(workspace, "assets", "sample-frame.png");
+  const finalReviewFramesDir = path.join(workspace, "final_review", "frames");
   const renderPath = path.join(workspace, "renders", "sample-preview.mp4");
   const assetRelativePath = projectRelativePath(ctx.show.projectRoot, assetPath);
   const renderRelativePath = projectRelativePath(ctx.show.projectRoot, renderPath);
+  const frameRelativePaths = ["10.png", "35.png", "65.png", "90.png"].map((fileName) =>
+    projectRelativePath(ctx.show.projectRoot, path.join(finalReviewFramesDir, fileName)),
+  );
+  const heroFrameRelativePath = projectRelativePath(ctx.show.projectRoot, path.join(finalReviewFramesDir, "hero.png"));
 
   await mkdir(path.dirname(assetPath), { recursive: true });
+  await mkdir(finalReviewFramesDir, { recursive: true });
   await mkdir(path.dirname(renderPath), { recursive: true });
   const image = starterFramePng();
   await writeFile(assetPath, image);
+  await Promise.all(
+    [...frameRelativePaths, heroFrameRelativePath].map((framePath) =>
+      writeFile(path.resolve(ctx.show.projectRoot, framePath), image),
+    ),
+  );
   await renderStarterPreview({
     framePath: assetPath,
     trackPath,
@@ -127,7 +138,7 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
         notes: "Zero-key deterministic starter preview and NLE artifacts generated.",
       },
     ],
-    final_review: buildFinalReview({ durationS }),
+    final_review: buildFinalReview({ durationS, frameRelativePaths, heroFrameRelativePath }),
   };
 
   return {
@@ -257,7 +268,7 @@ function buildBrief(input: { durationS: number; lyricText: string }): unknown {
     tone: "beat-synced proof of workflow",
     duration_s: input.durationS,
     hook: words.length > 0 ? words : "Fifteen seconds, right on time",
-    key_points: ["1080x1920 vertical sample", "word-timed captions", "beat-synced quick cuts"],
+    key_points: [`${SAMPLE_WIDTH}x${SAMPLE_HEIGHT} vertical sample`, "word-timed captions", "beat-synced quick cuts"],
     notes: "Deterministic starter brief for the music-video smoke path.",
     decision_log: [],
   };
@@ -334,7 +345,11 @@ function buildScenePlan(input: { durationS: number }): unknown {
   };
 }
 
-function buildFinalReview(input: { durationS: number }): unknown {
+function buildFinalReview(input: {
+  durationS: number;
+  frameRelativePaths: string[];
+  heroFrameRelativePath: string;
+}): unknown {
   return {
     status: "pass",
     recommended_action: "present_to_user",
@@ -354,7 +369,9 @@ function buildFinalReview(input: { durationS: number }): unknown {
       },
       visual_spotcheck: {
         frames_sampled: 4,
-        sample_points_pct: [0, 33, 66, 100],
+        frame_paths: input.frameRelativePaths,
+        sample_points_pct: [10, 35, 65, 90],
+        hero_frame_path: input.heroFrameRelativePath,
         matched_elements: ["starter gradient frame", "beat-synced cuts"],
         findings: [],
       },

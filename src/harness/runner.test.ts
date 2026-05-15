@@ -901,6 +901,69 @@ describe("Runner", () => {
     ]);
   });
 
+  it("reviews nested final_review artifacts in compose render reports", async () => {
+    const root = await scratchProject();
+    const pipeline = pipelineManifest(
+      [
+        stage("compose", {
+          produces: "render_report",
+          produces_artifacts: ["render_report", "final_review"],
+        }),
+      ],
+      { max_revisions_per_stage: 0 },
+    );
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: scriptedDispatcher([], {
+        compose: stageResult(
+          {
+            output_path: "renders/final.mp4",
+            encoding_profile: "h264-aac-mp4",
+            duration_s: 15,
+            resolution: { width: 540, height: 960 },
+            framerate: 30,
+            runtime_used: "ffmpeg",
+            asset_count: 1,
+            warnings: [],
+            validation_steps: [],
+            final_review: passingFinalReview({
+              visual_spotcheck: {
+                frames_sampled: 4,
+                sample_points_pct: [0, 33, 66, 100],
+                findings: [],
+              },
+            }),
+          },
+          0,
+        ),
+      }),
+      runOptions: { sample: false },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("failed");
+    const checkpoint = await readCheckpoint(root, "show", "episode", "compose");
+    expect(checkpoint).toMatchObject({
+      status: "failed",
+      review_summary: {
+        decision: "revise",
+        critical: expect.any(Number),
+      },
+    });
+    expect(JSON.stringify(checkpoint.review_summary?.findings ?? [])).toContain(
+      "Final review sample points are not distributed across the timeline",
+    );
+  });
+
   it("surfaces registry availability warnings without halting the run", async () => {
     const root = await scratchProject();
     const pipeline = pipelineManifest([stage("research")]);
@@ -1425,6 +1488,64 @@ function failedFinalReview() {
       },
     },
     issues_found: [],
+  };
+}
+
+function passingFinalReview(overrides: { visual_spotcheck?: Record<string, unknown> } = {}) {
+  const base = {
+    status: "pass",
+    recommended_action: "present_to_user",
+    checks: {
+      technical_probe: {
+        container: "mp4",
+        duration_s: 15,
+        duration_promised_s: 15,
+        width: 540,
+        height: 960,
+        framerate: 30,
+        video_codec: "h264",
+        audio_codec: "aac",
+        audio_channels: 2,
+        bitrate_kbps: 128,
+        verdict: "pass",
+      },
+      visual_spotcheck: {
+        frames_sampled: 4,
+        sample_points_pct: [10, 35, 65, 90],
+        findings: [],
+      },
+      audio_spotcheck: {
+        narration_present: false,
+        music_present: true,
+        caption_sync_accuracy: 1,
+        findings: [],
+      },
+      promise_preservation: {
+        delivery_promise_honored: true,
+        silent_downgrade_detected: false,
+        runtime_swap_detected: false,
+        runtime_swap_check: "ok",
+        motion_ratio_actual: 1,
+        render_runtime_used: "ffmpeg",
+        findings: [],
+      },
+      subtitle_check: {
+        present: false,
+        accuracy_within_150ms: 1,
+      },
+    },
+    issues_found: [],
+  };
+
+  return {
+    ...base,
+    checks: {
+      ...base.checks,
+      visual_spotcheck: {
+        ...base.checks.visual_spotcheck,
+        ...overrides.visual_spotcheck,
+      },
+    },
   };
 }
 
