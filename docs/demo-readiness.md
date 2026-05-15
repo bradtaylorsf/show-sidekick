@@ -1,144 +1,166 @@
 # Demo Readiness
 
-This guide is for validating `predit` as a CLI-driven production harness, not for producing videos from inside the harness repo.
+This guide is for reviewers and coding agents validating `predit` as a CLI-first harness. Default to the CLI/user-project model unless you are deliberately maintaining the harness internals.
 
-## Mental Model
+## Operating Models
 
-A legacy in-repo production flow is repo-local: clone the repo, run the coding agent inside that repo, and generated projects live under the repo's `projects/` folder.
-
-`predit` is CLI-first: install or build the CLI, create a separate user project, run the coding agent inside that user project, and let the CLI provide the harness. The user project owns shows, episodes, media, and renders. The harness ships pipelines, playbooks, skills, schemas, and starters, then mirrors them into `.predit/` so agents can read them.
-
-```text
-predit harness repo                  user project
--------------------                  ------------
-src/                                 AGENTS.md
-bundled/pipelines/        init       shows/
-bundled/skills/        ---------->   music_library/
-bundled/starters/                    projects/
-dist/cli/index.js                    .predit/   (gitignored cache)
-```
-
-Agents should run production commands from the user project. They may read `.predit/`, but they should not edit it by hand. Overrides belong in `pipelines/`, `playbooks/`, `skills/`, or `shows/<show>/skills/`.
-
-## Local CLI Smoke Test
-
-Use this before publishing a package. It verifies the current local build through the same project model a user would see.
+The legacy in-repo model runs from the harness checkout. Maintainers use it for source edits, schema tests, and matrix automation:
 
 ```bash
-cd /Users/bradtaylor/Documents/GitHub/predit
+pnpm dev <args>
+pnpm demo-matrix --zero-key --keep-workdir
+pnpm demo-matrix --paid-demo --keep-workdir
+```
+
+This model is allowed for harness development, but it is not how reviewers should judge the product experience.
+
+The CLI/user-project model runs `predit` from a separate folder owned by the show operator. The harness provides the CLI and the `.predit/` bundled cache; the user project owns `shows/`, `projects/`, renders, exports, and local overrides. Reviewers and agents should use this model for demos:
+
+```bash
+predit init --starter music-video
+predit build music-video/sample-episode --sample
+predit export music-video/sample-episode --target premiere
+```
+
+Do not require operators to work inside the harness repo. Do not edit `.predit/` inside the user project; refresh it with `predit update` or override resources in project-local `pipelines/`, `playbooks/`, or `skills/`.
+
+## Local Development Without Publishing
+
+Use this path when validating local harness changes before publishing a package. The CLI is built once in the harness repo, then invoked by absolute `dist` path from a separate user project.
+
+```bash
+HARNESS=/absolute/path/to/predit            # your harness checkout
+DEMO_ROOT=/tmp/predit-demo
+
+cd "$HARNESS"
 pnpm install
 pnpm build
 
-mkdir -p ~/predit-demo-lab
-cd ~/predit-demo-lab
+mkdir -p "$DEMO_ROOT"
+cd "$DEMO_ROOT"
 
-alias predit-dev='node /Users/bradtaylor/Documents/GitHub/predit/dist/cli/index.js'
-
-predit-dev init --starter music-video --git
-predit-dev ls pipelines
-predit-dev ls starters
-predit-dev build music-video/sample-episode --sample
-predit-dev export music-video/sample-episode --target premiere
+node "$HARNESS/dist/cli/index.js" init --starter music-video
+node "$HARNESS/dist/cli/index.js" build music-video/sample-episode --sample
+node "$HARNESS/dist/cli/index.js" export music-video/sample-episode --target premiere --overwrite
+node "$HARNESS/dist/cli/index.js" export music-video/sample-episode --format edl --overwrite
 ```
 
-The expected outputs are:
+Expected local outputs:
 
-- project scaffold: `AGENTS.md`, `CLAUDE.md`, `.predit/`, `shows/`, `music_library/`, `projects/`
-- sample render state: `projects/music-video/sample-episode/`
-- sample render: `projects/music-video/sample-episode/renders/sample-preview.mp4`
-- editor handoff: `exports/music-video__sample-episode.premiere/`
+- Runtime workspace: `projects/music-video/sample-episode/`
+- Render: `projects/music-video/sample-episode/renders/sample-preview.mp4`
+- Premiere package: `exports/music-video__sample-episode.premiere/`
+- EDL package: `exports/music-video__sample-episode.edl/`
 
-The same sequence has been verified locally with `node dist/cli/index.js` from a temporary user project.
+## Provider Setup Without Storing Credentials In The Repo
 
-## Provider Setup
+The zero-key `music-video` sample can run without provider credentials. Paid demo lanes use the `paid-demo` provider profile described in [Provider Profiles](provider-profiles.md).
 
-The zero-key starter smoke does not need paid providers. The paid demo lane starts with OpenAI, ElevenLabs, Higgsfield, and ffmpeg.
-
-Set credentials in your shell or in a local env file that is not committed:
+Use environment variables and provider CLIs. Do not store credentials in `show.yaml`, `episode.yaml`, `.predit/`, starter files, committed docs, or generated artifacts.
 
 ```bash
 export OPENAI_API_KEY="sk-..."
 export ELEVENLABS_API_KEY="..."
+
+higgsfield auth login
+higgsfield account status --json
+
+node "$HARNESS/dist/cli/index.js" doctor --profile paid-demo
+node "$HARNESS/dist/cli/index.js" build news-song/sample-episode --sample --provider-profile paid-demo
 ```
 
-Install and authenticate Higgsfield with its own CLI:
+Provider expectations for `paid-demo`:
 
-```bash
-npm install -g @higgsfield/cli
-higgsfield login
-higgsfield whoami
-```
+- OpenAI: image generation and fallback TTS through `OPENAI_API_KEY`.
+- ElevenLabs: primary TTS through `ELEVENLABS_API_KEY`.
+- Higgsfield: image-to-video through the `higgsfield` CLI and an authenticated `higgsfield account status --json`.
+- Local media: `ffmpeg` and `ffprobe` on `PATH`.
 
-Then check `predit` availability from inside the user project:
+## Green Paths And Known Blockers
 
-```bash
-predit-dev doctor
-predit-dev ls tools
-predit-dev tools openai_image
-predit-dev tools elevenlabs_tts
-predit-dev tools higgsfield
-```
+The demo matrix is starter-driven. It reads `bundled/starters/*/show.yaml`, selects starters whose `sample_support` matches the chosen mode, initializes each in a fresh user project, builds `sample-episode`, verifies artifacts/media/exports, and writes `demo-matrix-verification.json`.
 
-Credentials stay outside the harness. `predit` should only read environment variables or delegate auth to the vendor CLI.
+The paid-demo sample dispatcher assembles provider-backed samples with ffmpeg even when the show declares Remotion or HyperFrames. That keeps provider smoke tests fast and consistent, but it does not prove full runtime-specific composition quality. Use [Full Demo Benchmark Plan](full-demo-benchmark.md) for agent-led Remotion and HyperFrames demos.
 
-## Current State
+Current expected green paths:
 
-The current green CLI path is the bundled zero-key `music-video` starter:
+- `pnpm demo-matrix --zero-key --only music-video --keep-workdir`
+- `pnpm demo-matrix --paid-demo --keep-workdir` after `predit doctor --profile paid-demo` is green for OpenAI, ElevenLabs, Higgsfield, ffmpeg, and ffprobe.
 
-```bash
-predit-dev build music-video/sample-episode --sample
-predit-dev export music-video/sample-episode --target premiere
-```
+| Starter | Default Pipeline | sample_support | Expected Status | Notes |
+|---|---|---|---|---|
+| `music-video` | `music-video` | `both` | Green for zero-key; included in paid-demo | Zero-key starter sample and export path are the first validation lane. |
+| `ai-workflow-demo` | `screen-demo` | `paid` | Paid-demo only | Requires paid-demo provider setup; synthetic terminal fixture. |
+| `animated-explainer` | `animated-explainer` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
+| `cinematic-trailer` | `cinematic` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
+| `last-rev` | `screen-demo` | `paid` | Paid-demo only | Default lane is `screen-demo`; `talking-head` is also declared for follow-ups. |
+| `news-song` | `news-song` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
+| `rave-queen` | `cinematic` | `paid` | Paid-demo only | Show starter on `cinematic`, not an `animation` default. |
+| `thechaosfm` | `news-song` | `paid` | Paid-demo only | Ain't No Crowns is a show benchmark, not a default-pipeline benchmark. |
+| `documentary` | `documentary-montage` | `unsupported` | Blocked | Needs sample-support metadata and a verified sample provider path. |
+| `product-demo` | `screen-demo` | `unsupported` | Blocked | Needs sample-support metadata and a verified sample provider path. |
+| `ww2-diary` | `cinematic` | `unsupported` | Blocked | Show starter only; not a bundled pipeline type. |
 
-The full demo matrix is not ready until Epic 11 lands. Known blockers:
+## Demo Readiness Inventory
 
-- baseline bundled pipeline manifests are now present, but still need a taxonomy/starter audit
-- several starters still point at missing or show-only pipeline names
-- `music-video` currently behaves as a zero-key starter pipeline, not the full paid-provider production workflow
-- the paid-provider lane needs an explicit preflight/profile for OpenAI, ElevenLabs, and Higgsfield
-- compatibility aliases are still needed for legacy tool names
+`src/pipelines/demo-inventory.ts` is the canonical inventory for bundled pipeline demo readiness. Update it in the same change as any bundled manifest or starter binding change.
 
-## Target Demo Matrix
+### Classifications
 
-Epic 11 makes these formats demoable from a clean user project:
+- `core_default`: primary bundled lanes that default starters may target directly.
+- `seeded_extension`: shipped extension lanes that are valid starter targets but are not the first demo path.
+- `test_only`: harness test fixtures. These may ship as manifests but must never be used by a default starter.
+- `show_starter_only`: show concepts that may exist as starters/playbooks but must not be added as bundled pipeline manifest types.
 
-| Pipeline | Demo shape |
-|---|---|
-| `animated-explainer` | Last Rev-style workflow explainer with narration, generated visuals, captions, and export |
-| `animation` | Short animation-first piece using generated images and motion treatment |
-| `avatar-spokesperson` | Presenter/avatar clip with support graphics |
-| `character-animation` | Local character/rig animation with action timeline artifacts |
-| `cinematic` | Trailer-style sample with motion-led scenes and music |
-| `clip-factory` | Source video to multiple short-form cuts |
-| `documentary-montage` | Visual montage with documentary pacing and editor handoff |
-| `hybrid` | Source footage plus generated/support visuals |
-| `localization-dub` | Short source clip with translated/dubbed output |
-| `podcast-repurpose` | Podcast/audio episode to highlight package |
-| `screen-demo` | Synthetic terminal or UI demo |
-| `talking-head` | Cleaned presenter/talking-head edit |
-| `daily-news` | Short news/narration package with topical source handling |
+### Current Bundled Manifest Slugs
 
-Optional extension demos:
+Approved bundled manifest slugs:
 
-| Workflow | Treatment |
-|---|---|
-| `music-video` | Full audio-led music video workflow, not only zero-key starter compose |
-| `news-song` | News/protest song pipeline with topical source handling |
-| TheChaosFM | Branded show starter using `news-song` or `music-video` plus `thechaosfm-gta-political` |
-| WW2 diary | Show starter on `cinematic`, not a new pipeline |
-| Last Rev | Show/demo starter on `animated-explainer` or `screen-demo` |
-| Rave Queen | Show/demo starter on `cinematic` or `animation` |
+- `animated-explainer`
+- `animation`
+- `avatar-spokesperson`
+- `character-animation`
+- `cinematic`
+- `clip-factory`
+- `daily-news`
+- `documentary-montage`
+- `hybrid`
+- `localization-dub`
+- `music-video`
+- `news-song`
+- `podcast-repurpose`
+- `screen-demo`
+- `talking-head`
 
-## Review Loop
+Test-only lane:
 
-For each demo, capture:
+- `framework-smoke`
 
-- exact CLI command and `predit` version/path
-- provider availability and selected provider profile
-- stage artifacts under `projects/<show>/<episode>/`
-- `render_report`, `cost_log`, `decision_log`, and final review
-- `ffprobe` duration, resolution, frame rate, and audio presence
-- export package path and target
-- notes comparing the output to the reference baseline
+Show-starter-only concepts are denylisted in `SHOW_ONLY_DENYLIST`. Examples include `ww2-diary`, `thechaosfm`, `last-rev`, `rave-queen`, `gta-political`, and `aint-no-crowns`. These slugs may appear under `bundled/starters/`, playbooks, or demo briefs, but they must never appear as `bundled/pipelines/<slug>.yaml`.
 
-Classify differences as migration bug, intentional CLI-model difference, provider drift, or creative variance.
+### Runnable Demo Matrix
+
+The maintainer demo matrix is starter-driven, not manifest-driven. It reads `bundled/starters/*/show.yaml`, keeps only fixture-backed starters whose declared `sample_support` matches the selected mode, initializes each starter in a fresh user project, and runs `build --sample` there. Seeded extension manifests with `sample_support: unsupported` remain approved bundled manifests, but they are not runnable demo lanes until a starter brief and sample provider path are added.
+
+### Show Starter Examples
+
+- `ww2-diary` is a starter on `cinematic` with the `news-broadcast` playbook.
+- `thechaosfm` is a branded starter on `news-song` with the `thechaosfm-gta-political` playbook; the show-level Ain't No Crowns benchmark metadata lives in the starter README.
+- `last-rev` is a starter that declares `screen-demo` for synthetic terminal walkthroughs and `talking-head` for hosted follow-ups.
+- `rave-queen` is a starter on `cinematic`; its README records why `animation` was rejected as the default binding.
+
+## Baseline Comparison
+
+Use [Baseline Comparison Report](baseline-comparison.md) when comparing `predit` demo outputs against a reference baseline from equivalent inputs. The template is filled from `demo-matrix-verification.json`, the demo matrix NDJSON events, generated stage artifacts, and manual notes from the baseline run.
+
+The Ain't No Crowns reference is a [TheChaosFM](../bundled/starters/thechaosfm/README.md) show benchmark. It is not a default-pipeline benchmark and must not be used to judge every `news-song` or bundled default lane.
+
+## Adding A Bundled Pipeline
+
+1. Add `bundled/pipelines/<slug>.yaml`.
+2. Add the referenced director skills under `bundled/skills/pipelines/<slug>/`, including `executive-producer.md` when the manifest uses executive-producer orchestration.
+3. Add `bundled/skills/pipelines/<slug>/__fixtures__/required-strings.yaml` so content-fidelity tests can lock the critical director instructions.
+4. Add the slug to `DEMO_READINESS_INVENTORY` with the correct classification.
+5. If a default starter targets the pipeline, keep the classification at `core_default` or `seeded_extension`.
+6. Update starter README files so they name both the starter slug and the real pipeline slug. Default bundled starters may not use `pending_pipelines` as an escape hatch.
+7. Run the bundled pipeline and starter tests before committing.

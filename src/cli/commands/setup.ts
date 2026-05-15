@@ -98,7 +98,7 @@ async function commandForSetup(
 }
 
 function loginCommandFromInstall(command: string, binary: string): string | undefined {
-  const loginPattern = new RegExp(`^${escapeRegExp(binary)}\\s+login(?:\\s|$)`);
+  const loginPattern = new RegExp(`^${escapeRegExp(binary)}\\s+(?:auth\\s+)?login(?:\\s|$)`);
   return command.split(/\s*(?:&&|;)\s*/u).find((segment) => loginPattern.test(segment.trim()))?.trim();
 }
 

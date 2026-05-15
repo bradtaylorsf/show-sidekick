@@ -63,7 +63,6 @@ export default defineTool({
   best_for: "searching Pexels for production-ready editorial and commercial stock images",
   supports: ["stock-search", "attribution"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-image-attribution"],
   input: PexelsStockInputSchema,
   output: PexelsStockOutputSchema,
 

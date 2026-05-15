@@ -279,6 +279,7 @@ async function compose(
         cut,
         path,
         duration_s: Math.max(0, cut.end_s - cut.start_s),
+        source_duration_s: probe.format.duration_s,
         width: video.width,
         height: video.height,
         hasAudio: probe.streams.some((stream) => stream.codec_type === "audio"),
@@ -292,15 +293,23 @@ async function compose(
   }
 
   await mkdir(dirname(outputPath), { recursive: true });
-  const hasAudio = clipInfos.every((clip) => clip.hasAudio);
-  const { filter, videoLabel, audioLabel } = composeFilter(clipInfos, firstVideo, hasAudio);
+  const externalAudioPath = audioTrackPath(params.edit_decisions);
+  const externalAudioInput = externalAudioPath === undefined ? undefined : resolveAssetPath(externalAudioPath, ctx.projectRoot);
+  const inputArgs = [
+    ...clipInfos.flatMap((clip) => ["-i", clip.path]),
+    ...(externalAudioInput === undefined ? [] : ["-i", externalAudioInput]),
+  ];
+  const { filter, videoLabel, audioLabel } = composeFilter(clipInfos, firstVideo, {
+    useClipAudio: externalAudioInput === undefined && clipInfos.every((clip) => clip.hasAudio),
+    externalAudioInputIndex: externalAudioInput === undefined ? undefined : clipInfos.length,
+  });
   const result = await runFfmpeg([
     "ffmpeg",
     "-y",
     "-hide_banner",
     "-loglevel",
     "error",
-    ...clipInfos.flatMap((clip) => ["-i", clip.path]),
+    ...inputArgs,
     "-filter_complex",
     filter,
     "-map",
@@ -335,36 +344,75 @@ type ComposeClip = {
   cut: EditDecisions["cuts"][number];
   path: string;
   duration_s: number;
+  source_duration_s: number;
   width: number;
   height: number;
   hasAudio: boolean;
 };
 
+type ComposeFilterOptions = {
+  useClipAudio: boolean;
+  externalAudioInputIndex?: number;
+};
+
 function composeFilter(
   clips: ComposeClip[],
   firstVideo: Pick<ComposeClip, "width" | "height">,
-  hasAudio: boolean,
+  options: ComposeFilterOptions,
 ): { filter: string; videoLabel: string; audioLabel?: string } {
   const filters: string[] = [];
+  const hasAudio = options.useClipAudio;
 
   clips.forEach((clip, index) => {
-    filters.push(
-      `[${index}:v]trim=duration=${clip.duration_s},setpts=PTS-STARTPTS,scale=${firstVideo.width}:${firstVideo.height},setsar=1,fps=30,format=yuv420p[v${index}]`,
-    );
+    const sourceDuration = clip.source_duration_s > 0 ? clip.source_duration_s : clip.duration_s;
+    const trimDuration = Math.min(clip.duration_s, sourceDuration);
+    const padDuration = Math.max(0, clip.duration_s - trimDuration);
+    const videoFilters = [
+      `trim=duration=${filterNumber(trimDuration)}`,
+      "setpts=PTS-STARTPTS",
+      `scale=${firstVideo.width}:${firstVideo.height}`,
+      "setsar=1",
+      "fps=30",
+      "format=yuv420p",
+      ...(padDuration > 0 ? [`tpad=stop_mode=clone:stop_duration=${filterNumber(padDuration)}`] : []),
+    ];
+    filters.push(`[${index}:v]${videoFilters.join(",")}[v${index}]`);
 
     if (hasAudio) {
-      filters.push(`[${index}:a]atrim=duration=${clip.duration_s},asetpts=PTS-STARTPTS,aresample=48000[a${index}]`);
+      filters.push(
+        `[${index}:a]atrim=duration=${filterNumber(clip.duration_s)},asetpts=PTS-STARTPTS,aresample=48000,apad=pad_dur=${filterNumber(clip.duration_s)},atrim=duration=${filterNumber(clip.duration_s)}[a${index}]`,
+      );
     }
   });
 
   const inputs = clips.map((_clip, index) => (hasAudio ? `[v${index}][a${index}]` : `[v${index}]`)).join("");
-  if (clips.length === 1) {
-    return { filter: filters.join(";"), videoLabel: "[v0]", audioLabel: hasAudio ? "[a0]" : undefined };
+  const totalDurationS = clips.reduce((sum, clip) => sum + clip.duration_s, 0);
+  let videoLabel = "[v0]";
+  let audioLabel = hasAudio ? "[a0]" : undefined;
+
+  if (clips.length > 1) {
+    filters.push(`${inputs}concat=n=${clips.length}:v=1:a=${hasAudio ? 1 : 0}[vout]${hasAudio ? "[aout]" : ""}`);
+    videoLabel = "[vout]";
+    audioLabel = hasAudio ? "[aout]" : undefined;
   }
 
-  filters.push(`${inputs}concat=n=${clips.length}:v=1:a=${hasAudio ? 1 : 0}[vout]${hasAudio ? "[aout]" : ""}`);
+  if (options.externalAudioInputIndex !== undefined) {
+    filters.push(
+      `[${options.externalAudioInputIndex}:a]atrim=duration=${filterNumber(totalDurationS)},asetpts=PTS-STARTPTS,aresample=48000,apad=pad_dur=${filterNumber(totalDurationS)},atrim=duration=${filterNumber(totalDurationS)}[aext]`,
+    );
+    audioLabel = "[aext]";
+  }
 
-  return { filter: filters.join(";"), videoLabel: "[vout]", audioLabel: hasAudio ? "[aout]" : undefined };
+  return { filter: filters.join(";"), videoLabel, audioLabel };
+}
+
+function audioTrackPath(editDecisions: EditDecisions): string | undefined {
+  const trackPath = editDecisions.audio?.music?.track_path;
+  return typeof trackPath === "string" && trackPath.trim().length > 0 ? trackPath : undefined;
+}
+
+function filterNumber(value: number): string {
+  return String(Math.round(value * 1000) / 1000);
 }
 
 function resolveAssetPath(path: string, projectRoot: string): string {

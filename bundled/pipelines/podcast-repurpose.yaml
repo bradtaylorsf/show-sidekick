@@ -36,7 +36,7 @@ orchestration:
   max_send_backs: 2
   max_wall_time_minutes: 15
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets: [ premiere, davinci, capcut, edl ]
   default_target: capcut
   notes: |
     Export packages include selected podcast chapter windows, transcript excerpts, captions, reframed variants, render outputs, and NLE handoff metadata.
@@ -62,6 +62,12 @@ stages:
     success_criteria:
       - Schema-valid source_media_review artifact for supplied podcast media
       - Chapter, transcript, and scene_detect evidence is ready for segmentation
+    required_artifacts_in: []
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: idea
     skill: pipelines/podcast-repurpose/idea-director.md
     produces: brief
@@ -80,6 +86,11 @@ stages:
     success_criteria:
       - Schema-valid brief artifact
       - Brief records chapter strategy, clip count, target aspects, and runtime
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: scene_plan
     skill: pipelines/podcast-repurpose/scene-director.md
     produces: scene_plan
@@ -103,6 +114,11 @@ stages:
     success_criteria:
       - Schema-valid scene_plan artifact
       - Every planned clip references chapter, transcript, or scene_detect evidence
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: assets
     skill: pipelines/podcast-repurpose/asset-director.md
     produces: asset_manifest
@@ -131,6 +147,11 @@ stages:
     success_criteria:
       - Schema-valid asset_manifest artifact
       - Every clip asset maps to a reviewed podcast segment
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: edit
     skill: pipelines/podcast-repurpose/edit-director.md
     produces: edit_decisions
@@ -152,6 +173,11 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - Edit decisions cover every selected podcast clip
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: compose
     skill: pipelines/podcast-repurpose/compose-director.md
     produces: render_report
@@ -186,6 +212,11 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output files exist and pass ffprobe validation
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: publish
     skill: pipelines/podcast-repurpose/publish-director.md
     produces: publish_log
@@ -208,3 +239,8 @@ stages:
     success_criteria:
       - Schema-valid publish_log artifact
       - Export package contains rendered clips and handoff metadata
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0

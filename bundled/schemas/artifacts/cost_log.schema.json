@@ -31,6 +31,9 @@
           "sample",
           "full"
         ]
+      },
+      "cache_hit": {
+        "type": "boolean"
       }
     },
     "required": [

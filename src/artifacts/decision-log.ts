@@ -16,6 +16,7 @@ export const DECISION_CATEGORY = [
   "downgrade_approval",
   "budget_tradeoff",
   "capability_extension",
+  "provider_profile_selection",
   "visual_accuracy_check",
 ] as const;
 

@@ -36,7 +36,7 @@ export type Integration =
   | { kind: 'library'; package: string;                install: string };
 
 export type CliAuth =
-  | { mode: 'cli-login'; check: string }   // e.g. "higgsfield whoami"
+  | { mode: 'cli-login'; check: string }   // e.g. "higgsfield account status --json"
   | { mode: 'env'; env: string[] }
   | { mode: 'none' };
 
@@ -53,7 +53,7 @@ The `Integration` discriminated union is the registry's first-class abstraction 
 
 | Kind | Examples | Availability check |
 |---|---|---|
-| `cli` | `higgsfield`, `gh`, custom vendor CLIs | binary on PATH + auth check (e.g. `whoami` succeeds) |
+| `cli` | `higgsfield`, `gh`, custom vendor CLIs | binary on PATH + auth check (e.g. an account/status command succeeds) |
 | `api` | ElevenLabs, OpenAI, Anthropic | required env vars present |
 | `binary` | `ffmpeg`, `whisper.cpp`, `aubio`, `yt-dlp` | binary on PATH |
 | `library` | pure Node libraries | `require.resolve` succeeds |
@@ -100,8 +100,8 @@ export default defineTool({
   integration: {
     kind: 'cli',
     binary: 'higgsfield',
-    auth: { mode: 'cli-login', check: 'higgsfield whoami' },
-    install: 'npm i -g @higgsfield/cli && higgsfield login',
+    auth: { mode: 'cli-login', check: 'higgsfield account status --json' },
+    install: 'npm i -g @higgsfield/cli && higgsfield auth login',
   },
 
   best_for: 'kling v2.1 pro image-to-video, 5-sec hero clips, image animation',
@@ -122,6 +122,8 @@ export default defineTool({
 });
 ```
 
+Compatibility aliases may ship as thin tool modules that spread a canonical tool, override `name`, and add `supports: ['compat-alias']`. Aliases exist only to keep older manifests and skills resolving through the registry; new manifests should use canonical tool names.
+
 ## Provider selection
 
 Routing across providers for a capability (TTS, image, video, music, capture) is `registry.select(cap, prefs?)`. The agent introspects providers via `registry.byCapability('<capability>')` and picks via `select()` or its own logic.
@@ -137,8 +139,14 @@ agent or runner selects the real provider for the stage.
 ## Setup UX
 
 - `predit setup <tool>` reads the tool's setup metadata and shells out to the tool's own login/install commands. For `cli-login` tools whose binary is already installed, setup may run the login refresh command directly instead of repeating the install step.
-- `predit` never collects, stores, or transmits credentials. CLI tools own their own auth (e.g. `higgsfield login` keeps a token in the CLI's own config dir; API tools rely on env vars in the user's shell).
+- `predit` never collects, stores, or transmits credentials. CLI tools own their own auth (e.g. `higgsfield auth login` keeps a token in the CLI's own config dir; API tools rely on env vars in the user's shell).
 - The provider menu groups setup offers by 1-minute fixes (env var or `cli-login`), 5-minute installs, and complex setups (GPU, model downloads).
+
+## Provider profiles
+
+Provider profiles are named setup lanes that group concrete tools and preflight checks for repeatable demos. The first shipped profile is `paid-demo`: OpenAI image generation and OpenAI TTS fallback (`OPENAI_API_KEY`), ElevenLabs TTS (`ELEVENLABS_API_KEY`), Higgsfield image-to-video (`higgsfield` plus `higgsfield account status --json`), and local `ffmpeg` / `ffprobe`.
+
+Selecting a provider profile for a run records a `provider_profile_selection` decision with rejected alternatives, so reviewers can distinguish an intentional paid-provider lane from the zero-key or mixed setup paths.
 
 ## Tool path policy
 

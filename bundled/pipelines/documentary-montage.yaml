@@ -43,7 +43,7 @@ sample:
   duration_s_max: 18
   hint: "Build one retrieval-backed hero sequence plus the end tag before expanding the montage."
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets: [ premiere, davinci, capcut, edl ]
   default_target: premiere
   notes: |
     Export packages include retrieved source attributions, selected clips, edit decisions, end tag plan, render output, and NLE handoff metadata.
@@ -67,6 +67,12 @@ stages:
     success_criteria:
       - Schema-valid brief artifact
       - Retrieval strategy and no-narration default are recorded
+    required_artifacts_in: []
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: scene_plan
     skill: pipelines/documentary-montage/scene-director.md
     produces: scene_plan
@@ -91,6 +97,11 @@ stages:
       - Schema-valid scene_plan artifact
       - Schema-valid end_tag_plan artifact
       - Grow the corpus with new queries.
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: assets
     skill: pipelines/documentary-montage/asset-director.md
     produces: asset_manifest
@@ -125,6 +136,11 @@ stages:
     success_criteria:
       - Schema-valid asset_manifest artifact
       - Every selected clip maps to a retrieval result or logged fallback
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: edit
     skill: pipelines/documentary-montage/edit-director.md
     produces: edit_decisions
@@ -147,6 +163,11 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - edit_decisions reference the end tag placement
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: compose
     skill: pipelines/documentary-montage/compose-director.md
     produces: render_report
@@ -178,3 +199,8 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output files exist and pass ffprobe validation
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0

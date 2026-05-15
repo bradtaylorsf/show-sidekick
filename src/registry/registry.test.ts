@@ -7,9 +7,11 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
-import { RegistryError } from "./errors.js";
+import { NoToolAvailable, RegistryError } from "./errors.js";
 import { Registry } from "./registry.js";
 import type { Availability, Tool } from "./tool.js";
+import higgsfield from "../tools/higgsfield.js";
+import higgsfieldVideo from "../tools/higgsfield_video.js";
 
 const fixtureRoot = resolve(dirname(fileURLToPath(import.meta.url)), "__fixtures__");
 let scratchDirs: string[] = [];
@@ -99,6 +101,51 @@ describe("Registry", () => {
     });
     expect(registry.get("draft_tool")).toBeUndefined();
     expect(registry.get("test_tool")).toBeUndefined();
+  });
+
+  it("registers compatibility aliases by name and capability", () => {
+    const registry = new Registry({ tools: [higgsfield, higgsfieldVideo] });
+
+    expect(registry.get("higgsfield_video")).toMatchObject({
+      name: "higgsfield_video",
+      capability: "image_to_video",
+      supports: expect.arrayContaining(["compat-alias"]),
+    });
+    expect(registry.get("higgsfield_video")?.execute).toBe(higgsfield.execute);
+    expect(registry.byCapability("image_to_video").map((tool) => tool.name)).toEqual([
+      "higgsfield",
+      "higgsfield_video",
+    ]);
+  });
+
+  it("includes alias names and availability reasons in unavailable-provider messages", async () => {
+    const base = defineTool({
+      name: "higgsfield",
+      capability: "image_to_video",
+      provider: "higgsfield",
+      status: "production",
+      integration: {
+        kind: "cli",
+        binary: "higgsfield",
+        auth: { mode: "cli-login", check: "higgsfield account status --json" },
+        install: "higgsfield auth login",
+      },
+      best_for: "tests",
+      input: z.object({}),
+      output: z.object({}),
+      isAvailable: async () => ({ available: false, reason: "not-authenticated", fix: "cli-login" }),
+      execute: async () => ({}),
+    });
+    const alias = {
+      ...base,
+      name: "higgsfield_video",
+      best_for: "Compatibility alias for Higgsfield image-to-video generation",
+      supports: [...(base.supports ?? []), "compat-alias"],
+    };
+    const registry = new Registry({ tools: [alias] });
+
+    await expect(registry.select("image_to_video")).rejects.toBeInstanceOf(NoToolAvailable);
+    await expect(registry.select("image_to_video")).rejects.toThrow("higgsfield_video: not-authenticated");
   });
 
   it("rejects duplicate project tool names", async () => {

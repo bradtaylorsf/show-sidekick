@@ -18,6 +18,7 @@ function noopLogger(): ToolContext["logger"] {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 function context(overrides: Partial<ToolContext> = {}): ToolContext {
@@ -43,8 +44,8 @@ describe("higgsfield tool", () => {
       integration: {
         kind: "cli",
         binary: "higgsfield",
-        auth: { mode: "cli-login", check: "higgsfield whoami" },
-        install: expect.stringContaining("higgsfield login"),
+        auth: { mode: "cli-login", check: "higgsfield account status --json" },
+        install: expect.stringContaining("higgsfield auth login"),
       },
       cost: { unit: "clip", usd: 0.3 },
       agent_skills: ["higgsfield-generate", "ai-video-gen"],
@@ -78,6 +79,8 @@ describe("higgsfield tool", () => {
   });
 
   it("records the Kling v2.1 Pro image-to-video wire shape", async () => {
+    vi.stubEnv("HIGGSFIELD_API_KEY", "live-key");
+    vi.stubEnv("HIGGSFIELD_API_SECRET", "live-secret");
     const ctx = context();
 
     const result = await higgsfield.execute(
@@ -97,7 +100,9 @@ describe("higgsfield tool", () => {
       }),
     );
     expect(result.request.url.endsWith("kling-video/v2.1/pro/image-to-video")).toBe(true);
-    expect(result.request.headers.Authorization).toMatch(/^Key .+:.+$/);
+    expect(result.request.headers.Authorization).toBe("Key <redacted>:<redacted>");
+    expect(result.request.headers.Authorization).not.toContain("live-key");
+    expect(result.request.headers.Authorization).not.toContain("live-secret");
     expect(result.request.headers.Authorization).not.toMatch(/^Bearer /);
     expect(result.request.body).toEqual({
       image_url: "https://cdn.example.com/reference.png",
@@ -140,7 +145,15 @@ describe("higgsfield tool", () => {
       ctx,
     );
 
-    expect(result.request).toEqual(recordedRequest);
+    expect(result.request).toEqual({
+      ...recordedRequest,
+      headers: {
+        ...recordedRequest.headers,
+        Authorization: "Key <redacted>:<redacted>",
+      },
+    });
+    expect(JSON.stringify(result.request)).not.toContain("live-key");
+    expect(JSON.stringify(result.request)).not.toContain("live-secret");
   });
 
   it("serves repeated CLI generations from cache without colliding reference images", async () => {

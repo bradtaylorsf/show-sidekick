@@ -48,7 +48,7 @@ describe("setup command", () => {
     const capture = io();
     const runInstall = vi.fn(async () => undefined);
     const registry = new Registry({
-      tools: [tool("higgsfield", "npm i -g @higgsfield/cli && higgsfield login")],
+      tools: [tool("higgsfield", "npm i -g @higgsfield/cli && higgsfield auth login")],
     });
 
     await createSetupHandler(capture.io, {
@@ -58,7 +58,7 @@ describe("setup command", () => {
       cwd: () => "/project",
     })("higgsfield", command());
 
-    expect(runInstall).toHaveBeenCalledWith("npm i -g @higgsfield/cli && higgsfield login", { cwd: "/project" });
+    expect(runInstall).toHaveBeenCalledWith("npm i -g @higgsfield/cli && higgsfield auth login", { cwd: "/project" });
     expect(capture.stdout()).toBe("setup higgsfield: completed\n");
   });
 
@@ -66,7 +66,7 @@ describe("setup command", () => {
     const capture = io();
     const runInstall = vi.fn(async () => undefined);
     const registry = new Registry({
-      tools: [tool("higgsfield", "npm i -g @higgsfield/cli && higgsfield login")],
+      tools: [tool("higgsfield", "npm i -g @higgsfield/cli && higgsfield auth login")],
     });
 
     await createSetupHandler(capture.io, {
@@ -76,13 +76,13 @@ describe("setup command", () => {
       cwd: () => "/project",
     })("higgsfield", command());
 
-    expect(runInstall).toHaveBeenCalledWith("higgsfield login", { cwd: "/project" });
+    expect(runInstall).toHaveBeenCalledWith("higgsfield auth login", { cwd: "/project" });
     expect(capture.stdout()).toBe("setup higgsfield: completed\n");
   });
 
   it("emits a machine-readable completion event in json mode", async () => {
     const capture = io();
-    const registry = new Registry({ tools: [tool("higgsfield", "higgsfield login")] });
+    const registry = new Registry({ tools: [tool("higgsfield", "higgsfield auth login")] });
 
     await createSetupHandler(capture.io, {
       createRegistry: async () => registry,
@@ -94,7 +94,7 @@ describe("setup command", () => {
     expect(JSON.parse(capture.stdout())).toEqual({
       event: "tool_setup",
       tool: "higgsfield",
-      install: "higgsfield login",
+      install: "higgsfield auth login",
       status: "completed",
     });
   });

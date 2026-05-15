@@ -17,11 +17,13 @@ predit init                              # scaffold a new predit project in cwd
 predit init --git                        # scaffold, git init, add, and commit
 predit init --starter music-video        # scaffold and clone a bundled starter show
 predit doctor                            # registry + tool preflight (capability menu)
+predit doctor --profile paid-demo        # preflight a named provider profile
 predit update                            # refresh .predit/ from the installed harness
 predit update --check                    # verify .predit/ without writing
 
 # Create
-predit new show <slug>                   # scaffold shows/<slug>/
+predit new show <slug>                   # scaffold shows/<slug>/ with the bundled music-video pipeline
+predit new show <slug> --pipelines a,b   # scaffold a show bound to existing pipeline manifests
 predit new episode <show> [<slug>]       # scaffold an episode under a show
 predit new pipeline <slug>               # scaffold a new pipeline + director skills
 predit new playbook <slug>               # scaffold a new style playbook
@@ -34,6 +36,7 @@ predit build <show>/<episode> --only <stage>
 predit build <show>/<episode> --to <stage>
 predit build <show>/<episode> --budget <usd>
 predit build <show>/<episode> --reference <url-or-path>
+predit build <show>/<episode> --provider-profile paid-demo
 
 predit cuesheet <show>/<episode>        # build/cache audio cuesheet for debugging
 predit resume <show>/<episode>           # pick up at next checkpoint
@@ -103,6 +106,22 @@ The analysis writes `projects/<show>/<episode>/artifacts/video_analysis_brief.js
 - Default output is human-readable with picocolors.
 - `--json` switches to NDJSON for streaming-friendly machine output. Each command documents its event schema in its source.
 - Errors always go to stderr; results to stdout.
+- Human-mode `predit init` prints first-run next steps: run `predit doctor --profile paid-demo`, choose or build a starter/show, and ask the user's agent to read `AGENTS.md` plus `.predit/skills/meta/onboarding.md`.
+
+## Maintainer Demo Matrix
+
+`pnpm demo-matrix` is a harness-maintainer script, not an installed `predit` command. It creates fresh temp user projects outside the harness repo, runs the local or overridden CLI path, initializes fixture-backed starters, and invokes `predit build <show>/sample-episode --sample`. Flags:
+
+| Flag | Meaning |
+|---|---|
+| `--zero-key` | Run lanes whose `sample_support` includes `zero-key`; this is the default. |
+| `--paid-demo` | Run lanes whose `sample_support` includes `paid`, passing `--provider-profile paid-demo`. |
+| `--only <slug>` | Restrict to one or more starter slugs. |
+| `--keep-workdir` | Keep generated temp user projects for inspection. |
+| `--json` | Emit NDJSON `matrix_started`, `lane_completed`, and `matrix_finished` events. |
+| `--cli-path <path>` | Override the local TypeScript CLI entrypoint or installed binary. |
+
+The matrix records CLI path/version, provider profile, env availability, workdir, per-lane command, exit code, last event, and artifact paths. It exits `0` only when every selected lane completes; otherwise it exits `2`.
 
 ## Ingest Commands
 

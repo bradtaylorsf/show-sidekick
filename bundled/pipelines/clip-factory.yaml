@@ -34,7 +34,7 @@ orchestration:
   max_send_backs: 2
   max_wall_time_minutes: 12
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets: [ premiere, davinci, capcut, edl ]
   default_target: capcut
   notes: |
     Export packages include selected clip windows, reframed variants, captions, edit decisions, render output, and NLE handoff metadata.
@@ -60,6 +60,12 @@ stages:
     success_criteria:
       - Schema-valid source_media_review artifact for supplied footage
       - scene_detect boundaries are ready for clip selection
+    required_artifacts_in: []
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: idea
     skill: pipelines/clip-factory/idea-director.md
     produces: brief
@@ -78,6 +84,11 @@ stages:
     success_criteria:
       - Schema-valid brief artifact
       - Brief records selected clip strategy and source constraints
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: scene_plan
     skill: pipelines/clip-factory/scene-director.md
     produces: scene_plan
@@ -100,6 +111,11 @@ stages:
     success_criteria:
       - Schema-valid scene_plan artifact
       - Every scene_plan entry references a scene_detect window
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: assets
     skill: pipelines/clip-factory/asset-director.md
     produces: asset_manifest
@@ -130,6 +146,11 @@ stages:
     success_criteria:
       - Schema-valid asset_manifest artifact
       - Clip windows are selected from scene_detect output, not generated freshly.
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: edit
     skill: pipelines/clip-factory/edit-director.md
     produces: edit_decisions
@@ -151,6 +172,11 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - Edit decisions cover every selected clip window
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: compose
     skill: pipelines/clip-factory/compose-director.md
     produces: render_report
@@ -185,6 +211,11 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output files exist and pass ffprobe validation
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: publish
     skill: pipelines/clip-factory/publish-director.md
     produces: publish_log
@@ -207,3 +238,8 @@ stages:
     success_criteria:
       - Schema-valid publish_log artifact
       - Export package contains rendered clips and handoff metadata
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0

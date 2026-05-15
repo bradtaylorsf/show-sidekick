@@ -1,7 +1,8 @@
 slug: music-video
-display_name: "Music Video"
-description: "Audio-led vertical music video starter with a synthesized track and lyric fixture."
+display_name: Music Video
+description: Audio-led vertical music video starter with a synthesized track and lyric fixture.
 created: 2026-05-14
+sample_support: both
 brand: ./brand/
 characters: ./characters/
 skills: ./skills/
@@ -9,7 +10,7 @@ pipelines:
   music-video:
     playbook: news-song
     runtime: ffmpeg
-    aspect: "9:16"
+    aspect: 9:16
     budget_usd: 0.5
 defaults:
   pipeline: music-video
@@ -24,4 +25,3 @@ ingest:
 starter:
   fixture_size_bytes: 120213
   expected_sample_duration_s: 15
-  pending_pipelines: []

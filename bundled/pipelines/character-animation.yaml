@@ -52,7 +52,7 @@ sample:
   duration_s_max: 12
   hint: "Animate one character action beat through design, rig, pose library, action timeline, and render QA before expanding."
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets: [ premiere, davinci, capcut, edl ]
   default_target: premiere
   notes: |
     Export packages include character design, rig package, pose library, action timeline, render output, source animation files, and NLE handoff metadata.
@@ -74,6 +74,12 @@ stages:
     success_criteria:
       - Schema-valid research_brief artifact
       - Research lists required actions and emotions
+    required_artifacts_in: []
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: proposal
     skill: pipelines/character-animation/proposal-director.md
     produces: proposal_packet
@@ -92,6 +98,11 @@ stages:
     success_criteria:
       - Schema-valid proposal_packet artifact
       - Render runtime is selected and logged
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: script
     skill: pipelines/character-animation/script-director.md
     produces: script
@@ -111,6 +122,11 @@ stages:
     success_criteria:
       - Schema-valid script artifact
       - Each section lists acting or motion intent
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: character_design
     skill: pipelines/character-animation/character-design-director.md
     produces: character_design
@@ -133,6 +149,11 @@ stages:
     success_criteria:
       - Schema-valid character_design artifact
       - Required actions and emotions are present
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: rig_plan
     skill: pipelines/character-animation/rig-plan-director.md
     produces: rig_plan
@@ -150,6 +171,11 @@ stages:
     success_criteria:
       - Schema-valid rig_plan artifact
       - Every moving part has pivot coordinates
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: scene_plan
     skill: pipelines/character-animation/scene-director.md
     produces: scene_plan
@@ -173,6 +199,11 @@ stages:
       - Schema-valid scene_plan artifact
       - Schema-valid action_timeline artifact
       - Timeline actions can be rendered by the rig
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: assets
     skill: pipelines/character-animation/asset-director.md
     produces: asset_manifest
@@ -210,6 +241,11 @@ stages:
       - Schema-valid asset_manifest artifact
       - Schema-valid pose_library artifact
       - Pose names cover character_design.required_actions
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: edit
     skill: pipelines/character-animation/edit-director.md
     produces: edit_decisions
@@ -236,6 +272,11 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - Edit decisions preserve action_timeline timing
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: compose
     skill: pipelines/character-animation/compose-director.md
     produces: render_report
@@ -275,6 +316,11 @@ stages:
       - Schema-valid render_report artifact
       - Schema-valid final_review artifact
       - Schema-valid character_qa_report artifact
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: publish
     skill: pipelines/character-animation/publish-director.md
     produces: publish_log
@@ -299,3 +345,8 @@ stages:
     success_criteria:
       - Schema-valid publish_log artifact
       - Export package includes character animation source files
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0

@@ -14,7 +14,7 @@ export default defineTool({
   best_for: "Open-source Hunyuan image-to-video experiments through Replicate.",
   supports: ["hunyuan-video", "replicate", "image-to-video", "text-to-video"],
   cost: { unit: "clip", usd: COST_USD },
-  agent_skills: ["ai-video-gen", "hunyuan"],
+  agent_skills: ["ai-video-gen"],
   input: videoProviderInputSchema,
   output: videoProviderOutputSchema,
   async execute(params, ctx) {

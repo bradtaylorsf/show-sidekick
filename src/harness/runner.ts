@@ -6,7 +6,7 @@ import {
   announceCapabilityExtension,
   buildCapabilityExtensionDecision,
 } from "../announce/index.js";
-import type { CostLog } from "../artifacts/cost-log.js";
+import type { CostEntry, CostLog } from "../artifacts/cost-log.js";
 import { EditDecisionsSchema } from "../artifacts/edit-decisions.js";
 import { FinalReviewSchema, type FinalReview } from "../artifacts/final-review.js";
 import type { DecisionEntry, DecisionLog } from "../artifacts/decision-log.js";
@@ -182,6 +182,27 @@ export class Runner {
       if (existingStatus === "failed" && shouldResume(opts.runOptions) && queuedRevision === undefined) {
         return {
           status: "failed",
+          lastStage: stage.slug,
+          totalCostUsd: cumulativeCost,
+          decisions,
+          warnings,
+        };
+      }
+
+      const sampleLimit = sampleLimitExceeded(opts, stage, priorArtifacts, cumulativeCost, budget);
+      if (sampleLimit !== undefined) {
+        await writeSampleLimitCheckpoint({
+          opts,
+          stage,
+          reason: sampleLimit.reason,
+          totalCostUsd: cumulativeCost,
+          budget,
+          revisionNotes,
+          now,
+        });
+        emitSampleLimit(opts, sampleLimit);
+        return {
+          status: sampleLimit.status,
           lastStage: stage.slug,
           totalCostUsd: cumulativeCost,
           decisions,
@@ -466,11 +487,31 @@ async function runStage(input: {
         };
       }
 
-      return failFromError({
+      const failure = failureDetails(error);
+      const totalCostUsd = roundUsd(input.cumulativeCost + stageCostUsd + failure.costEntries.reduce((sum, entry) => sum + entry.usd, 0));
+      await recordFailureCosts(opts, failure.costEntries);
+      await writeFailedErrorCheckpoint({
+        opts,
         stage,
-        cumulativeCost: roundUsd(input.cumulativeCost + stageCostUsd),
-        warnings: input.warnings,
+        artifact: failureArtifact(failure),
+        totalCostUsd,
+        budget: input.budget,
+        toolInvocations: failure.costEntries,
+        revisionNotes: input.revisionNotes,
+        skillsRead: ctx.skills_read,
+        playbook: opts.playbook,
+        now,
       });
+      return {
+        kind: "halt",
+        result: {
+          status: "failed",
+          lastStage: stage.slug,
+          totalCostUsd,
+          decisions: [...input.decisions, ...toolPolicyDecisions],
+          warnings: input.warnings,
+        },
+      };
     }
 
     priorReviews.push(review);
@@ -588,11 +629,7 @@ async function runStage(input: {
 
     const totalCostUsd = roundUsd(input.cumulativeCost + stageCostUsd);
     const overBudget = totalCostUsd > input.budget;
-    const status = checkpointStatusForStage(
-      stage,
-      overBudget,
-      opts.runOptions.sample === true && usesZeroKeyStarterSample(opts.pipeline),
-    );
+    const status = checkpointStatusForStage(opts, stage, overBudget);
     const checkpoint = checkpointForStage({
       stage,
       status,
@@ -983,23 +1020,6 @@ function parsedRenderReport(value: unknown): ReviewContext["renderReport"] {
   return parsed.success ? parsed.data : undefined;
 }
 
-function failFromError(input: {
-  stage: Stage;
-  cumulativeCost: number;
-  warnings: RegistryWarning[];
-}): StageExecutionOutcome {
-  return {
-    kind: "halt",
-    result: {
-      status: "failed",
-      lastStage: input.stage.slug,
-      totalCostUsd: input.cumulativeCost,
-      decisions: [],
-      warnings: input.warnings,
-    },
-  };
-}
-
 async function handleApprovalGate(input: {
   opts: RunnerOptions;
   checkpoint: Checkpoint;
@@ -1111,6 +1131,117 @@ function limitsExceeded(
       warnings,
     },
   };
+}
+
+type SampleLimitFailure = {
+  status: "budget_exceeded" | "limits_exceeded";
+  reason: string;
+  limit: number;
+  actual: number;
+};
+
+function sampleLimitExceeded(
+  opts: RunnerOptions,
+  stage: Stage,
+  priorArtifacts: Record<string, unknown>,
+  cumulativeCost: number,
+  budget: number,
+): SampleLimitFailure | undefined {
+  if (opts.runOptions.sample !== true || opts.pipeline.sample === undefined) {
+    return undefined;
+  }
+
+  const projectedCost = estimatedStageCost(stage, opts.runOptions) ?? 0;
+  const maxCost = opts.pipeline.sample.max_cost_usd;
+  if (maxCost !== undefined && roundUsd(cumulativeCost + projectedCost) > maxCost) {
+    return {
+      status: "budget_exceeded",
+      reason: `sample max_cost_usd would be exceeded before stage '${stage.slug}'`,
+      limit: maxCost,
+      actual: roundUsd(cumulativeCost + projectedCost),
+    };
+  }
+
+  const maxScenes = opts.pipeline.sample.max_scenes;
+  const sceneCount = sampleSceneCount(priorArtifacts);
+  if (maxScenes !== undefined && sceneCount !== undefined && sceneCount > maxScenes) {
+    return {
+      status: "limits_exceeded",
+      reason: `sample max_scenes exceeded before stage '${stage.slug}'`,
+      limit: maxScenes,
+      actual: sceneCount,
+    };
+  }
+
+  if (budget < cumulativeCost) {
+    return {
+      status: "budget_exceeded",
+      reason: `run budget already exceeded before stage '${stage.slug}'`,
+      limit: budget,
+      actual: cumulativeCost,
+    };
+  }
+
+  return undefined;
+}
+
+function sampleSceneCount(priorArtifacts: Record<string, unknown>): number | undefined {
+  const scenePlan = recordValue(priorArtifacts.scene_plan);
+  const scenes = scenePlan?.scenes;
+  return Array.isArray(scenes) ? scenes.length : undefined;
+}
+
+async function writeSampleLimitCheckpoint(input: {
+  opts: RunnerOptions;
+  stage: Stage;
+  reason: string;
+  totalCostUsd: number;
+  budget: number;
+  revisionNotes: Record<string, string[]>;
+  now: () => Date;
+}): Promise<void> {
+  const timestamp = input.now().toISOString();
+  await writeCheckpoint(input.opts.projectRoot, input.opts.show.slug, input.opts.episode.slug, input.stage.slug, {
+    stage: input.stage.slug,
+    status: "failed",
+    timestamp,
+    artifact: {
+      error: "sample_limit_exceeded",
+      reason: input.reason,
+    },
+    cost_snapshot: {
+      stage_cost_usd: 0,
+      total_so_far_usd: input.totalCostUsd,
+      budget_remaining_usd: roundUsd(input.budget - input.totalCostUsd),
+    },
+    tool_invocations: [],
+  });
+  await updateState(input.opts.projectRoot, input.opts.show.slug, input.opts.episode.slug, {
+    pipeline: input.opts.pipelineName,
+    current_stage: input.stage.slug,
+    last_status: "failed",
+    last_checkpoint_at: timestamp,
+    cost_total_usd: input.totalCostUsd,
+    revision_notes: input.revisionNotes,
+    failed: {
+      stage: input.stage.slug,
+      error: input.reason,
+      last_artifact_path: undefined,
+      last_cost_entries: [],
+    },
+  });
+}
+
+function emitSampleLimit(opts: RunnerOptions, failure: SampleLimitFailure): void {
+  opts.io.stdout.write(
+    `${JSON.stringify({
+      event: failure.status,
+      reason: failure.reason,
+      limit: failure.limit,
+      actual: failure.actual,
+      sample: true,
+    })}\n`,
+  );
 }
 
 async function writeInProgressCheckpoint(
@@ -1229,6 +1360,103 @@ async function recordStageCosts(opts: RunnerOptions, result: StageResult): Promi
   for (const entry of result.cost_entries ?? []) {
     await recordCost(opts.projectRoot, opts.show.slug, opts.episode.slug, entry);
   }
+}
+
+async function recordFailureCosts(opts: RunnerOptions, entries: CostEntry[]): Promise<void> {
+  for (const entry of entries) {
+    await recordCost(opts.projectRoot, opts.show.slug, opts.episode.slug, entry);
+  }
+}
+
+async function writeFailedErrorCheckpoint(input: {
+  opts: RunnerOptions;
+  stage: Stage;
+  artifact: unknown;
+  totalCostUsd: number;
+  budget: number;
+  toolInvocations: Checkpoint["tool_invocations"];
+  revisionNotes: Record<string, string[]>;
+  skillsRead: string[];
+  playbook: unknown;
+  now: () => Date;
+}): Promise<void> {
+  const timestamp = input.now().toISOString();
+  await writeCheckpoint(input.opts.projectRoot, input.opts.show.slug, input.opts.episode.slug, input.stage.slug, {
+    stage: input.stage.slug,
+    status: "failed",
+    timestamp,
+    artifact: input.artifact,
+    cost_snapshot: {
+      stage_cost_usd: input.toolInvocations.reduce((sum, entry) => sum + (entry.usd ?? 0), 0),
+      total_so_far_usd: input.totalCostUsd,
+      budget_remaining_usd: roundUsd(input.budget - input.totalCostUsd),
+    },
+    tool_invocations: input.toolInvocations,
+    style_playbook: input.playbook,
+    skills_read: input.skillsRead,
+  });
+  await updateState(input.opts.projectRoot, input.opts.show.slug, input.opts.episode.slug, {
+    pipeline: input.opts.pipelineName,
+    current_stage: input.stage.slug,
+    last_status: "failed",
+    last_checkpoint_at: timestamp,
+    cost_total_usd: input.totalCostUsd,
+    revision_notes: input.revisionNotes,
+    queued_stage_revision: undefined,
+    failed: {
+      stage: input.stage.slug,
+      error: stringValue(recordValue(input.artifact)?.error) ?? "stage failed",
+      last_artifact_path: stringValue(recordValue(input.artifact)?.last_artifact_path),
+      last_cost_entries: input.toolInvocations,
+    },
+  });
+}
+
+type FailureDetails = {
+  message: string;
+  lastArtifactPath?: string;
+  costEntries: CostEntry[];
+};
+
+function failureDetails(error: unknown): FailureDetails {
+  if (isRecord(error)) {
+    const message = error instanceof Error ? error.message : stringValue(error.message) ?? String(error);
+    const lastArtifactPath = stringValue(error.lastArtifactPath) ?? stringValue(error.last_artifact_path);
+    const costEntries = Array.isArray(error.costEntries)
+      ? error.costEntries.filter(isCostEntry)
+      : Array.isArray(error.last_cost_entries)
+        ? error.last_cost_entries.filter(isCostEntry)
+        : [];
+    return { message, lastArtifactPath, costEntries };
+  }
+
+  return {
+    message: error instanceof Error ? error.message : String(error),
+    costEntries: [],
+  };
+}
+
+function failureArtifact(details: FailureDetails): Record<string, unknown> {
+  return {
+    error: details.message,
+    ...(details.lastArtifactPath === undefined ? {} : { last_artifact_path: details.lastArtifactPath }),
+    last_cost_entries: details.costEntries,
+  };
+}
+
+function isCostEntry(value: unknown): value is CostEntry {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.tool === "string" &&
+    typeof value.provider === "string" &&
+    typeof value.model === "string" &&
+    typeof value.units === "number" &&
+    typeof value.usd === "number" &&
+    (value.mode === "sample" || value.mode === "full")
+  );
 }
 
 function buildToolPolicy(input: {
@@ -1404,8 +1632,8 @@ async function checkpointStatusMap(opts: RunnerOptions): Promise<CheckpointStatu
   return statuses;
 }
 
-function checkpointStatusForStage(stage: Stage, overBudget: boolean, zeroKeySample = false): CheckpointStatus {
-  if (overBudget || zeroKeySample || stage.human_approval !== "required") {
+function checkpointStatusForStage(opts: RunnerOptions, stage: Stage, overBudget: boolean): CheckpointStatus {
+  if (overBudget || opts.runOptions.sample === true || stage.human_approval !== "required") {
     return "completed";
   }
 

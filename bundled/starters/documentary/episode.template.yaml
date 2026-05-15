@@ -1,11 +1,11 @@
 # Copy this file to episodes/<slug>.yaml and replace the title, inputs, and notes.
 slug: new-documentary
-title: "New Documentary"
+title: New Documentary
 created: 2026-05-14
-pipeline: documentary
+pipeline: documentary-montage
 playbook: news-broadcast
 runtime: ffmpeg
-aspect: "16:9"
+aspect: 16:9
 budget_usd: 0.75
 inputs:
   narration: shows/documentary/inputs/sample-episode/narration.txt

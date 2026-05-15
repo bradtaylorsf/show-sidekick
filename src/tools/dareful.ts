@@ -14,7 +14,6 @@ export default defineTool({
   best_for: "Searching a configured Dareful stock-video manifest with CC BY attribution.",
   supports: ["stock-video", "manifest-search", "cc-by-4.0"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "dareful"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

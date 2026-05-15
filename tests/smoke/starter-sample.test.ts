@@ -45,6 +45,12 @@ describe("music-video starter sample", () => {
     expect(renderReport.output_path).toBe("projects/music-video/sample-episode/renders/sample-preview.mp4");
     expect(existsSync(renderOutputPath)).toBe(true);
     expect((await readFile(renderOutputPath)).subarray(4, 8).toString("ascii")).toBe("ftyp");
+    expect(JSON.parse(await readFile(path.join(root, "projects", "music-video", "sample-episode", "cost_log.json"), "utf8"))).toEqual(
+      expect.arrayContaining([expect.objectContaining({ tool: "starter_sample", usd: 0, mode: "sample" })]),
+    );
+    expect(JSON.parse(await readFile(path.join(root, "projects", "music-video", "sample-episode", "decisions.json"), "utf8"))).toEqual(
+      expect.arrayContaining([expect.objectContaining({ category: "render_runtime_selection", picked: "ffmpeg" })]),
+    );
     expect(existsSync(path.join(root, "exports", "music-video__sample-episode.premiere", "timeline.xml"))).toBe(true);
   }, 60_000);
 });

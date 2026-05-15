@@ -24,6 +24,14 @@ export const StateSchema = z
         queued_at: z.string(),
       })
       .optional(),
+    failed: z
+      .object({
+        stage: z.string(),
+        error: z.string(),
+        last_artifact_path: z.string().optional(),
+        last_cost_entries: z.array(z.unknown()).default([]),
+      })
+      .optional(),
     sample: z
       .object({
         latest_version: z.number().int().nonnegative().optional(),

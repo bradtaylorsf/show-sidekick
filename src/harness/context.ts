@@ -6,6 +6,7 @@ import type { LoadedEpisode, LoadedShow } from "../shows/index.js";
 
 export type StageRunOptions = {
   sample: boolean;
+  provider_profile?: string;
   budget_usd?: number;
   dryRun?: boolean;
   from?: string;

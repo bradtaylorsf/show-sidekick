@@ -132,6 +132,24 @@ When you give me a prompt, I will understand the brief, propose concepts with co
 
 ## Follow-Up Answers
 
+**How do I use the CLI?**
+
+Use this sequence for a first video:
+
+```bash
+predit doctor --profile paid-demo
+predit ls starters
+predit new show <show> --from <starter>
+predit new episode <show> <episode>
+predit build <show>/<episode> --sample --provider-profile paid-demo
+predit export <show>/<episode> --target premiere
+```
+
+For a zero-key starter, use `predit init --starter music-video`, then run
+`predit build music-video/sample-episode --sample`. For custom workflows, use
+`predit new pipeline <slug>` to create a local manifest and first director skill,
+then bind a show to it with `predit new show <show> --pipelines <slug>`.
+
 **What does it cost?**
 
 - Zero-key path: $0.

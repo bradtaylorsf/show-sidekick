@@ -2,7 +2,8 @@
 
 Audio-led news-song starter for short sourced or source-ready musical explainers.
 
-- Pipelines: `news-song`
+- Starter: `news-song`
+- Pipeline slug: `news-song`
 - Playbook: `news-song`
 - Fixture size: generated from `inputs/sample-episode/`
 - Expected sample duration: 15 seconds

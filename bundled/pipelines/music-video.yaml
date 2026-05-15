@@ -55,7 +55,7 @@ metadata:
   starter_sample_dispatcher: zero-key
   visual_benchmark: "Brad's reference music-video"
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets: [ premiere, davinci, capcut, edl ]
   default_target: premiere
   notes: |
     Export packages include cuesheet, source review, lyric timing, scene plan, asset manifest, edit decisions, render output, and NLE handoff metadata.
@@ -83,6 +83,7 @@ stages:
     success_criteria:
       - Schema-valid cuesheet artifact
       - Word timestamps and beats are present
+    required_artifacts_in: []
   - slug: source_review
     skill: pipelines/music-video/source-review-director.md
     produces: source_media_review

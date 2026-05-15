@@ -32,6 +32,7 @@ export type StageFlagOptions = GlobalOptions & {
   budget?: string;
   costDriftThreshold?: string;
   reference?: string;
+  providerProfile?: string;
   nonInteractive?: boolean;
 };
 
@@ -125,16 +126,23 @@ function recordValue(value: unknown): Record<string, unknown> | undefined {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
 }
 
-export function parseStageRunOptions(options: StageFlagOptions, pipeline: Pipeline): StageRunOptions {
+export function parseStageRunOptions(options: StageFlagOptions, loaded: LoadedRunTarget): StageRunOptions {
+  const pipeline = loaded.pipeline;
   validateStageFlag("from", options.from, pipeline);
   validateStageFlag("to", options.to, pipeline);
   validateStageFlag("only", options.only, pipeline);
 
   const budgetUsd = parseBudget(options.budget);
   const costDriftThreshold = parsePositiveNumber("--cost-drift-threshold", options.costDriftThreshold);
+  const providerProfile =
+    options.providerProfile ??
+    loaded.episode.provider_profile ??
+    loaded.show.pipelines[loaded.pipelineName]?.provider_profile ??
+    loaded.show.defaults.provider_profile;
 
   return {
     sample: options.sample === true,
+    provider_profile: providerProfile,
     dryRun: options.dryRun === true,
     from: options.from,
     to: options.to,

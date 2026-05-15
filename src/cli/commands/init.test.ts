@@ -97,6 +97,24 @@ describe("init command", () => {
     expect(calls).toEqual([["init"], ["add", "."], ["commit", "-m", "Initial predit project scaffold."]]);
   });
 
+  it("prints first-run CLI and agent guidance in human mode", async () => {
+    const projectRoot = await scratchDir("project");
+    const bundledRoot = await scratchDir("bundled");
+    await writeFakeBundled(bundledRoot);
+    const { io, output } = captureIo();
+
+    await createInitHandler(io, {
+      bundledRoot: () => bundledRoot,
+      copyBundledInto: (target) => copyBundledInto(target, bundledRoot),
+      computeBundledChecksum: () => computeBundledChecksum(bundledRoot),
+      cwd: () => projectRoot,
+    })(command({}));
+
+    expect(output().stdout).toContain("predit doctor --profile paid-demo");
+    expect(output().stdout).toContain("predit ls starters");
+    expect(output().stdout).toContain("Read AGENTS.md and .predit/skills/meta/onboarding.md");
+  });
+
   it("clones a requested starter and normalizes show.yaml to the starter slug", async () => {
     const projectRoot = await scratchDir("project");
     const bundledRoot = await scratchDir("bundled");
@@ -133,6 +151,37 @@ describe("init command", () => {
     await expect(stat(path.join(projectRoot, ".predit"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
+  it("rejects starters whose bundled pipeline binding is missing", async () => {
+    const projectRoot = await scratchDir("project");
+    const bundledRoot = await scratchDir("bundled");
+    await writeFakeBundled(bundledRoot);
+    const brokenStarterDir = path.join(bundledRoot, "starters", "broken-starter");
+    await mkdir(brokenStarterDir, { recursive: true });
+    await writeFile(
+      path.join(brokenStarterDir, "show.yaml"),
+      [
+        "slug: broken-starter",
+        'display_name: "Broken Starter"',
+        "created: 2026-05-14",
+        "pipelines:",
+        "  undecided-pipeline:",
+        "    playbook: clean-professional",
+        "defaults:",
+        "  pipeline: undecided-pipeline",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const { io } = captureIo();
+    await expect(
+      createInitHandler(io, { bundledRoot: () => bundledRoot, cwd: () => projectRoot })(
+        command({ starter: "broken-starter" }),
+      ),
+    ).rejects.toThrow("starter 'broken-starter' references bundled pipeline 'undecided-pipeline'");
+    await expect(stat(path.join(projectRoot, ".predit"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("rejects invalid starter slugs", async () => {
     const projectRoot = await scratchDir("project");
     const bundledRoot = await scratchDir("bundled");
@@ -157,6 +206,19 @@ async function writeFakeBundled(root: string): Promise<void> {
     await mkdir(path.join(root, dirname), { recursive: true });
     await writeFile(path.join(root, dirname, `${dirname}.txt`), `${dirname}\n`, "utf8");
   }
+
+  await writeFile(
+    path.join(root, "pipelines", "cinematic.yaml"),
+    [
+      "slug: cinematic",
+      "stages:",
+      "  - slug: idea",
+      "    skill: pipelines/cinematic/idea-director.md",
+      "    produces: brief",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
 
   const starterDir = path.join(root, "starters", "music-video");
   await mkdir(path.join(starterDir, "brand"), { recursive: true });

@@ -1,11 +1,11 @@
 # Copy this file to episodes/<slug>.yaml and replace the title, inputs, and notes.
 slug: new-chaosfm-song
-title: "New Chaos FM Song"
+title: New Chaos FM Song
 created: 2026-05-14
 pipeline: news-song
 playbook: thechaosfm-gta-political
 runtime: ffmpeg
-aspect: "16:9"
+aspect: 16:9
 budget_usd: 0.75
 inputs:
   track: shows/thechaosfm/inputs/sample-episode/track.wav
@@ -17,4 +17,3 @@ tags:
   - thechaosfm
   - news-song
   - audio-led
-

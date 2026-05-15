@@ -34,7 +34,7 @@ export default defineTool({
   best_for: "Selector wrapper that routes music generation/search to the first configured provider.",
   supports: ["music-generation-selector", "registry-routing"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["music-plan"],
+  agent_skills: ["music"],
   input: inputSchema,
   output: outputSchema,
   async execute(params, ctx) {

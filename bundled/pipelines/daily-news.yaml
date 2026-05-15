@@ -2,6 +2,7 @@ slug: daily-news
 display_name: Daily News
 description: Daily/recurring news roundup pipeline. Fetches top headlines via web_search, captures source-page screenshots via playwright-recording, scripts TTS narration, composes a fast-paced news montage with broadcast-style lower-third banners. Designed to run on a schedule (via /schedule skill) for hands-off daily episodes.
 status: beta
+sample_support: unsupported
 master_clock: none
 stage_order: manifest
 default_checkpoint_policy: guided
@@ -39,7 +40,11 @@ orchestration:
   max_send_backs: 1
   max_wall_time_minutes: 20
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets:
+    - premiere
+    - davinci
+    - capcut
+    - edl
   default_target: premiere
   notes: |
     Export packages include cut timing, linked assets, narration/music audio, and word timing captions where the target supports them.
@@ -66,6 +71,18 @@ stages:
       - metadata.sources is a non-empty array
       - metadata.episode_date present in ISO format
       - metadata.target_runtime_seconds set
+    required_artifacts_in: []
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
   - slug: research
     skill: pipelines/daily-news/research-director.md
     produces: research_brief
@@ -89,6 +106,16 @@ stages:
     success_criteria:
       - research_brief.headlines is a non-empty array
       - Each headline has url, publisher, date, summary fields populated
+    optional_artifacts_in: []
+    optional_tools: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
   - slug: capture
     skill: pipelines/daily-news/capture-director.md
     produces: capture_manifest
@@ -112,6 +139,16 @@ stages:
     success_criteria:
       - capture_manifest.screenshots length matches research_brief.selected_stories
       - All screenshot files exist on disk
+    optional_artifacts_in: []
+    optional_tools: []
+    estimated_cost:
+      sample:
+        usd: 0.25
+        comment: sample-scope asset generation or capture
+      full:
+        usd: 2
+        comment: full asset generation, capture, or processing pass
+    sample_mode_supported: true
   - slug: script
     skill: pipelines/daily-news/script-director.md
     produces: script
@@ -135,6 +172,17 @@ stages:
       - Schema-valid script artifact
       - script.intro and script.outro both present
       - script.stories length matches capture_manifest.screenshots length
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
   - slug: scene_plan
     skill: pipelines/daily-news/scene-director.md
     produces: scene_plan
@@ -156,6 +204,17 @@ stages:
     success_criteria:
       - Schema-valid scene_plan artifact
       - Total scene duration matches sum of script narration durations within 5%
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
   - slug: assets
     skill: pipelines/daily-news/asset-director.md
     produces: asset_manifest
@@ -186,6 +245,15 @@ stages:
       - Schema-valid asset_manifest artifact
       - All TTS audio files exist on disk
       - All audio files use the same voice id
+    optional_artifacts_in: []
+    estimated_cost:
+      sample:
+        usd: 0.25
+        comment: sample-scope asset generation or capture
+      full:
+        usd: 2
+        comment: full asset generation, capture, or processing pass
+    sample_mode_supported: true
   - slug: edit
     skill: pipelines/daily-news/edit-director.md
     produces: edit_decisions
@@ -208,6 +276,17 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - edit_decisions.render_runtime present
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
   - slug: compose
     skill: pipelines/daily-news/compose-director.md
     produces: render_report
@@ -240,6 +319,14 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output file exists and passes ffprobe validation
+    estimated_cost:
+      sample:
+        usd: 0.05
+        comment: local render validation
+      full:
+        usd: 0.25
+        comment: full render and export pass
+    sample_mode_supported: true
   - slug: publish
     skill: pipelines/daily-news/publish-director.md
     produces: publish_log
@@ -262,3 +349,20 @@ stages:
     success_criteria:
       - Schema-valid publish_log artifact
       - Export package contains rendered video, source manifest, screenshots, and metadata
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
+sample:
+  duration_s_min: 15
+  duration_s_max: 20
+  max_scenes: 3
+  max_cost_usd: 0.8
+  hint: Three sourced headlines, one captured card, and a short broadcast preview.

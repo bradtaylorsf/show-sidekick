@@ -46,7 +46,7 @@ sample:
   duration_s_max: 18
   hint: "Render the hook and one motion system before building all scenes."
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets: [ premiere, davinci, capcut, edl ]
   default_target: premiere
   notes: |
     Export packages include render output, source animation files, runtime decision notes, and reusable motion assets.
@@ -69,6 +69,12 @@ stages:
     success_criteria:
       - Schema-valid brief artifact
       - Animation style direction is selected
+    required_artifacts_in: []
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: script
     skill: pipelines/animation/script-director.md
     produces: script
@@ -87,6 +93,11 @@ stages:
     success_criteria:
       - Schema-valid script artifact
       - Script sections have timing estimates
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: scene_plan
     skill: pipelines/animation/scene-director.md
     produces: scene_plan
@@ -109,6 +120,11 @@ stages:
     success_criteria:
       - Schema-valid scene_plan artifact
       - Every scene has duration and animation treatment
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: runtime_selection
     skill: pipelines/animation/runtime-selector-director.md
     produces: render_runtime
@@ -131,6 +147,11 @@ stages:
     success_criteria:
       - Schema-valid render_runtime artifact
       - Runtime choice is recorded in the decision log
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: assets
     skill: pipelines/animation/asset-director.md
     produces: asset_manifest
@@ -167,6 +188,11 @@ stages:
     success_criteria:
       - Schema-valid asset_manifest artifact
       - All referenced asset files exist on disk
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: edit
     skill: pipelines/animation/edit-director.md
     produces: edit_decisions
@@ -189,6 +215,11 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - edit_decisions.render_runtime matches render_runtime
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: compose
     skill: pipelines/animation/compose-director.md
     produces: render_report
@@ -220,6 +251,11 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output file exists and passes ffprobe validation
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: publish
     skill: pipelines/animation/publish-director.md
     produces: publish_log
@@ -241,3 +277,8 @@ stages:
     success_criteria:
       - Schema-valid publish_log artifact
       - Export package contains rendered video and animation source metadata
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0

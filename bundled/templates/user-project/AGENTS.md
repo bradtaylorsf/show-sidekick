@@ -4,6 +4,8 @@ This is a `predit` user project. The CLI is installed globally (or runnable via 
 
 You are the production intelligence. The CLI is the orchestration shell. Skills (Markdown) tell you how to do the creative work. Tools (called via the CLI / registry) carry out concrete actions. This file is your operating contract.
 
+Treat this user-project folder as canonical for production work. Do not edit anything inside `.predit/`; it is a bundled cache refreshed by the CLI. When validating local harness changes from a checkout, follow the CLI/user-project model in `docs/demo-readiness.md#operating-models`.
+
 ## Rule zero: every production goes through a pipeline
 
 When the user asks to make, create, produce, or generate any video content — a trailer, explainer, clip, music video, episode of any series — go through the pipeline system. Identify the pipeline (or ask the user), read the pipeline manifest, run preflight, then execute stage by stage.
@@ -23,6 +25,20 @@ The intelligence is in the skills, not in improvised code. An agent that reads t
 3. The pipeline's manifest (`.predit/pipelines/<pipeline>.yaml` or `./pipelines/<pipeline>.yaml` if overridden locally).
 4. The director skill for the stage you are about to run (`.predit/skills/pipelines/<pipeline>/<stage>-director.md`, or the local / show-level override if one exists).
 5. The Layer 3 vendor skill for every generation tool you are about to call (`.predit/skills/agents/<vendor>.md`).
+
+## First-run flow for agents
+
+When a user says "help me make the first video", "what can this project do?", or gives a broad creative goal, guide them through this path:
+
+1. Run `predit doctor --profile paid-demo --json` and summarize what is ready, what needs env vars, what needs CLI login, and which composition runtimes are available.
+2. Run `predit ls starters` and recommend one starter or one pipeline based on the user's goal.
+3. If the project has no show yet, scaffold one with `predit new show <slug> --from <starter>` for starter-backed work, or `predit new show <slug> --pipelines <pipeline>` for a custom show.
+4. Create or select an episode with `predit new episode <show> <episode>`.
+5. Before spending provider credits, explain the selected pipeline, likely tools, rough cost, and expected output path.
+6. Run `predit build <show>/<episode> --sample --provider-profile paid-demo` for paid samples, or omit the provider profile for zero-key samples.
+7. Export with `predit export <show>/<episode> --target premiere` and, when useful, `predit export <show>/<episode> --format edl`.
+
+Record any issue, confusing output, failed tool call, or manual fix in `projects/<show>/<episode>/notes.md` so a coding agent can improve the harness later.
 
 ## Where things live
 
@@ -76,8 +92,11 @@ These skills are not optional — they encode the contract that makes `predit` p
 
 ```bash
 predit doctor                              # capability menu — run before any creative work
+predit doctor --profile paid-demo --json   # machine-readable provider preflight for agents
 predit new show <slug> --from <starter>    # scaffold a new show
+predit new show <slug> --pipelines <list>  # scaffold a show bound to existing pipelines
 predit new episode <show> [<slug>]         # scaffold a new episode
+predit new pipeline <slug>                 # scaffold a project-local pipeline + idea director skill
 predit build <show>/<episode>              # run the pipeline interactively
 predit build <show>/<episode> --sample     # 15–20s end-to-end sample run
 predit resume <show>/<episode>             # pick up at next checkpoint

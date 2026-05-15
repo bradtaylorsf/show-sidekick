@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadPipeline } from "../../pipelines/load.js";
+import { resolveSkill } from "../../skills/resolver.js";
 import { loadEpisode, loadShow } from "../../shows/load.js";
 import { createProgram } from "../program.js";
 
@@ -36,8 +37,23 @@ describe("new command", () => {
     expect(event).toEqual(expect.objectContaining({ event: "show_created", slug: "the-show" }));
     await expect(loadShow(root, "the-show")).resolves.toMatchObject({
       slug: "the-show",
-      defaults: { pipeline: "default" },
-      pipelines: { default: {} },
+      defaults: { pipeline: "music-video" },
+      pipelines: { "music-video": {} },
+    });
+  });
+
+  it("creates a default show bound to a resolvable bundled pipeline when cache is present", async () => {
+    const root = await scratchProject();
+    await writeMinimalPipeline(root, "music-video");
+    process.chdir(root);
+
+    const { program } = captureProgram();
+    await program.parseAsync(["node", "predit", "new", "show", "resolvable"], { from: "node" });
+
+    const show = await loadShow(root, "resolvable");
+    await expect(loadPipeline(root, show.defaults.pipeline)).resolves.toMatchObject({
+      slug: "music-video",
+      stages: [expect.objectContaining({ slug: "idea" })],
     });
   });
 
@@ -161,6 +177,13 @@ describe("new command", () => {
       stages: [expect.objectContaining({ slug: "idea" })],
     });
     await expect(
+      readFile(path.join(root, "skills", "pipelines", "local-pipeline", "idea-director.md"), "utf8"),
+    ).resolves.toContain('applies_to: "pipelines/local-pipeline"');
+    await expect(resolveSkill("director", "idea", { projectRoot: root, pipeline: "local-pipeline" })).resolves.toMatchObject({
+      tier: "project",
+      path: path.join(root, "skills", "pipelines", "local-pipeline", "idea-director.md"),
+    });
+    await expect(
       program.parseAsync(["node", "predit", "new", "pipeline", "local-pipeline"], { from: "node" }),
     ).rejects.toThrow("refuses to clobber existing pipeline");
 
@@ -193,6 +216,23 @@ function captureProgram() {
     program,
     output: () => ({ stdout, stderr }),
   };
+}
+
+async function writeMinimalPipeline(root: string, slug: string): Promise<void> {
+  await mkdir(path.join(root, ".predit", "pipelines"), { recursive: true });
+  await writeFile(
+    path.join(root, ".predit", "pipelines", `${slug}.yaml`),
+    [
+      `slug: ${slug}`,
+      "master_clock: none",
+      "stages:",
+      "  - slug: idea",
+      `    skill: pipelines/${slug}/idea-director.md`,
+      "    produces: brief",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
 }
 
 async function writeStarter(root: string, name: string): Promise<void> {

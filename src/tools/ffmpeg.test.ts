@@ -65,6 +65,45 @@ describe("ffmpeg tool", () => {
     expect(probe.format.duration_s).toBeGreaterThanOrEqual(1.8);
     expect(probe.format.duration_s).toBeLessThanOrEqual(2.3);
   });
+
+  it.skipIf(!hasFfmpeg)("pads short compose clips and maps an external audio track", async () => {
+    const dir = await tempDir();
+    const video = join(dir, "silent-video.mp4");
+    const audio = join(dir, "narration.m4a");
+    const output = join(dir, "composed.mp4");
+    synthesizeSilentVideo(video, 1);
+    synthesizeAudio(audio, 2);
+
+    const result = await ffmpeg.execute(
+      {
+        operation: "compose",
+        asset_manifest: {
+          assets: [{ id: "clip", kind: "video", path: video }],
+        },
+        edit_decisions: {
+          cuts: [{ start_s: 0, end_s: 2, asset_id: "clip" }],
+          overlays: [],
+          audio: {
+            music: {
+              track_path: audio,
+            },
+          },
+          render_runtime: "ffmpeg",
+          renderer_family: "animation-first",
+        },
+        output_path: output,
+      },
+      testContext(dir),
+    );
+
+    expect(result.output_path).toBe(output);
+    expect(existsSync(output)).toBe(true);
+
+    const probe = await ffprobe(output);
+    expect(probe.format.duration_s).toBeGreaterThanOrEqual(1.8);
+    expect(probe.format.duration_s).toBeLessThanOrEqual(2.3);
+    expect(probe.streams.some((stream) => stream.codec_type === "audio")).toBe(true);
+  });
 });
 
 async function tempDir(): Promise<string> {
@@ -106,6 +145,54 @@ function synthesizeVideo(output: string, durationS: number): void {
   expect(existsSync(output)).toBe(true);
 }
 
+function synthesizeSilentVideo(output: string, durationS: number): void {
+  execFileSync(
+    "ffmpeg",
+    [
+      "-y",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      `testsrc2=size=160x90:rate=15:duration=${durationS}`,
+      "-c:v",
+      "mpeg4",
+      "-g",
+      "1",
+      "-q:v",
+      "5",
+      output,
+    ],
+    { stdio: "pipe" },
+  );
+
+  expect(existsSync(output)).toBe(true);
+}
+
+function synthesizeAudio(output: string, durationS: number): void {
+  execFileSync(
+    "ffmpeg",
+    [
+      "-y",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      `sine=frequency=880:duration=${durationS}`,
+      "-c:a",
+      "aac",
+      output,
+    ],
+    { stdio: "pipe" },
+  );
+
+  expect(existsSync(output)).toBe(true);
+}
+
 function hasBinary(binary: string): boolean {
   try {
     execFileSync("which", [binary], { stdio: "ignore" });
@@ -115,9 +202,9 @@ function hasBinary(binary: string): boolean {
   }
 }
 
-function testContext() {
+function testContext(projectRoot: string = tmpdir()) {
   return {
-    projectRoot: tmpdir(),
+    projectRoot,
     logger: {
       info: () => undefined,
       warn: () => undefined,

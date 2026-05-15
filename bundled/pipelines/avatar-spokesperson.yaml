@@ -39,7 +39,7 @@ orchestration:
   max_send_backs: 2
   max_wall_time_minutes: 18
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets: [ premiere, davinci, capcut, edl ]
   default_target: premiere
   notes: |
     Export packages include avatar or lip-sync assets, presenter plates when used, script, captions, edit decisions, render output, and NLE handoff metadata.
@@ -63,6 +63,12 @@ stages:
     success_criteria:
       - Schema-valid source_media_review artifact when source media is supplied
       - Reviewer can determine whether a presenter plate is viable for lip-sync path
+    required_artifacts_in: []
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: idea
     skill: pipelines/avatar-spokesperson/idea-director.md
     produces: brief
@@ -85,6 +91,12 @@ stages:
     success_criteria:
       - Schema-valid brief artifact
       - decision_log contains Pivot Decision before script promotion
+    required_artifacts_in: []
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: script
     skill: pipelines/avatar-spokesperson/script-director.md
     produces: script
@@ -108,6 +120,11 @@ stages:
     success_criteria:
       - Schema-valid script artifact
       - Script records avatar path and voice direction
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: scene_plan
     skill: pipelines/avatar-spokesperson/scene-director.md
     produces: scene_plan
@@ -132,6 +149,11 @@ stages:
     success_criteria:
       - Schema-valid scene_plan artifact
       - Every scene maps to the approved avatar path
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: assets
     skill: pipelines/avatar-spokesperson/asset-director.md
     produces: asset_manifest
@@ -167,6 +189,11 @@ stages:
     success_criteria:
       - Schema-valid asset_manifest artifact
       - Every avatar or support asset maps to the approved path
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: edit
     skill: pipelines/avatar-spokesperson/edit-director.md
     produces: edit_decisions
@@ -188,6 +215,11 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - Edit decisions cover every planned avatar or pivot output
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: compose
     skill: pipelines/avatar-spokesperson/compose-director.md
     produces: render_report
@@ -221,6 +253,11 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output file exists and passes ffprobe validation
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: publish
     skill: pipelines/avatar-spokesperson/publish-director.md
     produces: publish_log
@@ -243,3 +280,8 @@ stages:
     success_criteria:
       - Schema-valid publish_log artifact
       - Export package contains rendered video and handoff metadata
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0

@@ -34,7 +34,6 @@ export default defineTool({
   best_for: "rendering Mermaid diagrams to PNG or SVG visual assets",
   supports: ["mermaid", "png", "svg"],
   cost: { unit: "image", usd: 0 },
-  agent_skills: ["mermaid-diagrams"],
   input: DiagramGenInputSchema,
   output: DiagramGenOutputSchema,
 

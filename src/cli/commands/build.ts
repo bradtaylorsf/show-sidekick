@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
-import type { Command } from "commander";
+import { CommanderError, type Command } from "commander";
 import { z } from "zod";
 import type { VideoAnalysisBrief } from "../../artifacts/index.js";
 import { loadYaml } from "../../config/loader.js";
@@ -18,9 +18,12 @@ import {
   type RunnerOptions,
   type RunnerResult,
 } from "../../harness/index.js";
+import { createPaidSampleDispatcher } from "../../harness/paid-sample.js";
 import { createStarterSampleDispatcher } from "../../harness/starter-sample.js";
 import { resolve as resolveProjectResource } from "../../paths/project.js";
 import { loadProjectPlaybook } from "../../playbooks/project-loader.js";
+import { recordDecision } from "../../decisions/store.js";
+import { buildProviderProfileDecision, getProviderProfile, providerProfileNames } from "../../providers/profiles.js";
 import { Registry } from "../../registry/index.js";
 import { deepMerge } from "../../shows/deep-merge.js";
 import { PlaybookSchema } from "../../shows/playbook.js";
@@ -63,6 +66,7 @@ export type BuildHandlerOptions = {
     registry: Registry;
     io: CliIo;
     options: StageFlagOptions;
+    runOptions: ReturnType<typeof parseStageRunOptions>;
     now?: () => Date;
   }) => Dispatcher | Promise<Dispatcher>;
   reviewer?: RunnerOptions["reviewer"];
@@ -93,12 +97,15 @@ export function createBuildHandler(io: CliIo, handlerOptions: BuildHandlerOption
             now: handlerOptions.now,
           });
     const loaded = await selectRunTargetPipeline(input, { videoAnalysisBrief });
-    const runOptions = parseStageRunOptions(options, loaded.pipeline);
+    const runOptions = parseStageRunOptions(options, loaded);
+    ensureSampleSupport({ command, io, loaded, runOptions, json: options.json === true });
+    await recordProviderProfileSelection(runOptions.provider_profile, loaded, handlerOptions.now);
     const dispatcher = await (handlerOptions.dispatcherFactory ?? defaultDispatcherFactory)({
       loaded,
       registry,
       io,
       options,
+      runOptions,
       now: handlerOptions.now,
     });
     const playbook = await (handlerOptions.playbookResolver ?? resolvePlaybook)(loaded);
@@ -124,6 +131,30 @@ export function createBuildHandler(io: CliIo, handlerOptions: BuildHandlerOption
 
     emitBuildFinished(io, options, target, loaded, result);
   };
+}
+
+async function recordProviderProfileSelection(
+  providerProfile: string | undefined,
+  loaded: LoadedRunTarget,
+  now: (() => Date) | undefined,
+): Promise<void> {
+  if (providerProfile === undefined) {
+    return;
+  }
+
+  const profile = getProviderProfile(providerProfile);
+  if (profile === undefined) {
+    throw new Error(`unknown provider profile "${providerProfile}"; expected one of: ${providerProfileNames().join(", ")}`);
+  }
+
+  await recordDecision(
+    { show: loaded.showSlug, episode: loaded.episodeSlug },
+    buildProviderProfileDecision({
+      profile,
+      timestamp: (now ?? (() => new Date()))().toISOString(),
+    }),
+    { root: loaded.projectRoot },
+  );
 }
 
 async function defaultRegistryFactory(_loaded: LoadedRunTargetInput): Promise<Registry> {
@@ -156,9 +187,17 @@ function defaultDispatcherFactory(input: {
   loaded: LoadedRunTarget;
   io: CliIo;
   options: StageFlagOptions;
+  runOptions: ReturnType<typeof parseStageRunOptions>;
   now?: () => Date;
 }): Dispatcher {
-  if (input.options.sample === true && usesStarterSampleDispatcher(input.loaded.pipeline)) {
+  if (input.runOptions.sample === true && input.runOptions.provider_profile !== undefined && sampleSupportIncludes(input.loaded, "paid")) {
+    return createPaidSampleDispatcher({
+      providerProfile: input.runOptions.provider_profile,
+      now: input.now,
+    });
+  }
+
+  if (input.runOptions.sample === true && sampleSupportIncludes(input.loaded, "zero-key")) {
     return createStarterSampleDispatcher();
   }
 
@@ -173,14 +212,89 @@ function defaultDispatcherFactory(input: {
   });
 }
 
-function usesStarterSampleDispatcher(pipeline: LoadedRunTarget["pipeline"]): boolean {
+function ensureSampleSupport(input: {
+  command: Command;
+  io: CliIo;
+  loaded: LoadedRunTarget;
+  runOptions: ReturnType<typeof parseStageRunOptions>;
+  json: boolean;
+}): void {
+  if (input.runOptions.sample !== true) {
+    return;
+  }
+
+  const support = resolvedSampleSupport(input.loaded);
+  if (input.runOptions.provider_profile !== undefined) {
+    if (sampleSupportAllows(support, "paid")) {
+      return;
+    }
+
+    emitSampleUnsupported(input, `pipeline '${input.loaded.pipelineName}' does not support paid-provider samples`);
+    throw sampleUnsupported(`sample unsupported: ${input.loaded.pipelineName} does not support paid-provider samples`, input.io);
+  }
+
+  if (sampleSupportAllows(support, "zero-key")) {
+    return;
+  }
+
+  const reason =
+    support === "unsupported"
+      ? `pipeline '${input.loaded.pipelineName}' declares sample_support: unsupported`
+      : `pipeline '${input.loaded.pipelineName}' requires a provider profile for sample mode`;
+  emitSampleUnsupported(input, reason);
+  throw sampleUnsupported(`sample unsupported: ${reason}`, input.io);
+}
+
+function sampleUnsupported(message: string, io: CliIo): CommanderError {
+  io.stderr.write(`${message}\n`);
+  return new CommanderError(2, "predit.sample_unsupported", message);
+}
+
+function emitSampleUnsupported(input: {
+  io: CliIo;
+  loaded: LoadedRunTarget;
+  runOptions: ReturnType<typeof parseStageRunOptions>;
+  json: boolean;
+}, reason: string): void {
+  const payload = {
+    event: "sample_unsupported",
+    show: input.loaded.show.slug,
+    episode: input.loaded.episode.slug,
+    pipeline: input.loaded.pipelineName,
+    sample_support: resolvedSampleSupport(input.loaded),
+    provider_profile: input.runOptions.provider_profile,
+    reason,
+    exit_code: 2,
+  };
+
+  input.io.stdout.write(`${JSON.stringify(payload)}\n`);
+}
+
+function sampleSupportIncludes(loaded: LoadedRunTarget, mode: "zero-key" | "paid"): boolean {
+  return sampleSupportAllows(resolvedSampleSupport(loaded), mode);
+}
+
+function sampleSupportAllows(support: "zero-key" | "paid" | "both" | "unsupported", mode: "zero-key" | "paid"): boolean {
+  return support === "both" || support === mode;
+}
+
+function resolvedSampleSupport(loaded: LoadedRunTarget): "zero-key" | "paid" | "both" | "unsupported" {
+  return loaded.show.sample_support ?? loaded.pipeline.sample_support ?? legacySampleSupport(loaded.pipeline);
+}
+
+function legacySampleSupport(pipeline: LoadedRunTarget["pipeline"]): "zero-key" | "paid" | "both" | "unsupported" {
   const metadata = pipeline.metadata;
-  return (
+  const zeroKey =
     typeof metadata === "object" &&
     metadata !== null &&
     !Array.isArray(metadata) &&
-    metadata.starter_sample_dispatcher === "zero-key"
-  );
+    metadata.starter_sample_dispatcher === "zero-key";
+
+  if (zeroKey) {
+    return "zero-key";
+  }
+
+  return pipeline.sample === undefined ? "unsupported" : "paid";
 }
 
 function referenceValue(options: StageFlagOptions, loaded: LoadedRunTargetInput): string | undefined {

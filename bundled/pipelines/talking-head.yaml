@@ -36,7 +36,7 @@ orchestration:
   max_send_backs: 2
   max_wall_time_minutes: 15
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets: [ premiere, davinci, capcut, edl ]
   default_target: premiere
   notes: |
     Export packages include cleaned source footage, transcript, captions, support assets, render output, and NLE handoff metadata.
@@ -62,6 +62,12 @@ stages:
     success_criteria:
       - Schema-valid source_media_review artifact when user-supplied video is present
       - Review identifies transcript confidence and subtitle timing risks
+    required_artifacts_in: []
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: idea
     skill: pipelines/talking-head/idea-director.md
     produces: brief
@@ -80,6 +86,11 @@ stages:
     success_criteria:
       - Schema-valid brief artifact
       - Brief is grounded in source_media_review
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: script
     skill: pipelines/talking-head/script-director.md
     produces: script
@@ -102,6 +113,11 @@ stages:
     success_criteria:
       - Schema-valid script artifact
       - If word-level confidence < 0.8 the reviewer must REVISE: re-run whisperx with large-v3 model before approving captions.
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: scene_plan
     skill: pipelines/talking-head/scene-director.md
     produces: scene_plan
@@ -128,6 +144,11 @@ stages:
     success_criteria:
       - Schema-valid scene_plan artifact
       - Every scene maps to source footage or an approved support insert
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: assets
     skill: pipelines/talking-head/asset-director.md
     produces: asset_manifest
@@ -165,6 +186,11 @@ stages:
     success_criteria:
       - Schema-valid asset_manifest artifact
       - Subtitle assets use subtitle sync tolerance ±0.3s
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: edit
     skill: pipelines/talking-head/edit-director.md
     produces: edit_decisions
@@ -186,6 +212,11 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - Captions stay within subtitle sync tolerance ±0.3s
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: compose
     skill: pipelines/talking-head/compose-director.md
     produces: render_report
@@ -221,6 +252,11 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output file exists and passes ffprobe validation
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: publish
     skill: pipelines/talking-head/publish-director.md
     produces: publish_log
@@ -243,3 +279,8 @@ stages:
     success_criteria:
       - Schema-valid publish_log artifact
       - Export package contains rendered video and handoff metadata
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0

@@ -34,49 +34,49 @@ const providers = [
     name: "pexels_video",
     provider: "pexels",
     env: ["PEXELS_API_KEY"],
-    skills: ["stock-video", "pexels"],
+    skills: undefined,
   },
   {
     tool: pixabayVideo,
     name: "pixabay_video",
     provider: "pixabay",
     env: ["PIXABAY_API_KEY"],
-    skills: ["stock-video", "pixabay"],
+    skills: undefined,
   },
   {
     tool: mixkit,
     name: "mixkit",
     provider: "mixkit",
     env: ["MIXKIT_FEED_URL"],
-    skills: ["stock-video", "mixkit"],
+    skills: undefined,
   },
   {
     tool: coverr,
     name: "coverr",
     provider: "coverr",
     env: ["COVERR_FEED_URL"],
-    skills: ["stock-video", "coverr"],
+    skills: undefined,
   },
   {
     tool: dareful,
     name: "dareful",
     provider: "dareful",
     env: ["DAREFUL_FEED_URL"],
-    skills: ["stock-video", "dareful"],
+    skills: undefined,
   },
   {
     tool: pond5Pd,
     name: "pond5_pd",
     provider: "pond5",
     env: ["POND5_PD_FEED_URL"],
-    skills: ["stock-video", "pond5"],
+    skills: undefined,
   },
   {
     tool: videvo,
     name: "videvo",
     provider: "videvo",
     env: ["VIDEVO_FEED_URL"],
-    skills: ["stock-video", "videvo"],
+    skills: undefined,
   },
 ] as const;
 
@@ -112,8 +112,8 @@ describe("stock video provider tools", () => {
         status: "beta",
         integration: { kind: "api", env: spec.env },
         cost: { unit: "call", usd: 0 },
-        agent_skills: spec.skills,
       });
+      expect(spec.tool.agent_skills).toBe(spec.skills);
     }
   });
 

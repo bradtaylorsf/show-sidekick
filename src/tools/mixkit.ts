@@ -14,7 +14,6 @@ export default defineTool({
   best_for: "Searching a configured Mixkit stock-video manifest.",
   supports: ["stock-video", "manifest-search", "mixkit-license"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "mixkit"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

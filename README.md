@@ -18,12 +18,18 @@ Requirements: Node 22+, pnpm 9+, and `ffmpeg` for local media work.
 mkdir my-shows
 cd my-shows
 predit init --starter music-video --git
+predit doctor --profile paid-demo
 predit build music-video/sample-episode --sample
 predit export music-video/sample-episode --target premiere
 ```
 
-The full walkthrough is in [docs/quickstart.md](docs/quickstart.md), including provider setup, sample outputs, and troubleshooting.
-Demo-operator notes for validating the local CLI from a separate user project are in [docs/demo-readiness.md](docs/demo-readiness.md).
+For an agent-guided blank project, run `predit init` and give Codex, Claude, or another agent this prompt:
+
+```text
+Read AGENTS.md and .predit/skills/meta/onboarding.md, then guide me through my first predit video.
+```
+
+The scaffolded `AGENTS.md` tells the agent to run `predit doctor --profile paid-demo`, choose a starter or pipeline, explain cost before paid generation, build a sample, and export an editor handoff. The full walkthrough is in [docs/quickstart.md](docs/quickstart.md), including provider setup, sample outputs, and troubleshooting.
 
 ## Features
 
@@ -53,6 +59,10 @@ Global flags: `--json`, `--dry-run`, `--verbose`, `--no-color`, `--config <path>
 Common flows:
 
 - `predit init --starter music-video --git` scaffolds a user project, initializes git, and clones the music-video starter into `shows/music-video/`.
+- `predit init` scaffolds a blank project with agent instructions, bundled pipeline cache, and first-run next steps.
+- `predit doctor --profile paid-demo` checks OpenAI, ElevenLabs, Higgsfield, ffmpeg, and ffprobe readiness without spending provider credits.
+- `predit new show <slug> --from <starter>` clones a starter-backed show; `predit new show <slug> --pipelines <pipeline>` creates a custom show bound to existing manifests.
+- `predit new pipeline <slug>` creates `pipelines/<slug>.yaml` plus `skills/pipelines/<slug>/idea-director.md`.
 - `predit update --check` verifies the local `.predit/` cache against the installed harness without writing.
 - `predit build <show>/<episode> --sample` runs a short sample pass through the integrated Runner.
 - `predit status <show>/<episode>` reports current stage, checkpoint status, costs, and the latest decision.
@@ -66,7 +76,9 @@ Common flows:
 - [AGENTS.md](AGENTS.md) - harness contributor contract for agents working in this repo
 - [CONTRIBUTING.md](CONTRIBUTING.md) - development setup and extension guide
 - [docs/quickstart.md](docs/quickstart.md) - first rendered sample from a fresh machine
-- [docs/demo-readiness.md](docs/demo-readiness.md) - local CLI demo matrix plan and provider-backed validation runbook
+- [docs/demo-readiness.md](docs/demo-readiness.md) - maintainer demo readiness and green paths
+- [docs/demo-matrix.md](docs/demo-matrix.md) - starter-backed demo matrix usage
+- [docs/full-demo-benchmark.md](docs/full-demo-benchmark.md) - agent-led full benchmark plan across demo types and runtimes
 - [docs/providers.md](docs/providers.md) - generated provider catalog from the registry
 - [CHANGELOG.md](CHANGELOG.md) - release notes
 - [LICENSE](LICENSE) - Apache-2.0

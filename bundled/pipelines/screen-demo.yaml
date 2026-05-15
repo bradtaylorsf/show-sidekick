@@ -39,7 +39,7 @@ orchestration:
   max_send_backs: 2
   max_wall_time_minutes: 15
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets: [ premiere, davinci, capcut, edl ]
   default_target: premiere
   notes: |
     Export packages include screen capture or synthetic terminal assets, scene props, captions, edit decisions, render output, and NLE handoff metadata.
@@ -62,6 +62,12 @@ stages:
       - Schema-valid brief artifact
       - Brief records capture_mode as synthetic_terminal or real_capture
       - Capture-mode decision is written to decision_log
+    required_artifacts_in: []
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: capture
     skill: pipelines/screen-demo/capture-director.md
     produces: capture_manifest
@@ -83,6 +89,11 @@ stages:
     success_criteria:
       - Schema-valid capture_manifest artifact
       - Captured or synthetic screen assets are ready for scene planning
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: scene_plan
     skill: pipelines/screen-demo/scene-director.md
     produces: scene_plan
@@ -102,6 +113,11 @@ stages:
     success_criteria:
       - Schema-valid scene_plan artifact
       - Every scene references capture_manifest evidence or terminal_scene props
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: assets
     skill: pipelines/screen-demo/asset-director.md
     produces: asset_manifest
@@ -130,6 +146,11 @@ stages:
     success_criteria:
       - Schema-valid asset_manifest artifact
       - Every asset maps to a capture step or scene props entry
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: edit
     skill: pipelines/screen-demo/edit-director.md
     produces: edit_decisions
@@ -151,6 +172,11 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - Edit decisions cover every demo beat and selected output variant
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: compose
     skill: pipelines/screen-demo/compose-director.md
     produces: render_report
@@ -183,6 +209,11 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output files exist and pass ffprobe validation
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: publish
     skill: pipelines/screen-demo/publish-director.md
     produces: publish_log
@@ -205,3 +236,8 @@ stages:
     success_criteria:
       - Schema-valid publish_log artifact
       - Export package contains rendered video, capture metadata, and handoff files
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0

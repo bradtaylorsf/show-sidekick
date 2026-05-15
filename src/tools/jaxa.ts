@@ -14,7 +14,6 @@ export default defineTool({
   best_for: "Searching a configured JAXA space and science video manifest.",
   supports: ["stock-video", "space", "science", "manifest-search"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "jaxa"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {

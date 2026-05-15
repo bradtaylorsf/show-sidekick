@@ -43,7 +43,7 @@ sample:
   duration_s_max: 15
   hint: "Render the hook plus one motion beat before batching cinematic assets."
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets: [ premiere, davinci, capcut, edl ]
   default_target: premiere
   notes: |
     Export packages include render output, generated motion clips, VO/dialogue audio, caption files, prompt metadata, color notes, and NLE handoff metadata.
@@ -66,6 +66,12 @@ stages:
     success_criteria:
       - Schema-valid brief artifact
       - One cinematic promise is selected
+    required_artifacts_in: []
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: proposal
     skill: pipelines/cinematic/proposal-director.md
     produces: proposal_packet
@@ -86,6 +92,11 @@ stages:
       - Schema-valid proposal_packet artifact
       - production_plan.renderer_family is cinematic-trailer
       - production_plan.audio_architecture is one of single_narrator, character_dialogue, narrator_plus_characters
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: script
     skill: pipelines/cinematic/script-director.md
     produces: script
@@ -105,6 +116,11 @@ stages:
     success_criteria:
       - Schema-valid script artifact
       - Script has timed sections and speech plan
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: scene_plan
     skill: pipelines/cinematic/scene-director.md
     produces: scene_plan
@@ -128,6 +144,11 @@ stages:
     success_criteria:
       - Schema-valid scene_plan artifact
       - Every scene has duration, shot intent, and motion requirement
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: assets
     skill: pipelines/cinematic/asset-director.md
     produces: asset_manifest
@@ -162,6 +183,11 @@ stages:
     success_criteria:
       - Schema-valid asset_manifest artifact
       - All referenced asset files exist on disk
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: edit
     skill: pipelines/cinematic/edit-director.md
     produces: edit_decisions
@@ -184,6 +210,11 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - edit_decisions.render_runtime matches proposal_packet
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: compose
     skill: pipelines/cinematic/compose-director.md
     produces: render_report
@@ -215,6 +246,11 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output file exists and passes ffprobe validation
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: publish
     skill: pipelines/cinematic/publish-director.md
     produces: publish_log
@@ -237,3 +273,8 @@ stages:
     success_criteria:
       - Schema-valid publish_log artifact
       - Export package contains rendered video and handoff metadata
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0

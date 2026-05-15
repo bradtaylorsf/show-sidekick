@@ -1,28 +1,27 @@
 slug: product-demo
-display_name: "Product Demo"
-description: "Visual-led product demo starter with a screenshot fixture and concise demo notes."
+display_name: Product Demo
+description: Visual-led product demo starter with a screenshot fixture and concise demo notes.
 created: 2026-05-14
+sample_support: unsupported
 brand: ./brand/
 characters: ./characters/
 skills: ./skills/
 pipelines:
-  product-demo:
+  screen-demo:
     playbook: clean-professional
-    runtime: ffmpeg
-    aspect: "16:9"
+    runtime: remotion
+    aspect: 16:9
     budget_usd: 0.5
 defaults:
-  pipeline: product-demo
+  pipeline: screen-demo
   language: en
 ingest:
   episode_template: ./episode.template.yaml
   watch:
     - path: ./inputs/
       match: "**/screenshot.jpg"
-      pipeline: product-demo
+      pipeline: screen-demo
       slug_from: parent_dir
 starter:
   fixture_size_bytes: 1834
   expected_sample_duration_s: 15
-  pending_pipelines:
-    - product-demo

@@ -25,6 +25,20 @@ cd my-shows
 predit init --starter music-video --git
 ```
 
+For a blank, agent-guided project, run:
+
+```bash
+predit init
+```
+
+Then give your agent:
+
+```text
+Read AGENTS.md and .predit/skills/meta/onboarding.md, then guide me through my first predit video.
+```
+
+The agent contract tells Codex, Claude, or another agent to run `predit doctor --profile paid-demo`, explain available providers and runtimes, recommend a starter or pipeline, ask before paid generation, and record issues under `projects/<show>/<episode>/notes.md`.
+
 The starter creates `shows/music-video/` with:
 
 - `show.yaml` slug: `music-video`
@@ -39,6 +53,9 @@ You can render and export the starter sample before configuring any providers. F
 
 ```bash
 export OPENAI_API_KEY="sk-..."
+export ELEVENLABS_API_KEY="..."
+higgsfield auth login
+predit doctor --profile paid-demo
 predit setup openai_image
 predit setup openai_tts
 predit ls tools

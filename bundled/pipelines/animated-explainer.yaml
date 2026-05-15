@@ -44,7 +44,7 @@ sample:
   duration_s_max: 20
   hint: "Render the hook plus one explanatory beat before batching assets."
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets: [ premiere, davinci, capcut, edl ]
   default_target: premiere
   notes: |
     Export packages include the rendered explainer, VO, captions, reusable graphics, timing decisions, and NLE handoff metadata.
@@ -67,6 +67,12 @@ stages:
     success_criteria:
       - Schema-valid brief artifact
       - One clear explanation promise is selected
+    required_artifacts_in: []
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: proposal
     skill: pipelines/explainer/proposal-director.md
     produces: proposal_packet
@@ -86,6 +92,11 @@ stages:
     success_criteria:
       - Schema-valid proposal_packet artifact
       - render_runtime and audio_architecture are locked
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: script
     skill: pipelines/explainer/script-director.md
     produces: script
@@ -105,6 +116,11 @@ stages:
     success_criteria:
       - Schema-valid script artifact
       - Script has timed sections and VO text
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: scene_plan
     skill: pipelines/explainer/scene-director.md
     produces: scene_plan
@@ -128,6 +144,11 @@ stages:
     success_criteria:
       - Schema-valid scene_plan artifact
       - Every scene has duration and visual treatment
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: assets
     skill: pipelines/explainer/asset-director.md
     produces: asset_manifest
@@ -164,6 +185,11 @@ stages:
     success_criteria:
       - Schema-valid asset_manifest artifact
       - All referenced asset files exist on disk
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: edit
     skill: pipelines/explainer/edit-director.md
     produces: edit_decisions
@@ -186,6 +212,11 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - edit_decisions.render_runtime matches proposal_packet
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: compose
     skill: pipelines/explainer/compose-director.md
     produces: render_report
@@ -216,6 +247,11 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output file exists and passes ffprobe validation
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0
   - slug: publish
     skill: pipelines/explainer/publish-director.md
     produces: publish_log
@@ -237,3 +273,8 @@ stages:
     success_criteria:
       - Schema-valid publish_log artifact
       - Export package contains rendered video and handoff metadata
+    estimated_cost:
+      sample:
+        usd: 0
+      full:
+        usd: 0

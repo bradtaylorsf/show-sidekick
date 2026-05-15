@@ -1,11 +1,11 @@
 # Copy this file to episodes/<slug>.yaml and replace the title, inputs, and notes.
 slug: new-cinematic-trailer
-title: "New Cinematic Trailer"
+title: New Cinematic Trailer
 created: 2026-05-14
 pipeline: cinematic
 playbook: clean-professional
 runtime: ffmpeg
-aspect: "16:9"
+aspect: 16:9
 budget_usd: 0.75
 inputs:
   reference_image: shows/cinematic-trailer/inputs/sample-episode/reference.jpg
@@ -15,4 +15,3 @@ cast: []
 tags:
   - cinematic-trailer
   - audio-led
-

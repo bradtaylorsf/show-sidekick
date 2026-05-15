@@ -10,6 +10,8 @@ import { EpisodeSchema, validateEpisodeAgainstShow } from "../../shows/episode.j
 import type { LoadedShow } from "../../shows/load.js";
 import { ShowSchema } from "../../shows/show.js";
 
+const DEFAULT_SHOW_PIPELINE = "music-video";
+
 type ErrorWithCode = Error & { code?: string };
 
 export type ScaffoldResult = {
@@ -125,7 +127,9 @@ export async function scaffoldEpisode(
 export async function scaffoldPipeline(projectRoot: string, slugInput: string): Promise<ScaffoldResult> {
   const slug = safeSlug(slugInput, "pipeline");
   const filePath = path.join(projectPaths(projectRoot).pipelines, `${slug}.yaml`);
+  const skillPath = path.join(projectPaths(projectRoot).skills, "pipelines", slug, "idea-director.md");
   await assertMissing(filePath, "pipeline");
+  await assertMissing(skillPath, "director skill");
 
   const manifest = PipelineManifestSchema.parse({
     slug,
@@ -143,6 +147,7 @@ export async function scaffoldPipeline(projectRoot: string, slugInput: string): 
   });
 
   await atomicWrite(filePath, YAML.stringify(manifest));
+  await atomicWrite(skillPath, directorSkill(slug));
   return { slug, filePath };
 }
 
@@ -263,8 +268,47 @@ async function exists(targetPath: string): Promise<boolean> {
 }
 
 function normalizePipelines(values: string[] | undefined): string[] {
-  const pipelines = (values && values.length > 0 ? values : ["default"]).map((value) => safeSlug(value, "pipeline"));
+  const pipelines = (values && values.length > 0 ? values : [DEFAULT_SHOW_PIPELINE]).map((value) =>
+    safeSlug(value, "pipeline"),
+  );
   return [...new Set(pipelines)];
+}
+
+function directorSkill(slug: string): string {
+  const title = titleize(slug);
+
+  return [
+    "---",
+    `name: "${slug}-idea-director"`,
+    `description: "Produce brief for the ${title} pipeline."`,
+    `applies_to: "pipelines/${slug}"`,
+    'stage: "idea"',
+    'produces: "brief"',
+    "---",
+    `# Idea Director - ${title}`,
+    "",
+    "## Goal",
+    "",
+    `Produce a schema-valid brief for the ${title} pipeline that gives downstream stages a concrete creative direction.`,
+    "",
+    "## Inputs",
+    "",
+    "Read the show defaults, episode inputs, playbook, prior artifacts, and any user notes before making creative decisions.",
+    "",
+    "## Workflow",
+    "",
+    "1. Restate the episode objective in one sentence.",
+    "2. Identify the intended audience, platform, tone, duration, and key points.",
+    "3. Name unresolved assumptions instead of inventing unavailable source material.",
+    "4. Keep sample runs small and explicit about cost-sensitive choices.",
+    "",
+    "## Quality Bar",
+    "",
+    "- The artifact matches `schemas/artifacts/brief.schema.json`.",
+    "- The handoff is specific enough for the next stage to act on.",
+    "- The output avoids references to private harness paths or migration-only material.",
+    "",
+  ].join("\n");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

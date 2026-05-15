@@ -43,7 +43,7 @@ const providers = [
     status: "production",
     integration: { kind: "api", env: ["OPENAI_API_KEY"] },
     cost: { unit: "token", usd: 0.000015 },
-    skills: ["openai-tts"],
+    skills: ["text-to-speech"],
   },
   {
     tool: googleTts,
@@ -61,7 +61,7 @@ const providers = [
     status: "production",
     integration: { kind: "binary", binary: "piper" },
     cost: { unit: "call", usd: 0 },
-    skills: ["piper"],
+    skills: ["text-to-speech"],
   },
   {
     tool: doubaoTts,

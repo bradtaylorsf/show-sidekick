@@ -4,6 +4,11 @@ import YAML from "yaml";
 import { z } from "zod";
 import { describe, expect, it } from "vitest";
 import { loadYaml } from "../../src/config/loader.js";
+import {
+  classifyForDefaultStarter,
+  isApprovedBundledPipeline,
+  isShowOnlyConcept,
+} from "../../src/pipelines/demo-inventory.js";
 import { EpisodeSchema, validateEpisodeAgainstShow } from "../../src/shows/episode.js";
 import { CharacterSchema } from "../../src/shows/character.js";
 import { ShowSchema, type Show } from "../../src/shows/show.js";
@@ -12,13 +17,12 @@ const repoRoot = process.cwd();
 const startersRoot = path.join(repoRoot, "bundled", "starters");
 const requiredAudioLedStarters = ["cinematic-trailer", "music-video", "news-song", "thechaosfm"];
 const requiredVisualExplainerStarters = ["animated-explainer", "documentary", "product-demo"];
-const requiredSpecialtyStarters = ["ai-workflow-demo", "ww2-diary"];
+const requiredSpecialtyStarters = ["ai-workflow-demo", "last-rev", "rave-queen", "ww2-diary"];
 
 const StarterMetadataSchema = z.object({
   fixture_size_bytes: z.number().int().nonnegative(),
   expected_sample_duration_s: z.number().positive(),
-  pending_pipelines: z.array(z.string()).default([]),
-});
+}).strict();
 
 describe("bundled starters", () => {
   it("ships the D-4 audio-led starter set", async () => {
@@ -69,12 +73,25 @@ describe("bundled starters", () => {
       expect(metadata.expected_sample_duration_s).toBe(15);
       expect(sampleEpisode.inputs).not.toEqual({});
       await expectSampleInputsExist(starterDir, show, sampleEpisode.inputs);
+      expect(readme, `${starterName} README must distinguish starter name`).toContain(`Starter: \`${starterName}\``);
+      expect(readme, `${starterName} README must not mention stale pending pipelines`).not.toContain(
+        "Pending pipeline dependency",
+      );
       if (starterName === "ai-workflow-demo") {
         expect(show.pipelines["screen-demo"]?.capture_mode).toBe("synthetic_terminal");
       }
 
       for (const [pipelineName, config] of Object.entries(show.pipelines)) {
-        await expectPipelineExistsOrPending(starterName, pipelineName, metadata.pending_pipelines, readme);
+        await expectPipelineExists(starterName, pipelineName);
+        expect(isApprovedBundledPipeline(pipelineName), `${starterName} pipeline '${pipelineName}'`).toBe(true);
+        expect(classifyForDefaultStarter(pipelineName), `${starterName} pipeline '${pipelineName}'`).toBeDefined();
+        expect(isShowOnlyConcept(pipelineName), `${starterName} must not bind to a show-only concept`).toBe(false);
+        expect(pipelineName, `${starterName} must not use the framework smoke test pipeline`).not.toBe(
+          "framework-smoke",
+        );
+        expect(readme, `${starterName} README must name the real pipeline slug '${pipelineName}'`).toContain(
+          `Pipeline slug: \`${pipelineName}\``,
+        );
         if (config.playbook !== undefined) {
           await expect(access(path.join(repoRoot, "bundled", "playbooks", `${config.playbook}.yaml`))).resolves.toBeUndefined();
         }
@@ -121,20 +138,14 @@ async function expectSampleInputsExist(
   expect(fixturePathCount).toBeGreaterThan(0);
 }
 
-async function expectPipelineExistsOrPending(
+async function expectPipelineExists(
   starterName: string,
   pipelineName: string,
-  pendingPipelines: string[],
-  readme: string,
 ): Promise<void> {
-  if (await exists(path.join(repoRoot, "bundled", "pipelines", `${pipelineName}.yaml`))) {
-    return;
-  }
-
-  expect(pendingPipelines, `${starterName} should mark '${pipelineName}' as pending`).toContain(pipelineName);
-  expect(readme, `${starterName} should document pending pipeline '${pipelineName}'`).toContain(
-    `Pending pipeline dependency: \`${pipelineName}\``,
-  );
+  await expect(
+    access(path.join(repoRoot, "bundled", "pipelines", `${pipelineName}.yaml`)),
+    `${starterName} should bind to an existing bundled pipeline '${pipelineName}'`,
+  ).resolves.toBeUndefined();
 }
 
 async function directorySize(dir: string): Promise<number> {
@@ -153,15 +164,6 @@ async function directorySize(dir: string): Promise<number> {
   );
 
   return sizes.reduce((total, size) => total + size, 0);
-}
-
-async function exists(filePath: string): Promise<boolean> {
-  try {
-    await access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

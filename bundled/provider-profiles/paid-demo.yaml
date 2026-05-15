@@ -1,0 +1,35 @@
+slug: paid-demo
+display_name: Paid Demo
+description: OpenAI image/TTS, ElevenLabs TTS, Higgsfield image-to-video, and local ffmpeg assembly.
+required_tools:
+  - openai_image
+  - openai_tts
+  - elevenlabs_tts
+  - higgsfield
+  - ffmpeg
+preflight:
+  - OPENAI_API_KEY
+  - ELEVENLABS_API_KEY
+  - higgsfield binary
+  - higgsfield account status --json
+  - ffmpeg
+  - ffprobe
+selected_stack:
+  image_generation: openai_image
+  tts_primary: elevenlabs_tts
+  tts_fallback: openai_tts
+  image_to_video: higgsfield
+  video_compose: ffmpeg
+rejected_alternatives:
+  - label: free-zero-cost
+    rejected_because: Does not exercise paid provider-backed demo generation.
+  - label: mixed
+    rejected_because: Leaves provider coverage ambiguous for the paid demo lane.
+  - label: kling_video
+    rejected_because: Higgsfield is the first paid demo path and wraps the target Kling clip lane.
+  - label: runway_video
+    rejected_because: Higher variance for this benchmark and not part of the first paid profile.
+  - label: piper_tts
+    rejected_because: Zero-cost local TTS does not validate paid narration setup.
+  - label: google_tts
+    rejected_because: Not part of the first paid demo profile.

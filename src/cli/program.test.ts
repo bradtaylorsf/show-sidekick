@@ -4,17 +4,22 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { CommanderError } from "commander";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { resetLoggerMode } from "../log/mode.js";
+import { defineTool, Registry, type Availability, type Integration } from "../registry/index.js";
 import { VERSION } from "../version.js";
 import { computeBundledChecksum } from "../version/bundled.js";
-import { commandNames, createProgram } from "./program.js";
+import { commandNames, createProgram, type ProgramOptions } from "./program.js";
 
-function captureProgram() {
+function captureProgram(options: Omit<ProgramOptions, "io"> = {}) {
   let stdout = "";
   let stderr = "";
   const program = createProgram({
-    stdout: { write: (value: string) => { stdout += value; return true; } },
-    stderr: { write: (value: string) => { stderr += value; return true; } },
+    ...options,
+    io: {
+      stdout: { write: (value: string) => { stdout += value; return true; } },
+      stderr: { write: (value: string) => { stderr += value; return true; } },
+    },
   });
 
   return {
@@ -53,7 +58,45 @@ describe("createProgram", () => {
     const { program } = captureProgram();
     const build = program.commands.find((command) => command.name() === "build");
 
-    expect(build?.options.map((option) => option.long)).toEqual(expect.arrayContaining(["--reference"]));
+    expect(build?.options.map((option) => option.long)).toEqual(
+      expect.arrayContaining(["--reference", "--provider-profile"]),
+    );
+  });
+
+  it("defines the doctor profile option", () => {
+    const { program } = captureProgram();
+    const doctor = program.commands.find((command) => command.name() === "doctor");
+
+    expect(doctor?.options.map((option) => option.long)).toEqual(expect.arrayContaining(["--profile"]));
+  });
+
+  it("emits doctor NDJSON through the real Commander action signature", async () => {
+    const root = await scratchCurrentProject();
+    process.chdir(root);
+    const probe = vi.fn(async (integration: Integration): Promise<Availability> => {
+      if (integration.kind === "api") {
+        return { available: false, reason: `missing env: ${integration.env.join(", ")}`, fix: "env" };
+      }
+      return { available: true };
+    });
+    const { program, output } = captureProgram({
+      doctor: {
+        createRegistry: async () => paidDemoRegistry(),
+        probeIntegration: probe,
+      },
+    });
+
+    await program.parseAsync(["node", "predit", "--json", "doctor", "--profile", "paid-demo"], { from: "node" });
+
+    const events = output().stdout.trim().split(/\r?\n/u).map((line) => JSON.parse(line) as Record<string, unknown>);
+    expect(events).toHaveLength(6);
+    expect(events[0]).toMatchObject({
+      event: "doctor",
+      profile: "paid-demo",
+      check: "OPENAI_API_KEY",
+      status: "missing",
+    });
+    expect(events.at(-1)).toMatchObject({ check: "ffprobe", status: "ok" });
   });
 
   it("defines init and update lifecycle options", () => {
@@ -79,15 +122,15 @@ describe("createProgram", () => {
     process.chdir(root);
     const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "--json", "doctor"], { from: "node" });
+    await program.parseAsync(["node", "predit", "--json", "tools", "fixture"], { from: "node" });
 
     const event = JSON.parse(output().stdout.trim()) as { event: string; command: string; args: Record<string, unknown> };
 
     expect(event).toEqual(
       expect.objectContaining({
         event: "stub",
-        command: "doctor",
-        args: {},
+        command: "tools",
+        args: { name: "fixture" },
       }),
     );
   });
@@ -102,10 +145,10 @@ describe("createProgram", () => {
       return true;
     });
 
-    await program.parseAsync(["node", "predit", "--verbose", "doctor"], { from: "node" });
+    await program.parseAsync(["node", "predit", "--verbose", "tools", "fixture"], { from: "node" });
 
     expect(output().stderr).toBe("");
-    expect(stderr).toContain("stub command invoked: doctor");
+    expect(stderr).toContain("stub command invoked: tools");
   });
 
   it("requires a project root before non-init commands run", async () => {
@@ -144,10 +187,10 @@ describe("createProgram", () => {
     process.chdir(root);
     const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "doctor"], { from: "node" });
+    await program.parseAsync(["node", "predit", "tools", "fixture"], { from: "node" });
 
     expect(output().stderr).toContain("run 'predit update'");
-    expect(output().stdout).toContain("doctor: not yet implemented");
+    expect(output().stdout).toContain("tools: not yet implemented");
   });
 
   it("warns before commands when the bundled checksum is stale", async () => {
@@ -159,10 +202,10 @@ describe("createProgram", () => {
     process.chdir(root);
     const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "doctor"], { from: "node" });
+    await program.parseAsync(["node", "predit", "tools", "fixture"], { from: "node" });
 
     expect(output().stderr).toContain("checksum is stale");
-    expect(output().stdout).toContain("doctor: not yet implemented");
+    expect(output().stdout).toContain("tools: not yet implemented");
   });
 
   it("does not warn before commands when cache version and checksum match", async () => {
@@ -174,10 +217,10 @@ describe("createProgram", () => {
     process.chdir(root);
     const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "doctor"], { from: "node" });
+    await program.parseAsync(["node", "predit", "tools", "fixture"], { from: "node" });
 
     expect(output().stderr).toBe("");
-    expect(output().stdout).toContain("doctor: not yet implemented");
+    expect(output().stdout).toContain("tools: not yet implemented");
   });
 
   it("refuses commands when .predit was locked by an incompatible major version", async () => {
@@ -235,4 +278,24 @@ function sameMajorDifferentVersion(): string {
 function differentMajorVersion(): string {
   const major = Number(VERSION.split(".")[0] ?? "0");
   return `${major + 1}.0.0`;
+}
+
+function paidDemoRegistry(): Registry {
+  return new Registry({
+    tools: ["openai_image", "openai_tts", "elevenlabs_tts", "higgsfield", "ffmpeg", "source_media_review"].map((name) =>
+      defineTool({
+        name,
+        capability: "research",
+        provider: "test",
+        status: "beta",
+        integration: { kind: "library", package: "test", install: "none" },
+        best_for: "doctor program tests",
+        input: z.object({}),
+        output: z.object({}),
+        async execute() {
+          return {};
+        },
+      }),
+    ),
+  });
 }

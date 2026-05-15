@@ -7,6 +7,7 @@ export const CostEntrySchema = z.object({
   units: z.number().nonnegative(),
   usd: z.number().nonnegative(),
   mode: z.enum(["sample", "full"]),
+  cache_hit: z.boolean().optional(),
 });
 
 export const CostLogSchema = z.array(CostEntrySchema);

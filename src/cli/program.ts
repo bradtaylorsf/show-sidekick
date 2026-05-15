@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { createApproveHandler } from "./commands/approve.js";
 import { createBuildHandler, type BuildHandlerOptions } from "./commands/build.js";
 import { createCuesheetHandler } from "./commands/cuesheet.js";
+import { createDoctorHandler, type DoctorDeps } from "./commands/doctor.js";
 import { createExportHandler } from "./commands/export.js";
 import { createInitHandler } from "./commands/init.js";
 import { createImportHandler } from "./commands/import.js";
@@ -52,10 +53,11 @@ type UnknownCommandPatch = Command & {
 export type ProgramOptions = {
   io?: CliIo;
   build?: BuildHandlerOptions;
+  doctor?: DoctorDeps;
 };
 
 export function createProgram(input: CliIo | ProgramOptions = defaultIo): Command {
-  const { io, build } = normalizeProgramOptions(input);
+  const { io, build, doctor } = normalizeProgramOptions(input);
   const program = new Command();
 
   program
@@ -87,7 +89,7 @@ export function createProgram(input: CliIo | ProgramOptions = defaultIo): Comman
   });
 
   registerUnknownCommandSuggestion(program);
-  registerCommands(program, io, build);
+  registerCommands(program, io, { build, doctor });
 
   return program;
 }
@@ -107,7 +109,12 @@ function registerUnknownCommandSuggestion(program: Command): void {
   };
 }
 
-function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandlerOptions = {}): void {
+type RegisterCommandOptions = {
+  build?: BuildHandlerOptions;
+  doctor?: DoctorDeps;
+};
+
+function registerCommands(program: Command, io: CliIo, options: RegisterCommandOptions = {}): void {
   program
     .command("init")
     .description("scaffold a new predit project in cwd")
@@ -118,7 +125,8 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
   program
     .command("doctor")
     .description("registry and tool preflight")
-    .action(createStubHandler("doctor", [], io));
+    .option("--profile <name>", "provider profile to preflight")
+    .action(createDoctorHandler(io, options.doctor));
 
   const newCommand = program.command("new").description("create shows, episodes, pipelines, or playbooks");
   const newHandlers = createNewHandlers(io);
@@ -153,8 +161,9 @@ function registerCommands(program: Command, io: CliIo, buildOptions: BuildHandle
     .option("--budget <usd>", "set a budget in USD")
     .option("--cost-drift-threshold <multiplier>", "override the cumulative cost drift review threshold")
     .option("--reference <url-or-path>", "analyze a reference video URL or local file before running")
+    .option("--provider-profile <name>", "record a named provider profile selection for this run")
     .option("--non-interactive", "pause at required approvals and exit")
-    .action(createBuildHandler(io, buildOptions));
+    .action(createBuildHandler(io, options.build));
 
   program
     .command("cuesheet <target>")
@@ -317,7 +326,7 @@ function topLevelCommandName(command: Command): string {
   return current.name();
 }
 
-function normalizeProgramOptions(input: CliIo | ProgramOptions): { io: CliIo; build?: BuildHandlerOptions } {
+function normalizeProgramOptions(input: CliIo | ProgramOptions): ProgramOptions & { io: CliIo } {
   if ("stdout" in input && "stderr" in input) {
     return { io: input };
   }
@@ -325,5 +334,6 @@ function normalizeProgramOptions(input: CliIo | ProgramOptions): { io: CliIo; bu
   return {
     io: input.io ?? defaultIo,
     build: input.build,
+    doctor: input.doctor,
   };
 }

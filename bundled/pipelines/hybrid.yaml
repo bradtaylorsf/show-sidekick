@@ -2,6 +2,7 @@ slug: hybrid
 display_name: Hybrid
 description: "Hybrid pipeline for videos that combine source footage with designed or generated support assets: interviews plus diagrams, product footage plus overlays, screen recordings plus companion graphics, or montage edits with support inserts. EP orchestration adds quality gates for source/support balance, overlay density, and cross-medium coherence."
 status: production
+sample_support: unsupported
 master_clock: none
 default_checkpoint_policy: guided
 extensions:
@@ -36,7 +37,11 @@ orchestration:
   max_send_backs: 3
   max_wall_time_minutes: 12
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets:
+    - premiere
+    - davinci
+    - capcut
+    - edl
   default_target: premiere
   notes: |
     Export packages include cut timing, linked assets, narration/music audio, and word timing captions where the target supports them.
@@ -61,6 +66,18 @@ stages:
       - Known source constraints are explicit before script
     human_approval: optional
     human_approval_default: false
+    required_artifacts_in: []
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    estimated_cost:
+      sample:
+        usd: 0.25
+        comment: sample-scope asset generation or capture
+      full:
+        usd: 2
+        comment: full asset generation, capture, or processing pass
+    sample_mode_supported: true
   - slug: idea
     skill: pipelines/hybrid/idea-director.md
     produces: brief
@@ -79,6 +96,18 @@ stages:
     success_criteria:
       - Schema-valid brief artifact
       - Brief distinguishes source-led and support-led elements
+    required_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
   - slug: script
     skill: pipelines/hybrid/script-director.md
     produces: script
@@ -104,6 +133,16 @@ stages:
     success_criteria:
       - Schema-valid script artifact
       - Script sections map to a feasible hybrid structure
+    optional_artifacts_in: []
+    required_tools: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
   - slug: scene_plan
     skill: pipelines/hybrid/scene-director.md
     produces: scene_plan
@@ -129,6 +168,15 @@ stages:
     success_criteria:
       - Schema-valid scene_plan artifact
       - Every scene has a defined source/support treatment
+    required_tools: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
   - slug: assets
     skill: pipelines/hybrid/asset-director.md
     produces: asset_manifest
@@ -167,6 +215,15 @@ stages:
     success_criteria:
       - Schema-valid asset_manifest artifact
       - All referenced asset files exist on disk
+    required_tools: []
+    estimated_cost:
+      sample:
+        usd: 0.25
+        comment: sample-scope asset generation or capture
+      full:
+        usd: 2
+        comment: full asset generation, capture, or processing pass
+    sample_mode_supported: true
   - slug: edit
     skill: pipelines/hybrid/edit-director.md
     produces: edit_decisions
@@ -187,6 +244,17 @@ stages:
     success_criteria:
       - Schema-valid edit_decisions artifact
       - Edit decisions cover the planned deliverables
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
   - slug: compose
     skill: pipelines/hybrid/compose-director.md
     produces: render_report
@@ -226,6 +294,14 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output file exists and passes ffprobe validation
+    estimated_cost:
+      sample:
+        usd: 0.05
+        comment: local render validation
+      full:
+        usd: 0.25
+        comment: full render and export pass
+    sample_mode_supported: true
   - slug: publish
     skill: pipelines/hybrid/publish-director.md
     produces: publish_log
@@ -247,3 +323,20 @@ stages:
     success_criteria:
       - Schema-valid publish_log artifact
       - Export package contains video and metadata outputs
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
+sample:
+  duration_s_min: 12
+  duration_s_max: 18
+  max_scenes: 3
+  max_cost_usd: 0.8
+  hint: One source-led beat plus one support visual or overlay.

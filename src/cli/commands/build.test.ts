@@ -5,8 +5,10 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import type { VideoAnalysisBrief } from "../../artifacts/video-analysis-brief.js";
-import { Registry } from "../../registry/index.js";
+import { readDecisionLog } from "../../decisions/store.js";
+import { defineTool, Registry, type Tool } from "../../registry/index.js";
 import type { ReviewContext } from "../../review/runner.js";
 import videoAnalyzer from "../../tools/video-analyzer.js";
 import type { StageContext, StageResult } from "../../harness/index.js";
@@ -84,6 +86,89 @@ describe("build command", () => {
     );
     expect(contexts.map((ctx) => ctx.stage.slug)).toEqual(["research", "script"]);
     expect(contexts[0]?.runOptions).toMatchObject({ sample: true, budget_usd: 2.5 });
+  });
+
+  it("records provider profile selection decisions before a paid-demo sample run", async () => {
+    const root = await scratchProject();
+    process.chdir(root);
+
+    const { program } = captureProgram({
+      registryFactory: () => new Registry({ tools: [] }),
+      dispatcherFactory: () => async (ctx) => fixtures[ctx.stage.slug] ?? stageResult({ unexpected: ctx.stage.slug }, 0),
+      now: () => new Date("2026-05-12T15:42:00.000Z"),
+    });
+
+    await program.parseAsync(
+      ["node", "predit", "--json", "build", "show/episode", "--sample", "--provider-profile", "paid-demo"],
+      { from: "node" },
+    );
+
+    await expect(readDecisionLog({ show: "show", episode: "episode" }, { root })).resolves.toContainEqual(
+      expect.objectContaining({
+        stage: "preflight",
+        category: "provider_profile_selection",
+        picked: "paid-demo",
+        options_considered: expect.arrayContaining([
+          expect.objectContaining({ label: "free-zero-cost", rejected_because: expect.any(String) }),
+          expect.objectContaining({ label: "mixed", rejected_because: expect.any(String) }),
+        ]),
+      }),
+    );
+  });
+
+  it("selects the paid sample dispatcher when provider_profile is configured on the show", async () => {
+    const root = await scratchProject();
+    await writePipeline(root, "framework-smoke", { stages: ["assets", "edit", "compose"], sampleSupport: "paid" });
+    await writeShow(root, "show", "framework-smoke", undefined, [], "paid-demo");
+    await writeEpisode(root, "show", "episode", "framework-smoke", undefined, "paid-demo");
+    process.chdir(root);
+
+    const { program, output } = captureProgram({
+      registryFactory: () => new Registry({ tools: paidSampleTools(root) }),
+      reviewer: (stageSlug, _artifact, ctx) => passReview(stageSlug, ctx.round ?? 0),
+      now: () => new Date("2026-05-12T15:42:00.000Z"),
+    });
+
+    await program.parseAsync(["node", "predit", "--json", "build", "show/episode", "--sample"], { from: "node" });
+
+    const events = output()
+      .stdout.trim()
+      .split(/\r?\n/u)
+      .map((line) => JSON.parse(line) as { event: string; [key: string]: unknown });
+    expect(events.at(-1)).toMatchObject({
+      event: "build_finished",
+      status: "completed",
+      total_cost_usd: 0.34,
+    });
+    await expect(readDecisionLog({ show: "show", episode: "episode" }, { root })).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ category: "provider_profile_selection", picked: "paid-demo" }),
+        expect.objectContaining({ category: "provider_selection", picked: "openai" }),
+        expect.objectContaining({ category: "provider_selection", picked: "higgsfield" }),
+      ]),
+    );
+  });
+
+  it("emits sample_unsupported and exits 2 for unsupported sample lanes", async () => {
+    const root = await scratchProject();
+    await writePipeline(root, "framework-smoke", { sampleSupport: "unsupported" });
+    process.chdir(root);
+
+    const { program, output } = captureProgram({
+      registryFactory: () => new Registry({ tools: [] }),
+      now: () => new Date("2026-05-12T15:42:00.000Z"),
+    });
+
+    await expect(program.parseAsync(["node", "predit", "--json", "build", "show/episode", "--sample"], { from: "node" })).rejects.toMatchObject({
+      exitCode: 2,
+    });
+    expect(JSON.parse(output().stdout.trim())).toMatchObject({
+      event: "sample_unsupported",
+      pipeline: "framework-smoke",
+      sample_support: "unsupported",
+      exit_code: 2,
+    });
+    expect(output().stderr).toContain("sample unsupported");
   });
 
   it("rejects stage flags that are not declared by the pipeline", async () => {
@@ -267,6 +352,7 @@ async function writeShow(
   pipeline: string,
   playbook?: string,
   additionalPipelines: string[] = [],
+  providerProfile?: string,
 ): Promise<void> {
   const showDir = path.join(root, "shows", slug);
   await mkdir(path.join(showDir, "episodes"), { recursive: true });
@@ -284,6 +370,7 @@ async function writeShow(
       ...pipelineEntries,
       "defaults:",
       `  pipeline: ${pipeline}`,
+      ...(providerProfile === undefined ? [] : [`  provider_profile: ${providerProfile}`]),
       "",
     ].join("\n"),
     "utf8",
@@ -296,6 +383,7 @@ async function writeEpisode(
   slug: string,
   pipeline: string | undefined,
   reference?: string,
+  providerProfile?: string,
 ): Promise<void> {
   await writeFile(
     path.join(root, "shows", show, "episodes", `${slug}.yaml`),
@@ -304,6 +392,7 @@ async function writeEpisode(
       'title: "Episode"',
       "created: 2026-05-12",
       ...(pipeline === undefined ? [] : [`pipeline: ${pipeline}`]),
+      ...(providerProfile === undefined ? [] : [`provider_profile: ${providerProfile}`]),
       ...(reference === undefined ? [] : ["inputs:", `  reference: ${reference}`]),
       "",
     ].join("\n"),
@@ -314,13 +403,14 @@ async function writeEpisode(
 async function writePipeline(
   root: string,
   slug: string,
-  options: { stages?: string[]; referenceSupported?: boolean } = {},
+  options: { stages?: string[]; referenceSupported?: boolean; sampleSupport?: "zero-key" | "paid" | "both" | "unsupported" } = {},
 ): Promise<void> {
   const stages = options.stages ?? ["research", "script"];
   await writeFile(
     path.join(root, ".predit", "pipelines", `${slug}.yaml`),
     [
       `slug: ${slug}`,
+      `sample_support: ${options.sampleSupport ?? "both"}`,
       ...(options.referenceSupported === undefined
         ? []
         : ["reference_input:", `  supported: ${options.referenceSupported ? "true" : "false"}`]),
@@ -337,12 +427,105 @@ async function writePipeline(
   );
 }
 
+function paidSampleTools(root: string): Tool[] {
+  const imagePath = path.join(root, "fixtures", "openai.png");
+  const audioPath = path.join(root, "fixtures", "narration.mp3");
+  const clipPath = path.join(root, "fixtures", "clip.mp4");
+
+  return [
+    defineTool({
+      name: "openai_image",
+      capability: "image_generation",
+      provider: "openai",
+      status: "production",
+      integration: { kind: "library", package: "fixture", install: "none" },
+      best_for: "fixture image generation",
+      cost: { unit: "image", usd: 0.04 },
+      input: z.unknown(),
+      output: z.unknown(),
+      async execute() {
+        await mkdir(path.dirname(imagePath), { recursive: true });
+        await writeFile(imagePath, "image", "utf8");
+        return { image_path: imagePath, provider: "openai", model: "gpt-image-1", cost_usd: 0.04 };
+      },
+    }),
+    defineTool({
+      name: "elevenlabs_tts",
+      capability: "tts",
+      provider: "elevenlabs",
+      status: "production",
+      integration: { kind: "library", package: "fixture", install: "none" },
+      best_for: "fixture narration",
+      cost: { unit: "call", usd: 0 },
+      input: z.unknown(),
+      output: z.unknown(),
+      async execute() {
+        await mkdir(path.dirname(audioPath), { recursive: true });
+        await writeFile(audioPath, "audio", "utf8");
+        return { audio_path: audioPath, provider: "elevenlabs", model: "eleven_multilingual_v2", cost_usd: 0 };
+      },
+    }),
+    defineTool({
+      name: "higgsfield",
+      capability: "image_to_video",
+      provider: "higgsfield",
+      status: "production",
+      integration: { kind: "library", package: "fixture", install: "none" },
+      best_for: "fixture image to video",
+      cost: { unit: "clip", usd: 0.3 },
+      input: z.unknown(),
+      output: z.unknown(),
+      async execute() {
+        await mkdir(path.dirname(clipPath), { recursive: true });
+        await writeFile(clipPath, "clip", "utf8");
+        return { video_path: clipPath, cost_usd: 0.3, cache_hit: false };
+      },
+    }),
+    defineTool({
+      name: "ffmpeg",
+      capability: "video_compose",
+      provider: "ffmpeg",
+      status: "production",
+      integration: { kind: "library", package: "fixture", install: "none" },
+      best_for: "fixture compose",
+      input: z.unknown(),
+      output: z.unknown(),
+      async execute(params) {
+        const outputPath = path.join(root, "projects", "show", "episode", "renders", "paid-sample.mp4");
+        await mkdir(path.dirname(outputPath), { recursive: true });
+        await writeFile(outputPath, "render", "utf8");
+        return {
+          output_path: outputPath,
+          encoding_profile: "ffmpeg/h264-aac",
+          duration_s: 15,
+          resolution: { width: 1920, height: 1080 },
+          framerate: 30,
+          runtime_used: "ffmpeg",
+          asset_count: 2,
+          warnings: [],
+          validation_steps: [],
+          params,
+        };
+      },
+    }),
+  ];
+}
+
 function producesForTestStage(stageSlug: string): string {
   if (stageSlug === "research") {
     return "research_brief";
   }
   if (stageSlug === "script") {
     return "script";
+  }
+  if (stageSlug === "assets") {
+    return "asset_manifest";
+  }
+  if (stageSlug === "edit") {
+    return "edit_decisions";
+  }
+  if (stageSlug === "compose") {
+    return "render_report";
   }
   if (stageSlug === "source_review") {
     return "source_media_review";

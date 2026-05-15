@@ -69,7 +69,6 @@ export default defineTool({
   best_for: "searching Unsplash for high-quality stock photography with creator attribution",
   supports: ["stock-search", "attribution"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-image-attribution"],
   input: UnsplashStockInputSchema,
   output: UnsplashStockOutputSchema,
 

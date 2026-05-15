@@ -64,14 +64,14 @@ metadata:
       requires_sources: true
       source_file: sources.yaml
       screenshot_provider: playwright_recording
-      scene_kinds: [news-screenshot, lyric-art]
+      scene_kinds: [ news-screenshot, lyric-art ]
     source-free-protest-music-video:
       requires_sources: false
       source_file: null
       screenshot_provider: null
-      scene_kinds: [lyric-art]
+      scene_kinds: [ lyric-art ]
 export:
-  supported_targets: [premiere, davinci, capcut, edl]
+  supported_targets: [ premiere, davinci, capcut, edl ]
   default_target: premiere
   notes: |
     Export packages include cuesheet, source review, real screenshot capture manifest when sourced, lyric-art asset manifest, source flyout timing, edit decisions, render output, and NLE handoff metadata.
@@ -99,6 +99,7 @@ stages:
     success_criteria:
       - Schema-valid cuesheet artifact
       - Word timestamps and beats are present
+    required_artifacts_in: []
   - slug: source_review
     skill: pipelines/news-song/source-review-director.md
     produces: source_media_review

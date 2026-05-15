@@ -48,6 +48,8 @@ predit init --git                 # same, plus `git init`
 predit init --starter music-video # scaffold a starter show alongside the project
 ```
 
+When `--starter` is used, the starter's `show.yaml` is checked before any files are written. Every key in `show.pipelines` must resolve to a bundled manifest in the installed harness cache source. A default bundled starter cannot rely on `pending_pipelines`; missing or undecided pipeline bindings fail early with an error naming the starter and unresolved pipeline slug.
+
 Created files:
 
 ```
@@ -92,9 +94,15 @@ Refreshes `.predit/` from the currently installed harness version. Detects misma
 
 Creates `shows/<slug>/`. With `--from <starter>`, copies a starter template from `.predit/starters/<starter>/` as the initial content. Starters carry an example `show.yaml`, a brand stub, sample characters, and an episode template.
 
+Without `--from`, the scaffold binds the show to the bundled `music-video` pipeline by default so the resulting `show.yaml` names a resolvable pipeline in a freshly initialized project. Use `--pipelines <a,b>` to bind the show to one or more existing bundled or project-local pipeline manifests instead.
+
 Available starters listed by `predit ls starters`.
 
-`predit ls starters` reports each starter's name, description, declared pipeline keys, fixture size, and expected sample duration. Starter metadata is read from the bundled starter's `show.yaml` when present, with fixture size derived from `inputs/` as a fallback.
+`predit ls starters` reports each starter's name, description, declared pipeline keys, fixture size, expected sample duration, and whether the referenced pipeline manifests support sample mode. Starter metadata is read from the bundled starter's `show.yaml` when present, with fixture size derived from `inputs/` as a fallback.
+
+### `predit new pipeline <slug>`
+
+Creates a project-local pipeline manifest at `pipelines/<slug>.yaml` and the first editable director skill at `skills/pipelines/<slug>/idea-director.md`. Additional stages should be added as matching manifest entries plus `skills/pipelines/<slug>/<stage>-director.md` files.
 
 ## What is bundled vs user-owned
 
@@ -120,6 +128,10 @@ When the harness needs any resource (pipeline, playbook, skill, schema):
 3. Error if neither exists.
 
 User overrides always win. The bundled cache is read-only from the harness's perspective — `predit update` is the only thing that writes to it.
+
+## Maintainer validation outside the harness repo
+
+The demo matrix runner validates the installed/local CLI from the same separation boundary users see. `pnpm demo-matrix` creates temp user projects outside the harness repo, runs `predit init --starter <slug>` in each lane project, then runs `predit build <show>/sample-episode --sample`. Generated renders, checkpoints, cost logs, and decisions stay under the temp user project, never under the harness source tree. Use `--keep-workdir` when those artifacts need manual inspection after a failed lane.
 
 ## Why a local cache instead of reading from `node_modules`
 

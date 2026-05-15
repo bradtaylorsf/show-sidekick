@@ -14,6 +14,7 @@ import { createProgram } from "../cli/program.js";
 import { loadRunTarget } from "../cli/commands/run-target.js";
 import type { Review } from "../artifacts/review.js";
 import type { Dispatcher, StageContext, StageResult } from "./index.js";
+import { PaidSampleStageError } from "./paid-sample.js";
 import { Runner, type StageReviewer } from "./runner.js";
 import { planStages } from "./plan.js";
 import { z } from "zod";
@@ -258,6 +259,71 @@ describe("Runner", () => {
     expect(output.stdout()).toContain('"estimate_usd":0.08');
   });
 
+  it("emits announce events before every paid provider call in a paid-demo sample run", async () => {
+    const root = await scratchProject();
+    const pipeline = pipelineManifest([stage("assets")]);
+    const show = loadedShow(root, "paid-demo");
+    const episode = loadedEpisode(show, "paid-demo");
+    const sequence: string[] = [];
+    const output = {
+      ...captureIo(),
+      io: {
+        stdout: {
+          write(value: string) {
+            if (value.includes('"event":"announce"')) {
+              sequence.push(`announce:${JSON.parse(value).tool}`);
+            }
+            return true;
+          },
+        },
+        stderr: { write: () => true },
+      },
+    };
+    const paidTools = [
+      paidGenerationTool("openai_image", "image_generation", "openai", 0.04),
+      paidGenerationTool("elevenlabs_tts", "tts", "elevenlabs", 0.0003),
+      paidGenerationTool("higgsfield", "image_to_video", "higgsfield", 0.3),
+    ];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "paid-demo",
+      registry: new Registry({ tools: paidTools }),
+      dispatcher: async (ctx) => {
+        for (const tool of paidTools) {
+          await tool.execute(
+            { prompt: tool.name, count: 1 },
+            {
+              projectRoot: root,
+              logger: logger(),
+              registry: ctx.registry,
+              execution: ctx.toolPolicy,
+            },
+          );
+          sequence.push(`execute:${tool.name}`);
+        }
+        return stageResult({ ok: true }, 0.35);
+      },
+      reviewer: passReviewer,
+      runOptions: { sample: true, nonInteractive: true },
+      io: output.io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(sequence).toEqual([
+      "announce:openai_image",
+      "execute:openai_image",
+      "announce:elevenlabs_tts",
+      "execute:elevenlabs_tts",
+      "announce:higgsfield",
+      "execute:higgsfield",
+    ]);
+  });
+
   it("dispatches only the planned stages for --only", async () => {
     const root = await scratchProject();
     const pipeline = pipelineManifest([stage("research"), stage("script"), stage("assets")]);
@@ -319,6 +385,118 @@ describe("Runner", () => {
         stage_cost_usd: 0.75,
         total_so_far_usd: 0.75,
         budget_remaining_usd: -0.25,
+      },
+    });
+  });
+
+  it("halts sample runs before a stage would exceed max_scenes", async () => {
+    const root = await scratchProject();
+    const pipeline = {
+      ...pipelineManifest([
+        stage("scene_plan", { produces: "scene_plan" }),
+        stage("assets", { produces: "asset_manifest" }),
+      ]),
+      sample: {
+        duration_s_min: 10,
+        duration_s_max: 12,
+        max_scenes: 1,
+        max_cost_usd: 1,
+      },
+    };
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+    const dispatched: string[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: scriptedDispatcher(dispatched, {
+        scene_plan: stageResult(
+          {
+            scenes: [
+              scenePlanScene("one", 0),
+              scenePlanScene("two", 1),
+            ],
+          },
+          0,
+        ),
+      }),
+      reviewer: passReviewer,
+      runOptions: { sample: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("limits_exceeded");
+    expect(dispatched).toEqual(["scene_plan"]);
+    await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
+      status: "failed",
+      artifact: {
+        error: "sample_limit_exceeded",
+        reason: expect.stringContaining("max_scenes"),
+      },
+    });
+  });
+
+  it("writes a failed checkpoint with paid-provider failure details", async () => {
+    const root = await scratchProject();
+    const pipeline = pipelineManifest([stage("assets", { produces: "asset_manifest" })]);
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: async () => {
+        throw new PaidSampleStageError("openai_image unavailable", {
+          lastArtifactPath: "projects/show/episode/assets/openai-sample.png",
+          costEntries: [
+            {
+              tool: "openai_image",
+              provider: "openai",
+              model: "gpt-image-1",
+              units: 0,
+              usd: 0,
+              mode: "sample",
+            },
+          ],
+        });
+      },
+      reviewer: passReviewer,
+      runOptions: { sample: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("failed");
+    await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
+      status: "failed",
+      artifact: {
+        error: expect.stringContaining("openai_image unavailable"),
+        last_artifact_path: "projects/show/episode/assets/openai-sample.png",
+      },
+      tool_invocations: [
+        {
+          tool: "openai_image",
+          provider: "openai",
+          model: "gpt-image-1",
+          units: 0,
+          usd: 0,
+        },
+      ],
+    });
+    await expect(readState(root, "show", "episode")).resolves.toMatchObject({
+      failed: {
+        stage: "assets",
+        error: expect.stringContaining("openai_image unavailable"),
       },
     });
   });
@@ -1426,6 +1604,28 @@ function scriptArtifact() {
   };
 }
 
+function scenePlanScene(slug: string, order: number) {
+  return {
+    slug,
+    order,
+    start_s: order * 5,
+    end_s: order * 5 + 5,
+    narrative_role: order === 0 ? "hook" : "tag",
+    scene_anchor: `scene ${order + 1}`,
+    texture_keywords: [],
+    character_actions: [],
+    shot_language: {
+      shot_size: "MS",
+      camera_movement: "static",
+      lighting_key: "soft",
+      lens_mm: 35,
+      depth_of_field: "deep",
+      color_temperature: "daylight",
+    },
+    required_assets: [],
+  };
+}
+
 function decisionEntry(id: string, stageSlug: string): DecisionEntry {
   return {
     id,
@@ -1611,4 +1811,22 @@ function tool(input: { name: string; available: boolean; reason?: string; fix?: 
       return params;
     },
   };
+}
+
+function paidGenerationTool(name: string, capability: string, provider: string, usd: number): Tool {
+  return defineTool({
+    name,
+    capability,
+    provider,
+    status: "production",
+    integration: { kind: "library", package: "test", install: "none" },
+    best_for: `${name} paid demo generation`,
+    supports: ["paid-demo"],
+    cost: { unit: "call", usd },
+    input: z.object({ prompt: z.string(), count: z.number() }),
+    output: z.object({ ok: z.boolean() }),
+    async execute() {
+      return { ok: true };
+    },
+  });
 }

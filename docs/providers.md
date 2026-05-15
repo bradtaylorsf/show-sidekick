@@ -53,7 +53,13 @@ pnpm run docs:providers
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
+| `action_timeline_compiler` | beta | binary | ffmpeg | none | Compatibility alias for action timeline compilation | not declared |
 | `character_animation` | beta | binary | ffmpeg | none | deterministic local rigged character animation from F-10 character artifacts | not declared |
+| `character_animation_reviewer` | beta | binary | ffmpeg | none | Compatibility alias for character animation review | not declared |
+| `character_rig_renderer` | beta | binary | ffmpeg | none | Compatibility alias for character rig rendering | not declared |
+| `character_spec_generator` | beta | binary | ffmpeg | none | Compatibility alias for character animation specification generation | not declared |
+| `pose_library_builder` | beta | binary | ffmpeg | none | Compatibility alias for character pose library building | not declared |
+| `svg_rig_builder` | beta | binary | ffmpeg | none | Compatibility alias for SVG character rig building | not declared |
 
 ## clip_cache
 
@@ -72,6 +78,7 @@ pnpm run docs:providers
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
 | `clip_search` | beta | library | node:fs | none | Semantic search over a local corpus of generated clips using a CLIP embedder tool. | $0 / call |
+| `direct_clip_search` | beta | library | node:fs | none | Compatibility alias for direct generated-clip corpus search | $0 / call |
 
 ## color_grade
 
@@ -135,6 +142,7 @@ pnpm run docs:providers
 | `math_animate` | beta | binary | manim | none | rendering Manim math scenes as animation clips or PNG frames | $0 / image |
 | `showcase_card` | production | binary | ffmpeg | none | deterministic product or brand showcase cards composed from local assets | not declared |
 | `code_snippet` | beta | library | node:zlib | none | transparent PNG code overlays for explainers and talking-head terminal shots | $0 / image |
+| `image_generation` | beta | library | predit | none | Compatibility alias for selecting a concrete image generation provider. | not declared |
 | `image_selector` | beta | library | predit | none | Provider-selection marker for choosing a concrete image-generation tool at runtime | not declared |
 
 ## image_hosting
@@ -144,6 +152,7 @@ pnpm run docs:providers
 | `catbox_host` | production | api | catbox | none | free temporary/public image hosting for image-to-video inputs; catbox has an about 50 uploads/day soft limit | $0 / call |
 | `r2_host` | production | api | r2 | `PREDIT_R2_BUCKET`, `PREDIT_R2_ACCOUNT_ID`, `PREDIT_R2_ACCESS_KEY_ID`, `PREDIT_R2_SECRET_ACCESS_KEY`, `PREDIT_R2_PUBLIC_BASE_URL` | Cloudflare R2-backed image hosting with a public bucket or custom domain | $0 / call |
 | `s3_host` | production | api | s3 | `PREDIT_S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | S3-backed image hosting with an env-var configured bucket | $0 / call |
+| `image_hosting` | beta | library | predit | none | Compatibility alias for selecting a concrete image hosting provider. | not declared |
 
 ## image_to_video
 
@@ -159,7 +168,9 @@ pnpm run docs:providers
 | `seedance_video` | beta | api | bytedance | `BYTEDANCE_API_KEY` | Direct Seedance 2.0 image-to-video generation. | $0.4 / clip |
 | `wan_video` | experimental | api | replicate | `REPLICATE_API_TOKEN` | Open-source Wan 2.1 image-to-video experiments through Replicate. | $0.5 / clip |
 | `ltx_video_local` | experimental | binary | ltx-video | none | Local LTX video generation on a CUDA GPU with no per-clip provider charge. | $0 / clip |
-| `higgsfield` | production | cli | higgsfield / higgsfield | cli-login (higgsfield whoami) | Kling v2.1 Pro image-to-video through the Higgsfield CLI. | $0.3 / clip |
+| `higgsfield` | production | cli | higgsfield / higgsfield | cli-login (higgsfield account status --json) | Kling v2.1 Pro image-to-video through the Higgsfield CLI. | $0.3 / clip |
+| `higgsfield_video` | production | cli | higgsfield / higgsfield | cli-login (higgsfield account status --json) | Compatibility alias for Higgsfield image-to-video generation | $0.3 / clip |
+| `image_to_video` | beta | library | predit | none | Compatibility alias for selecting a concrete image-to-video provider. | not declared |
 | `video_selector` | beta | library | predit | none | Provider-selection marker for choosing a concrete image-to-video tool at runtime | not declared |
 
 ## lip_sync
@@ -218,6 +229,7 @@ pnpm run docs:providers
 | `pixabay_stock` | beta | api | pixabay | `PIXABAY_API_KEY` | searching Pixabay for broad stock images with attribution metadata | $0 / call |
 | `unsplash` | beta | api | unsplash | `UNSPLASH_ACCESS_KEY` | Searching Unsplash image assets for documentary and explainer visual coverage. | $0 / call |
 | `unsplash_stock` | beta | api | unsplash | `UNSPLASH_ACCESS_KEY` | searching Unsplash for high-quality stock photography with creator attribution | $0 / call |
+| `stock_image` | beta | library | predit | none | Compatibility alias for selecting a concrete stock image provider. | not declared |
 
 ## stock_video
 
@@ -238,6 +250,7 @@ pnpm run docs:providers
 | `pond5_pd` | beta | api | pond5 | `POND5_PD_FEED_URL` | Searching a configured Pond5 public-domain video manifest. | $0 / call |
 | `videvo` | beta | api | videvo | `VIDEVO_FEED_URL` | Searching a configured Videvo stock-video manifest while preserving per-clip license metadata. | $0 / call |
 | `wikimedia` | beta | api | wikimedia | none | Searching Wikimedia Commons video files with per-file license metadata. | $0 / call |
+| `stock_video` | beta | library | predit | none | Compatibility alias for selecting a concrete stock video provider. | not declared |
 
 ## subtitle_generation
 
@@ -305,6 +318,7 @@ pnpm run docs:providers
 | `hyperframes` | production | cli | hyperframes / npx | none | HyperFrames composition specs with mandatory lint and validate gates before render | not declared |
 | `hyperframes_compose` | production | cli | hyperframes / npx | none | Compatibility alias for HyperFrames composition specs | not declared |
 | `remotion` | beta | library | remotion | none | typed Remotion-compatible scene catalog validation with word-level caption checks; renderer invocation lands with the compose runner | not declared |
+| `remotion_caption_burn` | beta | library | remotion | none | Compatibility alias for Remotion caption burn and compose validation | not declared |
 | `video_compose` | production | library | predit | none | runtime routing for FFmpeg, Remotion, and HyperFrames with pre-compose validation | not declared |
 
 ## video_download
@@ -336,3 +350,4 @@ pnpm run docs:providers
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
 | `whisper-cpp` | production | binary | whisper-cli | none | local word-level ASR; default medium.en for English, medium for other languages, large-v3 retry for music-heavy audio | not declared |
+| `whisper` | beta | library | predit | none | Compatibility alias for selecting a concrete Whisper transcription provider. | not declared |

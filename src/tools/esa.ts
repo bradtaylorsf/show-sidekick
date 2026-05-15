@@ -22,7 +22,6 @@ export default defineTool({
   best_for: "Searching ESA video assets for space and science explainers.",
   supports: ["stock-video", "space", "science", "esa-standard-license"],
   cost: { unit: "call", usd: 0 },
-  agent_skills: ["stock-video", "esa"],
   input: stockVideoInputSchema,
   output: stockVideoOutputSchema,
   async execute(params, ctx) {
