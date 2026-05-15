@@ -1,0 +1,245 @@
+slug: talking-head
+display_name: Talking Head
+description: "Source-first talking-head pipeline for interview clips, expert explainers, founder videos, and recorded presenter edits. EP orchestration gates source review, transcript confidence, subtitle sync, and caption-safe composition."
+status: production
+master_clock: none
+default_checkpoint_policy: guided
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/talking-head/executive-producer.md
+  - pipelines/talking-head/source-review-director.md
+  - pipelines/talking-head/idea-director.md
+  - pipelines/talking-head/script-director.md
+  - pipelines/talking-head/scene-director.md
+  - pipelines/talking-head/asset-director.md
+  - pipelines/talking-head/edit-director.md
+  - pipelines/talking-head/compose-director.md
+  - pipelines/talking-head/publish-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+compatible_playbooks:
+  recommended:
+    - clean-professional
+    - flat-motion-graphics
+  also_works:
+    - minimalist-diagram
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/talking-head/executive-producer.md
+  budget_default_usd: 1.5
+  max_revisions_per_stage: 3
+  max_send_backs: 2
+  max_wall_time_minutes: 15
+export:
+  supported_targets: [premiere, davinci, capcut, edl]
+  default_target: premiere
+  notes: |
+    Export packages include cleaned source footage, transcript, captions, support assets, render output, and NLE handoff metadata.
+stages:
+  - slug: source_review
+    skill: pipelines/talking-head/source-review-director.md
+    produces: source_media_review
+    produces_artifacts:
+      - source_media_review
+    tools_available:
+      - source_media_review
+      - transcriber
+      - scene_detect
+      - frame_sampler
+      - video_understand
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - User-supplied video produces source_media_review before script proceeds
+      - Technical probe, transcript confidence, framing, and reusable segments are recorded
+      - Source constraints are explicit before scripting
+    success_criteria:
+      - Schema-valid source_media_review artifact when user-supplied video is present
+      - Review identifies transcript confidence and subtitle timing risks
+  - slug: idea
+    skill: pipelines/talking-head/idea-director.md
+    produces: brief
+    produces_artifacts:
+      - brief
+      - decision_log
+    required_artifacts_in:
+      - source_media_review
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Hook and cut strategy fit the reviewed source
+      - Presenter credibility and audience promise are clear
+      - Support visuals are justified by source gaps
+    success_criteria:
+      - Schema-valid brief artifact
+      - Brief is grounded in source_media_review
+  - slug: script
+    skill: pipelines/talking-head/script-director.md
+    produces: script
+    produces_artifacts:
+      - script
+    required_artifacts_in:
+      - brief
+      - source_media_review
+    required_tools:
+      - transcriber
+    tools_available:
+      - transcriber
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - source_media_review exists before script proceeds
+      - transcript confidence threshold 0.8 is enforced with REVISE retry
+      - Script preserves strong source speech instead of overwriting it
+    success_criteria:
+      - Schema-valid script artifact
+      - If word-level confidence < 0.8 the reviewer must REVISE: re-run whisperx with large-v3 model before approving captions.
+  - slug: scene_plan
+    skill: pipelines/talking-head/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - script
+      - source_media_review
+    optional_artifacts_in:
+      - brief
+    optional_tools:
+      - frame_sampler
+      - scene_detect
+    tools_available:
+      - frame_sampler
+      - scene_detect
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Talking-head source remains primary
+      - B-roll, overlays, and generated inserts support the presenter
+      - Caption-safe framing is planned
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Every scene maps to source footage or an approved support insert
+  - slug: assets
+    skill: pipelines/talking-head/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - scene_plan
+      - script
+      - source_media_review
+    optional_artifacts_in:
+      - brief
+    optional_tools:
+      - subtitle_gen
+      - tts_selector
+      - image_selector
+      - video_selector
+      - diagram_gen
+      - code_snippet
+      - audio_enhance
+    tools_available:
+      - subtitle_gen
+      - tts_selector
+      - image_selector
+      - video_selector
+      - diagram_gen
+      - code_snippet
+      - audio_enhance
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Captions are generated from confidence-checked transcript words
+      - whisperx large-v3 retry is used when confidence is below threshold
+      - Support assets do not eclipse the presenter
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - Subtitle assets use subtitle sync tolerance ±0.3s
+  - slug: edit
+    skill: pipelines/talking-head/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - scene_plan
+      - asset_manifest
+      - source_media_review
+    optional_artifacts_in:
+      - script
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - subtitle sync tolerance ±0.3s
+      - transcript confidence threshold 0.8 is not bypassed
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - Captions stay within subtitle sync tolerance ±0.3s
+  - slug: compose
+    skill: pipelines/talking-head/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+    optional_artifacts_in:
+      - scene_plan
+      - script
+      - source_media_review
+    required_tools:
+      - video_compose
+      - audio_mixer
+    optional_tools:
+      - video_trimmer
+      - audio_enhance
+    tools_available:
+      - video_compose
+      - audio_mixer
+      - video_trimmer
+      - audio_enhance
+    requires_runtime: any
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Runtime matches edit decisions
+      - Presenter remains readable after captions and reframing
+      - Captions and audio are synced to transcript timing
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output file exists and passes ffprobe validation
+  - slug: publish
+    skill: pipelines/talking-head/publish-director.md
+    produces: publish_log
+    produces_artifacts:
+      - publish_log
+    required_artifacts_in:
+      - render_report
+      - final_review
+    optional_artifacts_in:
+      - brief
+      - script
+      - source_media_review
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Caption files, transcript, and source notes are packaged
+      - Deliverables are labeled by aspect ratio and platform
+      - Known transcript confidence caveats are surfaced
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Export package contains rendered video and handoff metadata

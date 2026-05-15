@@ -1,0 +1,56 @@
+pipeline: cinematic
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline state machine"
+  - file: executive-producer.md
+    section: "## Mandatory locked decisions"
+  - file: executive-producer.md
+    section: "## Validated patterns"
+  - file: executive-producer.md
+    section: "## When to stop and check with the human"
+  - file: scene-director.md
+    section: "## Canonical 5-Aspect Block"
+  - file: asset-director.md
+    section: "## Canonical 5-Aspect Block"
+required_phrases:
+  - file: executive-producer.md
+    phrase: "motion is a hard requirement; still-image fallback is forbidden"
+  - file: proposal-director.md
+    phrase: "motion is a hard requirement; still-image fallback is forbidden"
+  - file: asset-director.md
+    phrase: "motion is a hard requirement; still-image fallback is forbidden"
+  - file: executive-producer.md
+    phrase: "At least 3 genuinely different cinematic directions in concept_options"
+  - file: proposal-director.md
+    phrase: "At least 3 genuinely different cinematic directions in concept_options"
+  - file: edit-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: compose-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: scene-director.md
+    phrase: "Silent omission is the most common analyst failure and produces ambiguous downstream prompts."
+  - file: asset-director.md
+    phrase: "Silent omission is the most common analyst failure and produces ambiguous downstream prompts."
+  - file: scene-director.md
+    phrase: "Overlays (text, lower thirds, graphics, watermark) are their own layer. Do not merge them into the depth axis of the Scene aspect — they live above the scene, not inside it."
+  - file: asset-director.md
+    phrase: "Overlays (text, lower thirds, graphics, watermark) are their own layer. Do not merge them into the depth axis of the Scene aspect — they live above the scene, not inside it."
+  - file: asset-director.md
+    phrase: "bundled/skills/agents/seedance-2-0.md"
+  - file: asset-director.md
+    phrase: "bundled/skills/agents/ai-video-gen.md"
+  - file: asset-director.md
+    phrase: "bundled/skills/core/remotion.md"
+  - file: compose-director.md
+    phrase: "bundled/skills/core/remotion.md"
+  - file: asset-director.md
+    phrase: "Do not use emotional adjectives like beautiful, stunning, amazing, epic in shot prompts; they read as filler and weaken the cinematic spec."
+required_modules:
+  - file: executive-producer.md
+    module: "Validated patterns"
+  - file: asset-director.md
+    module: "CHAI Three-Step Prompt Review"
+  - file: asset-director.md
+    module: "Confusable Terms"
+  - file: asset-director.md
+    module: "Emotional-Adjective Ban"

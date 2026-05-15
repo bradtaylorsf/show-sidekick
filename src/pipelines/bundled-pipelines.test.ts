@@ -116,6 +116,65 @@ describe("bundled pipeline manifests", () => {
     expect(existsSync(path.join(explainerSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
   });
 
+  it("ships the cinematic manifest with eight directors plus an executive producer", async () => {
+    const manifest = await loadBundledManifest("cinematic");
+    const cinematicSkillsDir = path.join(bundledPipelineSkillsDir, "cinematic");
+    const directorFiles = [
+      "idea-director.md",
+      "proposal-director.md",
+      "script-director.md",
+      "scene-director.md",
+      "asset-director.md",
+      "edit-director.md",
+      "compose-director.md",
+      "publish-director.md",
+    ];
+
+    expect(manifest).toMatchObject({
+      slug: "cinematic",
+      status: "production",
+      master_clock: "voiceover",
+      orchestration: {
+        mode: "executive-producer",
+        skill: "pipelines/cinematic/executive-producer.md",
+        budget_default_usd: 2,
+        max_revisions_per_stage: 3,
+        max_send_backs: 2,
+        max_wall_time_minutes: 20,
+      },
+    });
+    expect(manifest.stages.map((stage) => stage.slug)).toEqual([
+      "idea",
+      "proposal",
+      "script",
+      "scene_plan",
+      "assets",
+      "edit",
+      "compose",
+      "publish",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "proposal")?.success_criteria).toContain(
+      "production_plan.audio_architecture is one of single_narrator, character_dialogue, narrator_plus_characters",
+    );
+    expect(manifest.stages.find((stage) => stage.slug === "assets")?.tools_available).toEqual([
+      "image_selector",
+      "video_selector",
+      "tts_selector",
+      "diagram_gen",
+      "subtitle_gen",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "compose")?.required_tools).toEqual([
+      "video_compose",
+      "audio_mixer",
+    ]);
+
+    for (const fileName of directorFiles) {
+      expect(existsSync(path.join(cinematicSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
+    }
+    expect(existsSync(path.join(cinematicSkillsDir, "executive-producer.md"))).toBe(true);
+    expect(existsSync(path.join(cinematicSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+  });
+
   it("ships the animation manifest with eight directors plus an executive producer", async () => {
     const manifest = await loadBundledManifest("animation");
     const animationSkillsDir = path.join(bundledPipelineSkillsDir, "animation");
@@ -206,6 +265,112 @@ describe("bundled pipeline manifests", () => {
     }
     expect(existsSync(path.join(localizationSkillsDir, "executive-producer.md"))).toBe(true);
     expect(existsSync(path.join(localizationSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+  });
+
+  it("ships the talking-head manifest with eight directors plus an executive producer", async () => {
+    const manifest = await loadBundledManifest("talking-head");
+    const talkingHeadSkillsDir = path.join(bundledPipelineSkillsDir, "talking-head");
+    const directorFiles = [
+      "source-review-director.md",
+      "idea-director.md",
+      "script-director.md",
+      "scene-director.md",
+      "asset-director.md",
+      "edit-director.md",
+      "compose-director.md",
+      "publish-director.md",
+    ];
+
+    expect(manifest).toMatchObject({
+      slug: "talking-head",
+      status: "production",
+      master_clock: "none",
+      orchestration: {
+        mode: "executive-producer",
+        skill: "pipelines/talking-head/executive-producer.md",
+        budget_default_usd: 1.5,
+        max_revisions_per_stage: 3,
+        max_send_backs: 2,
+        max_wall_time_minutes: 15,
+      },
+    });
+    expect(manifest.stages.map((stage) => stage.slug)).toEqual([
+      "source_review",
+      "idea",
+      "script",
+      "scene_plan",
+      "assets",
+      "edit",
+      "compose",
+      "publish",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "script")?.required_artifacts_in).toEqual([
+      "brief",
+      "source_media_review",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "edit")?.review_focus).toContain(
+      "subtitle sync tolerance ±0.3s",
+    );
+    expect(manifest.stages.find((stage) => stage.slug === "edit")?.review_focus).toContain(
+      "silent runtime swap is a CRITICAL governance violation",
+    );
+
+    for (const fileName of directorFiles) {
+      expect(existsSync(path.join(talkingHeadSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
+    }
+    expect(existsSync(path.join(talkingHeadSkillsDir, "executive-producer.md"))).toBe(true);
+    expect(existsSync(path.join(talkingHeadSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+  });
+
+  it("ships the clip-factory manifest with seven directors plus an executive producer", async () => {
+    const manifest = await loadBundledManifest("clip-factory");
+    const clipFactorySkillsDir = path.join(bundledPipelineSkillsDir, "clip-factory");
+    const directorFiles = [
+      "source-review-director.md",
+      "idea-director.md",
+      "scene-director.md",
+      "asset-director.md",
+      "edit-director.md",
+      "compose-director.md",
+      "publish-director.md",
+    ];
+
+    expect(manifest).toMatchObject({
+      slug: "clip-factory",
+      status: "production",
+      master_clock: "none",
+      orchestration: {
+        mode: "executive-producer",
+        skill: "pipelines/clip-factory/executive-producer.md",
+        budget_default_usd: 1.5,
+        max_revisions_per_stage: 3,
+        max_send_backs: 2,
+        max_wall_time_minutes: 12,
+      },
+    });
+    expect(manifest.stages.map((stage) => stage.slug)).toEqual([
+      "source_review",
+      "idea",
+      "scene_plan",
+      "assets",
+      "edit",
+      "compose",
+      "publish",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "assets")?.tools_available).toEqual([
+      "scene_detect",
+      "auto_reframe",
+      "subtitle_gen",
+      "video_selector",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "assets")?.tools_available).toContain("scene_detect");
+    expect(manifest.stages.find((stage) => stage.slug === "assets")?.tools_available).toContain("auto_reframe");
+
+    for (const fileName of directorFiles) {
+      expect(existsSync(path.join(clipFactorySkillsDir, fileName)), `${fileName} should exist`).toBe(true);
+    }
+    expect(existsSync(path.join(clipFactorySkillsDir, "executive-producer.md"))).toBe(true);
+    expect(existsSync(path.join(clipFactorySkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
   });
 
   it("ships the daily-news manifest with nine directors plus an executive producer", async () => {
