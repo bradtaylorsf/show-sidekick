@@ -2,6 +2,7 @@ slug: product-demo
 display_name: Product Demo
 description: Visual-led product demo starter with a screenshot fixture and concise demo notes.
 created: 2026-05-14
+sample_support: unsupported
 brand: ./brand/
 characters: ./characters/
 skills: ./skills/

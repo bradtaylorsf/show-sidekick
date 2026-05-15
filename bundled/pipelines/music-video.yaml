@@ -2,6 +2,7 @@ slug: music-video
 display_name: Music Video
 description: Zero-key audio-led starter pipeline for the bundled music-video sample. It creates a short beat-synced rough-cut artifact set from the supplied track and lyrics, then exports to common NLE handoff formats.
 status: production
+sample_support: both
 master_clock: audio
 default_checkpoint_policy: automatic
 orchestration:
@@ -28,6 +29,8 @@ export:
 sample:
   duration_s_min: 15
   duration_s_max: 20
+  max_scenes: 3
+  max_cost_usd: 0.8
   hint: Use the bundled track and lyrics to create a zero-key sample rough cut.
 metadata:
   starter_sample_dispatcher: zero-key

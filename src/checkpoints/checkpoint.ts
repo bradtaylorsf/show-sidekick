@@ -34,6 +34,7 @@ export const CheckpointSchema = z.object({
         seed: z.number().int().optional(),
         units: z.number().optional(),
         usd: z.number().optional(),
+        cache_hit: z.boolean().optional(),
       }),
     )
     .default([]),

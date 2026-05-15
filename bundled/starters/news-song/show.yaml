@@ -2,6 +2,7 @@ slug: news-song
 display_name: News Song
 description: Audio-led news-song starter with a synthesized track and lyric fixture.
 created: 2026-05-14
+sample_support: paid
 brand: ./brand/
 characters: ./characters/
 skills: ./skills/
@@ -14,6 +15,7 @@ pipelines:
 defaults:
   pipeline: news-song
   language: en
+  provider_profile: paid-demo
 ingest:
   episode_template: ./episode.template.yaml
   watch:

@@ -123,6 +123,10 @@ When the harness needs any resource (pipeline, playbook, skill, schema):
 
 User overrides always win. The bundled cache is read-only from the harness's perspective — `predit update` is the only thing that writes to it.
 
+## Maintainer validation outside the harness repo
+
+The demo matrix runner validates the installed/local CLI from the same separation boundary users see. `pnpm demo-matrix` creates temp user projects outside the harness repo, runs `predit init --starter <slug>` in each lane project, then runs `predit build <show>/sample-episode --sample`. Generated renders, checkpoints, cost logs, and decisions stay under the temp user project, never under the harness source tree. Use `--keep-workdir` when those artifacts need manual inspection after a failed lane.
+
 ## Why a local cache instead of reading from `node_modules`
 
 - Agents (Claude Code, Codex) navigate via filesystem reads. `.predit/skills/...` is a stable, predictable path inside the project. `node_modules/predit/...` is brittle (depends on install method, pnpm hoisting, global vs local).

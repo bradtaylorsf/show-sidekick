@@ -2,6 +2,7 @@ slug: screen-demo
 display_name: Screen Demo
 description: Screen-demo pipeline for product walkthroughs, terminal demos, UI recordings, synthetic screen fixtures, captions, and callouts.
 status: production
+sample_support: paid
 master_clock: voiceover
 default_checkpoint_policy: guided
 extensions:
@@ -37,6 +38,8 @@ orchestration:
 sample:
   duration_s_min: 12
   duration_s_max: 18
+  max_scenes: 3
+  max_cost_usd: 0.9
   hint: A short synthetic terminal or screen walkthrough with timed callouts.
 export:
   supported_targets:

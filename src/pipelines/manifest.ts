@@ -5,6 +5,7 @@ import { StageSchema } from "./stage.js";
 export const PipelineStatusSchema = z.enum(["production", "beta", "experimental"]);
 export const MasterClockSchema = z.enum(["audio", "voiceover", "action_timeline", "none"]);
 export const StageOrderSchema = z.enum(["canonical", "manifest"]);
+export const SampleSupportSchema = z.enum(["zero-key", "paid", "both", "unsupported"]);
 
 const OrchestrationSchema = z
   .object({
@@ -32,6 +33,7 @@ export const PipelineManifestSchema = z
     display_name: z.string().optional(),
     description: z.string().optional(),
     status: PipelineStatusSchema.optional(),
+    sample_support: SampleSupportSchema.optional(),
     master_clock: MasterClockSchema.optional(),
     stage_order: StageOrderSchema.optional(),
     defaults: z.record(z.string(), z.unknown()).optional(),
@@ -54,6 +56,8 @@ export const PipelineManifestSchema = z
       .object({
         duration_s_min: z.number().positive(),
         duration_s_max: z.number().positive(),
+        max_scenes: z.number().int().positive().optional(),
+        max_cost_usd: z.number().nonnegative().optional(),
         hint: z.string().optional(),
       })
       .optional(),
@@ -131,5 +135,6 @@ export const PipelineManifestSchema = z
 export type PipelineStatus = z.infer<typeof PipelineStatusSchema>;
 export type MasterClock = z.infer<typeof MasterClockSchema>;
 export type StageOrder = z.infer<typeof StageOrderSchema>;
+export type SampleSupport = z.infer<typeof SampleSupportSchema>;
 export type PipelineManifest = z.infer<typeof PipelineManifestSchema>;
 export type Pipeline = PipelineManifest;

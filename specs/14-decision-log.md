@@ -69,6 +69,10 @@ The full enum, used as the `category` field on every decision entry. Naming is n
 | `provider_profile_selection` | Preflight / run start | choosing a named provider setup lane such as `paid-demo` |
 | `visual_accuracy_check` | Asset stage | when a generated asset's visual fidelity was checked against a reference or character sheet |
 
+Provider-backed sample runs record `provider_profile_selection` before the Runner starts when a provider profile is resolved from CLI, episode, per-pipeline show config, or show defaults. Paid tool announcements in non-interactive runs record `budget_tradeoff` entries before execution.
+
+Repeated image-to-video requests served from cache still write a cost entry with `units: 0`, `usd: 0`, `mode: "sample"`, and `cache_hit: true`. They also record a `budget_tradeoff` decision explaining that the cached clip was reused rather than incurring a new provider call.
+
 ## Rules
 
 ### Every material choice gets logged

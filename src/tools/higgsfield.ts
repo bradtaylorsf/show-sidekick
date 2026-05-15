@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 import { z } from "zod";
 import { defineTool } from "../registry/define-tool.js";
@@ -52,6 +54,7 @@ const outputSchema = z.object({
   video_path: z.string().min(1),
   cost_usd: z.number(),
   request: wireRequestSchema,
+  cache_hit: z.boolean().optional(),
 });
 
 type HiggsfieldInput = z.infer<typeof inputSchema>;
@@ -77,13 +80,12 @@ export default defineTool({
   output: outputSchema,
   async execute(params, ctx) {
     const input = inputSchema.parse(params);
-    const imageUrl = await resolveImageUrl(input, ctx);
-    const request = buildWireRequest(input, imageUrl);
+    const imageSource = await prepareImageSource(input, ctx);
     const cacheKey = {
       prompt: input.prompt,
       provider: "higgsfield",
       model: MODEL,
-      image_url: imageUrl,
+      ...imageSource.cacheKey,
       duration: input.duration,
       aspect_ratio: "16:9",
     };
@@ -92,30 +94,67 @@ export default defineTool({
       return outputSchema.parse({
         video_path: cached.video_path,
         cost_usd: 0,
-        request,
+        request: buildWireRequest(input, cached.resolved_image_url ?? imageSource.displayUrl),
+        cache_hit: true,
       } satisfies HiggsfieldOutput);
     }
 
+    const imageUrl = await resolvePreparedImageUrl(imageSource, ctx);
+    const request = buildWireRequest(input, imageUrl);
     const result = await runHiggsfield(input, imageUrl, request, ctx);
     const videoPath = readVideoPath(result.stdout);
     const recordedRequest = readRecordedRequest(result.stdout) ?? request;
-    await rememberClipCache(ctx, { ...cacheKey, video_path: videoPath });
+    await rememberClipCache(ctx, { ...cacheKey, video_path: videoPath, resolved_image_url: imageUrl });
 
     return outputSchema.parse({
       video_path: videoPath,
       cost_usd: HIGGSFIELD_COST_USD,
       request: recordedRequest,
+      cache_hit: false,
     } satisfies HiggsfieldOutput);
   },
 });
 
-async function resolveImageUrl(input: HiggsfieldInput, ctx: ToolContext): Promise<string> {
+type PreparedImageSource =
+  | {
+      kind: "url";
+      displayUrl: string;
+      cacheKey: { image_url: string };
+    }
+  | {
+      kind: "path";
+      imagePath: string;
+      displayUrl: string;
+      cacheKey: { image_fingerprint: string };
+    };
+
+async function prepareImageSource(input: HiggsfieldInput, ctx: ToolContext): Promise<PreparedImageSource> {
   if (input.image_url) {
-    return input.image_url;
+    return {
+      kind: "url",
+      displayUrl: input.image_url,
+      cacheKey: { image_url: input.image_url },
+    };
   }
 
   if (!input.image_path) {
     throw new Error("Higgsfield requires image_url or image_path");
+  }
+
+  const imagePath = isAbsolute(input.image_path) ? input.image_path : resolve(ctx.projectRoot, input.image_path);
+  const imageFingerprint = createHash("sha256").update(await readFile(imagePath)).digest("hex");
+
+  return {
+    kind: "path",
+    imagePath,
+    displayUrl: "https://cache.local/predit-local-image",
+    cacheKey: { image_fingerprint: imageFingerprint },
+  };
+}
+
+async function resolvePreparedImageUrl(input: PreparedImageSource, ctx: ToolContext): Promise<string> {
+  if (input.kind === "url") {
+    return input.displayUrl;
   }
 
   if (!ctx.registry) {
@@ -123,8 +162,7 @@ async function resolveImageUrl(input: HiggsfieldInput, ctx: ToolContext): Promis
   }
 
   const imageHostingTool = await ctx.registry.select("image_hosting");
-  const imagePath = isAbsolute(input.image_path) ? input.image_path : resolve(ctx.projectRoot, input.image_path);
-  const hosted = await imageHostingTool.execute({ local_path: imagePath }, ctx);
+  const hosted = await imageHostingTool.execute({ local_path: input.imagePath }, ctx);
 
   return readHostedUrl(hosted);
 }

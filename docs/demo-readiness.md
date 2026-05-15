@@ -11,7 +11,7 @@
 
 ## Current Bundled Manifest Slugs
 
-Approved demo lanes:
+Approved bundled manifest slugs:
 
 - `animated-explainer`
 - `animation`
@@ -34,6 +34,10 @@ Test-only lane:
 - `framework-smoke`
 
 Show-starter-only concepts are denylisted in `SHOW_ONLY_DENYLIST`. Examples include `ww2-diary`, `thechaosfm`, `last-rev`, `rave-queen`, `gta-political`, and `aint-no-crowns`. These slugs may appear under `bundled/starters/`, playbooks, or demo briefs, but they must never appear as `bundled/pipelines/<slug>.yaml`.
+
+## Runnable Demo Matrix
+
+The maintainer demo matrix is starter-driven, not manifest-driven. It reads `bundled/starters/*/show.yaml`, keeps only fixture-backed starters whose declared `sample_support` matches the selected mode, initializes each starter in a fresh user project, and runs `build --sample` there. Seeded extension manifests with `sample_support: unsupported` remain approved bundled manifests, but they are not runnable demo lanes until a starter brief and sample provider path are added.
 
 ## Show Starter Examples
 

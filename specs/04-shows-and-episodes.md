@@ -60,6 +60,7 @@ pipelines:
     runtime: hyperframes
     aspect: "16:9"
     budget_usd: 6
+    provider_profile: paid-demo           # optional paid-provider default for this pipeline
     playbook_overrides: ./pipelines/news-song.playbook-overrides.yaml
   music-video:                            # evergreen protest songs
     playbook: thechaosfm-gta-political
@@ -71,6 +72,7 @@ pipelines:
 defaults:
   pipeline: news-song
   language: en
+  provider_profile: paid-demo             # optional show-wide provider default
 
 # Ingest: what predit watches, and how a drop becomes an episode.
 # Each watch entry routes to a specific pipeline within this show.
@@ -117,6 +119,7 @@ playbook: ps2-dystopian-news-rap
 runtime: hyperframes
 aspect: "16:9"
 budget_usd: 6
+provider_profile: paid-demo
 
 # Inputs the pipeline needs.
 inputs:
@@ -145,8 +148,8 @@ When the harness loads an episode, it merges configuration in this order (later 
 3. **Load the pipeline manifest.** `pipelines/<pipeline>.yaml` (project-local override) or `.predit/pipelines/<pipeline>.yaml` (bundled). Provides workflow, stages, tools available, success criteria.
 4. **Resolve the playbook.** `episode.playbook` > `show.pipelines[<pipeline>].playbook`. Load `playbooks/<playbook>.yaml` (project-local) or `.predit/playbooks/<playbook>.yaml` (bundled).
 5. **Apply per-pipeline playbook overrides.** `show.pipelines[<pipeline>].playbook_overrides` is deep-merged on top of the playbook.
-6. **Apply per-pipeline defaults.** `show.pipelines[<pipeline>]` defaults (runtime, aspect, budget) deep-merge on top of the pipeline manifest's defaults.
-7. **Apply episode overrides.** `episode.*` deep-merges on top of the merged result.
+6. **Apply per-pipeline defaults.** `show.pipelines[<pipeline>]` defaults (runtime, aspect, budget, provider profile) deep-merge on top of the pipeline manifest's defaults.
+7. **Apply episode overrides.** `episode.*` deep-merges on top of the merged result. For paid sample routing, provider profile precedence is CLI `--provider-profile` > `episode.provider_profile` > `show.pipelines[<pipeline>].provider_profile` > `show.defaults.provider_profile`.
 8. **Resolve characters.** `episode.cast[]` → `shows/<show>/characters/<slug>/`.
 9. **Resolve skills** (first match wins):
    - show-level: `shows/<show>/skills/<stage>-director.md`

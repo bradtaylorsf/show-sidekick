@@ -2,6 +2,7 @@ slug: character-animation
 display_name: Character Animation
 description: Character animation pipeline for designing a character, planning a rig, building an action timeline, and rendering animated beats.
 status: beta
+sample_support: unsupported
 master_clock: action_timeline
 default_checkpoint_policy: guided
 extensions:
@@ -39,6 +40,8 @@ orchestration:
 sample:
   duration_s_min: 8
   duration_s_max: 14
+  max_scenes: 2
+  max_cost_usd: 0.8
   hint: One character, two poses, and one readable action beat.
 export:
   supported_targets:

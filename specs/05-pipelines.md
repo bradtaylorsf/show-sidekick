@@ -17,6 +17,7 @@ slug: music-video
 display_name: "Music Video"
 description: "Vertical music videos for AI-generated music tracks"
 status: production                       # production | beta | experimental
+sample_support: both                     # zero-key | paid | both | unsupported
 master_clock: audio                      # audio | voiceover | none
 stage_order: canonical                   # canonical | manifest; defaults to canonical
 default_checkpoint_policy: guided
@@ -214,10 +215,21 @@ Defaults (when omitted): `budget_default_usd: 3.00, cost_drift_threshold: 1.3, m
 sample:
   duration_s_min: 10                  # shortest acceptable sample
   duration_s_max: 18                  # longest acceptable sample
+  max_scenes: 3                       # sample-scoped scene cap
+  max_cost_usd: 1.00                  # sample-scoped paid-provider ceiling
   hint: "Intro + first verse, or hook + climax-adjacent beat"
 ```
 
 Sample scope varies by pipeline: music-video samples are 10-18s (intro + first 4 verse lines); news-song samples 15-20s (no-caption PS2 preview); cinematic samples 10-15s (hook + one motion beat).
+
+`sample_support` declares how `predit build <show>/<episode> --sample` may run:
+
+- `zero-key`: deterministic local starter sample, no provider credentials.
+- `paid`: provider-backed sample through the Runner using a configured provider profile.
+- `both`: either zero-key by default or paid when a provider profile is selected.
+- `unsupported`: the CLI refuses sample mode with a `sample_unsupported` event and a useful message.
+
+Paid samples still run stage-by-stage through the Runner. Provider calls use registry tools, costs are recorded in `cost-log.json`, decisions are recorded in `decisions.json`, and failed provider stages write failed checkpoints that can be inspected before a retry.
 
 ## Artifact JSON schemas
 

@@ -2,6 +2,7 @@ slug: hybrid
 display_name: Hybrid
 description: "Hybrid pipeline for videos that combine source footage with designed or generated support assets: interviews plus diagrams, product footage plus overlays, screen recordings plus companion graphics, or montage edits with support inserts. EP orchestration adds quality gates for source/support balance, overlay density, and cross-medium coherence."
 status: production
+sample_support: unsupported
 master_clock: none
 default_checkpoint_policy: guided
 extensions:
@@ -336,4 +337,6 @@ stages:
 sample:
   duration_s_min: 12
   duration_s_max: 18
+  max_scenes: 3
+  max_cost_usd: 0.8
   hint: One source-led beat plus one support visual or overlay.

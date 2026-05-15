@@ -2,6 +2,7 @@ slug: ww2-diary
 display_name: WW2 Diary
 description: Specialty WW2 diary starter with a diary text fixture and reference image.
 created: 2026-05-14
+sample_support: unsupported
 brand: ./brand/
 characters: ./characters/
 skills: ./skills/

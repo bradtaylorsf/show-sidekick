@@ -2,6 +2,7 @@ slug: cinematic
 display_name: Cinematic
 description: Cinematic trailer and tone-piece pipeline for reference-led visuals, title cards, dramatic pacing, and editor-ready rough cuts.
 status: production
+sample_support: paid
 master_clock: none
 default_checkpoint_policy: guided
 extensions:
@@ -36,6 +37,8 @@ orchestration:
 sample:
   duration_s_min: 10
   duration_s_max: 15
+  max_scenes: 2
+  max_cost_usd: 1
   hint: Hook card, one motion beat, and a final title/tag frame.
 export:
   supported_targets:

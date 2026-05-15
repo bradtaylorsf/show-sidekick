@@ -2,6 +2,7 @@ slug: clip-factory
 display_name: Clip Factory
 description: Batch clip pipeline for searching, selecting, caching, and composing reusable short-form clips from stock or generated sources.
 status: beta
+sample_support: unsupported
 master_clock: none
 default_checkpoint_policy: guided
 extensions:
@@ -36,6 +37,8 @@ orchestration:
 sample:
   duration_s_min: 8
   duration_s_max: 12
+  max_scenes: 2
+  max_cost_usd: 0.8
   hint: One searchable clip lane and one assembled preview.
 export:
   supported_targets:
