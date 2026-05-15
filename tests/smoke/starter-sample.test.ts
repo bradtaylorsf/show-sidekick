@@ -1,17 +1,23 @@
 import { randomUUID } from "node:crypto";
+import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rm } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 import { RenderReportSchema } from "../../src/artifacts/index.js";
-import { createProgram } from "../../src/cli/program.js";
 
 let scratchDirs: string[] = [];
-const originalCwd = process.cwd();
+const execFileAsync = promisify(execFile);
+const require = createRequire(import.meta.url);
+const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
+const cliPath = path.join(repoRoot, "src", "cli", "index.ts");
+const tsxLoaderPath = require.resolve("tsx");
 
 afterEach(async () => {
-  process.chdir(originalCwd);
   await Promise.all(scratchDirs.map((dir) => rm(dir, { recursive: true, force: true })));
   scratchDirs = [];
 });
@@ -21,19 +27,15 @@ describe("music-video starter sample", () => {
     const root = path.join(tmpdir(), `predit-starter-sample-${randomUUID()}`);
     scratchDirs.push(root);
     await mkdir(root, { recursive: true });
-    process.chdir(root);
-    const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "--json", "init", "--starter", "music-video"], { from: "node" });
-    await program.parseAsync(["node", "predit", "--json", "build", "music-video/sample-episode", "--sample"], {
-      from: "node",
-    });
-    await program.parseAsync(["node", "predit", "--json", "export", "music-video/sample-episode", "--target", "premiere"], {
-      from: "node",
-    });
+    const stdout = [
+      await runPredit(root, ["init", "--starter", "music-video"]),
+      await runPredit(root, ["build", "music-video/sample-episode", "--sample"]),
+      await runPredit(root, ["export", "music-video/sample-episode", "--target", "premiere"]),
+    ].join("");
 
-    const events = output()
-      .stdout.trim()
+    const events = stdout
+      .trim()
       .split("\n")
       .map((line) => JSON.parse(line) as { event: string; status?: string; package_path?: string });
     const lifecycleEvents = events.filter((event) => event.event === "build_finished" || event.event === "exported");
@@ -55,26 +57,10 @@ describe("music-video starter sample", () => {
   });
 });
 
-function captureProgram() {
-  let stdout = "";
-  let stderr = "";
-  const program = createProgram({
-    stdout: {
-      write: (value: string) => {
-        stdout += value;
-        return true;
-      },
-    },
-    stderr: {
-      write: (value: string) => {
-        stderr += value;
-        return true;
-      },
-    },
+async function runPredit(cwd: string, args: string[]): Promise<string> {
+  const result = await execFileAsync(process.execPath, ["--import", tsxLoaderPath, cliPath, "--json", ...args], {
+    cwd,
+    maxBuffer: 20 * 1024 * 1024,
   });
-
-  return {
-    program,
-    output: () => ({ stdout, stderr }),
-  };
+  return result.stdout;
 }
