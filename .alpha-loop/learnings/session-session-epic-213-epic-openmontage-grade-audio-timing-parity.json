@@ -1,0 +1,179 @@
+{
+  "name": "session/epic-213-epic-openmontage-grade-audio-timing-parity",
+  "branch": "session/epic-213-epic-openmontage-grade-audio-timing-parity",
+  "completed": "2026-05-16T07:22:47.111Z",
+  "results": [
+    {
+      "issueNum": 214,
+      "title": "Timing parity 1: define audio_energy and lyrics_aligned artifact contracts",
+      "status": "success",
+      "prUrl": "https://github.com/bradtaylorsf/predit/pull/224",
+      "testsPassing": true,
+      "verifyPassing": true,
+      "duration": 383,
+      "filesChanged": 5
+    },
+    {
+      "issueNum": 215,
+      "title": "Timing parity 2: make audio_energy use OpenMontage-style EBU R128 output",
+      "status": "success",
+      "prUrl": "https://github.com/bradtaylorsf/predit/pull/224",
+      "testsPassing": true,
+      "verifyPassing": true,
+      "duration": 383,
+      "filesChanged": 5
+    },
+    {
+      "issueNum": 216,
+      "title": "Timing parity 3: wire EBU R128 energy into cuesheet building",
+      "status": "success",
+      "prUrl": "https://github.com/bradtaylorsf/predit/pull/224",
+      "testsPassing": true,
+      "verifyPassing": true,
+      "duration": 383,
+      "filesChanged": 5
+    },
+    {
+      "issueNum": 217,
+      "title": "Timing parity 4: add ElevenLabs Scribe v2 transcription provider",
+      "status": "success",
+      "prUrl": "https://github.com/bradtaylorsf/predit/pull/224",
+      "testsPassing": true,
+      "verifyPassing": true,
+      "duration": 383,
+      "filesChanged": 5
+    },
+    {
+      "issueNum": 218,
+      "title": "Timing parity 5: implement canonical lyric-to-word alignment engine",
+      "status": "success",
+      "prUrl": "https://github.com/bradtaylorsf/predit/pull/224",
+      "testsPassing": true,
+      "verifyPassing": true,
+      "duration": 383,
+      "filesChanged": 5
+    },
+    {
+      "issueNum": 219,
+      "title": "Timing parity 6: support manual lyric timing corrections",
+      "status": "failure",
+      "testsPassing": false,
+      "verifyPassing": false,
+      "duration": 2255,
+      "filesChanged": 0
+    },
+    {
+      "issueNum": 220,
+      "title": "Timing parity 7: wire lyrics_aligned into cuesheet CLI and music-led pipelines",
+      "status": "failure",
+      "testsPassing": false,
+      "verifyPassing": false,
+      "duration": 2255,
+      "filesChanged": 0
+    },
+    {
+      "issueNum": 221,
+      "title": "Timing parity 8: preserve phrase timing through scene_plan and edit_decisions",
+      "status": "failure",
+      "testsPassing": false,
+      "verifyPassing": false,
+      "duration": 2255,
+      "filesChanged": 0
+    },
+    {
+      "issueNum": 222,
+      "title": "Timing parity 9: add exact clip trim and render drift validation",
+      "status": "failure",
+      "testsPassing": false,
+      "verifyPassing": false,
+      "duration": 2255,
+      "filesChanged": 0
+    }
+  ],
+  "stages": [
+    {
+      "stage": "batch-plan",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 46,
+      "tokens_out": 26798,
+      "cost_usd": 2.002242,
+      "wall_time_s": 333.633,
+      "tool_calls": 42,
+      "tool_errors": 1,
+      "stage_success": true,
+      "started_at": "2026-05-16T06:06:25.337Z",
+      "issue_num": 214
+    },
+    {
+      "stage": "batch-implement",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 1744089,
+      "tokens_out": 1341607,
+      "cost_usd": 0,
+      "wall_time_s": 890.889,
+      "tool_calls": 0,
+      "tool_errors": 0,
+      "stage_success": true,
+      "started_at": "2026-05-16T06:11:58.983Z",
+      "issue_num": 214
+    },
+    {
+      "stage": "batch-test_fix",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 61991,
+      "tokens_out": 47685,
+      "cost_usd": 0,
+      "wall_time_s": 172.554,
+      "tool_calls": 0,
+      "tool_errors": 0,
+      "stage_success": true,
+      "started_at": "2026-05-16T06:26:58.272Z",
+      "issue_num": 214
+    },
+    {
+      "stage": "batch-review",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 68,
+      "tokens_out": 32233,
+      "cost_usd": 2.92228,
+      "wall_time_s": 465.264,
+      "tool_calls": 37,
+      "tool_errors": 1,
+      "stage_success": true,
+      "started_at": "2026-05-16T06:30:01.369Z",
+      "issue_num": 214
+    },
+    {
+      "stage": "batch-plan",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 28,
+      "tokens_out": 24891,
+      "cost_usd": 2.182041,
+      "wall_time_s": 415.836,
+      "tool_calls": 136,
+      "tool_errors": 1,
+      "stage_success": true,
+      "started_at": "2026-05-16T06:40:19.012Z",
+      "issue_num": 219
+    },
+    {
+      "stage": "batch-implement",
+      "model": "",
+      "endpoint": "default",
+      "tokens_in": 5813804,
+      "tokens_out": 4472157,
+      "cost_usd": 0,
+      "wall_time_s": 1799.998,
+      "tool_calls": 0,
+      "tool_errors": 0,
+      "stage_success": false,
+      "started_at": "2026-05-16T06:47:14.879Z",
+      "issue_num": 219
+    }
+  ]
+}

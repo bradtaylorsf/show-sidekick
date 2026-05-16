@@ -15,7 +15,7 @@ pnpm run docs:providers
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `audio_energy` | beta | binary | ffmpeg | none | audio energy windows for beat-aware and voiceover-aware analysis | not declared |
+| `audio_energy` | beta | binary | ffmpeg | none | EBU R128 momentary loudness analysis for music-led timing | not declared |
 
 ## audio_processing
 
@@ -271,6 +271,12 @@ pnpm run docs:providers
 |---|---|---|---|---|---|---|
 | `grok_video` | experimental | api | xai | `XAI_API_KEY` | Grok text-to-video generations through the xAI API. | $0.5 / clip |
 | `veo_video` | beta | api | google | `GOOGLE_API_KEY` | Google Veo text-to-video clips for premium cinematic motion. | $0.5 / second |
+
+## transcribe
+
+| name | status | integration | provider/binary | auth | best_for/blurb | cost |
+|---|---|---|---|---|---|---|
+| `elevenlabs-scribe` | beta | api | elevenlabs | `ELEVENLABS_API_KEY` | sung vocal and music-heavy transcription with word-level timing | not declared |
 
 ## transcriber
 

@@ -1,4 +1,7 @@
 import { execFile } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { z } from "zod";
 import type { Beat } from "../audio/types.js";
 import { defineTool } from "../registry/index.js";
@@ -38,19 +41,15 @@ export default defineTool({
   input: inputSchema,
   output: outputSchema,
   async execute(params) {
-    const [tempoOutput, beatOutput] = await Promise.all([
-      runAubio(["tempo", params.audio_path], params.audio_path),
-      runAubio(["beat", params.audio_path], params.audio_path),
-    ]);
-    const beatTimes = parseAubioBeatOutput(beatOutput.stdout);
-    const beats = buildAubioBeatGrid(beatTimes, params.time_signature?.[0]);
-    const bpm = selectAubioBpm(parseAubioTempoOutput(tempoOutput.stdout), params.expect_bpm) ?? inferBpm(beats);
+    try {
+      return await analyzeWithAubio(params.audio_path, params);
+    } catch (error) {
+      if (!shouldRetryAsWav(error)) {
+        throw error;
+      }
 
-    if (bpm === undefined) {
-      throw new Error(`aubio did not return tempo or enough beats for ${params.audio_path}`);
+      return analyzeViaTemporaryWav(params);
     }
-
-    return outputSchema.parse({ bpm, beats });
   },
 });
 
@@ -97,6 +96,64 @@ function runAubio(args: string[], audioPath: string): Promise<{ stdout: string; 
   });
 }
 
+async function analyzeWithAubio(audioPath: string, params: AubioInput): Promise<AubioOutput> {
+  const [tempoOutput, beatOutput] = await Promise.all([
+    runAubio(["tempo", audioPath], audioPath),
+    runAubio(["beat", audioPath], audioPath),
+  ]);
+  const beatTimes = parseAubioBeatOutput(beatOutput.stdout);
+  const detectedBeats = buildAubioBeatGrid(beatTimes, params.time_signature?.[0]);
+  const inferredBpm = inferBpm(detectedBeats);
+  const bpm =
+    selectAubioBpm(
+      [...parseAubioTempoOutput(tempoOutput.stdout), ...(inferredBpm === undefined ? [] : [inferredBpm])],
+      params.expect_bpm,
+    ) ?? inferredBpm;
+
+  if (bpm === undefined) {
+    throw new Error(`aubio did not return tempo or enough beats for ${params.audio_path}`);
+  }
+
+  const beats = buildAubioBeatGrid(regularizeSparseBeatTimes(beatTimes, bpm), params.time_signature?.[0]);
+
+  return outputSchema.parse({ bpm, beats });
+}
+
+async function analyzeViaTemporaryWav(params: AubioInput): Promise<AubioOutput> {
+  const dir = await mkdtemp(join(tmpdir(), "predit-aubio-wav-"));
+  const wavPath = join(dir, "input.wav");
+
+  try {
+    await transcodeToWav(params.audio_path, wavPath);
+    return await analyzeWithAubio(wavPath, params);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+function transcodeToWav(inputPath: string, outputPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "ffmpeg",
+      ["-y", "-hide_banner", "-loglevel", "error", "-i", inputPath, "-ac", "1", "-ar", "44100", outputPath],
+      { encoding: "utf8", maxBuffer: DEFAULT_AUBIO_MAX_BUFFER, timeout: DEFAULT_AUBIO_TIMEOUT_MS },
+      (error, _stdout, stderr) => {
+        if (error) {
+          reject(new Error(`ffmpeg failed to prepare ${inputPath} for aubio: ${error.message}${stderr ? `\n${stderr}` : ""}`));
+          return;
+        }
+
+        resolve();
+      },
+    );
+  });
+}
+
+function shouldRetryAsWav(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /source_apple_audio|ExtAudioFile|Failed opening/iu.test(message);
+}
+
 export function selectAubioBpm(candidates: number[], expectBpm: [number, number] | undefined): number | undefined {
   if (candidates.length === 0) {
     return undefined;
@@ -131,6 +188,33 @@ export function buildAubioBeatGrid(times: number[], downbeatEvery = 4): Beat[] {
 function inferBpm(beats: Beat[]): number | undefined {
   const interval = median(intervals(beats.map((beat) => beat.time_s)));
   return interval === undefined || interval <= 0 ? undefined : roundSeconds(60 / interval);
+}
+
+function regularizeSparseBeatTimes(times: number[], bpm: number): number[] {
+  if (times.length < 2 || !Number.isFinite(bpm) || bpm <= 0) {
+    return times;
+  }
+
+  const interval = 60 / bpm;
+  const first = times[0] as number;
+  const last = times.at(-1) as number;
+  let start = first;
+
+  while (start - interval >= 0) {
+    start -= interval;
+  }
+
+  const expectedCount = Math.floor((last - start) / interval) + 1;
+  if (expectedCount <= times.length * 1.25) {
+    return times;
+  }
+
+  const filled: number[] = [];
+  for (let time = start; time <= last + interval * 0.25; time += interval) {
+    filled.push(roundSeconds(time));
+  }
+
+  return filled.length > times.length ? filled : times;
 }
 
 function beatStrength(times: number[], index: number, medianInterval: number | undefined): number {

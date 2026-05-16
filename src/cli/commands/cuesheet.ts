@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { Command } from "commander";
 import { readFile } from "node:fs/promises";
+import { writeAudioEnergy, type AudioEnergy } from "../../artifacts/audio-energy.js";
 import type { DecisionEntry } from "../../artifacts/decision-log.js";
 import { CuesheetSchema, writeCuesheet, type Cuesheet } from "../../artifacts/cuesheet.js";
 import { projectDir } from "../../checkpoints/paths.js";
@@ -30,6 +31,7 @@ export type CuesheetDeps = {
   createRegistry: () => Promise<Registry>;
   buildCuesheet: typeof buildCuesheet;
   writeCuesheet: typeof writeCuesheet;
+  writeAudioEnergy: typeof writeAudioEnergy;
   recordDecision: (
     showEpisode: ShowEpisodeTarget,
     entry: DecisionEntry,
@@ -45,6 +47,7 @@ const defaultDeps: CuesheetDeps = {
   createRegistry: createDefaultRegistry,
   buildCuesheet,
   writeCuesheet,
+  writeAudioEnergy,
   recordDecision,
 };
 
@@ -87,7 +90,7 @@ async function createDefaultRegistry(): Promise<Registry> {
 }
 
 async function buildAudioCuesheet(input: {
-  target: ShowEpisodeTarget;
+  target: { show: string; episode: string };
   projectRoot: string;
   trackPath: string;
   options: GlobalOptions;
@@ -96,10 +99,11 @@ async function buildAudioCuesheet(input: {
 }): Promise<Cuesheet> {
   const registry = await input.deps.createRegistry();
   const preflight = await preflightAudioTools(registry);
+  let audioEnergy: AudioEnergy | undefined;
 
   writePreflight(preflight, input.options, input.io);
 
-  return CuesheetSchema.parse(
+  const cuesheet = CuesheetSchema.parse(
     await input.deps.buildCuesheet(resolveTrackPath(input.projectRoot, input.trackPath), {
       master_clock: "audio",
       transcribe: true,
@@ -111,8 +115,17 @@ async function buildAudioCuesheet(input: {
       recordDecision: async (entry) => {
         await input.deps.recordDecision(input.target, entry, { root: input.projectRoot });
       },
+      recordAudioEnergy: (analysis) => {
+        audioEnergy = analysis;
+      },
     }),
   );
+
+  if (audioEnergy !== undefined) {
+    await input.deps.writeAudioEnergy(input.projectRoot, input.target.show, input.target.episode, audioEnergy);
+  }
+
+  return cuesheet;
 }
 
 function readTrackPath(episode: LoadedEpisode): string | undefined {

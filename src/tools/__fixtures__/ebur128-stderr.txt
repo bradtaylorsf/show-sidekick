@@ -1,0 +1,7 @@
+[Parsed_ebur128_0 @ 0x7fb31a704000] t: 0.0999773  TARGET:-23 LUFS    M: -inf S: -120.7     I: -70.0 LUFS       LRA:   0.0 LU
+[Parsed_ebur128_0 @ 0x7fb31a704000] t: 0.999977   TARGET:-23 LUFS    M:-120.7 S: -120.7     I: -70.0 LUFS       LRA:   0.0 LU
+[Parsed_ebur128_0 @ 0x7fb31a704000] t: 1.99998    TARGET:-23 LUFS    M: -38.5 S: -45.0      I: -38.5 LUFS       LRA:   0.0 LU
+[Parsed_ebur128_0 @ 0x7fb31a704000] t: 2.99998    TARGET:-23 LUFS    M: -18.0 S: -24.0      I: -22.0 LUFS       LRA:   4.0 LU
+[Parsed_ebur128_0 @ 0x7fb31a704000] t: 3.99998    TARGET:-23 LUFS    M: -14.5 S: -20.0      I: -18.0 LUFS       LRA:   5.0 LU
+[Parsed_ebur128_0 @ 0x7fb31a704000] t: 4.99998    TARGET:-23 LUFS    M: -13.0 S: -18.0      I: -16.5 LUFS       LRA:   6.0 LU
+[Parsed_ebur128_0 @ 0x7fb31a704000] t: 5.99998    TARGET:-23 LUFS    M: -28.0 S: -24.0      I: -19.0 LUFS       LRA:   6.0 LU

@@ -1,0 +1,20 @@
+[
+  {
+    "start_s": 0,
+    "end_s": 3.1,
+    "text": "We open on the downbeat Then cut where the chorus lands",
+    "words": [
+      { "text": "We", "start_s": 0, "end_s": 0.25, "confidence": 0.99 },
+      { "text": "open", "start_s": 0.25, "end_s": 0.6, "confidence": 0.98 },
+      { "text": "on", "start_s": 0.62, "end_s": 0.9, "confidence": 0.97 },
+      { "text": "the", "start_s": 0.9, "end_s": 1.05, "confidence": 0.97 },
+      { "text": "downbeat", "start_s": 1.05, "end_s": 1.4, "confidence": 0.96 },
+      { "text": "Then", "start_s": 1.48, "end_s": 1.8, "confidence": 0.98 },
+      { "text": "cut", "start_s": 1.8, "end_s": 2.05, "confidence": 0.98 },
+      { "text": "where", "start_s": 2.05, "end_s": 2.35, "confidence": 0.97 },
+      { "text": "the", "start_s": 2.35, "end_s": 2.5, "confidence": 0.97 },
+      { "text": "chorus", "start_s": 2.5, "end_s": 2.8, "confidence": 0.96 },
+      { "text": "lands", "start_s": 2.8, "end_s": 3.1, "confidence": 0.95 }
+    ]
+  }
+]
