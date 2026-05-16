@@ -1,4 +1,5 @@
 import { LyricsAlignedSchema, type LyricAlignedLine, type LyricsAligned } from "../artifacts/lyrics-aligned.js";
+import type { LyricsAlignmentOverride, LyricsAlignmentOverrides } from "../artifacts/lyrics-alignment-overrides.js";
 import type { Segment, Word } from "./types.js";
 
 export interface AlignLyricsOptions {
@@ -47,6 +48,44 @@ export function alignLyrics(canonicalLyrics: string, segments: Segment[], option
   return LyricsAlignedSchema.parse({
     source: options.source ?? "transcript_words",
     lines: aligned,
+  });
+}
+
+export function applyManualCorrections(
+  aligned: LyricsAligned,
+  overrides: LyricsAlignmentOverrides | undefined,
+): LyricsAligned {
+  if (overrides === undefined || overrides.overrides.length === 0) {
+    return LyricsAlignedSchema.parse(aligned);
+  }
+
+  const lines = aligned.lines.map((line) => ({ ...line }));
+
+  for (const override of overrides.overrides) {
+    const index = findOverrideLineIndex(lines, override);
+    if (index === undefined) {
+      throw new Error(`No lyric alignment line matched override ${describeOverride(override)}`);
+    }
+
+    const line = lines[index] as LyricAlignedLine;
+    const startMs = overrideMs(override.start_ms, override.start_s) ?? line.start_ms;
+    const endMs = overrideMs(override.end_ms, override.end_s) ?? line.end_ms;
+
+    lines[index] = {
+      ...line,
+      start_ms: startMs,
+      end_ms: endMs,
+      start_s: startMs === null ? null : msToSeconds(startMs),
+      end_s: endMs === null ? null : msToSeconds(endMs),
+      source: "manual-correction",
+      original_source: line.source === "manual-correction" ? line.original_source : line.source,
+      flagged: false,
+    };
+  }
+
+  return LyricsAlignedSchema.parse({
+    source: sourceAfterCorrections(lines, aligned.source),
+    lines,
   });
 }
 
@@ -214,6 +253,10 @@ function roundSeconds(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
+function msToSeconds(value: number): number {
+  return roundSeconds(value / 1000);
+}
+
 function secondsToMs(value: number): number {
   return Math.round(value * 1000);
 }
@@ -224,4 +267,47 @@ function roundConfidence(value: number): number {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function findOverrideLineIndex(
+  lines: readonly LyricAlignedLine[],
+  override: LyricsAlignmentOverride,
+): number | undefined {
+  if (override.line_id !== undefined) {
+    const index = lines.findIndex((line) => line.id === override.line_id);
+    if (index >= 0) {
+      return index;
+    }
+  }
+
+  if (override.line_index !== undefined && override.line_index < lines.length) {
+    return override.line_index;
+  }
+
+  return undefined;
+}
+
+function overrideMs(valueMs: number | undefined, valueS: number | undefined): number | undefined {
+  if (valueMs !== undefined) {
+    return valueMs;
+  }
+
+  return valueS === undefined ? undefined : secondsToMs(valueS);
+}
+
+function sourceAfterCorrections(lines: readonly LyricAlignedLine[], previousSource: LyricsAligned["source"]): LyricsAligned["source"] {
+  const hasManual = lines.some((line) => line.source === "manual" || line.source === "manual-correction");
+  if (!hasManual) {
+    return previousSource;
+  }
+
+  return lines.every((line) => line.source === "manual" || line.source === "manual-correction") ? "manual" : "mixed";
+}
+
+function describeOverride(override: LyricsAlignmentOverride): string {
+  if (override.line_id !== undefined) {
+    return `line_id=${override.line_id}`;
+  }
+
+  return `line_index=${override.line_index ?? "unknown"}`;
 }

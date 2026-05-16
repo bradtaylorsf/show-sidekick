@@ -32,10 +32,32 @@ describe("video_compose tool", () => {
     const execute = vi.fn(async () => renderReport("ffmpeg"));
     const registry = new Registry({ tools: [runtimeTool("ffmpeg", { execute })] });
 
-    const result = await videoCompose.execute(fixture.input, testContext(fixture.projectRoot, registry));
+    const result = await videoCompose.execute(
+      {
+        ...fixture.input,
+        planned_duration_s: 4,
+        drift_tolerance_frames: 2,
+      },
+      testContext(fixture.projectRoot, registry),
+    );
 
-    expect(execute).toHaveBeenCalledOnce();
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        planned_duration_s: 4,
+        drift_tolerance_frames: 2,
+      }),
+      expect.any(Object),
+    );
     expect(result.runtime_used).toBe("ffmpeg");
+    expect(result.expected_duration_s).toBe(4);
+    expect(result.drift_frames).toBe(0);
+    expect(result.within_tolerance).toBe(true);
+    expect(result.validation_steps).toContainEqual(
+      expect.objectContaining({
+        name: "render_drift",
+        status: "pass",
+      }),
+    );
     expect(result.warnings).toContain("pre_compose_validation: passed");
   });
 

@@ -29,10 +29,10 @@ News screenshots are real, not generated. Mixing these creates fake-news content
 
 ## Process
 
-1. Inspect track, lyrics, cuesheet timing, any source list, and any user brief.
+1. Inspect track, lyrics, `lyrics_aligned` phrase windows, cuesheet timing, any source list, and any user brief.
 2. Lock `content_mode` and record the reason.
 3. Validate deep URLs for sourced mode and flag missing or vague sources.
-4. Mark which lyric claims need source flyouts or screenshots.
+4. Mark which lyric claims need source flyouts or screenshots and cite their `lyrics_aligned` line ids.
 5. For source-free mode, explicitly state that only `scene_kind: lyric-art` is allowed.
 6. Produce `source_media_review` with timing, mode, source, and planning implications.
 
@@ -40,5 +40,6 @@ News screenshots are real, not generated. Mixing these creates fake-news content
 
 - source_media_review validates,
 - content mode is named,
+- `lyrics_aligned` is named as the lyric timing source when lyrics are supplied,
 - sourced work has exact source URLs or clear blockers,
 - source-free work has no implied factual source evidence.

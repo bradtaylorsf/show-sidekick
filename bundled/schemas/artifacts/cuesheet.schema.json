@@ -66,7 +66,69 @@
     },
     "scene_anchors": {
       "type": "array",
-      "items": {}
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/cuesheet.scene_anchor",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "scene_id": {
+            "type": "string"
+          },
+          "start_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "snapped_to": {
+            "type": "string",
+            "enum": [
+              "section_start",
+              "beat",
+              "downbeat",
+              "word",
+              "climax",
+              "manual"
+            ]
+          },
+          "source": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "predit://artifacts/cuesheet.scene_anchor.source",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "section": {
+                "type": "string"
+              },
+              "lyric_line_id": {
+                "type": "string"
+              },
+              "beat_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "word_id": {
+                "type": "string"
+              },
+              "climax_index": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": []
+          }
+        },
+        "required": [
+          "scene_id",
+          "start_s",
+          "end_s",
+          "snapped_to",
+          "source"
+        ]
+      }
     }
   },
   "required": [

@@ -701,8 +701,20 @@ describe("bundled pipeline manifests", () => {
       ]),
     );
     expect(manifest.sample).toMatchObject({ duration_s_min: 15, duration_s_max: 20 });
+    expect(manifest.defaults?.drift_tolerance_frames).toBe(1);
     expect(manifest.stages.find((stage) => stage.slug === "cuesheet")?.audio_sync).toBe("build");
+    expect(manifest.stages.find((stage) => stage.slug === "cuesheet")?.produces_artifacts).toEqual([
+      "cuesheet",
+      "audio_energy",
+      "lyrics_aligned",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "script")?.required_artifacts_in).toContain(
+      "lyrics_aligned",
+    );
     expect(manifest.stages.find((stage) => stage.slug === "scene_plan")?.audio_sync).toBe("required");
+    expect(manifest.stages.find((stage) => stage.slug === "scene_plan")?.required_artifacts_in).toContain(
+      "lyrics_aligned",
+    );
 
     for (const fileName of directorFiles) {
       expect(existsSync(path.join(musicVideoSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
@@ -767,6 +779,7 @@ describe("bundled pipeline manifests", () => {
       ]),
     );
     expect(manifest.compatible_playbooks?.recommended).toContain("news-song");
+    expect(manifest.defaults?.drift_tolerance_frames).toBe(1);
     expect(manifest.compatible_playbooks?.also_works).toEqual(
       expect.arrayContaining(["news-song-protest", "thechaosfm-gta-political"]),
     );
@@ -781,6 +794,17 @@ describe("bundled pipeline manifests", () => {
     expect(manifest.stages.find((stage) => stage.slug === "capture")?.tools_available).toEqual([
       "playwright_recording",
     ]);
+    expect(manifest.stages.find((stage) => stage.slug === "cuesheet")?.produces_artifacts).toEqual([
+      "cuesheet",
+      "audio_energy",
+      "lyrics_aligned",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "script")?.required_artifacts_in).toContain(
+      "lyrics_aligned",
+    );
+    expect(manifest.stages.find((stage) => stage.slug === "scene_plan")?.required_artifacts_in).toContain(
+      "lyrics_aligned",
+    );
     expect(manifest.stages.find((stage) => stage.slug === "assets")?.review_focus).toContain(
       "scene_kind: news-screenshot MUST reference assets with provider = playwright_recording; scene_kind: lyric-art MUST reference image-gen tool assets. Mismatch is a critical violation (fake-news protection).",
     );

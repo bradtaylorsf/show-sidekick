@@ -9,7 +9,7 @@ produces: "brief"
 
 ## When To Use
 
-Use this stage after source review confirms the track and lyric timing. The idea stage locks the visual benchmark and production constraints before script and scene planning.
+Use this stage after source review confirms the track and names `lyrics_aligned` as the lyric timing source. The idea stage locks the visual benchmark and production constraints before script and scene planning.
 
 ## Locked Defaults
 
@@ -26,7 +26,7 @@ Sample-first is not optional for any production estimated > $0.50 or > 15 min.
 2. Identify one accent color per major character or concept.
 3. Name concept sections with actual terms, not generic verse labels.
 4. State how Brad's reference music-video acts as the visual benchmark.
-5. Record when the sample-first gate must happen.
+5. Record when the sample-first gate must happen and whether any flagged lyric phrase windows need manual correction before scripting.
 
 ## Quality Gate
 

@@ -7,6 +7,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AudioEnergy } from "../../artifacts/audio-energy.js";
 import type { Cuesheet } from "../../artifacts/cuesheet.js";
 import type { DecisionEntry } from "../../artifacts/decision-log.js";
+import type { LyricsAlignmentOverrides } from "../../artifacts/lyrics-alignment-overrides.js";
+import type { LyricsAligned } from "../../artifacts/lyrics-aligned.js";
+import { applyManualCorrections, canonicalLyricsFromEpisodeInputs } from "../../audio/lyrics-align.js";
 import { defineTool, Registry } from "../../registry/index.js";
 import type { Episode } from "../../shows/episode.js";
 import type { LoadedEpisode, LoadedShow } from "../../shows/load.js";
@@ -106,6 +109,59 @@ describe("createCuesheetHandler", () => {
     expect(deps.writeAudioEnergy).toHaveBeenCalledWith("/project", "show", "episode", audioEnergy());
   });
 
+  it("writes lyrics_aligned.json for a track and lyrics episode", async () => {
+    const io = captureIo();
+    const deps = depsForEpisode(episode({ track: "music_library/demo.mp3", lyrics_text: "We open on the downbeat" }));
+    deps.buildCuesheet = vi.fn(async (_track, options) => {
+      await options.recordAudioEnergy?.(audioEnergy());
+      return cuesheetWithWords();
+    });
+    const handler = createCuesheetHandler(io, deps);
+
+    await handler("show/episode", command());
+
+    expect(deps.alignLyrics).toHaveBeenCalledWith(
+      "We open on the downbeat",
+      cuesheetWithWords().segments,
+      { source: "transcript_words" },
+    );
+    expect(deps.readLyricsAlignmentOverrides).toHaveBeenCalledWith("/project", "show", "episode");
+    expect(deps.applyManualCorrections).toHaveBeenCalledWith(lyricsAligned(), undefined);
+    expect(deps.writeAudioEnergy).toHaveBeenCalledWith("/project", "show", "episode", audioEnergy());
+    expect(deps.writeLyricsAligned).toHaveBeenCalledWith("/project", "show", "episode", lyricsAligned());
+    expect(io.stdoutText()).toContain("lyric lines: 1");
+  });
+
+  it("re-applies persisted lyric timing overrides before writing lyrics_aligned.json", async () => {
+    const overrides: LyricsAlignmentOverrides = {
+      overrides: [{ line_id: "line-1", start_ms: 100, end_ms: 900, note: "manual phrase trim" }],
+    };
+    const corrected = correctedLyricsAligned();
+    const deps = depsForEpisode(episode({ track: "music_library/demo.mp3", lyrics_text: "We open on the downbeat" }));
+    deps.readLyricsAlignmentOverrides = vi.fn(async () => overrides);
+    deps.applyManualCorrections = vi.fn(() => corrected);
+    const handler = createCuesheetHandler(captureIo(), deps);
+
+    await handler("show/episode", command());
+
+    expect(deps.applyManualCorrections).toHaveBeenCalledWith(lyricsAligned(), overrides);
+    expect(deps.writeLyricsAligned).toHaveBeenCalledWith("/project", "show", "episode", corrected);
+  });
+
+  it("reads lyric text from resolved episode input file paths", async () => {
+    const root = await scratchRoot();
+    const lyricsPath = path.join(root, "lyrics.txt");
+    await writeFile(lyricsPath, "We open on the downbeat\n", "utf8");
+    const deps = depsForEpisode(episode({ track: "music_library/demo.mp3", lyrics: lyricsPath }), root);
+    const handler = createCuesheetHandler(captureIo(), deps);
+
+    await handler("show/episode", command());
+
+    expect(deps.alignLyrics).toHaveBeenCalledWith("We open on the downbeat\n", expect.any(Array), {
+      source: "transcript_words",
+    });
+  });
+
   it("accepts the real Commander action signature", async () => {
     const io = captureIo();
     const deps = depsForEpisode(episode({ track: "music_library/demo.mp3" }));
@@ -178,8 +234,13 @@ function depsForEpisode(episodeValue: Episode, root = "/project"): CuesheetDeps 
     loadEpisode: vi.fn(async () => loadedEpisode(episodeValue)),
     createRegistry: vi.fn(async () => registry()),
     buildCuesheet: vi.fn(async () => cuesheet()),
+    alignLyrics: vi.fn(() => lyricsAligned()),
+    applyManualCorrections: vi.fn((aligned, overrides) => applyManualCorrections(aligned, overrides)),
+    canonicalLyricsFromEpisodeInputs: vi.fn((inputs) => canonicalLyricsFromEpisodeInputs(inputs)),
     writeCuesheet: vi.fn(async () => "/project/projects/show/episode/cuesheet.json"),
     writeAudioEnergy: vi.fn(async () => "/project/projects/show/episode/audio_energy.json"),
+    writeLyricsAligned: vi.fn(async () => "/project/projects/show/episode/lyrics_aligned.json"),
+    readLyricsAlignmentOverrides: vi.fn(async () => undefined),
     recordDecision: vi.fn(async () => []),
   };
 }
@@ -360,6 +421,63 @@ function cuesheet(): Cuesheet {
     beats: [{ time_s: 0, strength: 1, is_downbeat: true }],
     climax: [{ time_s: 4, type: "peak", intensity: 1, source: "algorithm" }],
     scene_anchors: [],
+  };
+}
+
+function cuesheetWithWords(): Cuesheet {
+  return {
+    ...cuesheet(),
+    segments: [
+      {
+        start_s: 0,
+        end_s: 1,
+        text: "We open on the downbeat",
+        words: [
+          { text: "We", start_s: 0, end_s: 0.1, confidence: 1 },
+          { text: "open", start_s: 0.1, end_s: 0.3, confidence: 1 },
+          { text: "on", start_s: 0.3, end_s: 0.45, confidence: 1 },
+          { text: "the", start_s: 0.45, end_s: 0.6, confidence: 1 },
+          { text: "downbeat", start_s: 0.6, end_s: 1, confidence: 1 },
+        ],
+      },
+    ],
+  };
+}
+
+function lyricsAligned(): LyricsAligned {
+  return {
+    source: "transcript_words",
+    lines: [
+      {
+        id: "line-1",
+        text: "We open on the downbeat",
+        confidence: 1,
+        matched_word_ids: ["w-1", "w-2", "w-3", "w-4", "w-5"],
+        start_s: 0,
+        end_s: 1,
+        start_ms: 0,
+        end_ms: 1000,
+        source: "aligned",
+        flagged: false,
+      },
+    ],
+  };
+}
+
+function correctedLyricsAligned(): LyricsAligned {
+  return {
+    source: "manual",
+    lines: [
+      {
+        ...lyricsAligned().lines[0],
+        start_s: 0.1,
+        end_s: 0.9,
+        start_ms: 100,
+        end_ms: 900,
+        source: "manual-correction",
+        original_source: "aligned",
+      },
+    ],
   };
 }
 

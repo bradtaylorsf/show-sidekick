@@ -56,6 +56,19 @@ describe("music-video starter sample", () => {
     expect(existsSync(renderOutputPath)).toBe(true);
     expect((await readFile(renderOutputPath)).subarray(4, 8).toString("ascii")).toBe("ftyp");
     expect(renderReport.asset_count).toBeGreaterThan(1);
+    expect(renderReport.clip_trims?.every((trim) => trim.drift_frames <= 1)).toBe(true);
+    expect(renderReport.validation_steps).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "render_drift", status: "pass" })]),
+    );
+    expect(existsSync(path.join(root, "projects", "music-video", "sample-episode", "audio_energy.json"))).toBe(true);
+    const lyricsAligned = JSON.parse(
+      await readFile(path.join(root, "projects", "music-video", "sample-episode", "lyrics_aligned.json"), "utf8"),
+    ) as { lines: Array<{ id: string; start_ms: number; end_ms: number; source: string }> };
+    expect(lyricsAligned.lines.every((line) => line.source === "manual" && line.end_ms > line.start_ms)).toBe(true);
+    const scenePlan = JSON.parse(
+      await readFile(path.join(root, "projects", "music-video", "sample-episode", "scene_plan.json"), "utf8"),
+    ) as { scenes: Array<{ timing_anchor?: string; timing_ref?: { lyric_line_id?: string } }> };
+    expect(scenePlan.scenes.every((scene) => scene.timing_anchor && scene.timing_ref?.lyric_line_id)).toBe(true);
     const assetManifest = JSON.parse(
       await readFile(path.join(root, "projects", "music-video", "sample-episode", "asset_manifest.json"), "utf8"),
     ) as { assets: Array<{ id: string; path: string; prompt: string }> };
@@ -70,8 +83,9 @@ describe("music-video starter sample", () => {
     expect(assetManifest.assets[0]?.prompt).toContain("Codex teammate");
     const editDecisions = JSON.parse(
       await readFile(path.join(root, "projects", "music-video", "sample-episode", "edit_decisions.json"), "utf8"),
-    ) as { cuts: Array<{ asset_id: string }> };
+    ) as { cuts: Array<{ asset_id: string; timing_anchor?: string; timing_ref?: { lyric_line_id?: string } }> };
     expect(new Set(editDecisions.cuts.map((cut) => cut.asset_id)).size).toBeGreaterThan(1);
+    expect(editDecisions.cuts.every((cut) => cut.timing_anchor && cut.timing_ref?.lyric_line_id)).toBe(true);
     expect(JSON.parse(await readFile(path.join(root, "projects", "music-video", "sample-episode", "cost_log.json"), "utf8"))).toEqual(
       expect.arrayContaining([expect.objectContaining({ tool: "starter_sample", usd: 0, mode: "sample" })]),
     );

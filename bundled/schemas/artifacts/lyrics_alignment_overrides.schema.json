@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/lyrics_alignment_overrides",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "overrides": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/lyrics_alignment_overrides.override",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "line_id": {
+            "type": "string"
+          },
+          "line_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "start_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "start_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "text": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  "required": [
+    "overrides"
+  ]
+}

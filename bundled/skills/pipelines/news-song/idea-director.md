@@ -9,7 +9,7 @@ produces: "brief"
 
 ## When To Use
 
-Use this stage after source review. The idea stage locks the creative concept and the governance rails before lyrics, source flyouts, and scenes are planned.
+Use this stage after source review names `lyrics_aligned` as the lyric timing source when lyrics are supplied. The idea stage locks the creative concept and the governance rails before lyrics, source flyouts, and scenes are planned.
 
 ## Locked Defaults
 
@@ -26,7 +26,7 @@ Use this stage after source review. The idea stage locks the creative concept an
 2. Lock the content mode and explain how source evidence or source-free protest imagery will work.
 3. Identify one per-section accent color for each major concept, source cluster, or argument beat.
 4. State how the PS2-era look will carry mood through silhouette, lighting, camera, and texture.
-5. Record the 15-20 sec sample window and the stop condition for full production.
+5. Record the 15-20 sec sample window, any flagged lyric phrase windows, and the stop condition for full production.
 
 ## Quality Gate
 

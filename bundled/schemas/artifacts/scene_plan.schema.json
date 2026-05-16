@@ -43,6 +43,29 @@
               "audio_energy"
             ]
           },
+          "timing_ref": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "predit://artifacts/timing-ref",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "lyric_line_id": {
+                "type": "string"
+              },
+              "word_id": {
+                "type": "string"
+              },
+              "beat_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "climax_index": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": []
+          },
           "start_ms": {
             "type": "integer",
             "minimum": 0

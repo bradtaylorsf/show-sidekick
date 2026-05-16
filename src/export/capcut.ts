@@ -40,6 +40,7 @@ type CapcutSegment = {
   target_timerange_us: CapcutTimerange;
   asset_id?: string;
   text?: string;
+  notes?: string;
 };
 
 type CapcutTrack = {
@@ -115,6 +116,7 @@ export function buildCapcutDraft(options: CapcutExporterOptions): CapcutDraft {
       }
 
       const durationUs = secondsToMicroseconds(cut.end_s - cut.start_s);
+      const notes = timingAnchorNote(cut);
 
       return {
         id: `video-segment-${index + 1}`,
@@ -128,6 +130,7 @@ export function buildCapcutDraft(options: CapcutExporterOptions): CapcutDraft {
           start_us: secondsToMicroseconds(cut.start_s),
           duration_us: durationUs,
         },
+        ...(notes === undefined ? {} : { notes: `ANCHOR: ${notes}` }),
       };
     }),
   };
@@ -264,6 +267,32 @@ function captionCues(cuesheet: Cuesheet): CaptionCue[] {
   return cuesheet.segments
     .map((segment) => ({ text: segment.text, start_s: segment.start_s, end_s: segment.end_s }))
     .filter((segment) => segment.text.trim() !== "" && segment.end_s > segment.start_s);
+}
+
+function timingAnchorNote(cut: EditDecisions["cuts"][number]): string | undefined {
+  const parts = [
+    cut.timing_source === undefined || cut.timing_anchor === undefined
+      ? undefined
+      : `${cut.timing_source}:${cut.timing_anchor}`,
+    timingRefNote(cut.timing_ref),
+  ].filter((part): part is string => part !== undefined && part.trim() !== "");
+
+  return parts.length === 0 ? undefined : parts.join(" ");
+}
+
+function timingRefNote(ref: EditDecisions["cuts"][number]["timing_ref"]): string | undefined {
+  if (ref === undefined) {
+    return undefined;
+  }
+
+  const parts = [
+    ref.lyric_line_id === undefined ? undefined : `lyric_line_id=${ref.lyric_line_id}`,
+    ref.word_id === undefined ? undefined : `word_id=${ref.word_id}`,
+    ref.beat_index === undefined ? undefined : `beat_index=${ref.beat_index}`,
+    ref.climax_index === undefined ? undefined : `climax_index=${ref.climax_index}`,
+  ].filter((part): part is string => part !== undefined);
+
+  return parts.length === 0 ? undefined : `(${parts.join(",")})`;
 }
 
 function secondsToMicroseconds(seconds: number): number {

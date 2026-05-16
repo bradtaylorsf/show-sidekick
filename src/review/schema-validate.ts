@@ -10,6 +10,7 @@ import { DecisionLogSchema } from "../artifacts/decision-log.js";
 import { EditDecisionsSchema } from "../artifacts/edit-decisions.js";
 import { EndTagPlanSchema } from "../artifacts/end-tag-plan.js";
 import { FinalReviewSchema } from "../artifacts/final-review.js";
+import { LyricsAlignmentOverridesSchema } from "../artifacts/lyrics-alignment-overrides.js";
 import { LyricsAlignedSchema } from "../artifacts/lyrics-aligned.js";
 import { PoseLibrarySchema } from "../artifacts/pose-library.js";
 import { ProposalPacketSchema } from "../artifacts/proposal-packet.js";
@@ -38,6 +39,7 @@ const ARTIFACT_SCHEMAS = {
   end_tag_plan: EndTagPlanSchema,
   final_review: FinalReviewSchema,
   lyrics_aligned: LyricsAlignedSchema,
+  lyrics_alignment_overrides: LyricsAlignmentOverridesSchema,
   idea: BriefSchema,
   pose_library: PoseLibrarySchema,
   proposal: ProposalPacketSchema,

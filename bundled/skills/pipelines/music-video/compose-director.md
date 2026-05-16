@@ -25,12 +25,13 @@ Use the approved runtime from the decision log and edit decisions. silent runtim
 - Preserve white-flash timing at `0.06s in / 0.18s out` and `0.65 opacity`.
 - Preserve bottom mask `220px solid + 180px gradient` and top mask `110px solid + 90px gradient`.
 - Verify captions are driven by whisper word timestamps.
+- Trim generated clips to exact edit-decision durations and record `expected_duration_s`, `drift_s`, `drift_frames`, `drift_tolerance_s`, `within_tolerance`, and `clip_trims` in `render_report`.
 
 ## Process
 
 1. Build or reuse the HyperFrames/Remotion workspace.
 2. Render the sample or full video with registry-backed `video_compose`.
-3. Run ffprobe or runtime validation.
+3. Run ffprobe or runtime validation and confirm render drift is within `drift_tolerance_frames`.
 4. Spot-check title cards, masks, captions, white flashes, and hero motion.
 5. Compare against Brad's reference music-video as the visual benchmark.
 
@@ -38,6 +39,7 @@ Use the approved runtime from the decision log and edit decisions. silent runtim
 
 - render_report validates,
 - output exists and probes cleanly,
+- render drift is within `drift_tolerance_frames`,
 - title cards use HyperFrames intro animation unless a logged decision says otherwise,
 - runtime did not silently swap,
 - final review records benchmark, caption, mask, and beat-drop checks.

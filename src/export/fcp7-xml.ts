@@ -63,6 +63,7 @@ export function buildFcp7Xml(options: BuildFcp7XmlOptions): string {
       inFrame: 0,
       outFrame: duration,
       fileXml: videoFileXml(fileState, asset.linked_path, duration, rate, options.renderReport),
+      comments: timingAnchorNote(cut),
       sourcetrack: undefined,
     });
   });
@@ -142,6 +143,7 @@ function clipItemXml(options: {
   inFrame: number;
   outFrame: number;
   fileXml: string;
+  comments?: string;
   sourcetrack?: { mediaType: "audio" | "video"; trackIndex: number };
 }): string {
   return lines([
@@ -152,6 +154,7 @@ function clipItemXml(options: {
     `  <end>${options.end}</end>`,
     `  <in>${options.inFrame}</in>`,
     `  <out>${options.outFrame}</out>`,
+    ...(options.comments === undefined ? [] : [`  <comments>ANCHOR: ${xmlEscape(options.comments)}</comments>`]),
     indent(options.fileXml, 2),
     ...(options.sourcetrack
       ? [
@@ -163,6 +166,32 @@ function clipItemXml(options: {
       : []),
     "</clipitem>",
   ]);
+}
+
+function timingAnchorNote(cut: EditDecisions["cuts"][number]): string | undefined {
+  const parts = [
+    cut.timing_source === undefined || cut.timing_anchor === undefined
+      ? undefined
+      : `${cut.timing_source}:${cut.timing_anchor}`,
+    timingRefNote(cut.timing_ref),
+  ].filter((part): part is string => part !== undefined && part.trim() !== "");
+
+  return parts.length === 0 ? undefined : parts.join(" ");
+}
+
+function timingRefNote(ref: EditDecisions["cuts"][number]["timing_ref"]): string | undefined {
+  if (ref === undefined) {
+    return undefined;
+  }
+
+  const parts = [
+    ref.lyric_line_id === undefined ? undefined : `lyric_line_id=${ref.lyric_line_id}`,
+    ref.word_id === undefined ? undefined : `word_id=${ref.word_id}`,
+    ref.beat_index === undefined ? undefined : `beat_index=${ref.beat_index}`,
+    ref.climax_index === undefined ? undefined : `climax_index=${ref.climax_index}`,
+  ].filter((part): part is string => part !== undefined);
+
+  return parts.length === 0 ? undefined : `(${parts.join(",")})`;
 }
 
 function videoFileXml(

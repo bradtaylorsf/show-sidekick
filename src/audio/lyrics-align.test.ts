@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { LyricsAlignedSchema } from "../artifacts/lyrics-aligned.js";
-import { alignLyrics, canonicalLyricsFromEpisodeInputs } from "./lyrics-align.js";
+import { alignLyrics, applyManualCorrections, canonicalLyricsFromEpisodeInputs } from "./lyrics-align.js";
 import type { Segment } from "./types.js";
 
 const lyricsPath = fileURLToPath(new URL("./__fixtures__/lyrics-align-lyrics.txt", import.meta.url));
@@ -64,6 +64,62 @@ describe("alignLyrics", () => {
       end_s: null,
       source: "unmatched",
       flagged: true,
+    });
+  });
+
+  it("applies manual timing corrections without losing word provenance", async () => {
+    const aligned = alignLyrics(await readFile(lyricsPath, "utf8"), await transcript(), { gap_close_s: 0.1 });
+    const corrected = applyManualCorrections(aligned, {
+      overrides: [
+        {
+          line_id: "line-2",
+          start_ms: 1520,
+          end_ms: 2980,
+          note: "tightened after listening pass",
+        },
+      ],
+    });
+
+    expect(corrected.source).toBe("mixed");
+    expect(corrected.lines[1]).toEqual({
+      id: "line-2",
+      text: "Then cut where the chorus lands",
+      confidence: 1,
+      matched_word_ids: ["w-6", "w-7", "w-8", "w-9", "w-10", "w-11"],
+      start_s: 1.52,
+      end_s: 2.98,
+      start_ms: 1520,
+      end_ms: 2980,
+      source: "manual-correction",
+      original_source: "aligned",
+      flagged: false,
+    });
+  });
+
+  it("keeps repeated manual correction passes idempotent across rebuilds", async () => {
+    const overrides = {
+      overrides: [
+        {
+          line_index: 0,
+          start_s: 0.25,
+          end_s: 1.45,
+        },
+      ],
+    };
+    const aligned = alignLyrics(await readFile(lyricsPath, "utf8"), await transcript(), { gap_close_s: 0.1 });
+
+    const corrected = applyManualCorrections(aligned, overrides);
+    const repeated = applyManualCorrections(corrected, overrides);
+
+    expect(repeated).toEqual(corrected);
+    expect(repeated.lines[0]).toMatchObject({
+      start_s: 0.25,
+      end_s: 1.45,
+      start_ms: 250,
+      end_ms: 1450,
+      source: "manual-correction",
+      original_source: "gap_filled",
+      flagged: false,
     });
   });
 

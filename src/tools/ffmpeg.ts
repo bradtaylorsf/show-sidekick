@@ -3,7 +3,13 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
-import { AssetManifestSchema, EditDecisionsSchema, RenderReportSchema, type EditDecisions } from "../artifacts/index.js";
+import {
+  AssetManifestSchema,
+  EditDecisionsSchema,
+  RenderReportSchema,
+  type ClipTrimReport,
+  type EditDecisions,
+} from "../artifacts/index.js";
 import { ffprobe, FfprobeResultSchema } from "../audio/ffprobe.js";
 import { defineTool, type ToolContext } from "../registry/index.js";
 
@@ -61,6 +67,8 @@ export const FfmpegInputSchema = z.discriminatedUnion("operation", [
     edit_decisions: EditDecisionsSchema,
     asset_manifest: AssetManifestSchema,
     output_path: z.string().optional(),
+    planned_duration_s: z.number().positive().optional(),
+    drift_tolerance_frames: z.number().positive().optional(),
   }),
 ]);
 
@@ -326,17 +334,38 @@ async function compose(
   ]);
 
   const outputProbe = await ffprobe(outputPath);
+  const framerate = 30;
+  const expectedDurationS = params.planned_duration_s ?? clipInfos.reduce((sum, clip) => sum + clip.duration_s, 0);
+  const toleranceFrames = params.drift_tolerance_frames ?? 1;
+  const driftToleranceS = toleranceFrames / framerate;
+  const totalDrift = driftMetrics(expectedDurationS, outputProbe.format.duration_s, framerate, toleranceFrames);
+  const clipTrims = clipInfos.map((clip) =>
+    clipTrimReport(clip, framerate, toleranceFrames),
+  );
+  const driftStatus = validationStatus(totalDrift.drift_frames, toleranceFrames);
 
   return RenderReportSchema.parse({
     output_path: outputPath,
     encoding_profile: "ffmpeg/h264-aac",
     duration_s: outputProbe.format.duration_s,
+    expected_duration_s: expectedDurationS,
+    drift_s: totalDrift.drift_s,
+    drift_frames: totalDrift.drift_frames,
+    drift_tolerance_s: driftToleranceS,
+    within_tolerance: totalDrift.within_tolerance,
+    clip_trims: clipTrims,
     resolution: { width: firstVideo.width, height: firstVideo.height },
-    framerate: 30,
+    framerate,
     runtime_used: "ffmpeg",
     asset_count: params.asset_manifest.assets.length,
     warnings: result.stderr.trim() ? [excerpt(result.stderr)] : [],
-    validation_steps: [],
+    validation_steps: [
+      {
+        name: "render_drift",
+        status: driftStatus,
+        notes: `expected=${expectedDurationS.toFixed(3)}s actual=${outputProbe.format.duration_s.toFixed(3)}s drift=${totalDrift.drift_frames.toFixed(2)} frames tolerance=${toleranceFrames.toFixed(2)} frames`,
+      },
+    ],
   });
 }
 
@@ -354,6 +383,52 @@ type ComposeFilterOptions = {
   useClipAudio: boolean;
   externalAudioInputIndex?: number;
 };
+
+function clipTrimReport(
+  clip: ComposeClip,
+  framerate: number,
+  toleranceFrames: number,
+): ClipTrimReport {
+  const actualDurationS = frameAlignedDuration(clip.duration_s, framerate);
+  const drift = driftMetrics(clip.duration_s, actualDurationS, framerate, toleranceFrames);
+
+  return {
+    asset_id: clip.cut.asset_id,
+    requested_duration_s: roundSeconds(clip.duration_s),
+    actual_duration_s: actualDurationS,
+    drift_s: drift.drift_s,
+    drift_frames: drift.drift_frames,
+    within_tolerance: drift.within_tolerance,
+  };
+}
+
+function driftMetrics(
+  expectedDurationS: number,
+  actualDurationS: number,
+  framerate: number,
+  toleranceFrames: number,
+): { drift_s: number; drift_frames: number; within_tolerance: boolean } {
+  const driftS = roundSeconds(Math.abs(actualDurationS - expectedDurationS));
+  const driftFrames = roundFrames(driftS * framerate);
+
+  return {
+    drift_s: driftS,
+    drift_frames: driftFrames,
+    within_tolerance: driftFrames <= toleranceFrames + 1e-6,
+  };
+}
+
+function validationStatus(driftFrames: number, toleranceFrames: number): "pass" | "warn" | "fail" {
+  if (driftFrames > toleranceFrames + 1e-6) {
+    return "fail";
+  }
+
+  return toleranceFrames > 1 && driftFrames > 1 ? "warn" : "pass";
+}
+
+function frameAlignedDuration(durationS: number, framerate: number): number {
+  return roundSeconds(Math.round(durationS * framerate) / framerate);
+}
 
 function composeFilter(
   clips: ComposeClip[],
@@ -413,6 +488,14 @@ function audioTrackPath(editDecisions: EditDecisions): string | undefined {
 
 function filterNumber(value: number): string {
   return String(Math.round(value * 1000) / 1000);
+}
+
+function roundSeconds(value: number): number {
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
+
+function roundFrames(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }
 
 function resolveAssetPath(path: string, projectRoot: string): string {

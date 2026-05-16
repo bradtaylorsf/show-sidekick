@@ -10,6 +10,7 @@ defaults:
   canvas: "1920×1080 landscape (16:9) master with 1080×1920 vertical derivative"
   duration_strategy: track_length
   max_scene_duration_s: 5.0
+  drift_tolerance_frames: 1
   render_runtime: hyperframes
 extensions:
   custom_scripts: true
@@ -81,6 +82,8 @@ stages:
     produces: cuesheet
     produces_artifacts:
       - cuesheet
+      - audio_energy
+      - lyrics_aligned
     audio_sync: build
     tools_available:
       - whisper
@@ -94,11 +97,13 @@ stages:
       full: { usd: 0 }
     review_focus:
       - Whisper word timestamps are available even when captions are disabled
+      - Lyric phrase windows are written to lyrics_aligned when lyrics are supplied
       - Beat grid, downbeats, and section labels support a 15-20 sec no-caption PS2 sample
       - Source flyout timing can anchor to words, beats, or downbeats
     success_criteria:
       - Schema-valid cuesheet artifact
       - Word timestamps and beats are present
+      - Track + lyrics episodes write cuesheet, audio_energy, and lyrics_aligned artifacts
     required_artifacts_in: []
   - slug: source_review
     skill: pipelines/news-song/source-review-director.md
@@ -107,6 +112,7 @@ stages:
       - source_media_review
     required_artifacts_in:
       - cuesheet
+      - lyrics_aligned
     tools_available:
       - source_media_review
       - transcriber
@@ -124,7 +130,7 @@ stages:
       - source-free-protest-music-video does not invent sources or fake article pages
     success_criteria:
       - Schema-valid source_media_review artifact
-      - Content mode and timing source are named
+      - Content mode and lyrics_aligned timing source are named when lyrics are supplied
   - slug: idea
     skill: pipelines/news-song/idea-director.md
     produces: brief
@@ -157,6 +163,7 @@ stages:
     required_artifacts_in:
       - brief
       - cuesheet
+      - lyrics_aligned
       - source_media_review
     checkpoint_required: true
     human_approval: required
@@ -165,12 +172,12 @@ stages:
       sample: { usd: 0 }
       full: { usd: 0 }
     review_focus:
-      - Lyrics, source flyouts, and no-caption beats cite cuesheet timing
+      - Lyrics, source flyouts, and no-caption beats cite lyrics_aligned phrase windows or cuesheet timing
       - sourced-political-news-song only attributes real sources
       - source-free-protest-music-video does not imply factual source backing
     success_criteria:
       - Schema-valid script artifact
-      - Script sections cite word, beat, or downbeat timing anchors
+      - Script sections cite lyric phrase, word, beat, or downbeat timing anchors
   - slug: scene_plan
     skill: pipelines/news-song/scene-director.md
     produces: scene_plan
@@ -179,6 +186,7 @@ stages:
     required_artifacts_in:
       - script
       - cuesheet
+      - lyrics_aligned
     optional_artifacts_in:
       - brief
       - source_media_review
@@ -193,12 +201,13 @@ stages:
       sample: { usd: 0 }
       full: { usd: 0 }
     review_focus:
-      - Every scene is anchored to beats, sections, or word timestamps
+      - Every scene is anchored to lyric phrases, beats, sections, or word timestamps
       - news-screenshot scenes are used only for real source evidence
       - lyric-art scenes are generated PS2 metaphor or protest visuals
     success_criteria:
       - Schema-valid scene_plan artifact
       - All scenes are <= 5.0 seconds
+      - Lyric-art scenes preserve lyrics_aligned phrase windows
   - slug: capture
     skill: pipelines/news-song/capture-director.md
     produces: capture_manifest
@@ -331,3 +340,4 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output files exist and pass ffprobe validation
+      - Render drift is within drift_tolerance_frames

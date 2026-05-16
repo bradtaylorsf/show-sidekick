@@ -51,9 +51,10 @@ export function buildEdl(options: EdlExporterOptions): string {
       throw new Error(`asset_manifest does not contain cut asset '${cut.asset_id}'`);
     }
 
+    const eventNumberForCut = eventNumber++;
     lines.push(
       eventLine({
-        eventNumber: eventNumber++,
+        eventNumber: eventNumberForCut,
         reelId: reelIdFor(reelState, `asset:${asset.id}`),
         channel: "V",
         sourceStartS: 0,
@@ -64,6 +65,10 @@ export function buildEdl(options: EdlExporterOptions): string {
         dropFrame,
       }),
     );
+    const anchor = timingAnchorNote(cut);
+    if (anchor !== undefined) {
+      lines.push(`* ANCHOR: ${anchor}`);
+    }
   }
 
   for (const track of options.audioTracks) {
@@ -107,6 +112,32 @@ function eventLine(options: {
     smpteTimecode(options.recordStartS, options.framerate, options.dropFrame),
     smpteTimecode(options.recordEndS, options.framerate, options.dropFrame),
   ].join("  ");
+}
+
+function timingAnchorNote(cut: EditDecisions["cuts"][number]): string | undefined {
+  const parts = [
+    cut.timing_source === undefined || cut.timing_anchor === undefined
+      ? undefined
+      : `${cut.timing_source}:${cut.timing_anchor}`,
+    timingRefNote(cut.timing_ref),
+  ].filter((part): part is string => part !== undefined && part.trim() !== "");
+
+  return parts.length === 0 ? undefined : parts.join(" ");
+}
+
+function timingRefNote(ref: EditDecisions["cuts"][number]["timing_ref"]): string | undefined {
+  if (ref === undefined) {
+    return undefined;
+  }
+
+  const parts = [
+    ref.lyric_line_id === undefined ? undefined : `lyric_line_id=${ref.lyric_line_id}`,
+    ref.word_id === undefined ? undefined : `word_id=${ref.word_id}`,
+    ref.beat_index === undefined ? undefined : `beat_index=${ref.beat_index}`,
+    ref.climax_index === undefined ? undefined : `climax_index=${ref.climax_index}`,
+  ].filter((part): part is string => part !== undefined);
+
+  return parts.length === 0 ? undefined : `(${parts.join(",")})`;
 }
 
 function reelIdFor(state: ReelState, key: string): string {

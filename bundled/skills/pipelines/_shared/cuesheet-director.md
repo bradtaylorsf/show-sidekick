@@ -10,20 +10,27 @@ requires_context: ["episode", "audio"]
 
 ## Goal
 
-Produce a trustworthy `projects/<show>/<episode>/cuesheet.json` so scene planning can snap visuals to the actual audio structure.
+Produce trustworthy `projects/<show>/<episode>/cuesheet.json`, `audio_energy.json`, and, when lyrics are supplied, `lyrics_aligned.json` so scene planning can snap visuals to the actual audio structure and lyric phrase windows.
 
 ## Workflow
 
 1. Build or load the cuesheet with the audio subsystem.
-2. Inspect the transcript, sections, beat grid, and climax points before accepting the artifact.
-3. Revise labels or climax points when the algorithm is plausible but not perceptually right.
-4. Leave the final cuesheet readable for the next stage.
+2. Confirm `audio_energy.json` exists for music-led tracks and `lyrics_aligned.json` exists when lyrics are supplied.
+3. Inspect the transcript, sections, beat grid, lyric phrase windows, and climax points before accepting the artifact.
+4. Revise labels or climax points when the algorithm is plausible but not perceptually right.
+5. Leave the final cuesheet and timing artifacts readable for the next stage.
 
 ## Transcript Review
 
 - If `transcription_confidence.low_confidence` is true, treat the transcript as suspect and flag it for script-stage review.
 - Correct obvious word errors before downstream script or caption work depends on them.
 - Keep confidence metadata intact when manually revising transcript text.
+
+## Lyric Alignment Review
+
+- When lyrics are present, use `lyrics_aligned.json` as the lyric timing source.
+- Do not guess lyric timing from line order when `lyrics_aligned` phrase windows are available.
+- Resolve flagged or unmatched lyric lines with `lyrics_alignment_overrides.json` manual corrections before script or scene planning depends on them.
 
 ## Section Review
 
@@ -41,7 +48,8 @@ Produce a trustworthy `projects/<show>/<episode>/cuesheet.json` so scene plannin
 
 ## Quality Bar
 
-- The cuesheet has sections, beats when the track is rhythmic, and no unsupported climax points.
+- The cuesheet has sections, beats when the track is rhythmic, `audio_energy`, and no unsupported climax points.
+- Track + lyrics episodes have schema-valid `lyrics_aligned` phrase windows.
 - The beat grid is close enough that downbeat snapping would look intentional.
 - Manual changes are minimal, explained in nearby notes or decision logs, and preserve the schema.
 

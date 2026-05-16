@@ -4,6 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { RenderReportSchema } from "../artifacts/render-report.js";
 import { ffprobe } from "../audio/ffprobe.js";
 import ffmpeg from "./ffmpeg.js";
 
@@ -96,7 +97,26 @@ describe("ffmpeg tool", () => {
       testContext(dir),
     );
 
-    expect(result.output_path).toBe(output);
+    const report = RenderReportSchema.parse(result);
+
+    expect(report.output_path).toBe(output);
+    expect(report.expected_duration_s).toBe(2);
+    expect(report.clip_trims?.[0]).toMatchObject({
+      asset_id: "clip",
+      requested_duration_s: 2,
+      actual_duration_s: 2,
+      drift_s: 0,
+      drift_frames: 0,
+      within_tolerance: true,
+    });
+    expect(report.drift_frames).toBeLessThanOrEqual(1);
+    expect(report.within_tolerance).toBe(true);
+    expect(report.validation_steps).toContainEqual(
+      expect.objectContaining({
+        name: "render_drift",
+        status: "pass",
+      }),
+    );
     expect(existsSync(output)).toBe(true);
 
     const probe = await ffprobe(output);

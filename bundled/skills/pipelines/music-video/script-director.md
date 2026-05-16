@@ -9,13 +9,13 @@ produces: "script"
 
 ## When To Use
 
-Use this stage after the brief locks concept sections and source review confirms word timing.
+Use this stage after the brief locks concept sections and source review confirms `lyrics_aligned` phrase windows plus word timing.
 
 ## Timing Rule
 
-NEVER guess timing from lyric structure alone — the whisper word timestamps drive caption timing.
+NEVER guess timing from lyric structure alone — `lyrics_aligned` phrase windows and whisper word timestamps drive caption timing.
 
-Each section must cite cuesheet word timing, beat timing, or downbeat timing. Keep visual beats within the `5.0 seconds` scene duration cap.
+Each section must cite `lyrics_aligned` phrase windows, cuesheet word timing, beat timing, or downbeat timing. When phrase windows are available, use their exact `start_ms` and `end_ms`; do not estimate from lyric line order. Keep visual beats within the `5.0 seconds` scene duration cap.
 
 ## Process
 
@@ -28,6 +28,6 @@ Each section must cite cuesheet word timing, beat timing, or downbeat timing. Ke
 ## Quality Gate
 
 - script validates,
-- every caption phrase has a word timestamp source,
+- every caption phrase has a lyric phrase or word timestamp source,
 - section names are concept-specific,
 - no scene-level beat exceeds 5.0 seconds.

@@ -111,6 +111,7 @@ describe("buildFcp7Xml", () => {
     expect(xml).toContain('<clipitem id="clipitem-1">');
     expect(xml).toContain("<start>60</start>");
     expect(xml).toContain("<end>120</end>");
+    expect(xml).toContain("<comments>ANCHOR: lyric:line-2");
     expect(xml).toContain("file://localhost/project/assets/01_hero%20clip.mov");
     expect(xml).toContain('<clipitem id="audio-clipitem-1">');
   });
@@ -127,8 +128,22 @@ describe("exportCapcut", () => {
       editDecisions: {
         ...editDecisions(),
         cuts: [
-          { start_s: 2, end_s: 4, asset_id: "chart" },
-          { start_s: 0, end_s: 2, asset_id: "hero" },
+          {
+            start_s: 2,
+            end_s: 4,
+            timing_anchor: "line-2",
+            timing_source: "lyric",
+            timing_ref: { lyric_line_id: "line-2" },
+            asset_id: "chart",
+          },
+          {
+            start_s: 0,
+            end_s: 2,
+            timing_anchor: "line-1",
+            timing_source: "lyric",
+            timing_ref: { lyric_line_id: "line-1" },
+            asset_id: "hero",
+          },
         ],
       },
       cuesheet: cuesheet(),
@@ -163,6 +178,7 @@ describe("exportCapcut", () => {
     expect(videoTrack?.segments[0]).toMatchObject({
       source_timerange_us: { start_us: 0, duration_us: 2_000_000 },
       target_timerange_us: { start_us: 0, duration_us: 2_000_000 },
+      notes: expect.stringContaining("ANCHOR: lyric:line-1"),
     });
     expect(captionTrack?.segments.map((segment) => segment.text)).toEqual(["Hello", "world"]);
     expect(draft.materials.captions.map((material) => material.text)).toEqual(["Hello", "world"]);
@@ -203,7 +219,16 @@ describe("buildEdl", () => {
       projectName: "show/episode",
       editDecisions: {
         ...editDecisions(),
-        cuts: [{ start_s: 0, end_s: 1.5, asset_id: "hero" }],
+        cuts: [
+          {
+            start_s: 0,
+            end_s: 1.5,
+            timing_anchor: "line-1",
+            timing_source: "lyric",
+            timing_ref: { lyric_line_id: "line-1" },
+            asset_id: "hero",
+          },
+        ],
       },
       cuesheet: cuesheet(),
       renderReport: { ...renderReport(), duration_s: 1.5, framerate },
@@ -216,6 +241,7 @@ describe("buildEdl", () => {
     expect(edl).toMatch(
       new RegExp(`001\\s+AX001\\s+V\\s+C\\s+${expectedStart}\\s+${expectedOut}\\s+${expectedStart}\\s+${expectedOut}`),
     );
+    expect(edl).toContain("* ANCHOR: lyric:line-1");
     expect(edl).toMatch(/002\s+AX002\s+A\s+C/);
   });
 });
@@ -581,8 +607,26 @@ function linkedAudioTracks(root: string) {
 function editDecisions() {
   return {
     cuts: [
-      { start_s: 0, end_s: 2, asset_id: "hero" },
-      { start_s: 2, end_s: 4, asset_id: "chart" },
+      {
+        start_s: 0,
+        end_s: 2,
+        start_ms: 0,
+        end_ms: 2000,
+        timing_anchor: "line-1",
+        timing_source: "lyric",
+        timing_ref: { lyric_line_id: "line-1", word_id: "w-1", beat_index: 0 },
+        asset_id: "hero",
+      },
+      {
+        start_s: 2,
+        end_s: 4,
+        start_ms: 2000,
+        end_ms: 4000,
+        timing_anchor: "line-2",
+        timing_source: "lyric",
+        timing_ref: { lyric_line_id: "line-2", beat_index: 1 },
+        asset_id: "chart",
+      },
     ],
     overlays: [],
     audio: {

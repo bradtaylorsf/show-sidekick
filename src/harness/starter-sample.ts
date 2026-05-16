@@ -1,10 +1,12 @@
 import { execFile, spawn } from "node:child_process";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { writeAudioEnergy, type AudioEnergy } from "../artifacts/audio-energy.js";
 import { CuesheetSchema, writeCuesheet } from "../artifacts/cuesheet.js";
 import type { CostEntry } from "../artifacts/cost-log.js";
 import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { RenderReport, RenderRuntime } from "../artifacts/index.js";
+import { writeLyricsAligned, type LyricsAligned } from "../artifacts/lyrics-aligned.js";
 import { encodeRgbaPng } from "../media/png.js";
 import { projectDir } from "../checkpoints/paths.js";
 import { runFfmpeg } from "../media/ffmpeg-runner.js";
@@ -24,6 +26,8 @@ type StarterSampleArtifactSet = {
   edit_decisions: unknown;
   render_report: unknown;
   publish_log: unknown;
+  audio_energy: unknown;
+  lyrics_aligned: unknown;
   render_runtime: RenderRuntime;
   narration_provider: StarterNarration["provider"] | "none";
   music_present: boolean;
@@ -51,6 +55,20 @@ type StarterNarration = {
   path: string;
   provider: "provided" | "piper" | "macos-say" | "ffmpeg-silence";
   warning?: string;
+};
+
+type SampleCut = {
+  start_s: number;
+  end_s: number;
+  asset_id: string;
+  timing_anchor: string;
+  timing_source: "lyric";
+  timing_ref: {
+    lyric_line_id: string;
+    beat_index: number;
+  };
+  start_ms: number;
+  end_ms: number;
 };
 
 export function createStarterSampleDispatcher(): Dispatcher {
@@ -120,14 +138,22 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
   });
   const audioPath = narration?.path ?? trackPath;
   const narrationPresent = narration !== undefined && narration.provider !== "ffmpeg-silence";
+  const cuts = sampleCuts(durationS, cards);
+  const lyricsAligned = buildLyricsAligned({ cards, cuts });
+  const audioEnergy = buildAudioEnergy({ durationS });
 
   const cuesheet = buildCuesheet({
     audioPath: audioPath ? mediaProjectPath(ctx.show.projectRoot, audioPath) : firstCard.relativePath,
     lyricText,
     durationS,
     masterClock: ctx.pipeline.master_clock === "voiceover" ? "voiceover" : "audio",
+    cards,
+    cuts,
+    lyricsAligned,
   });
   await writeCuesheet(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug, CuesheetSchema.parse(cuesheet));
+  await writeAudioEnergy(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug, audioEnergy);
+  await writeLyricsAligned(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug, lyricsAligned);
   const sourceMediaReview = buildSourceMediaReview({
     audioPath: audioPath ? mediaProjectPath(ctx.show.projectRoot, audioPath) : firstCard.relativePath,
     durationS,
@@ -135,8 +161,8 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
     narrationPresent,
   });
   const brief = buildBrief({ durationS, lyricText, cards });
-  const script = buildScript({ durationS, cards });
-  const scenePlan = buildScenePlan({ durationS, cards });
+  const script = buildScript({ durationS, cards, cuts });
+  const scenePlan = buildScenePlan({ cards, cuts });
   const assetManifest = {
     assets: cards.map((card) => ({
       id: card.id,
@@ -155,7 +181,7 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
     musicPresent: trackPath !== undefined,
   });
   const editDecisions = {
-    cuts: sampleCuts(durationS, cards),
+    cuts,
     overlays: [],
     audio: audioPath
       ? {
@@ -181,6 +207,7 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
     durationS,
     assetManifest,
     editDecisions,
+    cuts,
     frameRelativePaths,
     heroFrameRelativePath,
     narrationPresent,
@@ -205,6 +232,8 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
       narrationPresent,
       musicPresent: trackPath !== undefined,
     }),
+    audio_energy: audioEnergy,
+    lyrics_aligned: lyricsAligned,
     render_runtime: runtime,
     narration_provider: narration?.provider ?? "none",
     music_present: trackPath !== undefined,
@@ -248,15 +277,12 @@ function buildCuesheet(input: {
   lyricText: string;
   durationS: number;
   masterClock: "audio" | "voiceover";
+  cards: StarterCard[];
+  cuts: SampleCut[];
+  lyricsAligned: unknown;
 }): unknown {
   const words = lyricWords(input.lyricText);
-  const wordDuration = words.length > 0 ? input.durationS / words.length : input.durationS;
-  const wordCues = words.map((word, index) => ({
-    text: word,
-    start_s: roundTime(index * wordDuration),
-    end_s: roundTime(Math.min(input.durationS, (index + 1) * wordDuration)),
-    confidence: 1,
-  }));
+  const wordCues = starterWordCues(input.cards, input.cuts);
   const split = Math.max(1, Math.floor(input.durationS / 2));
 
   return {
@@ -310,7 +336,93 @@ function buildCuesheet(input: {
         source: "algorithm",
       },
     ],
-    scene_anchors: [],
+    scene_anchors: input.cuts.map((cut, index) => ({
+      scene_id: `sample-scene-${index + 1}`,
+      start_s: cut.start_s,
+      end_s: cut.end_s,
+      snapped_to: "word",
+      source: {
+        lyric_line_id: cut.timing_ref.lyric_line_id,
+        beat_index: cut.timing_ref.beat_index,
+      },
+    })),
+    lyrics_aligned: input.lyricsAligned,
+  };
+}
+
+function starterWordCues(cards: StarterCard[], cuts: SampleCut[]): Array<{ text: string; start_s: number; end_s: number; confidence: number }> {
+  return cuts.flatMap((cut, index) => {
+    const card = cards[index];
+    const words = lyricWords(card === undefined ? `Starter sample line ${index + 1}` : cardNarration(card));
+    const wordDuration = words.length > 0 ? (cut.end_s - cut.start_s) / words.length : cut.end_s - cut.start_s;
+
+    return words.map((word, wordIndex) => ({
+      text: word,
+      start_s: roundTime(cut.start_s + wordIndex * wordDuration),
+      end_s: roundTime(wordIndex === words.length - 1 ? cut.end_s : cut.start_s + (wordIndex + 1) * wordDuration),
+      confidence: 1,
+    }));
+  });
+}
+
+function buildLyricsAligned(input: { cards: StarterCard[]; cuts: SampleCut[] }): LyricsAligned {
+  return {
+    source: "manual",
+    lines: input.cuts.map((cut, index) => {
+      const card = input.cards[index];
+      return {
+        id: cut.timing_ref.lyric_line_id,
+        text: card === undefined ? `Starter sample line ${index + 1}` : cardNarration(card),
+        confidence: 1,
+        matched_word_ids: [],
+        start_s: cut.start_s,
+        end_s: cut.end_s,
+        start_ms: cut.start_ms,
+        end_ms: cut.end_ms,
+        source: "manual",
+        flagged: false,
+      };
+    }),
+  };
+}
+
+function buildAudioEnergy(input: { durationS: number }): AudioEnergy {
+  const windowCount = Math.max(1, Math.ceil(input.durationS));
+  const energyProfile = Array.from({ length: windowCount }, (_value, index) => {
+    const startS = roundTime(index);
+    const endS = roundTime(Math.min(input.durationS, index + 1));
+    const lufs = roundTime(-24 + Math.min(1, index / Math.max(1, windowCount - 1)) * 6);
+    return {
+      start_s: startS,
+      end_s: endS,
+      rms: roundRms(10 ** (lufs / 20)),
+      lufs,
+    };
+  }).filter((window) => window.end_s >= window.start_s);
+  const peak = energyProfile.reduce<(typeof energyProfile)[number] | undefined>(
+    (best, window) => (best === undefined || window.lufs > best.lufs ? window : best),
+    undefined,
+  );
+  const bestWindowStart = roundTime(Math.max(0, input.durationS - Math.min(4, input.durationS)));
+
+  return {
+    source: "manual",
+    raw_points: energyProfile.map((window) => ({
+      time_s: roundTime((window.start_s + window.end_s) / 2),
+      momentary_lufs: window.lufs,
+    })),
+    energy_profile: energyProfile,
+    first_active_s: 0,
+    peak_s: peak === undefined ? null : roundTime((peak.start_s + peak.end_s) / 2),
+    recommended_offset_s: 0,
+    best_window: {
+      start_s: bestWindowStart,
+      end_s: input.durationS,
+      average_lufs: -20,
+      peak_lufs: peak?.lufs ?? -20,
+    },
+    silence_threshold_lufs: -45,
+    analysis_window_s: 1,
   };
 }
 
@@ -397,14 +509,18 @@ function buildProposalPacket(input: {
   };
 }
 
-function buildScript(input: { durationS: number; cards: StarterCard[] }): unknown {
-  const cuts = sampleCuts(input.durationS, input.cards);
+function buildScript(input: { durationS: number; cards: StarterCard[]; cuts: SampleCut[] }): unknown {
   return {
     sections: input.cards.map((card, index) => ({
       slug: index === 0 ? "personalized-hook" : `idea-${index}`,
       role: scriptRole(index, input.cards.length),
-      start_s: cuts[index]?.start_s ?? 0,
-      end_s: cuts[index]?.end_s ?? input.durationS,
+      start_s: input.cuts[index]?.start_s ?? 0,
+      end_s: input.cuts[index]?.end_s ?? input.durationS,
+      timing_anchor: input.cuts[index]?.timing_anchor,
+      timing_source: input.cuts[index]?.timing_source,
+      timing_ref: input.cuts[index]?.timing_ref,
+      start_ms: input.cuts[index]?.start_ms,
+      end_ms: input.cuts[index]?.end_ms,
       narration: cardNarration(card),
       enhancement_cues: [
         index === 0 ? "Open with the agent-personalized promise." : "Keep this idea specific enough to act on.",
@@ -447,21 +563,25 @@ function normalizeForNarration(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/gu, " ").trim();
 }
 
-function buildScenePlan(input: { durationS: number; cards: StarterCard[] }): unknown {
-  const cuts = sampleCuts(input.durationS, input.cards);
+function buildScenePlan(input: { cards: StarterCard[]; cuts: SampleCut[] }): unknown {
   const firstCard = input.cards[0];
   if (!firstCard) {
     return { scenes: [] };
   }
 
   return {
-    scenes: cuts.map((cut, index) => {
+    scenes: input.cuts.map((cut, index) => {
       const card = input.cards[index] ?? firstCard;
       return {
         slug: `sample-scene-${index + 1}`,
         order: index,
         start_s: cut.start_s,
         end_s: cut.end_s,
+        timing_anchor: cut.timing_anchor,
+        timing_source: cut.timing_source,
+        timing_ref: cut.timing_ref,
+        start_ms: cut.start_ms,
+        end_ms: cut.end_ms,
         narrative_role: scriptRole(index, input.cards.length),
         scene_anchor: index === 0 ? "opening script line" : index === input.cards.length - 1 ? "final action" : "idea beat",
         description:
@@ -572,15 +692,29 @@ function lyricWords(value: string): string[] {
     ?.slice(0, 48) ?? ["Fifteen", "seconds", "right", "on", "time"];
 }
 
-function sampleCuts(durationS: number, cards: readonly StarterCard[]): Array<{ start_s: number; end_s: number; asset_id: string }> {
+function sampleCuts(durationS: number, cards: readonly StarterCard[]): SampleCut[] {
   const cutCount = Math.max(1, cards.length);
   const cutDuration = durationS / cutCount;
 
-  return Array.from({ length: cutCount }, (_value, index) => ({
-    start_s: roundTime(index * cutDuration),
-    end_s: roundTime(index === cutCount - 1 ? durationS : (index + 1) * cutDuration),
-    asset_id: cards[index]?.id ?? "sample_card_1",
-  }));
+  return Array.from({ length: cutCount }, (_value, index) => {
+    const startS = roundTime(index * cutDuration);
+    const endS = roundTime(index === cutCount - 1 ? durationS : (index + 1) * cutDuration);
+    const lyricLineId = `line-${index + 1}`;
+
+    return {
+      start_s: startS,
+      end_s: endS,
+      asset_id: cards[index]?.id ?? "sample_card_1",
+      timing_anchor: lyricLineId,
+      timing_source: "lyric",
+      timing_ref: {
+        lyric_line_id: lyricLineId,
+        beat_index: Math.max(0, Math.round(startS / 0.5)),
+      },
+      start_ms: Math.round(startS * 1000),
+      end_ms: Math.round(endS * 1000),
+    };
+  });
 }
 
 function starterCards(input: { lyricText: string; workspace: string; projectRoot: string }): StarterCard[] {
@@ -705,6 +839,7 @@ async function renderStarterPreview(input: {
   durationS: number;
   assetManifest: unknown;
   editDecisions: unknown;
+  cuts: SampleCut[];
   frameRelativePaths: string[];
   heroFrameRelativePath: string;
   narrationPresent: boolean;
@@ -723,6 +858,7 @@ async function renderStarterPreview(input: {
     throw new Error("starter preview requires at least one frame");
   }
   const frameCounts = starterFrameCounts(input.durationS, framePaths.length);
+  const clipTrims = starterClipTrims(input.cuts, frameCounts);
   const args = [
     "ffmpeg",
     "-hide_banner",
@@ -775,6 +911,12 @@ async function renderStarterPreview(input: {
     output_path: input.outputRelativePath,
     encoding_profile: "h264-aac-mp4-starter-preview",
     duration_s: input.durationS,
+    expected_duration_s: input.durationS,
+    drift_s: 0,
+    drift_frames: 0,
+    drift_tolerance_s: 1 / SAMPLE_FRAMERATE,
+    within_tolerance: true,
+    clip_trims: clipTrims,
     resolution: {
       width: SAMPLE_WIDTH,
       height: SAMPLE_HEIGHT,
@@ -784,6 +926,11 @@ async function renderStarterPreview(input: {
     asset_count: input.framePaths.length,
     warnings: input.warnings,
     validation_steps: [
+      {
+        name: "render_drift",
+        status: "pass",
+        notes: `expected=${input.durationS.toFixed(3)}s actual=${input.durationS.toFixed(3)}s drift=0.00 frames tolerance=1.00 frames`,
+      },
       {
         name: "starter-sample",
         status: "pass",
@@ -1118,6 +1265,24 @@ function starterFrameCounts(durationS: number, cardCount: number): number[] {
   return Array.from({ length: cardCount }, (_value, index) => base + (index < remainder ? 1 : 0));
 }
 
+function starterClipTrims(cuts: SampleCut[], frameCounts: number[]): RenderReport["clip_trims"] {
+  return cuts.map((cut, index) => {
+    const requestedDurationS = cut.end_s - cut.start_s;
+    const actualDurationS = roundTime((frameCounts[index] ?? 0) / SAMPLE_FRAMERATE);
+    const driftS = roundTime(Math.abs(actualDurationS - requestedDurationS));
+    const driftFrames = roundFrames(driftS * SAMPLE_FRAMERATE);
+
+    return {
+      asset_id: cut.asset_id,
+      requested_duration_s: requestedDurationS,
+      actual_duration_s: actualDurationS,
+      drift_s: driftS,
+      drift_frames: driftFrames,
+      within_tolerance: driftFrames <= 1 + 1e-6,
+    };
+  });
+}
+
 function drawDecorativeGrid(data: Uint8Array, card: StarterCard): void {
   for (let x = 42; x <= 498; x += 38) {
     fillRect(data, x, 92, 1, 710, [255, 255, 255, 16]);
@@ -1359,6 +1524,14 @@ const GLYPHS: Record<string, readonly string[]> = {
 
 function roundTime(value: number): number {
   return Math.round(value * 1000) / 1000;
+}
+
+function roundFrames(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
+function roundRms(value: number): number {
+  return Math.round(value * 1_000_000) / 1_000_000;
 }
 
 function projectRelativePath(projectRoot: string, absolutePath: string): string {

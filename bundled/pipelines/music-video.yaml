@@ -10,6 +10,7 @@ defaults:
   canvas: "1080×1920 vertical (9:16)"
   duration_strategy: track_length
   max_scene_duration_s: 5.0
+  drift_tolerance_frames: 1
   render_runtime: hyperframes
 extensions:
   custom_scripts: true
@@ -65,6 +66,8 @@ stages:
     produces: cuesheet
     produces_artifacts:
       - cuesheet
+      - audio_energy
+      - lyrics_aligned
     audio_sync: build
     tools_available:
       - whisper
@@ -78,11 +81,13 @@ stages:
       full: { usd: 0 }
     review_focus:
       - Whisper word timestamps are available for caption timing
+      - Lyric phrase windows are written to lyrics_aligned when lyrics are supplied
       - Beat grid and downbeats are usable for scene snapping
       - Climax and section labels are plausible
     success_criteria:
       - Schema-valid cuesheet artifact
       - Word timestamps and beats are present
+      - Track + lyrics episodes write cuesheet, audio_energy, and lyrics_aligned artifacts
     required_artifacts_in: []
   - slug: source_review
     skill: pipelines/music-video/source-review-director.md
@@ -91,6 +96,7 @@ stages:
       - source_media_review
     required_artifacts_in:
       - cuesheet
+      - lyrics_aligned
     tools_available:
       - source_media_review
       - transcriber
@@ -104,10 +110,10 @@ stages:
     review_focus:
       - Track, lyrics, and provided references are actually inspected
       - medium.en transcript is the default and large-v3 retry is documented when needed
-      - NEVER guess timing from lyric structure alone — the whisper word timestamps drive caption timing
+      - NEVER guess timing from lyric structure alone — lyrics_aligned phrase windows and whisper word timestamps drive caption timing
     success_criteria:
       - Schema-valid source_media_review artifact
-      - Word-level timing source is named
+      - lyrics_aligned timing source is named when lyrics are supplied
   - slug: idea
     skill: pipelines/music-video/idea-director.md
     produces: brief
@@ -140,6 +146,7 @@ stages:
     required_artifacts_in:
       - brief
       - cuesheet
+      - lyrics_aligned
       - source_media_review
     checkpoint_required: true
     human_approval: required
@@ -148,12 +155,12 @@ stages:
       sample: { usd: 0 }
       full: { usd: 0 }
     review_focus:
-      - Lyrics and captions are keyed to whisper word timestamps
+      - Lyrics and captions are keyed to lyrics_aligned phrase windows and whisper word timestamps
       - Section names use actual concepts rather than generic verse labels
       - No scene exceeds the 5.0 seconds maximum
     success_criteria:
       - Schema-valid script artifact
-      - Script sections cite word timing anchors
+      - Script sections cite lyric phrase or word timing anchors
   - slug: scene_plan
     skill: pipelines/music-video/scene-director.md
     produces: scene_plan
@@ -162,6 +169,7 @@ stages:
     required_artifacts_in:
       - script
       - cuesheet
+      - lyrics_aligned
     optional_artifacts_in:
       - brief
       - source_media_review
@@ -176,12 +184,13 @@ stages:
       sample: { usd: 0 }
       full: { usd: 0 }
     review_focus:
-      - Every scene is anchored to beats, sections, or word timestamps
+      - Every scene is anchored to lyric phrases, beats, sections, or word timestamps
       - Beat-drop hype tags use actual concept names
       - White-flash transitions are planned at major beat drops
     success_criteria:
       - Schema-valid scene_plan artifact
       - All scenes are <= 5.0 seconds
+      - Lyric scenes preserve lyrics_aligned phrase windows
   - slug: assets
     skill: pipelines/music-video/asset-director.md
     produces: asset_manifest
@@ -283,3 +292,4 @@ stages:
     success_criteria:
       - Schema-valid render_report artifact
       - Output files exist and pass ffprobe validation
+      - Render drift is within drift_tolerance_frames

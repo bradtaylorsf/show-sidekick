@@ -13,7 +13,7 @@ Use this stage after the brief locks content mode, concept, sample scope, and so
 
 ## Timing Rule
 
-Every lyric section, source flyout, and evidence beat must cite cuesheet word timing, beat timing, or downbeat timing. Keep scene-level beats within the `5.0 seconds` scene duration cap.
+Every lyric section, source flyout, and evidence beat must cite `lyrics_aligned` phrase windows, cuesheet word timing, beat timing, or downbeat timing. When phrase windows are available, use their exact `start_ms` and `end_ms`; do not estimate from lyric line order. Keep scene-level beats within the `5.0 seconds` scene duration cap.
 
 ## Content Mode Rules
 
@@ -33,6 +33,7 @@ News screenshots are real, not generated. Mixing these creates fake-news content
 ## Quality Gate
 
 - script validates,
+- every lyric section cites a `lyrics_aligned` phrase window when lyrics are supplied,
 - every source flyout cites a real source ref,
 - source-free script has no `scene_kind: news-screenshot`,
 - no scene-level beat exceeds 5.0 seconds.

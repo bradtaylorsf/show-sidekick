@@ -4,8 +4,11 @@ import { readFile } from "node:fs/promises";
 import { writeAudioEnergy, type AudioEnergy } from "../../artifacts/audio-energy.js";
 import type { DecisionEntry } from "../../artifacts/decision-log.js";
 import { CuesheetSchema, writeCuesheet, type Cuesheet } from "../../artifacts/cuesheet.js";
+import { readLyricsAlignmentOverrides } from "../../artifacts/lyrics-alignment-overrides.js";
+import { writeLyricsAligned } from "../../artifacts/lyrics-aligned.js";
 import { projectDir } from "../../checkpoints/paths.js";
 import { buildCuesheet } from "../../audio/cuesheet.js";
+import { alignLyrics, applyManualCorrections, canonicalLyricsFromEpisodeInputs } from "../../audio/lyrics-align.js";
 import { recordDecision, type DecisionStoreOptions, type ShowEpisodeTarget } from "../../decisions/store.js";
 import { findProjectRoot, parseShowEpisode } from "../../paths/project.js";
 import { Registry, type Capability, type Tool } from "../../registry/index.js";
@@ -21,6 +24,7 @@ export type CuesheetSummary = {
   bpm?: number;
   beat_count: number;
   climax_count: number;
+  lyrics_line_count?: number;
 };
 
 export type CuesheetDeps = {
@@ -30,8 +34,13 @@ export type CuesheetDeps = {
   loadEpisode: typeof loadEpisode;
   createRegistry: () => Promise<Registry>;
   buildCuesheet: typeof buildCuesheet;
+  alignLyrics: typeof alignLyrics;
+  applyManualCorrections: typeof applyManualCorrections;
+  canonicalLyricsFromEpisodeInputs: typeof canonicalLyricsFromEpisodeInputs;
   writeCuesheet: typeof writeCuesheet;
   writeAudioEnergy: typeof writeAudioEnergy;
+  writeLyricsAligned: typeof writeLyricsAligned;
+  readLyricsAlignmentOverrides: typeof readLyricsAlignmentOverrides;
   recordDecision: (
     showEpisode: ShowEpisodeTarget,
     entry: DecisionEntry,
@@ -46,8 +55,13 @@ const defaultDeps: CuesheetDeps = {
   loadEpisode,
   createRegistry: createDefaultRegistry,
   buildCuesheet,
+  alignLyrics,
+  applyManualCorrections,
+  canonicalLyricsFromEpisodeInputs,
   writeCuesheet,
   writeAudioEnergy,
+  writeLyricsAligned,
+  readLyricsAlignmentOverrides,
   recordDecision,
 };
 
@@ -60,19 +74,21 @@ export function createCuesheetHandler(io: CliIo = defaultIo, deps: CuesheetDeps 
     const show = await deps.loadShow(projectRoot, parsed.show);
     const episode = await deps.loadEpisode(show, parsed.episode);
     const trackPath = readTrackPath(episode);
-    const cuesheet =
+    const buildResult: { cuesheet: Cuesheet; lyricsLineCount?: number } =
       trackPath === undefined
-        ? await deriveVoiceoverCuesheet(projectRoot, parsed.show, parsed.episode)
+        ? { cuesheet: await deriveVoiceoverCuesheet(projectRoot, parsed.show, parsed.episode) }
         : await buildAudioCuesheet({
             target: { show: parsed.show, episode: parsed.episode },
             projectRoot,
+            episode,
             trackPath,
             options,
             io,
             deps,
           });
+    const cuesheet = buildResult.cuesheet;
     const outputPath = await deps.writeCuesheet(projectRoot, parsed.show, parsed.episode, cuesheet);
-    const summary = summarize(target, outputPath, cuesheet);
+    const summary = summarize(target, outputPath, cuesheet, buildResult.lyricsLineCount);
 
     if (options.json) {
       io.stdout.write(`${JSON.stringify(summary)}\n`);
@@ -92,14 +108,16 @@ async function createDefaultRegistry(): Promise<Registry> {
 async function buildAudioCuesheet(input: {
   target: { show: string; episode: string };
   projectRoot: string;
+  episode: LoadedEpisode;
   trackPath: string;
   options: GlobalOptions;
   io: CliIo;
   deps: CuesheetDeps;
-}): Promise<Cuesheet> {
+}): Promise<{ cuesheet: Cuesheet; lyricsLineCount?: number }> {
   const registry = await input.deps.createRegistry();
   const preflight = await preflightAudioTools(registry);
   let audioEnergy: AudioEnergy | undefined;
+  let lyricsLineCount: number | undefined;
 
   writePreflight(preflight, input.options, input.io);
 
@@ -125,7 +143,20 @@ async function buildAudioCuesheet(input: {
     await input.deps.writeAudioEnergy(input.projectRoot, input.target.show, input.target.episode, audioEnergy);
   }
 
-  return cuesheet;
+  const lyricsText = await resolveLyricsText(input.episode, input.projectRoot, input.deps);
+  if (lyricsText !== undefined) {
+    const automaticAlignment = input.deps.alignLyrics(lyricsText, cuesheet.segments, { source: "transcript_words" });
+    const overrides = await input.deps.readLyricsAlignmentOverrides(
+      input.projectRoot,
+      input.target.show,
+      input.target.episode,
+    );
+    const lyricsAligned = input.deps.applyManualCorrections(automaticAlignment, overrides);
+    await input.deps.writeLyricsAligned(input.projectRoot, input.target.show, input.target.episode, lyricsAligned);
+    lyricsLineCount = lyricsAligned.lines.length;
+  }
+
+  return { cuesheet, ...(lyricsLineCount === undefined ? {} : { lyricsLineCount }) };
 }
 
 function readTrackPath(episode: LoadedEpisode): string | undefined {
@@ -140,6 +171,41 @@ function resolveTrackPath(projectRoot: string, trackPath: string): string {
   }
 
   return path.isAbsolute(trackPath) ? trackPath : path.resolve(projectRoot, trackPath);
+}
+
+async function resolveLyricsText(
+  episode: LoadedEpisode,
+  projectRoot: string,
+  deps: Pick<CuesheetDeps, "canonicalLyricsFromEpisodeInputs">,
+): Promise<string | undefined> {
+  const value = deps.canonicalLyricsFromEpisodeInputs(episode.inputs);
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!looksLikeLyricsPath(value)) {
+    return value;
+  }
+
+  const lyricsPath = path.isAbsolute(value) ? value : path.resolve(projectRoot, value);
+  const text = await readFile(lyricsPath, "utf8");
+
+  return text.trim() === "" ? undefined : text;
+}
+
+function looksLikeLyricsPath(value: string): boolean {
+  if (value.includes("\n") || looksLikeUrl(value)) {
+    return false;
+  }
+
+  return (
+    path.isAbsolute(value) ||
+    value.startsWith("./") ||
+    value.startsWith("../") ||
+    value.includes("/") ||
+    value.includes("\\") ||
+    [".lrc", ".md", ".srt", ".txt"].includes(path.extname(value).toLowerCase())
+  );
 }
 
 async function preflightAudioTools(registry: Registry): Promise<Array<{ capability: Capability; tool: string }>> {
@@ -262,7 +328,12 @@ async function deriveVoiceoverCuesheet(projectRoot: string, show: string, episod
   });
 }
 
-function summarize(target: string, outputPath: string, cuesheet: Cuesheet): CuesheetSummary {
+function summarize(
+  target: string,
+  outputPath: string,
+  cuesheet: Cuesheet,
+  lyricsLineCount: number | undefined,
+): CuesheetSummary {
   return {
     event: "cuesheet",
     target,
@@ -272,6 +343,7 @@ function summarize(target: string, outputPath: string, cuesheet: Cuesheet): Cues
     ...(cuesheet.bpm === undefined ? {} : { bpm: cuesheet.bpm }),
     beat_count: cuesheet.beats.length,
     climax_count: cuesheet.climax.length,
+    ...(lyricsLineCount === undefined ? {} : { lyrics_line_count: lyricsLineCount }),
   };
 }
 
@@ -285,6 +357,7 @@ function formatSummary(summary: CuesheetSummary): string {
     `tempo: ${bpm}`,
     `beats: ${summary.beat_count}`,
     `climax points: ${summary.climax_count}`,
+    ...(summary.lyrics_line_count === undefined ? [] : [`lyric lines: ${summary.lyrics_line_count}`]),
   ].join("\n") + "\n";
 }
 

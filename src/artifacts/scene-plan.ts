@@ -21,9 +21,17 @@ export const ShotLanguageSchema = z.object({
 
 export const TimingSourceSchema = z.enum(["lyric", "word", "beat", "section", "climax", "manual", "audio_energy"]);
 
+export const TimingRefSchema = z.object({
+  lyric_line_id: z.string().optional(),
+  word_id: z.string().optional(),
+  beat_index: z.number().int().nonnegative().optional(),
+  climax_index: z.number().int().nonnegative().optional(),
+});
+
 const TimingMetadataSchema = {
   timing_anchor: z.string().optional(),
   timing_source: TimingSourceSchema.optional(),
+  timing_ref: TimingRefSchema.optional(),
   start_ms: z.number().int().nonnegative().optional(),
   end_ms: z.number().int().nonnegative().optional(),
 } as const;
@@ -65,4 +73,5 @@ export const ScenePlanSchema = z.object({
 });
 
 export type ShotLanguage = z.infer<typeof ShotLanguageSchema>;
+export type TimingRef = z.infer<typeof TimingRefSchema>;
 export type ScenePlan = z.infer<typeof ScenePlanSchema>;
