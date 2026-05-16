@@ -1,22 +1,23 @@
 ## Architecture
-- CLI entry is `src/cli/index.ts`, built to `dist/cli/index.js` and exposed as `predit`; it calls `createProgram()` in `src/cli/program.ts`, which imports/registers every command handler.
-- `predit build` loads `<show>/<episode>` via `src/cli/commands/run-target.ts`, selects a pipeline/playbook, discovers tools with `src/registry/registry.ts`, then runs stages through `src/harness/runner.ts` and a dispatcher.
-- No database: persistent state is YAML/JSON on disk. Authoring lives in `shows/*/*.yaml`; runtime state/checkpoints/costs/artifacts live under `projects/<show>/<episode>/`; schemas are Zod in `src/**` plus generated JSON schemas in `bundled/schemas/`.
-- Key directories: `src/cli` commands, `src/harness` orchestration, `src/registry` tool selection, `src/tools` integrations, `src/artifacts` schemas, `src/checkpoints` state IO, `bundled/` shipped pipelines/playbooks/skills/starters/templates.
+- CLI entry is `src/cli/index.ts` (`bin: predit` compiles to `dist/cli/index.js`); it creates the Commander program in `src/cli/program.ts`, which imports handlers from `src/cli/commands/*.ts`.
+- `build` resolves `<show>/<episode>` via `src/cli/commands/run-target.ts`, loads `show.yaml`, episode YAML, and pipeline YAML, then runs `Runner.run` in `src/harness/runner.ts` with a dispatcher and registry.
+- No database: state is file-backed JSON/YAML. Runtime data lives under `projects/<show>/<episode>/` (`state.json`, `checkpoints/*.json`, `decisions.json`) and is accessed through `src/checkpoints/`, `src/decisions/`, and `src/cost/`.
+- Key directories: `src/tools/` registry tools, `src/pipelines/` manifest loading/schema, `src/shows/` show/episode schemas, `src/export/` NLE handoff, `bundled/` shipped pipelines/skills/starters/schemas.
 
 ## Conventions
-- TypeScript, Node 22+, ESM/`NodeNext`, strict `tsconfig`; Commander for CLI, Zod for validation, `yaml` for config parsing.
-- Tests use Vitest in Node mode; unit tests are colocated as `src/**/*.test.ts`, broader smoke/schema/release tests live under `tests/`; run with `pnpm test`, `pnpm typecheck`, `pnpm build`.
-- New CLI commands must be imported and registered in `src/cli/program.ts`; command logic belongs in `src/cli/commands/*`.
-- New tools live as one default-exported `defineTool(...)` module in `src/tools/`; new pipelines should usually be `bundled/pipelines/*.yaml` plus director skills in `bundled/skills/pipelines/<pipeline>/`.
+- TypeScript ESM on Node 22, `moduleResolution: NodeNext`, strict mode; validation is mostly Zod, config parsing uses `yaml`, CLI uses `commander`.
+- Tests are Vitest files under `src/**/*.test.ts`, `tests/**/*.test.ts`, and `scripts/**/*.test.ts`; run with `pnpm test`, with `pnpm typecheck` for `tsc --noEmit`.
+- New CLI commands must be imported and registered in `src/cli/program.ts`; command behavior belongs in `src/cli/commands/`.
+- New tools should default-export `defineTool(...)` from `src/tools/*.ts`; `Registry.discover()` imports tool modules and selects by capability/availability/preference.
 
 ## Critical Rules
-- Specs are the contract: update `specs/` with behavioral changes; breaking `show.yaml`, `episode.yaml`, pipeline manifests, registry shape, or checkpoint schemas needs migration/version handling.
-- Do not edit or reference `.migration/` unless explicitly asked; Alpha Loop assets should be changed in `.alpha-loop/templates/`, not directly in synced `.claude/`, `.codex/`, or `.agents/`.
-- Keep layers separate: pipeline workflow stays declarative YAML, how-to stays Markdown skills, concrete execution stays in `src/tools/`; no ad-hoc shell scripts around the registry.
-- Artifact changes must update Zod/schema generation together: `src/artifacts/json-schema.ts`, checked-in `bundled/schemas/artifacts/*.schema.json`, and `pnpm generate:schemas`.
+- Specs in `specs/` are the contract; if behavior changes, update the relevant spec with the code.
+- Do not modify or reference `.migration/` in committed/public files; it is private study material only.
+- Keep pipelines declarative: workflow belongs in `pipelines/*.yaml` and director skills, concrete integrations in `src/tools/`, not mixed into orchestration code.
+- Consumer contracts need care: `show.yaml`, `episode.yaml`, tool shape, pipeline manifests, checkpoints, and bundled cache behavior can break user projects if changed casually.
+- Alpha Loop assets sync from `.alpha-loop/templates/` into agent folders; avoid hand-editing synced copies unless debugging sync output.
 
 ## Active State
 - Test status: (will be filled in by the loop)
 - Recent changes: (will be filled in by the loop)
-- Open risks: (will be filled in by the loop)
+- Loop config: `.alpha-loop.yaml` uses Codex for implement/test/verify, Claude for plan/review, with `pnpm test -- --passWithNoTests && (test ! -d src || pnpm typecheck)`.
