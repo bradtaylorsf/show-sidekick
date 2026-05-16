@@ -1,0 +1,8 @@
+id: captured-221-timing-parity-8-preserve-phrase-timing-t
+description: "Timing parity 8: preserve phrase timing through scene_plan and edit_decisions"
+tags: []
+source: auto-captured
+captured_from:
+  issue: 221
+  session: session/epic-213-epic-openmontage-grade-audio-timing-parity
+  date: 2026-05-16
