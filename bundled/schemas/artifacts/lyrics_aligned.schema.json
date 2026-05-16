@@ -70,6 +70,17 @@
               "aligned",
               "gap_filled",
               "manual",
+              "manual-correction",
+              "unmatched"
+            ]
+          },
+          "original_source": {
+            "type": "string",
+            "enum": [
+              "aligned",
+              "gap_filled",
+              "manual",
+              "manual-correction",
               "unmatched"
             ]
           },

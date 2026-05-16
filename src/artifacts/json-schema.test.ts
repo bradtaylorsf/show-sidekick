@@ -24,6 +24,7 @@ describe("ArtifactJsonSchemas", () => {
       "end_tag_plan",
       "final_review",
       "lyrics_aligned",
+      "lyrics_alignment_overrides",
       "pose_library",
       "proposal_packet",
       "publish_log",

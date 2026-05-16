@@ -4,7 +4,7 @@ import { atomicWrite } from "../checkpoints/io.js";
 import { projectDir } from "../checkpoints/paths.js";
 import { loadJson } from "../config/loader.js";
 
-export const LyricAlignmentSourceSchema = z.enum(["aligned", "gap_filled", "manual", "unmatched"]);
+export const LyricAlignmentSourceSchema = z.enum(["aligned", "gap_filled", "manual", "manual-correction", "unmatched"]);
 
 export const LyricAlignedLineSchema = z
   .object({
@@ -17,6 +17,7 @@ export const LyricAlignedLineSchema = z
     start_ms: z.number().int().nonnegative().nullable(),
     end_ms: z.number().int().nonnegative().nullable(),
     source: LyricAlignmentSourceSchema,
+    original_source: LyricAlignmentSourceSchema.optional(),
     flagged: z.boolean(),
   })
   .refine((line) => line.start_s === null || line.end_s === null || line.end_s >= line.start_s, {

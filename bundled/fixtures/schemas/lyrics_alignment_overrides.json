@@ -1,0 +1,11 @@
+{
+  "overrides": [
+    {
+      "line_id": "line-2",
+      "start_ms": 3200,
+      "end_ms": 5700,
+      "text": "Then cut where the chorus lands",
+      "note": "Human-adjusted phrase window after listening pass"
+    }
+  ]
+}

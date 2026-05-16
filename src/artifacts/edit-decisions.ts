@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { RendererFamilySchema, RenderRuntimeSchema } from "./enums.js";
-import { TimingSourceSchema } from "./scene-plan.js";
+import { TimingRefSchema, TimingSourceSchema } from "./scene-plan.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -20,6 +20,7 @@ export const CutSchema = z.object({
   end_s: z.number().nonnegative(),
   timing_anchor: z.string().optional(),
   timing_source: TimingSourceSchema.optional(),
+  timing_ref: TimingRefSchema.optional(),
   start_ms: z.number().int().nonnegative().optional(),
   end_ms: z.number().int().nonnegative().optional(),
   asset_id: z.string(),

@@ -15,12 +15,12 @@ Use this stage immediately after cuesheet creation. Confirm the supplied track, 
 
 Use `medium.en` as the whisper default. Retry with `large-v3` when confidence is low, words are missing around dense vocals, or caption timing would otherwise be guessed.
 
-NEVER guess timing from lyric structure alone — the whisper word timestamps drive caption timing.
+NEVER guess timing from lyric structure alone — `lyrics_aligned` phrase windows and whisper word timestamps drive caption timing.
 
 ## Process
 
-1. Inspect the track path, lyrics path, cuesheet duration, word timestamps, sections, beats, and climax points.
-2. Compare supplied lyrics to the cuesheet words and note any manual alignment requirements.
+1. Inspect the track path, lyrics path, cuesheet duration, `lyrics_aligned` phrase windows, word timestamps, sections, beats, and climax points.
+2. Compare supplied lyrics to the cuesheet words and note any manual alignment requirements in `lyrics_alignment_overrides.json`.
 3. Record reference media or visual benchmark notes when provided.
 4. Flag sections where vocals are unclear or timing needs the `large-v3` retry.
 5. Produce `source_media_review` with concrete probe fields and planning implications.
@@ -28,6 +28,6 @@ NEVER guess timing from lyric structure alone — the whisper word timestamps dr
 ## Quality Gate
 
 - `source_media_review` validates,
-- `medium.en` or `large-v3` timing source is named,
+- `lyrics_aligned` plus `medium.en` or `large-v3` timing source is named,
 - every caption-critical lyric line has a timing source,
 - no downstream stage is asked to infer timing from lyric structure alone.

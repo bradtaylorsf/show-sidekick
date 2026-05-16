@@ -38,6 +38,16 @@ const timingSourceJson = {
   type: "string",
   enum: ["lyric", "word", "beat", "section", "climax", "manual", "audio_energy"],
 } as const satisfies JsonSchema;
+const timingRefJson = objectJson(
+  "timing-ref",
+  {
+    lyric_line_id: stringJson,
+    word_id: stringJson,
+    beat_index: nonNegativeIntegerJson,
+    climax_index: nonNegativeIntegerJson,
+  },
+  [],
+);
 
 function objectJson(
   id: string,
@@ -156,6 +166,7 @@ export const ScriptJsonSchema = objectJson(
           end_s: nonNegativeNumberJson,
           timing_anchor: stringJson,
           timing_source: timingSourceJson,
+          timing_ref: timingRefJson,
           start_ms: nonNegativeIntegerJson,
           end_ms: nonNegativeIntegerJson,
           narration: stringJson,
@@ -184,6 +195,7 @@ export const ScenePlanJsonSchema = objectJson(
           end_s: nonNegativeNumberJson,
           timing_anchor: stringJson,
           timing_source: timingSourceJson,
+          timing_ref: timingRefJson,
           start_ms: nonNegativeIntegerJson,
           end_ms: nonNegativeIntegerJson,
           narrative_role: { type: "string", enum: NARRATIVE_ROLE },

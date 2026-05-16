@@ -5,7 +5,7 @@ export { detectSections, detectSectionsFromWindows } from "./sections.js";
 export { detectBeats } from "./beats.js";
 export { detectClimax, detectClimaxFromWindows } from "./climax.js";
 export { alignScenes } from "./align.js";
-export { alignLyrics, canonicalLyricsFromEpisodeInputs } from "./lyrics-align.js";
+export { alignLyrics, applyManualCorrections, canonicalLyricsFromEpisodeInputs } from "./lyrics-align.js";
 export { buildCuesheet } from "./cuesheet.js";
 export { transcribe } from "./transcribe.js";
 export type {

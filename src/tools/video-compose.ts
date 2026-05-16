@@ -21,6 +21,7 @@ export const VideoComposeInputSchema = z.object({
   decision_log: DecisionLogSchema.optional(),
   output_path: z.string().optional(),
   planned_duration_s: z.number().positive().optional(),
+  drift_tolerance_frames: z.number().positive().optional(),
 });
 
 export type VideoComposeInput = z.infer<typeof VideoComposeInputSchema>;
@@ -114,6 +115,11 @@ export default defineTool({
     return withPreComposeWarning(
       report,
       validation.status === "failed" && composeCtx.bypassPreComposeValidation === true ? "bypassed" : validationStatus,
+      {
+        expectedDurationS:
+          params.planned_duration_s ?? params.edit_decisions.cuts.reduce((sum, cut) => sum + (cut.end_s - cut.start_s), 0),
+        toleranceFrames: params.drift_tolerance_frames ?? 1,
+      },
     );
   },
 });
@@ -146,6 +152,8 @@ function buildRuntimeParams(runtime: RenderRuntime, params: VideoComposeInput): 
       edit_decisions: params.edit_decisions,
       asset_manifest: params.asset_manifest,
       output_path: params.output_path,
+      planned_duration_s: params.planned_duration_s,
+      drift_tolerance_frames: params.drift_tolerance_frames,
     };
   }
 
@@ -156,6 +164,8 @@ function buildRuntimeParams(runtime: RenderRuntime, params: VideoComposeInput): 
     asset_manifest: params.asset_manifest,
     decision_log: params.decision_log,
     output_path: params.output_path,
+    planned_duration_s: params.planned_duration_s,
+    drift_tolerance_frames: params.drift_tolerance_frames,
   };
 }
 
@@ -165,11 +175,55 @@ async function defaultRegistry(): Promise<Registry> {
   return registry;
 }
 
-function withPreComposeWarning(report: RenderReport, status: "passed" | "bypassed" | "failed"): RenderReport {
+function withPreComposeWarning(
+  report: RenderReport,
+  status: "passed" | "bypassed" | "failed",
+  drift: { expectedDurationS: number; toleranceFrames: number },
+): RenderReport {
+  const framerate = report.framerate;
+  const driftS = report.drift_s ?? roundSeconds(Math.abs(report.duration_s - drift.expectedDurationS));
+  const driftFrames = report.drift_frames ?? roundFrames(driftS * framerate);
+  const driftToleranceS = report.drift_tolerance_s ?? drift.toleranceFrames / framerate;
+  const withinTolerance = report.within_tolerance ?? driftFrames <= drift.toleranceFrames + 1e-6;
+  const hasRenderDriftStep = report.validation_steps.some((step) => step.name === "render_drift");
+
   return RenderReportSchema.parse({
     ...report,
+    expected_duration_s: report.expected_duration_s ?? drift.expectedDurationS,
+    drift_s: driftS,
+    drift_frames: driftFrames,
+    drift_tolerance_s: driftToleranceS,
+    within_tolerance: withinTolerance,
     warnings: [...report.warnings, `pre_compose_validation: ${status}`],
+    validation_steps: [
+      ...report.validation_steps,
+      ...(hasRenderDriftStep
+        ? []
+        : [
+            {
+              name: "render_drift",
+              status: driftValidationStatus(driftFrames, drift.toleranceFrames),
+              notes: `expected=${drift.expectedDurationS.toFixed(3)}s actual=${report.duration_s.toFixed(3)}s drift=${driftFrames.toFixed(2)} frames tolerance=${drift.toleranceFrames.toFixed(2)} frames`,
+            } as const,
+          ]),
+    ],
   });
+}
+
+function driftValidationStatus(driftFrames: number, toleranceFrames: number): "pass" | "warn" | "fail" {
+  if (driftFrames > toleranceFrames + 1e-6) {
+    return "fail";
+  }
+
+  return toleranceFrames > 1 && driftFrames > 1 ? "warn" : "pass";
+}
+
+function roundSeconds(value: number): number {
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
+
+function roundFrames(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }
 
 export { ComposeBlockerError };

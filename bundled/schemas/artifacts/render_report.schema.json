@@ -14,6 +14,66 @@
       "type": "number",
       "minimum": 0
     },
+    "expected_duration_s": {
+      "type": "number",
+      "minimum": 0
+    },
+    "drift_s": {
+      "type": "number",
+      "minimum": 0
+    },
+    "drift_frames": {
+      "type": "number",
+      "minimum": 0
+    },
+    "drift_tolerance_s": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "within_tolerance": {
+      "type": "boolean"
+    },
+    "clip_trims": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/render_report.clip_trim",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          },
+          "requested_duration_s": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "actual_duration_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "drift_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "drift_frames": {
+            "type": "number",
+            "minimum": 0
+          },
+          "within_tolerance": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "asset_id",
+          "requested_duration_s",
+          "actual_duration_s",
+          "drift_s",
+          "drift_frames",
+          "within_tolerance"
+        ]
+      }
+    },
     "resolution": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "predit://artifacts/resolution",

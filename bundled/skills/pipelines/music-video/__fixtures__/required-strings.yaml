@@ -37,6 +37,18 @@ required_phrases:
     phrase: "silent runtime swap is a CRITICAL governance violation"
   - file: executive-producer.md
     phrase: "NEVER guess timing from lyric structure alone — the whisper word timestamps drive caption timing"
+  - file: script-director.md
+    phrase: "`lyrics_aligned` phrase windows and whisper word timestamps drive caption timing"
+  - file: scene-director.md
+    phrase: "no lyric timing is guessed when phrase windows are available"
+  - file: scene-director.md
+    phrase: "Every music-led scene must carry `timing_anchor`, `timing_source`, and `timing_ref`"
+  - file: edit-director.md
+    phrase: "no lyric timing is guessed when phrase windows are available"
+  - file: edit-director.md
+    phrase: "Every cut must preserve the scene's `timing_anchor`, `timing_source`, and `timing_ref`"
+  - file: compose-director.md
+    phrase: "render drift is within `drift_tolerance_frames`"
   - file: executive-producer.md
     phrase: "Sample-first is not optional for any production estimated > $0.50 or > 15 min"
   - file: executive-producer.md

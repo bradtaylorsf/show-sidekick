@@ -2,6 +2,21 @@
   "output_path": "renders/fixture.mp4",
   "encoding_profile": "h264-main",
   "duration_s": 10,
+  "expected_duration_s": 10,
+  "drift_s": 0,
+  "drift_frames": 0,
+  "drift_tolerance_s": 0.03333333333333333,
+  "within_tolerance": true,
+  "clip_trims": [
+    {
+      "asset_id": "asset-1",
+      "requested_duration_s": 5,
+      "actual_duration_s": 5,
+      "drift_s": 0,
+      "drift_frames": 0,
+      "within_tolerance": true
+    }
+  ],
   "resolution": {
     "width": 1920,
     "height": 1080

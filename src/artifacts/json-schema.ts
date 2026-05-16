@@ -24,6 +24,16 @@ const timingSourceJson = {
   type: "string",
   enum: ["lyric", "word", "beat", "section", "climax", "manual", "audio_energy"],
 } as const satisfies JsonSchema;
+const timingRefJson = objectJson(
+  "timing_ref",
+  {
+    lyric_line_id: stringJson,
+    word_id: stringJson,
+    beat_index: nonNegativeIntegerJson,
+    climax_index: nonNegativeIntegerJson,
+  },
+  [],
+);
 
 function withMeta(id: string, schema: JsonSchema): JsonSchema {
   return {
@@ -145,7 +155,8 @@ export const LyricsAlignedJsonSchema = objectJson(
           end_s: nullableNonNegativeNumberJson,
           start_ms: nullableNonNegativeIntegerJson,
           end_ms: nullableNonNegativeIntegerJson,
-          source: { type: "string", enum: ["aligned", "gap_filled", "manual", "unmatched"] },
+          source: { type: "string", enum: ["aligned", "gap_filled", "manual", "manual-correction", "unmatched"] },
+          original_source: { type: "string", enum: ["aligned", "gap_filled", "manual", "manual-correction", "unmatched"] },
           flagged: booleanJson,
         },
         [
@@ -163,6 +174,30 @@ export const LyricsAlignedJsonSchema = objectJson(
     },
   },
   ["source", "lines"],
+);
+
+export const LyricsAlignmentOverridesJsonSchema = objectJson(
+  "lyrics_alignment_overrides",
+  {
+    overrides: {
+      type: "array",
+      items: objectJson(
+        "lyrics_alignment_overrides.override",
+        {
+          line_id: stringJson,
+          line_index: nonNegativeIntegerJson,
+          start_s: nonNegativeNumberJson,
+          end_s: nonNegativeNumberJson,
+          start_ms: nonNegativeIntegerJson,
+          end_ms: nonNegativeIntegerJson,
+          text: stringJson,
+          note: stringJson,
+        },
+        [],
+      ),
+    },
+  },
+  ["overrides"],
 );
 
 export const CaptureManifestJsonSchema = objectJson(
@@ -202,6 +237,28 @@ export const CaptureManifestJsonSchema = objectJson(
   ["screenshots"],
 );
 
+const cuesheetSceneAnchorJson = objectJson(
+  "cuesheet.scene_anchor",
+  {
+    scene_id: stringJson,
+    start_s: nonNegativeNumberJson,
+    end_s: nonNegativeNumberJson,
+    snapped_to: { type: "string", enum: ["section_start", "beat", "downbeat", "word", "climax", "manual"] },
+    source: objectJson(
+      "cuesheet.scene_anchor.source",
+      {
+        section: stringJson,
+        lyric_line_id: stringJson,
+        beat_index: nonNegativeIntegerJson,
+        word_id: stringJson,
+        climax_index: nonNegativeIntegerJson,
+      },
+      [],
+    ),
+  },
+  ["scene_id", "start_s", "end_s", "snapped_to", "source"],
+);
+
 export const CuesheetJsonSchema = objectJson(
   "cuesheet",
   {
@@ -222,7 +279,10 @@ export const CuesheetJsonSchema = objectJson(
     sections: unknownArrayJson,
     beats: unknownArrayJson,
     climax: unknownArrayJson,
-    scene_anchors: unknownArrayJson,
+    scene_anchors: {
+      type: "array",
+      items: cuesheetSceneAnchorJson,
+    },
   },
   ["audio", "master_clock", "segments", "sections", "beats", "climax", "scene_anchors"],
   true,
@@ -297,6 +357,7 @@ export const EditDecisionsJsonSchema = objectJson(
           end_s: nonNegativeNumberJson,
           timing_anchor: stringJson,
           timing_source: timingSourceJson,
+          timing_ref: timingRefJson,
           start_ms: nonNegativeIntegerJson,
           end_ms: nonNegativeIntegerJson,
           asset_id: stringJson,
@@ -389,6 +450,33 @@ export const RenderReportJsonSchema = objectJson(
     output_path: stringJson,
     encoding_profile: stringJson,
     duration_s: nonNegativeNumberJson,
+    expected_duration_s: nonNegativeNumberJson,
+    drift_s: nonNegativeNumberJson,
+    drift_frames: nonNegativeNumberJson,
+    drift_tolerance_s: positiveNumberJson,
+    within_tolerance: booleanJson,
+    clip_trims: {
+      type: "array",
+      items: objectJson(
+        "render_report.clip_trim",
+        {
+          asset_id: stringJson,
+          requested_duration_s: positiveNumberJson,
+          actual_duration_s: nonNegativeNumberJson,
+          drift_s: nonNegativeNumberJson,
+          drift_frames: nonNegativeNumberJson,
+          within_tolerance: booleanJson,
+        },
+        [
+          "asset_id",
+          "requested_duration_s",
+          "actual_duration_s",
+          "drift_s",
+          "drift_frames",
+          "within_tolerance",
+        ],
+      ),
+    },
     resolution: resolutionJson,
     framerate: positiveNumberJson,
     runtime_used: renderRuntimeJson,
@@ -579,6 +667,7 @@ export const ArtifactJsonSchemas = {
   review: ReviewJsonSchema,
   rig_plan: RigPlanJsonSchema,
   lyrics_aligned: LyricsAlignedJsonSchema,
+  lyrics_alignment_overrides: LyricsAlignmentOverridesJsonSchema,
   source_media_review: SourceMediaReviewJsonSchema,
   video_analysis_brief: VideoAnalysisBriefJsonSchema,
   audio_architecture: withMeta("audio_architecture", { type: "string", enum: AUDIO_ARCHITECTURE }),

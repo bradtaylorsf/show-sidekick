@@ -29,6 +29,7 @@ import { evaluateFocusItem, type FocusEvaluatorHook } from "./focus-evaluator.js
 import { findSameClassInstances } from "./pattern-match.js";
 import { crossCheckAgainstPlaybook } from "./playbook-check.js";
 import { checkReferenceAlignment } from "./reference-alignment.js";
+import { checkRenderDrift } from "./render-drift.js";
 import { validateArtifactAgainstSchema } from "./schema-validate.js";
 import { checkScriptModification } from "./script-modification.js";
 import { enforceCHAI, type CHAIEnforcementEvent } from "./specificity.js";
@@ -39,6 +40,7 @@ import { checkRuntimeSwap } from "./runtime-swap.js";
 import { checkSampleFirstProtocol } from "./sample-first.js";
 import { verifyScenePacing, type ScenePacingPipeline } from "./scene-pacing.js";
 import { detectEditRegression, scoreSlideshowRisk } from "./slideshow-risk.js";
+import { checkTimingAnchors } from "./timing-anchors.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -89,6 +91,7 @@ export type ReviewContext = {
   referenceDriven?: boolean;
   heroScenePresent?: boolean;
   cuesheet?: Cuesheet | unknown;
+  lyricsAligned?: unknown;
   show?: string;
   episode?: string;
   projectRoot?: string;
@@ -168,6 +171,14 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
   );
   rawFindings.push(...checkSlideshowAndScenePacing(stageSlug, artifact, ctx));
   rawFindings.push(
+    ...checkTimingAnchors(stageSlug, artifact, {
+      audioLed: ctx.audioLed ?? isAudioLedPipeline(ctx.pipeline),
+      cuesheet: ctx.cuesheet,
+      lyricsAligned: ctx.lyricsAligned,
+      maxSceneDurationS: pipelineMaxSceneDurationS(ctx.pipeline),
+    }),
+  );
+  rawFindings.push(
     ...checkSourceMediaEnforcement(stageSlug, artifact, {
       sourceMediaReview: ctx.sourceMediaReview,
       userSuppliedMedia: ctx.userSuppliedMedia,
@@ -205,6 +216,11 @@ export function runReview(stageSlug: string, artifact: unknown, ctx: ReviewConte
     );
   }
   rawFindings.push(...checkRenderReportValidation(stageSlug, ctx.renderReport));
+  rawFindings.push(
+    ...checkRenderDrift(stageSlug, ctx.renderReport, {
+      toleranceFrames: pipelineDriftToleranceFrames(ctx.pipeline),
+    }),
+  );
   rawFindings.push(
     ...checkFinalReview(stageSlug, artifact, {
       deliveryPromise: ctx.deliveryPromise,
@@ -304,6 +320,20 @@ function checkRenderReportValidation(stageSlug: string, renderReport: RenderRepo
     proposed_fix: "Run HyperFrames lint and validate before render, and include passing lint/validate entries in render_report.validation_steps[].",
     status: "pending",
   }));
+}
+
+function pipelineDriftToleranceFrames(pipeline: ReviewContext["pipeline"]): number | undefined {
+  const defaults = (pipeline as { defaults?: Record<string, unknown> }).defaults;
+  const value = defaults?.drift_tolerance_frames;
+
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function pipelineMaxSceneDurationS(pipeline: ReviewContext["pipeline"]): number | undefined {
+  const defaults = (pipeline as { defaults?: Record<string, unknown> }).defaults;
+  const value = defaults?.max_scene_duration_s;
+
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
 function shouldUseProposalMusicHelper(stageSlug: string, ctx: ReviewContext): boolean {

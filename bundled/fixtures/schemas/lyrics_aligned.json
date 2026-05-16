@@ -18,11 +18,12 @@
       "text": "Then cut where the chorus lands",
       "confidence": 0.83,
       "matched_word_ids": ["w-6", "w-7", "w-8", "w-9", "w-10"],
-      "start_s": 3.25,
-      "end_s": 5.8,
-      "start_ms": 3250,
-      "end_ms": 5800,
-      "source": "gap_filled",
+      "start_s": 3.2,
+      "end_s": 5.7,
+      "start_ms": 3200,
+      "end_ms": 5700,
+      "source": "manual-correction",
+      "original_source": "gap_filled",
       "flagged": false
     },
     {

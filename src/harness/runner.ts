@@ -10,6 +10,7 @@ import type { CostEntry, CostLog } from "../artifacts/cost-log.js";
 import { EditDecisionsSchema } from "../artifacts/edit-decisions.js";
 import { FinalReviewSchema, type FinalReview } from "../artifacts/final-review.js";
 import type { DecisionEntry, DecisionLog } from "../artifacts/decision-log.js";
+import { LyricsAlignedSchema } from "../artifacts/lyrics-aligned.js";
 import { ProposalPacketSchema } from "../artifacts/proposal-packet.js";
 import { RenderReportSchema } from "../artifacts/render-report.js";
 import { ReviewSchema, type Review } from "../artifacts/review.js";
@@ -971,7 +972,7 @@ async function runStageReview(
     round,
     priorReviews,
     decisionLog,
-    cuesheet: opts.cuesheet,
+    cuesheet: opts.cuesheet ?? cumulative.priorArtifacts.cuesheet,
     audioLed: opts.pipeline.master_clock !== undefined && opts.pipeline.master_clock !== "none",
     pipelineSlug: opts.pipeline.slug,
     estimatedCostUsd: estimatedCostForReview(opts.pipeline, stage, opts.runOptions),
@@ -996,12 +997,15 @@ function artifactReviewContext(
   stage: Stage,
   result: StageResult,
   priorArtifacts: Record<string, unknown>,
-): Pick<ReviewContext, "proposalPacket" | "editDecisions" | "renderReport" | "finalReviewArtifact"> {
+): Pick<ReviewContext, "proposalPacket" | "editDecisions" | "renderReport" | "finalReviewArtifact" | "lyricsAligned"> {
   return {
     proposalPacket: parsedProposalPacket(priorArtifacts.proposal ?? priorArtifacts.proposal_packet),
     editDecisions: parsedEditDecisions(priorArtifacts.edit ?? priorArtifacts.edit_decisions),
     renderReport: parsedRenderReport(result.artifact),
     finalReviewArtifact: finalReviewFromStageResult(stage, result),
+    lyricsAligned: parsedLyricsAligned(
+      priorArtifacts.lyrics_aligned ?? recordValue(priorArtifacts.cuesheet)?.lyrics_aligned,
+    ),
   };
 }
 
@@ -1017,6 +1021,11 @@ function parsedEditDecisions(value: unknown): ReviewContext["editDecisions"] {
 
 function parsedRenderReport(value: unknown): ReviewContext["renderReport"] {
   const parsed = RenderReportSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function parsedLyricsAligned(value: unknown): ReviewContext["lyricsAligned"] {
+  const parsed = LyricsAlignedSchema.safeParse(value);
   return parsed.success ? parsed.data : undefined;
 }
 

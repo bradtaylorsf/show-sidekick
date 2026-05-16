@@ -23,6 +23,7 @@ export * from "./research-brief.js";
 export * from "./render-report.js";
 export * from "./rig-plan.js";
 export * from "./lyrics-aligned.js";
+export * from "./lyrics-alignment-overrides.js";
 export * from "./review.js";
 export * from "./scene-plan.js";
 export * from "./script.js";

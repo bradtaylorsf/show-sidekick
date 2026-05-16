@@ -61,7 +61,8 @@
       "end_s": 5,
       "snapped_to": "section_start",
       "source": {
-        "section": "intro"
+        "section": "intro",
+        "lyric_line_id": "line-1"
       }
     }
   ]

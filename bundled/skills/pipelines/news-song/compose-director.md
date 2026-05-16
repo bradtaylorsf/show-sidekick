@@ -25,13 +25,14 @@ Use the approved runtime from the decision log and edit decisions. silent runtim
 - Preserve caption_mode none for the `15-20 sec` no-caption PS2 sample unless a logged decision says otherwise.
 - Keep every visual scene at or under `5.0 seconds`.
 - Keep real screenshot layers and generated lyric-art layers labeled separately.
+- Trim generated clips to exact edit-decision durations and record `expected_duration_s`, `drift_s`, `drift_frames`, `drift_tolerance_s`, `within_tolerance`, and `clip_trims` in `render_report`.
 - News screenshots are real, not generated. Mixing these creates fake-news content; do not do it.
 
 ## Process
 
 1. Build or reuse the HyperFrames/Remotion workspace.
 2. Render the sample or full video with registry-backed `video_compose`.
-3. Run ffprobe or runtime validation.
+3. Run ffprobe or runtime validation and confirm render drift is within `drift_tolerance_frames`.
 4. Spot-check source flyouts, screenshots, PS2 texture treatment, no-caption sample behavior, and scene duration.
 5. Write final_review with content mode, type-separation, sample-first, and runtime-lock checks.
 
@@ -39,6 +40,7 @@ Use the approved runtime from the decision log and edit decisions. silent runtim
 
 - render_report validates,
 - output exists and probes cleanly,
+- render drift is within `drift_tolerance_frames`,
 - runtime did not silently swap,
 - no-caption sample has no lyric captions,
 - final review confirms real source screenshots and generated lyric-art stayed separate.
