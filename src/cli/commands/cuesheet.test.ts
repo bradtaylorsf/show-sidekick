@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AudioEnergy } from "../../artifacts/audio-energy.js";
 import type { Cuesheet } from "../../artifacts/cuesheet.js";
 import type { DecisionEntry } from "../../artifacts/decision-log.js";
 import { defineTool, Registry } from "../../registry/index.js";
@@ -36,6 +37,7 @@ describe("createCuesheetHandler", () => {
       recordDecision: expect.any(Function),
     }));
     expect(deps.writeCuesheet).toHaveBeenCalledWith("/project", "show", "episode", cuesheet());
+    expect(deps.writeAudioEnergy).not.toHaveBeenCalled();
     expect(io.stdoutText()).toContain("cuesheet written: /project/projects/show/episode/cuesheet.json");
     expect(io.stdoutText()).toContain("sections: 1");
     expect(io.stdoutText()).toContain("beats: 1");
@@ -88,6 +90,20 @@ describe("createCuesheetHandler", () => {
     await handler("show/episode", command());
 
     expect(deps.recordDecision).toHaveBeenCalledWith({ show: "show", episode: "episode" }, decision, { root: "/project" });
+  });
+
+  it("writes audio_energy.json when the cuesheet build records an energy artifact", async () => {
+    const io = captureIo();
+    const deps = depsForEpisode(episode({ track: "music_library/demo.mp3" }));
+    deps.buildCuesheet = vi.fn(async (_track, options) => {
+      await options.recordAudioEnergy?.(audioEnergy());
+      return cuesheet();
+    });
+    const handler = createCuesheetHandler(io, deps);
+
+    await handler("show/episode", command());
+
+    expect(deps.writeAudioEnergy).toHaveBeenCalledWith("/project", "show", "episode", audioEnergy());
   });
 
   it("accepts the real Commander action signature", async () => {
@@ -163,6 +179,7 @@ function depsForEpisode(episodeValue: Episode, root = "/project"): CuesheetDeps 
     createRegistry: vi.fn(async () => registry()),
     buildCuesheet: vi.fn(async () => cuesheet()),
     writeCuesheet: vi.fn(async () => "/project/projects/show/episode/cuesheet.json"),
+    writeAudioEnergy: vi.fn(async () => "/project/projects/show/episode/audio_energy.json"),
     recordDecision: vi.fn(async () => []),
   };
 }
@@ -343,5 +360,19 @@ function cuesheet(): Cuesheet {
     beats: [{ time_s: 0, strength: 1, is_downbeat: true }],
     climax: [{ time_s: 4, type: "peak", intensity: 1, source: "algorithm" }],
     scene_anchors: [],
+  };
+}
+
+function audioEnergy(): AudioEnergy {
+  return {
+    source: "ffmpeg-ebur128",
+    raw_points: [{ time_s: 0, momentary_lufs: -18 }],
+    energy_profile: [{ start_s: 0, end_s: 1, rms: 0.125893, lufs: -18 }],
+    first_active_s: 0,
+    peak_s: 0,
+    recommended_offset_s: 0,
+    best_window: { start_s: 0, end_s: 1, average_lufs: -18, peak_lufs: -18 },
+    silence_threshold_lufs: -45,
+    analysis_window_s: 1,
   };
 }

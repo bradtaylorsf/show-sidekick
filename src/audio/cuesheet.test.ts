@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AudioEnergy } from "../artifacts/audio-energy.js";
 import type { Cuesheet } from "../artifacts/cuesheet.js";
+import type { Registry, Tool } from "../registry/index.js";
 import type { AudioTrack, ClimaxPoint, Section, Segment } from "./types.js";
 
 vi.mock("./load.js", () => ({ load: vi.fn() }));
@@ -71,6 +73,51 @@ describe("buildCuesheet", () => {
 
     expect(cuesheet.climax).toEqual([{ time_s: 2, type: "peak", intensity: 1, source: "algorithm" }, manual, agent]);
   });
+
+  it("uses registry-provided EBU R128 energy windows for sections and climax", async () => {
+    const energy = audioEnergy();
+    const execute = vi.fn(async () => energy);
+    const recordAudioEnergy = vi.fn();
+    vi.mocked(transcribe).mockResolvedValue({ segments: segments(), average_confidence: 0.99, low_confidence: false });
+    vi.mocked(detectSections).mockResolvedValue(sections());
+    vi.mocked(detectBeats).mockResolvedValue({ bpm: 120, beats: [] });
+    vi.mocked(detectClimax).mockResolvedValue([]);
+
+    await buildCuesheet(track(), {
+      projectRoot: "/project",
+      registry: registryWithAudioEnergy(execute),
+      recordAudioEnergy,
+    });
+
+    expect(probeEnergy).not.toHaveBeenCalled();
+    expect(detectSections).toHaveBeenCalledWith(track(), expect.objectContaining({ windows: energy.energy_profile }));
+    expect(detectClimax).toHaveBeenCalledWith(track(), expect.objectContaining({ windows: energy.energy_profile }));
+    expect(recordAudioEnergy).toHaveBeenCalledWith(energy);
+  });
+
+  it("falls back to PCM energy probing when registry audio energy analysis fails", async () => {
+    const recordAudioEnergy = vi.fn();
+    vi.mocked(transcribe).mockResolvedValue({ segments: segments(), average_confidence: 0.99, low_confidence: false });
+    vi.mocked(probeEnergy).mockResolvedValue(windows());
+    vi.mocked(detectSections).mockResolvedValue(sections());
+    vi.mocked(detectBeats).mockResolvedValue({ bpm: 120, beats: [] });
+    vi.mocked(detectClimax).mockResolvedValue([]);
+
+    await buildCuesheet(track(), {
+      projectRoot: "/project",
+      registry: registryWithAudioEnergy(vi.fn(async () => {
+        throw new Error("ebur128 failed");
+      })),
+      recordAudioEnergy,
+    });
+
+    expect(probeEnergy).toHaveBeenCalledWith(track(), { timeoutMs: undefined, window_s: undefined });
+    expect(detectSections).toHaveBeenCalledWith(track(), expect.objectContaining({ windows: windows() }));
+    expect(recordAudioEnergy).toHaveBeenCalledWith(expect.objectContaining({
+      source: "pcm-rms",
+      energy_profile: windows(),
+    }));
+  });
 });
 
 function track(): AudioTrack {
@@ -99,6 +146,44 @@ function sections(): Section[] {
 
 function windows() {
   return [{ start_s: 0, end_s: 8, rms: 0.5, lufs: -6 }];
+}
+
+function audioEnergy(): AudioEnergy {
+  return {
+    source: "ffmpeg-ebur128",
+    raw_points: [
+      { time_s: 0, momentary_lufs: -32 },
+      { time_s: 1, momentary_lufs: -12 },
+    ],
+    energy_profile: [
+      { start_s: 0, end_s: 1, rms: 0.025119, lufs: -32 },
+      { start_s: 1, end_s: 2, rms: 0.251189, lufs: -12 },
+    ],
+    first_active_s: 0,
+    peak_s: 1,
+    recommended_offset_s: 0,
+    best_window: { start_s: 1, end_s: 2, average_lufs: -12, peak_lufs: -12 },
+    silence_threshold_lufs: -45,
+    analysis_window_s: 1,
+  };
+}
+
+function registryWithAudioEnergy(execute: (input: unknown) => Promise<AudioEnergy>): Registry {
+  return {
+    select: vi.fn(async () => ({
+      name: "audio_energy",
+      capability: "audio_energy",
+      provider: "ffmpeg",
+      status: "beta",
+      integration: { kind: "binary", binary: "ffmpeg", install: "install ffmpeg" },
+      best_for: "test energy",
+      supports: [],
+      input: {} as Tool["input"],
+      output: {} as Tool["output"],
+      isAvailable: async () => ({ available: true }),
+      execute,
+    })),
+  } as unknown as Registry;
 }
 
 function baseCuesheet(): Cuesheet {

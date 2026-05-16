@@ -34,6 +34,10 @@ const nonNegativeNumberJson = { type: "number", minimum: 0 } as const satisfies 
 const positiveNumberJson = { type: "number", exclusiveMinimum: 0 } as const satisfies JsonSchema;
 const nonNegativeIntegerJson = { type: "integer", minimum: 0 } as const satisfies JsonSchema;
 const stringArrayJson = { type: "array", items: stringJson } as const satisfies JsonSchema;
+const timingSourceJson = {
+  type: "string",
+  enum: ["lyric", "word", "beat", "section", "climax", "manual", "audio_energy"],
+} as const satisfies JsonSchema;
 
 function objectJson(
   id: string,
@@ -150,6 +154,10 @@ export const ScriptJsonSchema = objectJson(
           role: { type: "string", enum: NARRATIVE_ROLE },
           start_s: nonNegativeNumberJson,
           end_s: nonNegativeNumberJson,
+          timing_anchor: stringJson,
+          timing_source: timingSourceJson,
+          start_ms: nonNegativeIntegerJson,
+          end_ms: nonNegativeIntegerJson,
           narration: stringJson,
           dialogue: { type: "array", items: dialogueLineJson },
           enhancement_cues: stringArrayJson,
@@ -174,6 +182,10 @@ export const ScenePlanJsonSchema = objectJson(
           order: nonNegativeIntegerJson,
           start_s: nonNegativeNumberJson,
           end_s: nonNegativeNumberJson,
+          timing_anchor: stringJson,
+          timing_source: timingSourceJson,
+          start_ms: nonNegativeIntegerJson,
+          end_ms: nonNegativeIntegerJson,
           narrative_role: { type: "string", enum: NARRATIVE_ROLE },
           scene_anchor: stringJson,
           hero_moment: booleanJson,

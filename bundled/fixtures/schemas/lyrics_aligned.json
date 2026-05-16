@@ -1,0 +1,41 @@
+{
+  "source": "transcript_words",
+  "lines": [
+    {
+      "id": "line-1",
+      "text": "We open on the downbeat",
+      "confidence": 1,
+      "matched_word_ids": ["w-1", "w-2", "w-3", "w-4", "w-5"],
+      "start_s": 1,
+      "end_s": 3.2,
+      "start_ms": 1000,
+      "end_ms": 3200,
+      "source": "aligned",
+      "flagged": false
+    },
+    {
+      "id": "line-2",
+      "text": "Then cut where the chorus lands",
+      "confidence": 0.83,
+      "matched_word_ids": ["w-6", "w-7", "w-8", "w-9", "w-10"],
+      "start_s": 3.25,
+      "end_s": 5.8,
+      "start_ms": 3250,
+      "end_ms": 5800,
+      "source": "gap_filled",
+      "flagged": false
+    },
+    {
+      "id": "line-3",
+      "text": "Unclear ad lib",
+      "confidence": 0,
+      "matched_word_ids": [],
+      "start_s": null,
+      "end_s": null,
+      "start_ms": null,
+      "end_ms": null,
+      "source": "unmatched",
+      "flagged": true
+    }
+  ]
+}

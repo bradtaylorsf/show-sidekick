@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RendererFamilySchema, RenderRuntimeSchema } from "./enums.js";
+import { TimingSourceSchema } from "./scene-plan.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -17,6 +18,10 @@ export const DuckingSchema = z.union([
 export const CutSchema = z.object({
   start_s: z.number().nonnegative(),
   end_s: z.number().nonnegative(),
+  timing_anchor: z.string().optional(),
+  timing_source: TimingSourceSchema.optional(),
+  start_ms: z.number().int().nonnegative().optional(),
+  end_ms: z.number().int().nonnegative().optional(),
   asset_id: z.string(),
   transition_in: z.string().optional(),
   transition_out: z.string().optional(),

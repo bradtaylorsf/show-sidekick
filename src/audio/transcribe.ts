@@ -45,6 +45,7 @@ export async function transcribe(track: AudioTrack, options: TranscribeOptions =
     logger,
   };
   const tool = await selectTranscriptionTool(options);
+  await recordScribeProviderSelection(tool, options, logger);
   const initial = await runTool(tool, track, options, initialModel, ctx);
   const retry = shouldRetryWithLarge(initial.segments);
 
@@ -236,6 +237,78 @@ function buildRetryDecision(
     picked,
     reason: `Initial ${initialModel} transcript exceeded the retry threshold (${retry.reason}); reran ASR with ${LARGE_RETRY_MODEL}.`,
     confidence: confidenceFromRetryRatio(retry.ratio),
+    user_visible: true,
+    supersedes: null,
+  };
+}
+
+async function recordScribeProviderSelection(
+  tool: Tool<TranscribeToolInput, TranscribeToolOutput>,
+  options: TranscribeOptions,
+  logger: ToolLogger,
+): Promise<void> {
+  const preferScribe = options.prefer?.includes("elevenlabs-scribe") === true;
+  if (tool.name !== "elevenlabs-scribe" && !preferScribe) {
+    return;
+  }
+
+  const decision = buildScribeProviderDecision(tool, options, preferScribe);
+  logger.event("provider_selection", {
+    picked: decision.picked,
+    reason: decision.reason,
+    preferred: preferScribe ? "elevenlabs-scribe" : undefined,
+  });
+  await options.recordDecision?.(decision);
+}
+
+function buildScribeProviderDecision(
+  tool: Tool<TranscribeToolInput, TranscribeToolOutput>,
+  options: TranscribeOptions,
+  preferScribe: boolean,
+): DecisionEntry {
+  const timestamp = options.decisionTimestamp ?? new Date().toISOString();
+  const picked = tool.name;
+  const scribePicked = tool.name === "elevenlabs-scribe";
+
+  return {
+    id: `transcription_provider-${safeTimestamp(timestamp)}`,
+    stage: options.decisionStage ?? "cuesheet",
+    timestamp,
+    category: "provider_selection",
+    scope: {
+      capability: "transcribe",
+      provider: tool.provider,
+    },
+    options_considered: scribePicked
+      ? [
+          {
+            label: "elevenlabs-scribe",
+            rejected_because: null,
+            notes: "preferred Scribe provider is available for music-heavy transcription",
+          },
+          {
+            label: "whisper-cpp",
+            rejected_because: "Scribe selected for sung-vocal word timing",
+          },
+        ]
+      : [
+          {
+            label: "elevenlabs-scribe",
+            rejected_because: preferScribe
+              ? "preferred Scribe provider was unavailable or not selected by the registry"
+              : "Scribe provider was not selected by the registry",
+          },
+          {
+            label: picked,
+            rejected_because: null,
+            notes: "fallback transcription provider selected",
+          },
+        ],
+    picked,
+    reason: scribePicked
+      ? "ElevenLabs Scribe selected for word-level sung-vocal transcription."
+      : `Fell back to ${picked} because ElevenLabs Scribe was unavailable or not selected.`,
+    confidence: scribePicked ? 0.9 : 0.75,
     user_visible: true,
     supersedes: null,
   };

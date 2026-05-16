@@ -18,6 +18,12 @@ const stringArrayJson = { type: "array", items: stringJson } as const satisfies 
 const unknownJson = {} as const satisfies JsonSchema;
 const unknownArrayJson = { type: "array", items: unknownJson } as const satisfies JsonSchema;
 const unknownRecordJson = { type: "object", additionalProperties: true } as const satisfies JsonSchema;
+const nullableNonNegativeNumberJson = { type: ["number", "null"], minimum: 0 } as const satisfies JsonSchema;
+const nullableNonNegativeIntegerJson = { type: ["integer", "null"], minimum: 0 } as const satisfies JsonSchema;
+const timingSourceJson = {
+  type: "string",
+  enum: ["lyric", "word", "beat", "section", "climax", "manual", "audio_energy"],
+} as const satisfies JsonSchema;
 
 function withMeta(id: string, schema: JsonSchema): JsonSchema {
   return {
@@ -61,6 +67,103 @@ const viewportJson = objectJson(
 
 const renderRuntimeJson = { type: "string", enum: RENDER_RUNTIME } as const satisfies JsonSchema;
 const rendererFamilyJson = { type: "string", enum: RENDERER_FAMILY } as const satisfies JsonSchema;
+
+const audioEnergyWindowJson = objectJson(
+  "audio_energy.window",
+  {
+    start_s: nonNegativeNumberJson,
+    end_s: nonNegativeNumberJson,
+    rms: nonNegativeNumberJson,
+    lufs: numberJson,
+  },
+  ["start_s", "end_s", "rms", "lufs"],
+);
+
+export const AudioEnergyJsonSchema = objectJson(
+  "audio_energy",
+  {
+    source: { type: "string", enum: ["ffmpeg-ebur128", "pcm-rms", "manual"] },
+    raw_points: {
+      type: "array",
+      items: objectJson(
+        "audio_energy.raw_point",
+        {
+          time_s: nonNegativeNumberJson,
+          momentary_lufs: numberJson,
+          is_silence: booleanJson,
+        },
+        ["time_s", "momentary_lufs"],
+      ),
+    },
+    energy_profile: {
+      type: "array",
+      items: audioEnergyWindowJson,
+    },
+    first_active_s: nullableNonNegativeNumberJson,
+    peak_s: nullableNonNegativeNumberJson,
+    recommended_offset_s: nonNegativeNumberJson,
+    best_window: {
+      anyOf: [
+        objectJson(
+          "audio_energy.best_window",
+          {
+            start_s: nonNegativeNumberJson,
+            end_s: nonNegativeNumberJson,
+            average_lufs: numberJson,
+            peak_lufs: numberJson,
+          },
+          ["start_s", "end_s"],
+        ),
+        { type: "null" },
+      ],
+    },
+    silence_threshold_lufs: numberJson,
+    analysis_window_s: positiveNumberJson,
+    astats: unknownRecordJson,
+    rms_windows: {
+      type: "array",
+      items: audioEnergyWindowJson,
+    },
+  },
+  ["source", "raw_points", "energy_profile", "first_active_s", "peak_s", "recommended_offset_s", "best_window"],
+);
+
+export const LyricsAlignedJsonSchema = objectJson(
+  "lyrics_aligned",
+  {
+    source: { type: "string", enum: ["transcript_words", "manual", "mixed"] },
+    lines: {
+      type: "array",
+      items: objectJson(
+        "lyrics_aligned.line",
+        {
+          id: stringJson,
+          text: stringJson,
+          confidence: { type: "number", minimum: 0 },
+          matched_word_ids: stringArrayJson,
+          start_s: nullableNonNegativeNumberJson,
+          end_s: nullableNonNegativeNumberJson,
+          start_ms: nullableNonNegativeIntegerJson,
+          end_ms: nullableNonNegativeIntegerJson,
+          source: { type: "string", enum: ["aligned", "gap_filled", "manual", "unmatched"] },
+          flagged: booleanJson,
+        },
+        [
+          "text",
+          "confidence",
+          "matched_word_ids",
+          "start_s",
+          "end_s",
+          "start_ms",
+          "end_ms",
+          "source",
+          "flagged",
+        ],
+      ),
+    },
+  },
+  ["source", "lines"],
+);
 
 export const CaptureManifestJsonSchema = objectJson(
   "capture_manifest",
@@ -192,6 +295,10 @@ export const EditDecisionsJsonSchema = objectJson(
         {
           start_s: nonNegativeNumberJson,
           end_s: nonNegativeNumberJson,
+          timing_anchor: stringJson,
+          timing_source: timingSourceJson,
+          start_ms: nonNegativeIntegerJson,
+          end_ms: nonNegativeIntegerJson,
           asset_id: stringJson,
           transition_in: stringJson,
           transition_out: stringJson,
@@ -457,6 +564,7 @@ export const RigPlanJsonSchema = objectJson(
 export const ArtifactJsonSchemas = {
   ...CreativeArtifactJsonSchemas,
   action_timeline: ActionTimelineJsonSchema,
+  audio_energy: AudioEnergyJsonSchema,
   capture_manifest: CaptureManifestJsonSchema,
   character_design: CharacterDesignJsonSchema,
   character_qa_report: CharacterQaReportJsonSchema,
@@ -470,6 +578,7 @@ export const ArtifactJsonSchemas = {
   render_report: RenderReportJsonSchema,
   review: ReviewJsonSchema,
   rig_plan: RigPlanJsonSchema,
+  lyrics_aligned: LyricsAlignedJsonSchema,
   source_media_review: SourceMediaReviewJsonSchema,
   video_analysis_brief: VideoAnalysisBriefJsonSchema,
   audio_architecture: withMeta("audio_architecture", { type: "string", enum: AUDIO_ARCHITECTURE }),

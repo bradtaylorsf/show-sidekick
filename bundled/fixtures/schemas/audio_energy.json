@@ -1,0 +1,59 @@
+{
+  "source": "ffmpeg-ebur128",
+  "raw_points": [
+    {
+      "time_s": 0.1,
+      "momentary_lufs": -120,
+      "is_silence": true
+    },
+    {
+      "time_s": 1,
+      "momentary_lufs": -38.5
+    },
+    {
+      "time_s": 2,
+      "momentary_lufs": -22.1
+    },
+    {
+      "time_s": 3,
+      "momentary_lufs": -15.7
+    }
+  ],
+  "energy_profile": [
+    {
+      "start_s": 0,
+      "end_s": 1,
+      "rms": 0,
+      "lufs": -120
+    },
+    {
+      "start_s": 1,
+      "end_s": 2,
+      "rms": 0.012,
+      "lufs": -38.5
+    },
+    {
+      "start_s": 2,
+      "end_s": 3,
+      "rms": 0.078,
+      "lufs": -22.1
+    },
+    {
+      "start_s": 3,
+      "end_s": 4,
+      "rms": 0.164,
+      "lufs": -15.7
+    }
+  ],
+  "first_active_s": 1,
+  "peak_s": 3,
+  "recommended_offset_s": 1,
+  "best_window": {
+    "start_s": 2,
+    "end_s": 4,
+    "average_lufs": -18.9,
+    "peak_lufs": -15.7
+  },
+  "silence_threshold_lufs": -45,
+  "analysis_window_s": 1
+}

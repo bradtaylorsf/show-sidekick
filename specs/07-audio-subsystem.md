@@ -78,6 +78,15 @@ export interface SceneAnchor {
 }
 ```
 
+## Timing artifacts
+
+Music-led episodes may also write first-class timing artifacts beside the cuesheet:
+
+- `projects/<show>/<episode>/audio_energy.json` — EBU R128-derived loudness analysis. The primary signal is raw momentary loudness points (`raw_points[].time_s`, `raw_points[].momentary_lufs`) parsed from FFmpeg `ebur128` output. The artifact also stores a 1-second `energy_profile`, `first_active_s`, `peak_s`, `recommended_offset_s`, and the highest-energy `best_window`. PCM/RMS or `astats` metadata may be included as secondary fallback context, but EBU R128 momentary loudness is the canonical music-led timing signal.
+- `projects/<show>/<episode>/lyrics_aligned.json` — canonical lyric phrase windows aligned to transcript words. Each line stores the lyric text, confidence, matched word IDs, `start_s`/`end_s`, `start_ms`/`end_ms`, a source (`aligned`, `gap_filled`, `manual`, or `unmatched`), and a `flagged` marker for low-confidence or unmatched phrases.
+
+Scene-facing artifacts (`script`, `scene_plan`, and `edit_decisions`) may carry optional timing metadata: `timing_anchor`, `timing_source` (`lyric`, `word`, `beat`, `section`, `climax`, `manual`, or `audio_energy`), and millisecond-authored `start_ms`/`end_ms` fields alongside the existing second fields. For music-led pipelines, authoring decisions should be made in milliseconds, then rendered on the target frame grid. At 30fps, visible drift must stay within one frame unless a pipeline sets a tighter threshold.
+
 ## Primitives
 
 Pure functions over the data model. Each is independently usable; pipelines compose them.
@@ -115,6 +124,8 @@ const anchors = await audio.alignScenes(scenePlan, cuesheet, {
 | `detectClimax` | DIY TS — RMS peaks weighted by section length; agent can confirm | pure TS |
 | `alignScenes` | Pure TS | none |
 
+`detectSections` and `detectClimax` prefer registry-provided `audio_energy` windows when available, with PCM/RMS probing as the fallback path.
+
 Alternate backends are available via the registry (e.g. ElevenLabs Scribe for transcription, librosa for beats) and selectable via `registry.select(cap, { prefer: ['elevenlabs-scribe'] })`.
 
 ## Alignment defaults
@@ -141,4 +152,5 @@ For audio-led pipelines, building the cuesheet is its own stage (`cuesheet` in t
 ## Constraints
 
 - `max_scene_duration_s` defaults to 5 across music-led pipelines (validated rule — no scene holds longer than 5s without intentional override).
+- Timing metadata for music-led scenes is authored at millisecond precision and rendered to the nearest frame boundary. The default tolerance is one frame at the output framerate.
 - Climax alignment is best-effort. If algorithmic detection conflicts with agent intent, the pipeline can mark climax `source: 'manual'` and the harness honors it.

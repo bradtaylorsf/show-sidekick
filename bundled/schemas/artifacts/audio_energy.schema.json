@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "predit://artifacts/audio_energy",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "type": "string",
+      "enum": [
+        "ffmpeg-ebur128",
+        "pcm-rms",
+        "manual"
+      ]
+    },
+    "raw_points": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/audio_energy.raw_point",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "time_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "momentary_lufs": {
+            "type": "number"
+          },
+          "is_silence": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "time_s",
+          "momentary_lufs"
+        ]
+      }
+    },
+    "energy_profile": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/audio_energy.window",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "start_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "rms": {
+            "type": "number",
+            "minimum": 0
+          },
+          "lufs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "start_s",
+          "end_s",
+          "rms",
+          "lufs"
+        ]
+      }
+    },
+    "first_active_s": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "peak_s": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "recommended_offset_s": {
+      "type": "number",
+      "minimum": 0
+    },
+    "best_window": {
+      "anyOf": [
+        {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "predit://artifacts/audio_energy.best_window",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "start_s": {
+              "type": "number",
+              "minimum": 0
+            },
+            "end_s": {
+              "type": "number",
+              "minimum": 0
+            },
+            "average_lufs": {
+              "type": "number"
+            },
+            "peak_lufs": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "start_s",
+            "end_s"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "silence_threshold_lufs": {
+      "type": "number"
+    },
+    "analysis_window_s": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "astats": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "rms_windows": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "predit://artifacts/audio_energy.window",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "start_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "rms": {
+            "type": "number",
+            "minimum": 0
+          },
+          "lufs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "start_s",
+          "end_s",
+          "rms",
+          "lufs"
+        ]
+      }
+    }
+  },
+  "required": [
+    "source",
+    "raw_points",
+    "energy_profile",
+    "first_active_s",
+    "peak_s",
+    "recommended_offset_s",
+    "best_window"
+  ]
+}
