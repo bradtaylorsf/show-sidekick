@@ -82,7 +82,7 @@ Provider expectations for `paid-demo`:
 
 The demo matrix is starter-driven. It reads `bundled/starters/*/show.yaml`, selects starters whose `sample_support` matches the chosen mode, initializes each in a fresh user project, builds `sample-episode`, verifies artifacts/media/exports, and writes `demo-matrix-verification.json`.
 
-The paid-demo sample dispatcher now honors the configured runtime when it is installed in the user project. If Remotion or HyperFrames is unavailable, it logs the unavailable runtime and uses ffmpeg as an explicit rough-cut fallback. Use [Full Demo Benchmark Plan](full-demo-benchmark.md) for agent-led Remotion and HyperFrames demos that inspect runtime-specific composition quality.
+The paid-demo sample dispatcher now honors the configured runtime when it is installed in the user project. If Remotion or HyperFrames is unavailable, it logs the unavailable runtime and uses ffmpeg as an explicit rough-cut fallback. Local source/reference images are preflighted before paid asset generation; expired URL JSON or other non-image payloads stop the run before OpenAI/Higgsfield calls. Use [Full Demo Benchmark Plan](full-demo-benchmark.md) for agent-led Remotion and HyperFrames demos that inspect runtime-specific composition quality.
 
 Current expected green paths:
 

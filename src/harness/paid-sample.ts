@@ -48,6 +48,11 @@ type LyricLine = {
   text: string;
 };
 
+type ReferenceInput = {
+  key: string;
+  path: string;
+};
+
 const STATE_ARTIFACT_KEYS = [
   "brief",
   "research_brief",
@@ -62,6 +67,9 @@ const STATE_ARTIFACT_KEYS = [
   "render_report",
   "publish_log",
 ] as const;
+
+const IMAGE_REFERENCE_EXTENSIONS = new Set([".gif", ".jpeg", ".jpg", ".png", ".webp"]);
+const TEXT_REFERENCE_EXTENSIONS = new Set([".csv", ".json", ".md", ".srt", ".tsv", ".txt", ".yaml", ".yml"]);
 
 export class PaidSampleStageError extends Error {
   readonly lastArtifactPath?: string;
@@ -176,6 +184,7 @@ async function artifactForStage(
       state.scene_plan ??= await buildScenePlan(ctx);
       return state.scene_plan;
     case "asset_manifest":
+      state.source_media_review ??= await buildSourceMediaReview(ctx);
       state.asset_manifest ??= await buildAssets(ctx, state, costEntries, decisions, options);
       return state.asset_manifest;
     case "edit_decisions":
@@ -339,6 +348,8 @@ async function buildSourceMediaReview(ctx: StageContext): Promise<unknown> {
   const lyricsText = await textInput(ctx, "lyrics");
   const lyricLines = lyricsText === undefined ? [] : parseLyricLines(lyricsText);
   const sourceFree = isSourceFree(ctx);
+  const referenceInputs = sourceReferenceInputs(ctx);
+  const referenceFiles = await Promise.all(referenceInputs.map((input) => reviewReferenceInput(ctx, input)));
   const files = [
     ...(track === undefined
       ? []
@@ -377,6 +388,7 @@ async function buildSourceMediaReview(ctx: StageContext): Promise<unknown> {
             planning_implications: ["Use lyric-art scenes only; do not invent source evidence or fake screenshots."],
           },
         ]),
+    ...referenceFiles,
   ];
 
   return {
@@ -394,8 +406,166 @@ async function buildSourceMediaReview(ctx: StageContext): Promise<unknown> {
               planning_implications: ["Keep sample scope small and source-free unless sources are supplied."],
             },
           ],
-    content_mode: sourceFree ? "source-free-protest-music-video" : "sourced-political-news-song",
+    content_mode: sourceContentMode(ctx, sourceFree, referenceFiles.length),
   };
+}
+
+function sourceReferenceInputs(ctx: StageContext): ReferenceInput[] {
+  const inputs: ReferenceInput[] = [];
+  const scalarKeys = [
+    "reference",
+    "reference_image",
+    "screenshot",
+    "terminal_frame",
+    "source_image",
+    "style_reference",
+    "character_reference",
+    "storyboard_csv",
+    "source_transcript",
+  ];
+  const arrayKeys = ["source_reference_files", "reference_images", "style_references", "character_references"];
+
+  for (const key of scalarKeys) {
+    const value = ctx.episode.inputs[key];
+    if (typeof value === "string" && value.trim().length > 0 && shouldReviewReferenceValue(value)) {
+      inputs.push({ key, path: value });
+    }
+  }
+
+  for (const key of arrayKeys) {
+    const value = ctx.episode.inputs[key];
+    if (!Array.isArray(value)) {
+      continue;
+    }
+
+    for (const item of value) {
+      if (typeof item === "string" && item.trim().length > 0) {
+        inputs.push({ key, path: item });
+      }
+    }
+  }
+
+  return inputs;
+}
+
+async function reviewReferenceInput(ctx: StageContext, input: ReferenceInput): Promise<Record<string, unknown>> {
+  const resolved = projectReadPath(ctx, input.path);
+  let bytes: Buffer;
+
+  try {
+    bytes = await readFile(resolved);
+  } catch (error) {
+    throw new Error(`${input.key} references ${input.path}, but the file could not be read: ${errorMessage(error)}`);
+  }
+
+  const extension = path.extname(resolved).toLowerCase();
+  const signature = detectImageSignature(bytes);
+
+  if (IMAGE_REFERENCE_EXTENSIONS.has(extension)) {
+    if (signature === undefined) {
+      throw new Error(
+        `${input.key} references ${input.path}, but it is not a readable image file (${describeInvalidImagePayload(bytes)}). Replace the file or remove the reference before running paid generation.`,
+      );
+    }
+
+    return {
+      path: input.path,
+      resolved_path: resolved,
+      key: input.key,
+      reviewed: true,
+      technical_probe: {
+        media_kind: "image",
+        detected_format: signature,
+        bytes: bytes.byteLength,
+      },
+      content_summary: `Probe cites media_kind=image and detected_format=${signature} for ${input.key}.`,
+      planning_implications: [
+        "Use this readable source reference for visual continuity.",
+        "Do not substitute a prompt-only or local-render fallback if the approved provider path fails.",
+      ],
+    };
+  }
+
+  if (TEXT_REFERENCE_EXTENSIONS.has(extension)) {
+    const text = bytes.toString("utf8");
+    const lines = meaningfulTextLines(text);
+    return {
+      path: input.path,
+      resolved_path: resolved,
+      key: input.key,
+      reviewed: true,
+      technical_probe: {
+        media_kind: "text",
+        extension,
+        line_count: lines.length,
+        bytes: bytes.byteLength,
+      },
+      content_summary: `Probe cites media_kind=text and line_count=${lines.length} for ${input.key}.`,
+      planning_implications: ["Use this readable source text for timing, storyboard, or continuity cues."],
+    };
+  }
+
+  return {
+    path: input.path,
+    resolved_path: resolved,
+    key: input.key,
+    reviewed: true,
+    technical_probe: {
+      media_kind: "file",
+      extension: extension || "unknown",
+      bytes: bytes.byteLength,
+    },
+    content_summary: `Probe cites media_kind=file and bytes=${bytes.byteLength} for ${input.key}.`,
+    planning_implications: ["Confirm this source file is represented before final approval."],
+  };
+}
+
+function shouldReviewReferenceValue(value: string): boolean {
+  if (value.includes("\n") || isHttpUrl(value)) {
+    return false;
+  }
+
+  return path.isAbsolute(value) || value.startsWith("./") || value.startsWith("../") || value.includes("/") || value.includes("\\") || path.extname(value) !== "";
+}
+
+function detectImageSignature(bytes: Buffer): "png" | "jpeg" | "webp" | "gif" | undefined {
+  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+    return "png";
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return "jpeg";
+  }
+  if (bytes.length >= 12 && bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP") {
+    return "webp";
+  }
+  if (bytes.length >= 6 && (bytes.subarray(0, 6).toString("ascii") === "GIF87a" || bytes.subarray(0, 6).toString("ascii") === "GIF89a")) {
+    return "gif";
+  }
+
+  return undefined;
+}
+
+function describeInvalidImagePayload(bytes: Buffer): string {
+  const prefix = bytes.subarray(0, Math.min(bytes.length, 80)).toString("utf8").trim();
+  if (/^\{/u.test(prefix)) {
+    return "looks like JSON/text, not image bytes";
+  }
+  if (/^[\p{L}\p{N}\s"'{}:[\],._-]+$/u.test(prefix)) {
+    return "looks like text, not image bytes";
+  }
+  return "missing PNG/JPEG/WebP/GIF signature";
+}
+
+function sourceContentMode(ctx: StageContext, sourceFree: boolean, referenceFileCount: number): string {
+  if (lyricMusicMode(ctx)) {
+    return sourceFree ? "source-free-protest-music-video" : "sourced-political-news-song";
+  }
+
+  if (referenceFileCount > 0 || hasReferenceInput(ctx)) {
+    return `reference-guided-${ctx.pipeline.slug}`;
+  }
+
+  return sourceFree ? `source-free-${ctx.pipeline.slug}` : `sourced-${ctx.pipeline.slug}`;
 }
 
 async function buildCaptureManifest(ctx: StageContext): Promise<unknown> {
@@ -439,9 +609,9 @@ async function buildScenePlan(ctx: StageContext): Promise<unknown> {
         scene_anchor: beat.title,
         hero_moment: index === 0,
         description: beat.body,
-        shot_intent: "Make the explanation legible through a generated motion clip.",
+        shot_intent: `Make the ${readableSlug(ctx.pipeline.slug)} beat legible through a generated motion clip.`,
         information_role: index === 0 ? "hook setup" : index === beats.length - 1 ? "takeaway" : "explanatory beat",
-        texture_keywords: ["provider-backed", rendererFamily(ctx), "animated-explainer"],
+        texture_keywords: genericTextureKeywords(ctx),
         character_actions: [],
         shot_language: {
           shot_size: "MS",
@@ -455,7 +625,7 @@ async function buildScenePlan(ctx: StageContext): Promise<unknown> {
           {
             id: clipAssetId(index),
             source: "generated",
-            notes: "Generated start frame plus Higgsfield motion clip for this explainer beat.",
+            notes: `Generated start frame plus Higgsfield motion clip for this ${readableSlug(ctx.pipeline.slug)} beat.`,
           },
         ],
       })),
@@ -1295,12 +1465,18 @@ function imagePrompt(ctx: StageContext, beat?: SampleBeat): string {
     return lyricArtImagePrompt(ctx, beat);
   }
 
+  const pipelineLabel = readableSlug(ctx.pipeline.slug);
+  const style = visualStyleDirection(ctx);
   return [
-    `Create a polished animated-explainer start frame for ${ctx.episode.title}.`,
+    `Use case: ${pipelineLabel}.`,
+    `Asset type: ${aspect(ctx)} keyframe for a ${pipelineLabel} sample.`,
+    `Primary request: Create a polished provider-backed start frame for ${ctx.episode.title}.`,
     `Pipeline: ${ctx.pipeline.slug}.`,
-    beat === undefined ? undefined : `Explainer beat: ${beat.title}. ${beat.body}`,
+    beat === undefined ? undefined : `Scene beat: ${beat.title}. ${beat.body}`,
+    style === undefined ? undefined : `Style direction: ${style}.`,
     `Aspect ratio: ${aspect(ctx)}.`,
-    "Use clean visual metaphors, diagram-friendly composition, layered foreground/background depth, and no copyrighted characters.",
+    "Reference policy: honor supplied readable reference media and storyboard cues; do not invent missing reference details.",
+    "Use clean visual metaphors, layered foreground/background depth, distinct subject design, and no copyrighted third-party character replication.",
   ]
     .filter((part): part is string => typeof part === "string")
     .join(" ");
@@ -1311,8 +1487,53 @@ function motionPrompt(ctx: StageContext, beat?: SampleBeat): string {
     return lyricArtMotionPrompt(ctx, beat);
   }
 
+  const pipelineLabel = readableSlug(ctx.pipeline.slug);
+  const style = visualStyleDirection(ctx);
   const beatText = beat === undefined ? "the sample frame" : `"${beat.title}"`;
-  return `Animate ${beatText} as a short ${rendererFamily(ctx)} explainer beat with distinct subject motion, moving diagram elements, clean camera drift, and readable demo-safe pacing.`;
+  return [
+    `Animate ${beatText} as a short ${rendererFamily(ctx)} ${pipelineLabel} beat.`,
+    style === undefined ? undefined : `Preserve this style: ${style}.`,
+    "Use distinct subject motion, foreground/background parallax, motivated camera drift, and readable demo-safe pacing.",
+  ]
+    .filter((part): part is string => typeof part === "string")
+    .join(" ");
+}
+
+function genericTextureKeywords(ctx: StageContext): string[] {
+  return ["provider-backed", rendererFamily(ctx), ctx.pipeline.slug, ...styleKeywords(ctx)];
+}
+
+function styleKeywords(ctx: StageContext): string[] {
+  const style = visualStyleDirection(ctx);
+  if (style === undefined) {
+    return [];
+  }
+
+  const words = style.match(/[\p{L}\p{N}][\p{L}\p{N}'-]*/gu) ?? [];
+  return words
+    .filter((word) => word.length >= 4)
+    .slice(0, 4)
+    .map((word) => word.toLowerCase());
+}
+
+function visualStyleDirection(ctx: StageContext): string | undefined {
+  const parts = [
+    stringInput(ctx, "style"),
+    stringInput(ctx, "visual_style"),
+    stringInput(ctx, "look"),
+    stringInput(ctx, "art_direction"),
+    stringInput(ctx, "mood"),
+    ctx.episode.playbook === undefined ? undefined : `playbook ${ctx.episode.playbook}`,
+    ctx.episode.cast.length === 0 ? undefined : `cast ${ctx.episode.cast.join(", ")}`,
+  ]
+    .map((part) => part?.trim())
+    .filter((part): part is string => part !== undefined && part.length > 0);
+
+  return parts.length === 0 ? undefined : parts.join("; ");
+}
+
+function readableSlug(value: string): string {
+  return value.replace(/[-_]+/gu, " ").trim() || value;
 }
 
 function lyricArtImagePrompt(ctx: StageContext, beat?: SampleBeat): string {
@@ -1341,7 +1562,10 @@ function lyricArtMotionPrompt(ctx: StageContext, beat?: SampleBeat): string {
 }
 
 function hasReferenceInput(ctx: StageContext): boolean {
-  return ["reference", "reference_image", "screenshot"].some((key) => ctx.episode.inputs[key] !== undefined);
+  return ["reference", "reference_image", "screenshot", "source_reference_files", "reference_images"].some((key) => {
+    const value = ctx.episode.inputs[key];
+    return Array.isArray(value) ? value.length > 0 : value !== undefined;
+  });
 }
 
 function hasNarrationInput(ctx: StageContext): boolean {

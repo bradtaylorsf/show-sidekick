@@ -393,6 +393,170 @@ describe("paid sample dispatcher", () => {
     });
   });
 
+  it("keeps one-off animation samples on the selected pipeline style instead of lyric-music styling", async () => {
+    const root = await scratchProject();
+    const show: LoadedShow = {
+      ...loadedShow(root, "remotion"),
+      pipelines: {
+        animation: {
+          runtime: "remotion" as const,
+          aspect: "16:9",
+        },
+      },
+      defaults: {
+        pipeline: "animation",
+      },
+    };
+    const scriptPath = path.join("shows", "show", "inputs", "episode", "script.txt");
+    const transcriptPath = path.join("projects", "bluey-batty-come-home", "tata-bluey.txt");
+    const storyboardPath = path.join("projects", "bluey-batty-come-home", "bluey_batty_higgsfield_storyboard.csv");
+    const referencePath = path.join("projects", "bluey-batty-come-home", "batty-daddy.png");
+    await writeFixture(path.join(root, scriptPath), "Tata waits by the reef gate.\nBluey and Batty swim home together.");
+    await writeFixture(path.join(root, transcriptPath), "Tata asks Bluey and Batty to come home before sunset.");
+    await writeFixture(path.join(root, storyboardPath), "shot,description\n1,Reef gate with warm aquarium light");
+    await mkdir(path.dirname(path.join(root, referencePath)), { recursive: true });
+    await writeFile(path.join(root, referencePath), tinyPngBytes());
+    const episode: LoadedEpisode = {
+      ...loadedEpisode(show, "remotion"),
+      title: "Bluey and Batty Come Home",
+      pipeline: "animation",
+      playbook: "flat-motion-graphics",
+      inputs: {
+        script: scriptPath,
+        style: "bright children's storybook aquarium motion, soft rounded shapes",
+        source_transcript: transcriptPath,
+        storyboard_csv: storyboardPath,
+        source_reference_files: [referencePath],
+      },
+    };
+    const pipeline: PipelineManifest = {
+      ...pipelineManifest(),
+      slug: "animation",
+      sample: {
+        duration_s_min: 12,
+        duration_s_max: 12,
+        max_scenes: 2,
+        max_cost_usd: 1.1,
+      },
+      stages: [stage("source_review", "source_media_review"), stage("scene_plan", "scene_plan"), stage("assets", "asset_manifest")],
+    };
+    const openAiInputs: unknown[] = [];
+    const higgsfieldInputs: unknown[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "animation",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          onOpenAiInput: (input) => openAiInputs.push(input),
+          onHiggsfieldInput: (input) => higgsfieldInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", budget_usd: 1.1, nonInteractive: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    await expect(readCheckpoint(root, "show", "episode", "source_review")).resolves.toMatchObject({
+      artifact: {
+        content_mode: "reference-guided-animation",
+        files: expect.arrayContaining([
+          expect.objectContaining({
+            key: "source_reference_files",
+            technical_probe: expect.objectContaining({ media_kind: "image", detected_format: "png" }),
+          }),
+        ]),
+      },
+    });
+    await expect(readCheckpoint(root, "show", "episode", "scene_plan")).resolves.toMatchObject({
+      artifact: {
+        scenes: expect.arrayContaining([
+          expect.objectContaining({
+            texture_keywords: expect.arrayContaining(["animation", "storybook", "aquarium"]),
+          }),
+        ]),
+      },
+    });
+    const imagePromptText = promptFromInput(openAiInputs[0]);
+    const motionPromptText = promptFromInput(higgsfieldInputs[0]);
+    expect(imagePromptText).toContain("Pipeline: animation");
+    expect(imagePromptText).toContain("bright children's storybook aquarium");
+    expect(motionPromptText).toContain("animation beat");
+    expect(motionPromptText).toContain("bright children's storybook aquarium");
+    expect(`${imagePromptText}\n${motionPromptText}`).not.toMatch(/ChaosFM|PS2\/GTA|protest music-video|source-free lyric-art/u);
+  });
+
+  it("blocks invalid source reference images before paid asset generation", async () => {
+    const root = await scratchProject();
+    const show: LoadedShow = {
+      ...loadedShow(root),
+      pipelines: {
+        animation: {
+          runtime: "ffmpeg" as const,
+          aspect: "16:9",
+        },
+      },
+      defaults: {
+        pipeline: "animation",
+      },
+    };
+    const referencePath = path.join("projects", "bluey-batty-come-home", "batty-daddy.png");
+    await writeFixture(path.join(root, referencePath), JSON.stringify({ detail: "Invalid signature or expired URL" }));
+    const episode: LoadedEpisode = {
+      ...loadedEpisode(show),
+      title: "Bluey and Batty Come Home",
+      pipeline: "animation",
+      inputs: {
+        narration: "Make a gentle aquarium story sample.",
+        source_reference_files: [referencePath],
+      },
+    };
+    const pipeline: PipelineManifest = {
+      ...pipelineManifest(),
+      slug: "animation",
+      stages: [stage("assets", "asset_manifest")],
+    };
+    const openAiInputs: unknown[] = [];
+    const higgsfieldInputs: unknown[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "animation",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          onOpenAiInput: (input) => openAiInputs.push(input),
+          onHiggsfieldInput: (input) => higgsfieldInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", nonInteractive: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("failed");
+    expect(openAiInputs).toHaveLength(0);
+    expect(higgsfieldInputs).toHaveLength(0);
+    await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
+      status: "failed",
+      artifact: {
+        error: expect.stringContaining("source_reference_files"),
+        last_cost_entries: [],
+      },
+      tool_invocations: [],
+    });
+  });
+
   it("hydrates checkpointed paid-sample artifacts when starting at compose", async () => {
     const root = await scratchProject();
     const show = loadedShow(root);
@@ -551,6 +715,7 @@ function paidSampleTools(
     includeRemotionRuntime?: boolean;
     onFfmpegInput?: (input: unknown) => void;
     onHiggsfieldInput?: (input: unknown) => void;
+    onOpenAiInput?: (input: unknown) => void;
     onVideoComposeInput?: (input: unknown) => void;
   } = {},
 ): Tool[] {
@@ -568,7 +733,8 @@ function paidSampleTools(
           }),
         ]
       : []),
-    fixtureTool("openai_image", "image_generation", "openai", 0.04, async () => {
+    fixtureTool("openai_image", "image_generation", "openai", 0.04, async (input) => {
+      options.onOpenAiInput?.(input);
       await writeFixture(imagePath, "image");
       return { image_path: imagePath, provider: "openai", model: "gpt-image-2", cost_usd: 0.04 };
     }),
@@ -648,6 +814,14 @@ function fixtureTool(
 async function writeFixture(filePath: string, contents: string): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, contents, "utf8");
+}
+
+function tinyPngBytes(): Buffer {
+  return Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+}
+
+function promptFromInput(input: unknown): string {
+  return typeof input === "object" && input !== null && "prompt" in input && typeof input.prompt === "string" ? input.prompt : "";
 }
 
 const passReviewer: StageReviewer = (stageSlug, _artifact, ctx) => ({

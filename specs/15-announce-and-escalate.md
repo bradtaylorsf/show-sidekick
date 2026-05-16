@@ -71,6 +71,10 @@ If the approved path is blocked, the agent may prepare alternatives but must not
 - still-image animatics in place of true motion,
 - silent render-runtime swaps.
 
+Composition runtime swaps are not generation-provider substitutes. If the selected path calls for OpenAI/Higgsfield assets and the provider or source reference fails, Remotion, HyperFrames, or ffmpeg may not be used to create a local procedural replacement unless the user explicitly approves that downgrade.
+
+Before paid asset generation, declared local source/reference images must be readable as image bytes. A file that looks like JSON/text, an expired URL response, or any other non-image payload is a blocker; the run stops before provider calls and asks for a fresh reference or approval to remove that reference from scope.
+
 Each non-trivial substitution that **does** get user approval generates a new decision log entry that supersedes the original.
 
 ## Recommendation style

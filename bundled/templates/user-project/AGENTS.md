@@ -94,6 +94,8 @@ When resolving any resource (pipeline, playbook, skill, schema), check the proje
 - **Self-review every stage.** Before checkpointing, run the reviewer pass against the stage's `review_focus` and `success_criteria`. Findings must be accurate, complete, and constructive. Critical findings must carry a proposed fix.
 - **Log every material decision.** Provider, model, runtime, playbook, music, voice — every meaningful choice goes in the decision log with rejected alternatives and a real reason.
 - **No unilateral substitutions.** If the approved path is blocked, prepare alternatives and surface them; do not execute substitutes without user approval.
+- **Validate source references before generation.** If a declared source/reference image cannot be read as real image bytes, stop before paid generation and ask for a fresh file or explicit approval to continue without it.
+- **Composition runtimes are not provider substitutes.** Remotion, HyperFrames, and ffmpeg compose approved assets; they do not replace OpenAI/Higgsfield generation when a provider-backed motion path was selected.
 - **Stop before publishing on failure.** A failing final self-review halts the pipeline. The user sees the issues before the file does.
 
 ## Meta skills you must internalize
