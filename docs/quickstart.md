@@ -61,6 +61,7 @@ export OPENAI_API_KEY="sk-..."
 export ELEVENLABS_API_KEY="..."
 higgsfield auth login
 predit doctor --profile paid-demo
+predit setup higgsfield_image
 predit setup openai_image
 predit setup openai_tts
 predit ls tools

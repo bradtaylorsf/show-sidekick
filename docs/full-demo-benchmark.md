@@ -15,7 +15,7 @@ Layer A: product confidence
 Layer B: technical coverage
 
 - CLI lifecycle: `init`, `doctor`, `new show`, `new episode`, `new pipeline`, `build`, `resume`, `export`.
-- Providers: OpenAI image/TTS fallback, ElevenLabs narration, Higgsfield image-to-video, ffmpeg/ffprobe.
+- Providers: Higgsfield GPT Image 2 stills, OpenAI direct image/TTS fallback, ElevenLabs narration, Higgsfield image-to-video, ffmpeg/ffprobe.
 - Runtimes: ffmpeg rough cuts, Remotion renders, HyperFrames lint/validate/render checks where available.
 - Artifacts: checkpoints, render reports, final review, decision log, cost log, Premiere XML, EDL, contact sheet.
 
@@ -39,7 +39,7 @@ predit init
 predit doctor --profile paid-demo --json
 ```
 
-The benchmark can continue only when doctor reports `ok` for OpenAI, ElevenLabs, Higgsfield binary, Higgsfield login, ffmpeg, and ffprobe. `predit init` installs Remotion and HyperFrames by default when npm is available; rerun `predit setup runtimes` before Remotion or HyperFrames lanes only if runtime setup was skipped, failed, or needs repair.
+The benchmark can continue only when doctor reports `ok` for Higgsfield binary/login, OpenAI, ElevenLabs, ffmpeg, and ffprobe. `predit init` installs Remotion and HyperFrames by default when npm is available; rerun `predit setup runtimes` before Remotion or HyperFrames lanes only if runtime setup was skipped, failed, or needs repair.
 
 ## Suites
 
@@ -61,8 +61,8 @@ Run these one at a time in a user project so failures are easy to inspect and pr
 | Demo | Pipeline | Starter / setup | Primary coverage |
 |---|---|---|---|
 | Personalized no-key animated explainer | `animated-explainer` | `predit new show first-video --from animated-explainer`; ask what the user does; rewrite `script.txt` into four safe context-aware narrated scene lines | Agent onboarding, local TTS, zero-key procedural Remotion renderer, script personalization, cuesheet, export path |
-| Provider scratch explainer | `animated-explainer` | `predit new show explainer --from animated-explainer` | OpenAI start frames, ElevenLabs narration, Higgsfield Seedance clips, configured runtime render when available |
-| Audio-led supplied-track video | `music-video` or `news-song` | `predit new show audio-demo --from music-video` or `--from news-song` | Audio master clock, cuesheet, beat-synced edit, exports |
+| Provider scratch explainer | `animated-explainer` | `predit new show explainer --from animated-explainer` | Provider still frames, ElevenLabs narration, Higgsfield Seedance clips, configured runtime render when available |
+| Audio-led supplied-track video | `music-video` or `news-song` | `predit new show audio-demo --from music-video` or `--from news-song` | Audio master clock, lyric-first sample planning, GPT Image 2 prompt packet, beat-synced edit, exports |
 | Hosted / talking-head follow-up | `talking-head` | `predit new show host-demo --pipelines talking-head` | Voiceover master clock, captions, support cards, Remotion-oriented runtime choice |
 | Screen / workflow walkthrough | `screen-demo` | `predit new show workflow --from ai-workflow-demo` | Synthetic terminal, UI demo structure, Remotion or HyperFrames proposal discussion |
 | Mixed source + generated support | `hybrid` | `predit new show hybrid-demo --pipelines hybrid` plus a local source clip | Source media review, generated inserts, overlay density, runtime selection |
@@ -164,5 +164,5 @@ Create `projects/<show>/<episode>/notes.md` with:
 ## First Three Recommended Demos
 
 1. Personalized no-key animated explainer: best first UX smoke because it proves a blank project plus an agent can create a useful narrated motion-graphics video without API keys.
-2. `animated-explainer`: best first paid provider smoke because it exercises OpenAI image, ElevenLabs narration, Higgsfield Seedance motion clips, and the configured composition runtime from a simple source-free brief.
+2. `animated-explainer`: best first paid provider smoke because it exercises paid still generation, ElevenLabs narration, Higgsfield Seedance motion clips, and the configured composition runtime from a simple source-free brief.
 3. `screen-demo` plus a manual `hybrid` follow-up: best route to test recorded/source media plus generated support assets and runtime selection. Use the screen demo for the first Remotion/HyperFrames conversation, then use `hybrid` once source-media review is stable.

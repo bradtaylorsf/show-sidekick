@@ -73,9 +73,9 @@ In user projects, the same keys can live in the generated, gitignored `.env`; `.
 
 Provider expectations for `paid-demo`:
 
-- OpenAI: image generation and fallback TTS through `OPENAI_API_KEY`.
+- Higgsfield: GPT Image 2 still generation through the `higgsfield` CLI, image-to-video through the same CLI, and an authenticated `higgsfield account status --json`.
+- OpenAI: direct image fallback and fallback TTS through `OPENAI_API_KEY`.
 - ElevenLabs: primary TTS through `ELEVENLABS_API_KEY`.
-- Higgsfield: image-to-video through the `higgsfield` CLI and an authenticated `higgsfield account status --json`.
 - Local media: `ffmpeg` and `ffprobe` on `PATH`.
 
 ## Green Paths And Known Blockers
@@ -87,7 +87,7 @@ The paid-demo sample dispatcher now honors the configured runtime when it is ins
 Current expected green paths:
 
 - `pnpm demo-matrix --zero-key --only animated-explainer --keep-workdir`
-- `pnpm demo-matrix --paid-demo --keep-workdir` after `predit doctor --profile paid-demo` is green for OpenAI, ElevenLabs, Higgsfield, ffmpeg, and ffprobe.
+- `pnpm demo-matrix --paid-demo --keep-workdir` after `predit doctor --profile paid-demo` is green for Higgsfield, OpenAI, ElevenLabs, ffmpeg, and ffprobe.
 
 | Starter | Default Pipeline | sample_support | Expected Status | Notes |
 |---|---|---|---|---|

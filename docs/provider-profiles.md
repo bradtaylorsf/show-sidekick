@@ -6,11 +6,14 @@ Provider profiles are named setup lanes for demos and repeatable validation runs
 
 `paid-demo` validates the first paid-provider lane:
 
-- Image generation: `openai_image` using `OPENAI_API_KEY`
+- Primary still generation: `higgsfield_image` using the Higgsfield CLI `gpt_image_2` model
+- Direct OpenAI image fallback: `openai_image` using `OPENAI_API_KEY`
 - TTS primary: `elevenlabs_tts` using `ELEVENLABS_API_KEY`
 - TTS fallback: `openai_tts` using `OPENAI_API_KEY`
 - Image-to-video: `higgsfield` with the `higgsfield` binary and `higgsfield account status --json`
 - Local assembly and probing: `ffmpeg` and `ffprobe`
+
+`gpt_image_2` is a Higgsfield CLI model id. Direct OpenAI API image fallback remains `openai_image`; use it when you specifically want the OpenAI Image API path rather than the Higgsfield GPT Image 2 path.
 
 Run `predit doctor --profile paid-demo` before a paid sample. To record the selected lane for an episode, run `predit build <show>/<episode> --sample --provider-profile paid-demo`.
 

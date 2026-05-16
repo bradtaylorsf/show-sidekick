@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ToolContext } from "../registry/tool.js";
-import catboxHost from "./catbox-host.js";
 import higgsfield from "./higgsfield.js";
 
 function noopLogger(): ToolContext["logger"] {
@@ -200,14 +199,11 @@ describe("higgsfield tool", () => {
     expect(differentImage).toMatchObject({ video_path: "projects/show/episode/clips/higgsfield-2.mp4", cost_usd: 0.3 });
   });
 
-  it("uploads local image paths through image hosting before building the request", async () => {
+  it("passes local image paths directly to the current Higgsfield CLI", async () => {
     const projectRoot = await mkdtemp(join(tmpdir(), "predit-higgsfield-"));
     await mkdir(join(projectRoot, "assets"), { recursive: true });
     await writeFile(join(projectRoot, "assets", "reference.png"), "image-bytes");
-    const fetchMock = vi.fn(async () => new Response("https://assets.example.com/hosted-reference.png", { status: 200 }));
-    vi.stubGlobal("fetch", fetchMock);
-    const select = vi.fn(async () => catboxHost);
-    const ctx = context({ projectRoot, registry: { select } });
+    const ctx = context({ projectRoot });
 
     const result = await higgsfield.execute(
       higgsfield.input.parse({
@@ -217,12 +213,12 @@ describe("higgsfield tool", () => {
       ctx,
     );
 
-    expect(select).toHaveBeenCalledWith("image_hosting");
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://catbox.moe/user/api.php",
-      expect.objectContaining({ method: "POST", body: expect.any(FormData) }),
+    expect(ctx.runCli).toHaveBeenCalledWith(
+      "higgsfield",
+      expect.arrayContaining(["--start-image", join(projectRoot, "assets", "reference.png")]),
+      expect.any(Object),
     );
-    expect(result.request.body.start_image).toBe("https://assets.example.com/hosted-reference.png");
+    expect(result.request.body.start_image).toBe(join(projectRoot, "assets", "reference.png"));
   });
 
   it("extracts a result URL from the current wait JSON response shape", async () => {
@@ -249,5 +245,31 @@ describe("higgsfield tool", () => {
     );
 
     expect(result.video_path).toBe("https://cdn.higgsfield.example/video.mp4");
+  });
+
+  it("rejects media-upload preview images instead of accepting them as video clips", async () => {
+    const ctx = context({
+      runCli: vi.fn(async () => ({
+        stdout: JSON.stringify([
+          {
+            id: "upload-job",
+            result: {
+              url: "https://cdn.higgsfield.example/reference_resize.jpg",
+            },
+          },
+        ]),
+        stderr: "",
+      })),
+    });
+
+    await expect(
+      higgsfield.execute(
+        higgsfield.input.parse({
+          image_url: "https://cdn.example.com/reference.png",
+          prompt: "camera move",
+        }),
+        ctx,
+      ),
+    ).rejects.toThrow("Higgsfield CLI did not return a video result URL or path");
   });
 });

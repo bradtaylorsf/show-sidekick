@@ -429,10 +429,28 @@ async function writePipeline(
 
 function paidSampleTools(root: string): Tool[] {
   const imagePath = path.join(root, "fixtures", "openai.png");
+  const higgsfieldImagePath = path.join(root, "fixtures", "higgsfield.png");
   const audioPath = path.join(root, "fixtures", "narration.mp3");
   const clipPath = path.join(root, "fixtures", "clip.mp4");
 
   return [
+    defineTool({
+      name: "higgsfield_image",
+      capability: "image_generation",
+      provider: "higgsfield",
+      status: "beta",
+      integration: { kind: "library", package: "fixture", install: "none" },
+      best_for: "fixture GPT Image 2 still generation",
+      cost: { unit: "image", usd: 0.04 },
+      input: z.unknown(),
+      output: z.unknown(),
+      isAvailable: async () => ({ available: true }),
+      async execute() {
+        await mkdir(path.dirname(higgsfieldImagePath), { recursive: true });
+        await writeFile(higgsfieldImagePath, "higgsfield-image", "utf8");
+        return { image_path: higgsfieldImagePath, provider: "higgsfield", model: "gpt_image_2", cost_usd: 0.04 };
+      },
+    }),
     defineTool({
       name: "openai_image",
       capability: "image_generation",
@@ -443,6 +461,7 @@ function paidSampleTools(root: string): Tool[] {
       cost: { unit: "image", usd: 0.04 },
       input: z.unknown(),
       output: z.unknown(),
+      isAvailable: async () => ({ available: true }),
       async execute() {
         await mkdir(path.dirname(imagePath), { recursive: true });
         await writeFile(imagePath, "image", "utf8");
@@ -459,10 +478,28 @@ function paidSampleTools(root: string): Tool[] {
       cost: { unit: "call", usd: 0 },
       input: z.unknown(),
       output: z.unknown(),
+      isAvailable: async () => ({ available: true }),
       async execute() {
         await mkdir(path.dirname(audioPath), { recursive: true });
         await writeFile(audioPath, "audio", "utf8");
         return { audio_path: audioPath, provider: "elevenlabs", model: "eleven_multilingual_v2", cost_usd: 0 };
+      },
+    }),
+    defineTool({
+      name: "openai_tts",
+      capability: "tts",
+      provider: "openai",
+      status: "production",
+      integration: { kind: "library", package: "fixture", install: "none" },
+      best_for: "fixture fallback narration",
+      cost: { unit: "call", usd: 0 },
+      input: z.unknown(),
+      output: z.unknown(),
+      isAvailable: async () => ({ available: true }),
+      async execute() {
+        await mkdir(path.dirname(audioPath), { recursive: true });
+        await writeFile(audioPath, "audio", "utf8");
+        return { audio_path: audioPath, provider: "openai", model: "gpt-4o-mini-tts", cost_usd: 0 };
       },
     }),
     defineTool({
@@ -475,6 +512,7 @@ function paidSampleTools(root: string): Tool[] {
       cost: { unit: "clip", usd: 0.3 },
       input: z.unknown(),
       output: z.unknown(),
+      isAvailable: async () => ({ available: true }),
       async execute() {
         await mkdir(path.dirname(clipPath), { recursive: true });
         await writeFile(clipPath, "clip", "utf8");
@@ -490,6 +528,7 @@ function paidSampleTools(root: string): Tool[] {
       best_for: "fixture compose",
       input: z.unknown(),
       output: z.unknown(),
+      isAvailable: async () => ({ available: true }),
       async execute(params) {
         const outputPath = path.join(root, "projects", "show", "episode", "renders", "paid-sample.mp4");
         await mkdir(path.dirname(outputPath), { recursive: true });

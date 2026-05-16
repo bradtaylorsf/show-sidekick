@@ -98,20 +98,21 @@ describe("doctor command", () => {
 
 function paidDemoRegistry(): Registry {
   return new Registry({
-    tools: ["openai_image", "openai_tts", "elevenlabs_tts", "higgsfield", "ffmpeg", "source_media_review"].map((name) =>
-      defineTool({
-        name,
-        capability: "research",
-        provider: "test",
-        status: "beta",
-        integration: { kind: "library", package: "test", install: "none" },
-        best_for: "doctor tests",
-        input: z.object({}),
-        output: z.object({}),
-        async execute() {
-          return {};
-        },
-      }),
+    tools: ["higgsfield_image", "openai_image", "openai_tts", "elevenlabs_tts", "higgsfield", "ffmpeg", "source_media_review"].map(
+      (name) =>
+        defineTool({
+          name,
+          capability: "research",
+          provider: "test",
+          status: "beta",
+          integration: { kind: "library", package: "test", install: "none" },
+          best_for: "doctor tests",
+          input: z.object({}),
+          output: z.object({}),
+          async execute() {
+            return {};
+          },
+        }),
     ),
   });
 }

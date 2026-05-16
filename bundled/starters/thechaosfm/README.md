@@ -18,8 +18,8 @@ TheChaosFM/Ain't No Crowns is tracked as a show-level benchmark reference, not a
 - Aspect: `16:9`
 - Captions: none
 - Source policy: source-free
-- Image generation: OpenAI image generation
-- Clip generation: Higgsfield or Kling clips
+- Image generation: Higgsfield GPT Image 2 still generation through the `higgsfield` CLI, with direct OpenAI image generation as fallback
+- Clip generation: Higgsfield Seedance image-to-video clips
 - Render target: HyperFrames
 
 Use the [baseline comparison template](../../../docs/baseline-comparison.md) when comparing this show benchmark against a predit demo run. Record it as `show=thechaosfm`, `pipeline=news-song`, and `playbook=thechaosfm-gta-political`.

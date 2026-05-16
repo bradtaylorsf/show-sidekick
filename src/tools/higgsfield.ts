@@ -100,12 +100,12 @@ export default defineTool({
       } satisfies HiggsfieldOutput);
     }
 
-    const imageUrl = await resolvePreparedImageUrl(imageSource, ctx);
-    const request = buildWireRequest(input, imageUrl);
-    const result = await runHiggsfield(input, imageUrl, request, ctx);
+    const imageReference = resolvePreparedImageReference(imageSource);
+    const request = buildWireRequest(input, imageReference);
+    const result = await runHiggsfield(input, imageReference, request, ctx);
     const videoPath = readVideoPath(result.stdout);
     const recordedRequest = readRecordedRequest(result.stdout) ?? request;
-    await rememberClipCache(ctx, { ...cacheKey, video_path: videoPath, resolved_image_url: imageUrl });
+    await rememberClipCache(ctx, { ...cacheKey, video_path: videoPath, resolved_image_url: imageReference });
 
     return outputSchema.parse({
       video_path: videoPath,
@@ -148,24 +148,17 @@ async function prepareImageSource(input: HiggsfieldInput, ctx: ToolContext): Pro
   return {
     kind: "path",
     imagePath,
-    displayUrl: "https://cache.local/predit-local-image",
+    displayUrl: imagePath,
     cacheKey: { image_fingerprint: imageFingerprint },
   };
 }
 
-async function resolvePreparedImageUrl(input: PreparedImageSource, ctx: ToolContext): Promise<string> {
+function resolvePreparedImageReference(input: PreparedImageSource): string {
   if (input.kind === "url") {
     return input.displayUrl;
   }
 
-  if (!ctx.registry) {
-    throw new Error("Higgsfield image_path inputs require an image_hosting tool in the execution context");
-  }
-
-  const imageHostingTool = await ctx.registry.select("image_hosting");
-  const hosted = await imageHostingTool.execute({ local_path: input.imagePath }, ctx);
-
-  return readHostedUrl(hosted);
+  return input.imagePath;
 }
 
 function buildWireRequest(input: HiggsfieldInput, imageUrl: string): WireRequest {
@@ -220,10 +213,12 @@ async function runHiggsfield(
 
 function readVideoPath(stdout: string): string {
   const parsed = parseJsonObject(stdout);
-  const videoPath = firstStringAtKeys(parsed, ["video_path", "path", "output_path", "url", "result_url", "download_url"]);
+  const videoPath =
+    firstVideoStringAtKeys(parsed, ["video_path", "video_url", "output_video", "result_url", "download_url"]) ??
+    firstVideoStringAtKeys(parsed, ["path", "output_path", "url"]);
 
   if (typeof videoPath !== "string" || videoPath.length === 0) {
-    throw new Error("Higgsfield CLI did not return a video_path");
+    throw new Error("Higgsfield CLI did not return a video result URL or path");
   }
 
   return videoPath;
@@ -261,18 +256,6 @@ function nonBlankEnv(name: string): string | undefined {
   return value !== undefined && value.trim() !== "" ? value : undefined;
 }
 
-function readHostedUrl(output: unknown): string {
-  if (isRecord(output) && typeof output.url === "string") {
-    return output.url;
-  }
-
-  if (isRecord(output) && typeof output.image_url === "string") {
-    return output.image_url;
-  }
-
-  throw new Error("image_hosting tool did not return a hosted url");
-}
-
 function parseJsonObject(stdout: string): Record<string, unknown> | undefined {
   try {
     const parsed: unknown = JSON.parse(stdout);
@@ -288,10 +271,10 @@ function parseJsonObject(stdout: string): Record<string, unknown> | undefined {
   }
 }
 
-function firstStringAtKeys(value: unknown, keys: readonly string[]): string | undefined {
+function firstVideoStringAtKeys(value: unknown, keys: readonly string[]): string | undefined {
   if (Array.isArray(value)) {
     for (const item of value) {
-      const match = firstStringAtKeys(item, keys);
+      const match = firstVideoStringAtKeys(item, keys);
       if (match !== undefined) {
         return match;
       }
@@ -305,13 +288,13 @@ function firstStringAtKeys(value: unknown, keys: readonly string[]): string | un
 
   for (const key of keys) {
     const candidate = value[key];
-    if (typeof candidate === "string" && candidate.trim().length > 0) {
+    if (typeof candidate === "string" && looksLikeVideoReference(candidate)) {
       return candidate;
     }
   }
 
   for (const candidate of Object.values(value)) {
-    const match = firstStringAtKeys(candidate, keys);
+    const match = firstVideoStringAtKeys(candidate, keys);
     if (match !== undefined) {
       return match;
     }
@@ -322,4 +305,30 @@ function firstStringAtKeys(value: unknown, keys: readonly string[]): string | un
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function looksLikeVideoReference(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+
+  if (isImageReference(trimmed)) {
+    return false;
+  }
+
+  return true;
+}
+
+function isImageReference(value: string): boolean {
+  const pathname = urlPathname(value) ?? value;
+  return /\.(?:avif|gif|jpe?g|png|webp)(?:$|[?#])/iu.test(pathname);
+}
+
+function urlPathname(value: string): string | undefined {
+  try {
+    return new URL(value).pathname;
+  } catch {
+    return undefined;
+  }
 }

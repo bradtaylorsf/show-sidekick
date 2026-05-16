@@ -232,6 +232,166 @@ describe("paid sample dispatcher", () => {
     });
   });
 
+  it("plans source-free news-song samples from lyrics, skips filler ad-libs, and uses Higgsfield GPT Image 2", async () => {
+    const root = await scratchProject();
+    const show: LoadedShow = {
+      ...loadedShow(root, "remotion"),
+      pipelines: {
+        "news-song": {
+          runtime: "remotion" as const,
+          aspect: "16:9",
+        },
+      },
+      defaults: {
+        pipeline: "news-song",
+      },
+    };
+    const lyricsPath = path.join("shows", "show", "inputs", "episode", "lyrics.txt");
+    await writeFixture(
+      path.join(root, lyricsPath),
+      [
+        "[Intro]",
+        "Uh...",
+        "Yeah...",
+        "Bankrupt the billionaires at dawn",
+        "Turn the towers into tools",
+        "Everybody builds the future",
+      ].join("\n"),
+    );
+    const episode: LoadedEpisode = {
+      ...loadedEpisode(show, "remotion"),
+      pipeline: "news-song",
+      inputs: {
+        track: "shows/show/inputs/episode/track.wav",
+        lyrics: lyricsPath,
+        sources: null,
+      },
+    };
+    const pipeline: PipelineManifest = {
+      ...pipelineManifest(),
+      slug: "news-song",
+      master_clock: "audio",
+      sample: {
+        duration_s_min: 18,
+        duration_s_max: 18,
+        max_scenes: 6,
+        max_cost_usd: 1.1,
+      },
+      stages: [
+        stage("cuesheet", "cuesheet"),
+        stage("source_review", "source_media_review"),
+        stage("script", "script"),
+        stage("scene_plan", "scene_plan"),
+        stage("assets", "asset_manifest"),
+        stage("edit", "edit_decisions"),
+        stage("compose", "render_report"),
+      ],
+    };
+    const higgsfieldInputs: unknown[] = [];
+    const videoComposeInputs: unknown[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "news-song",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          includeHiggsfieldImage: true,
+          includeRemotionRuntime: true,
+          onHiggsfieldInput: (input) => higgsfieldInputs.push(input),
+          onVideoComposeInput: (input) => videoComposeInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", budget_usd: 1.1, nonInteractive: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    await expect(readCheckpoint(root, "show", "episode", "source_review")).resolves.toMatchObject({
+      artifact: {
+        content_mode: "source-free-protest-music-video",
+        files: expect.arrayContaining([
+          expect.objectContaining({
+            technical_probe: expect.objectContaining({ media_kind: "audio", duration_s: 18, sample_scope_s: 18 }),
+            content_summary: expect.stringContaining("media_kind=audio"),
+          }),
+          expect.objectContaining({
+            technical_probe: expect.objectContaining({ media_kind: "text", line_count: 5, non_filler_line_count: 3 }),
+            content_summary: expect.stringContaining("non_filler_line_count=3"),
+          }),
+        ]),
+      },
+    });
+    await expect(readCheckpoint(root, "show", "episode", "script")).resolves.toMatchObject({
+      artifact: {
+        sections: [
+          expect.objectContaining({ narration: "Bankrupt the billionaires at dawn" }),
+          expect.objectContaining({ narration: "Turn the towers into tools" }),
+          expect.objectContaining({ narration: "Everybody builds the future" }),
+        ],
+      },
+    });
+    await expect(readCheckpoint(root, "show", "episode", "scene_plan")).resolves.toMatchObject({
+      artifact: {
+        scenes: expect.arrayContaining([
+          expect.objectContaining({
+            texture_keywords: expect.arrayContaining(["PS2-era low-poly geometry", "source-free lyric-art"]),
+          }),
+        ]),
+      },
+    });
+    const sceneCheckpoint = (await readCheckpoint(root, "show", "episode", "scene_plan")) as { artifact: { scenes: Array<{ start_s: number; end_s: number }> } };
+    expect(sceneCheckpoint.artifact.scenes).toHaveLength(6);
+    expect(sceneCheckpoint.artifact.scenes.every((scene) => scene.end_s - scene.start_s <= 5)).toBe(true);
+    await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
+      artifact: {
+        assets: expect.arrayContaining([
+          expect.objectContaining({ id: "paid_sample_image", provider: "higgsfield", model: "gpt_image_2" }),
+          expect.objectContaining({ id: "paid_sample_clip", provider: "higgsfield", model: "seedance_2_0" }),
+        ]),
+      },
+    });
+    await expect(readCostLog(root, "show", "episode")).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ tool: "higgsfield_image", provider: "higgsfield", usd: 0.04, mode: "sample" }),
+      ]),
+    );
+    expect(higgsfieldInputs[0]).toMatchObject({
+      image_path: "projects/show/episode/assets/higgsfield-sample.png",
+      prompt: expect.stringContaining("PS2/GTA political music-video shot"),
+    });
+    expect(videoComposeInputs[0]).toMatchObject({
+      asset_manifest: {
+        assets: expect.arrayContaining([
+          expect.objectContaining({ id: "paid_sample_clip", path: "projects/show/episode/clips/higgsfield-sample.mp4" }),
+        ]),
+      },
+      edit_decisions: {
+        render_runtime: "remotion",
+      },
+    });
+    await expect(
+      readFile(path.join(root, "projects", "show", "episode", "artifacts", "gpt_image2_full_prompts", "001_sample_1_1.txt"), "utf8"),
+    ).resolves.toContain("PS2/GTA political music video");
+    await expect(
+      readFile(path.join(root, "projects", "show", "episode", "artifacts", "gpt_image2_full_prompts", "002_sample_1_2.txt"), "utf8"),
+    ).resolves.toContain("Bankrupt the billionaires at dawn");
+    const fullPlan = JSON.parse(
+      await readFile(path.join(root, "projects", "show", "episode", "artifacts", "gpt_image2_full_scene_plan.json"), "utf8"),
+    ) as Record<string, unknown>;
+    expect(fullPlan).toMatchObject({
+      image_provider: { provider: "higgsfield", model: "gpt_image_2" },
+      storyboard_first: true,
+      scene_count: 6,
+      max_scene_duration: 3,
+    });
+  });
+
   it("hydrates checkpointed paid-sample artifacts when starting at compose", async () => {
     const root = await scratchProject();
     const show = loadedShow(root);
@@ -386,16 +546,27 @@ function paidSampleTools(
   root: string,
   options: {
     higgsfieldCacheHit?: boolean;
+    includeHiggsfieldImage?: boolean;
     includeRemotionRuntime?: boolean;
     onFfmpegInput?: (input: unknown) => void;
+    onHiggsfieldInput?: (input: unknown) => void;
     onVideoComposeInput?: (input: unknown) => void;
   } = {},
 ): Tool[] {
   const imagePath = path.join(root, "fixtures", "openai.png");
+  const higgsfieldImagePath = path.join(root, "fixtures", "higgsfield.png");
   const audioPath = path.join(root, "fixtures", "narration.mp3");
   const clipPath = path.join(root, "fixtures", "clip.mp4");
 
   return [
+    ...(options.includeHiggsfieldImage
+      ? [
+          fixtureTool("higgsfield_image", "image_generation", "higgsfield", 0.04, async () => {
+            await writeFixture(higgsfieldImagePath, "higgsfield-image");
+            return { image_path: higgsfieldImagePath, provider: "higgsfield", model: "gpt_image_2", cost_usd: 0.04 };
+          }),
+        ]
+      : []),
     fixtureTool("openai_image", "image_generation", "openai", 0.04, async () => {
       await writeFixture(imagePath, "image");
       return { image_path: imagePath, provider: "openai", model: "gpt-image-1", cost_usd: 0.04 };
@@ -404,7 +575,8 @@ function paidSampleTools(
       await writeFixture(audioPath, "audio");
       return { audio_path: audioPath, provider: "elevenlabs", model: "eleven_multilingual_v2", cost_usd: 0.0003 };
     }),
-    fixtureTool("higgsfield", "image_to_video", "higgsfield", 0.3, async () => {
+    fixtureTool("higgsfield", "image_to_video", "higgsfield", 0.3, async (input) => {
+      options.onHiggsfieldInput?.(input);
       await writeFixture(clipPath, "clip");
       return { video_path: clipPath, cost_usd: options.higgsfieldCacheHit ? 0 : 0.3, cache_hit: options.higgsfieldCacheHit === true };
     }),

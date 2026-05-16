@@ -64,7 +64,7 @@ Common flows:
 - The scaffolded `.gitignore` keeps generated workspaces, renders, exports, local media, `.predit/`, and `.env` out of git while leaving shows, pipelines, playbooks, skills, and `.env.example` shareable.
 - Shared project clones restore the gitignored `.predit/` cache automatically before commands run, using the locally installed harness version.
 - Commands load `.env`, `.env.<command>`, and `.env.local` from the project root; shell environment variables win over file values.
-- `predit doctor --profile paid-demo` checks OpenAI, ElevenLabs, Higgsfield, ffmpeg, and ffprobe readiness without spending provider credits.
+- `predit doctor --profile paid-demo` checks Higgsfield GPT Image 2 stills, OpenAI and ElevenLabs TTS, Higgsfield clips, ffmpeg, and ffprobe readiness without spending provider credits.
 - `predit setup runtimes` can be rerun later to repair or add Remotion, the Remotion CLI, aligned support deps, and HyperFrames as project-local dev dependencies when they were skipped or unavailable at init.
 - `predit new show <slug> --from <starter>` clones a starter-backed show; `predit new show <slug> --pipelines <pipeline>` creates a custom show bound to existing manifests.
 - `predit new pipeline <slug>` creates `pipelines/<slug>.yaml` plus `skills/pipelines/<slug>/idea-director.md`.

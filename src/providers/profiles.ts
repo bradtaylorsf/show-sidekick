@@ -29,13 +29,13 @@ export type ProviderProfile = {
 export const PAID_DEMO_PROFILE: ProviderProfile = {
   slug: "paid-demo",
   display_name: "Paid Demo",
-  description: "OpenAI image/TTS, ElevenLabs TTS, Higgsfield image-to-video, and local ffmpeg assembly.",
-  required_tools: ["openai_image", "openai_tts", "elevenlabs_tts", "higgsfield", "ffmpeg"],
+  description: "Higgsfield GPT Image 2 stills, OpenAI direct image/TTS fallback, ElevenLabs TTS, Higgsfield image-to-video, and local ffmpeg assembly.",
+  required_tools: ["higgsfield_image", "openai_image", "openai_tts", "elevenlabs_tts", "higgsfield", "ffmpeg"],
   checks: [
     {
       id: "openai-api-key",
       label: "OPENAI_API_KEY",
-      description: "OpenAI image generation and OpenAI TTS fallback",
+      description: "OpenAI direct image fallback and OpenAI TTS fallback",
       integration: {
         kind: "api",
         env: ["OPENAI_API_KEY"],
@@ -66,7 +66,7 @@ export const PAID_DEMO_PROFILE: ProviderProfile = {
         install: "npm i -g @higgsfield/cli && higgsfield auth login",
       },
       setup: "Install the Higgsfield CLI with `npm i -g @higgsfield/cli`, then run `higgsfield auth login`.",
-      tool_names: ["higgsfield"],
+      tool_names: ["higgsfield", "higgsfield_image"],
     },
     {
       id: "higgsfield-account-status",
@@ -79,7 +79,7 @@ export const PAID_DEMO_PROFILE: ProviderProfile = {
         install: "npm i -g @higgsfield/cli && higgsfield auth login",
       },
       setup: "Run `higgsfield auth login`, then verify with `higgsfield account status --json`.",
-      tool_names: ["higgsfield"],
+      tool_names: ["higgsfield", "higgsfield_image"],
     },
     {
       id: "ffmpeg-binary",
@@ -110,7 +110,7 @@ export const PAID_DEMO_PROFILE: ProviderProfile = {
     {
       label: "paid-demo",
       rejected_because: null,
-      notes: "Selected profile: OpenAI images/TTS fallback, ElevenLabs narration, Higgsfield clips, and ffmpeg assembly.",
+      notes: "Selected profile: Higgsfield GPT Image 2 stills, OpenAI direct image/TTS fallback, ElevenLabs narration, Higgsfield clips, and ffmpeg assembly.",
     },
     {
       label: "free-zero-cost",

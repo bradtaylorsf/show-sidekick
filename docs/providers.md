@@ -141,6 +141,7 @@ pnpm run docs:providers
 | `local_diffusion` | experimental | binary | python3 | none | local SD/SDXL image generation on machines with a local model and LOCAL_GPU runtime | $0 / image |
 | `math_animate` | beta | binary | manim | none | rendering Manim math scenes as animation clips or PNG frames | $0 / image |
 | `showcase_card` | production | binary | ffmpeg | none | deterministic product or brand showcase cards composed from local assets | not declared |
+| `higgsfield_image` | beta | cli | higgsfield / higgsfield | cli-login (higgsfield account status --json) | GPT Image 2 still-frame generation through the Higgsfield CLI. | $0.04 / image |
 | `code_snippet` | beta | library | node:zlib | none | transparent PNG code overlays for explainers and talking-head terminal shots | $0 / image |
 | `image_generation` | beta | library | predit | none | Compatibility alias for selecting a concrete image generation provider. | not declared |
 | `image_selector` | beta | library | predit | none | Provider-selection marker for choosing a concrete image-generation tool at runtime | not declared |

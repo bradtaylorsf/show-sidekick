@@ -17,6 +17,7 @@ type PaidSampleDispatcherOptions = {
 type PaidSampleState = {
   brief?: unknown;
   research_brief?: unknown;
+  source_media_review?: unknown;
   proposal_packet?: unknown;
   script?: unknown;
   cuesheet?: unknown;
@@ -38,11 +39,19 @@ type SampleBeat = {
   title: string;
   body: string;
   narration: string;
+  section?: string;
+  sourceLine?: string;
+};
+
+type LyricLine = {
+  section: string;
+  text: string;
 };
 
 const STATE_ARTIFACT_KEYS = [
   "brief",
   "research_brief",
+  "source_media_review",
   "proposal_packet",
   "script",
   "cuesheet",
@@ -147,6 +156,9 @@ async function artifactForStage(
     case "research_brief":
       state.research_brief ??= buildResearchBrief(ctx);
       return state.research_brief;
+    case "source_media_review":
+      state.source_media_review ??= await buildSourceMediaReview(ctx);
+      return state.source_media_review;
     case "proposal_packet":
       state.proposal_packet ??= buildProposalPacket(ctx);
       decisions.push(...proposalDecisions(ctx, options));
@@ -259,7 +271,8 @@ async function buildScript(ctx: StageContext): Promise<unknown> {
 
 async function buildCuesheet(ctx: StageContext): Promise<unknown> {
   const duration = sampleDuration(ctx);
-  const text = await narrationText(ctx);
+  const beats = lyricMusicMode(ctx) ? await sampleBeats(ctx) : undefined;
+  const text = beats === undefined ? await narrationText(ctx) : beats.map((beat) => beat.narration).join(" ");
   const trackPath = stringInput(ctx, "track") ?? stringInput(ctx, "audio") ?? stringInput(ctx, "music") ?? "pending";
   const words = text.match(/[A-Za-z0-9']+/gu)?.slice(0, 48) ?? ["paid", "sample"];
   const wordDuration = duration / Math.max(1, words.length);
@@ -269,6 +282,32 @@ async function buildCuesheet(ctx: StageContext): Promise<unknown> {
     end_s: roundTime(Math.min(duration, (index + 1) * wordDuration)),
     confidence: 1,
   }));
+  const sections =
+    beats === undefined || beats.length === 0
+      ? [{ label: "sample", start_s: 0, end_s: duration, kind: "vocal", energy: 0.8 }]
+      : sampleBeatCuts(duration, beats).map((cut, index) => ({
+          label: beats[index]?.title ?? `sample-${index + 1}`,
+          start_s: cut.start_s,
+          end_s: cut.end_s,
+          kind: "vocal" as const,
+          energy: index === 0 ? 0.82 : 0.74,
+        }));
+  const lyricsAligned =
+    beats === undefined
+      ? undefined
+      : sampleBeatCuts(duration, beats).map((cut, index) => ({
+          id: `line-${index + 1}`,
+          section: beats[index]?.section ?? "sample",
+          line: beats[index]?.sourceLine ?? beats[index]?.narration ?? "",
+          start: cut.start_s,
+          end: cut.end_s,
+          alignment_confidence: 0.35,
+          alignment_source: "deterministic_sample_window",
+          concept: beats[index]?.body ?? beats[index]?.title ?? "",
+        }));
+  if (lyricsAligned !== undefined) {
+    await writeEpisodeJson(ctx, "lyrics_aligned.json", lyricsAligned);
+  }
 
   return {
     audio: {
@@ -282,7 +321,7 @@ async function buildCuesheet(ctx: StageContext): Promise<unknown> {
     transcription_confidence: { average: 1, low_confidence: false },
     words: wordCues,
     segments: [{ start_s: 0, end_s: duration, text: words.join(" "), words: wordCues }],
-    sections: [{ label: "sample", start_s: 0, end_s: duration, kind: "vocal", energy: 0.8 }],
+    sections,
     beats: Array.from({ length: Math.max(1, Math.floor(duration * 2)) }, (_value, index) => ({
       time_s: roundTime(index * 0.5),
       strength: index % 4 === 0 ? 1 : 0.65,
@@ -290,10 +329,83 @@ async function buildCuesheet(ctx: StageContext): Promise<unknown> {
     })),
     climax: [{ time_s: roundTime(duration * 0.75), type: "arrival", intensity: 0.85, source: "algorithm" }],
     scene_anchors: [],
+    ...(lyricsAligned === undefined ? {} : { lyrics_aligned: lyricsAligned }),
+  };
+}
+
+async function buildSourceMediaReview(ctx: StageContext): Promise<unknown> {
+  const track = stringInput(ctx, "track") ?? stringInput(ctx, "audio") ?? stringInput(ctx, "music");
+  const lyrics = stringInput(ctx, "lyrics");
+  const lyricsText = await textInput(ctx, "lyrics");
+  const lyricLines = lyricsText === undefined ? [] : parseLyricLines(lyricsText);
+  const sourceFree = isSourceFree(ctx);
+  const files = [
+    ...(track === undefined
+      ? []
+      : [
+          {
+            path: track,
+            reviewed: true,
+            technical_probe: {
+              media_kind: "audio",
+              duration_s: sampleDuration(ctx),
+              sample_scope_s: sampleDuration(ctx),
+            },
+            content_summary: `Probe cites media_kind=audio and duration_s=${sampleDuration(
+              ctx,
+            )}; use sample_scope_s=${sampleDuration(ctx)} for the paid sample window.`,
+            planning_implications: [
+              "Use audio-led timing; preserve caption_mode none unless explicitly changed.",
+              sourceFree ? "Source-free mode: generated lyric-art only, no fake evidence screenshots." : "Sourced mode requires real captures.",
+            ],
+          },
+        ]),
+    ...(lyrics === undefined
+      ? []
+      : [
+          {
+            path: lyrics,
+            reviewed: true,
+            technical_probe: {
+              media_kind: "text",
+              line_count: lyricLines.length,
+              non_filler_line_count: lyricLines.filter((line) => !isFillerLyricLine(line.text)).length,
+            },
+            content_summary: `Probe cites media_kind=text and line_count=${lyricLines.length}; use non_filler_line_count=${
+              lyricLines.filter((line) => !isFillerLyricLine(line.text)).length
+            } for beat selection.`,
+            planning_implications: ["Use lyric-art scenes only; do not invent source evidence or fake screenshots."],
+          },
+        ]),
+  ];
+
+  return {
+    files:
+      files.length > 0
+        ? files
+        : [
+            {
+              path: "episode-inputs",
+              reviewed: true,
+              technical_probe: { media_kind: "episode", input_count: Object.keys(ctx.episode.inputs).length },
+              content_summary: `Probe cites media_kind=episode and input_count=${
+                Object.keys(ctx.episode.inputs).length
+              }; no concrete media file was supplied.`,
+              planning_implications: ["Keep sample scope small and source-free unless sources are supplied."],
+            },
+          ],
+    content_mode: sourceFree ? "source-free-protest-music-video" : "sourced-political-news-song",
   };
 }
 
 async function buildCaptureManifest(ctx: StageContext): Promise<unknown> {
+  if (isSourceFree(ctx)) {
+    return {
+      screenshots: [],
+      failures: [],
+    };
+  }
+
   const frame = await firstExistingInput(ctx, ["screenshot", "reference_image", "terminal_frame"]);
 
   return {
@@ -316,38 +428,86 @@ async function buildScenePlan(ctx: StageContext): Promise<unknown> {
   const duration = sampleDuration(ctx);
   const beats = await sampleBeats(ctx);
   const cuts = sampleBeatCuts(duration, beats);
+  if (!lyricMusicMode(ctx)) {
+    return {
+      scenes: beats.map((beat, index) => ({
+        slug: `sample-${index + 1}`,
+        order: index,
+        start_s: cuts[index]?.start_s ?? 0,
+        end_s: cuts[index]?.end_s ?? duration,
+        narrative_role: scriptRole(index, beats.length),
+        scene_anchor: beat.title,
+        hero_moment: index === 0,
+        description: beat.body,
+        shot_intent: "Make the explanation legible through a generated motion clip.",
+        information_role: index === 0 ? "hook setup" : index === beats.length - 1 ? "takeaway" : "explanatory beat",
+        texture_keywords: ["provider-backed", rendererFamily(ctx), "animated-explainer"],
+        character_actions: [],
+        shot_language: {
+          shot_size: "MS",
+          camera_movement: index % 2 === 0 ? "push_in" : "orbit_cw",
+          lighting_key: "soft",
+          lens_mm: 35,
+          depth_of_field: "deep",
+          color_temperature: "daylight",
+        },
+        required_assets: [
+          {
+            id: clipAssetId(index),
+            source: "generated",
+            notes: "Generated start frame plus Higgsfield motion clip for this explainer beat.",
+          },
+        ],
+      })),
+    };
+  }
 
-  return {
-    scenes: beats.map((beat, index) => ({
-      slug: `sample-${index + 1}`,
-      order: index,
-      start_s: cuts[index]?.start_s ?? 0,
-      end_s: cuts[index]?.end_s ?? duration,
+  let order = 0;
+  const scenes = beats.flatMap((beat, index) => {
+    const cut = cuts[index] ?? { start_s: 0, end_s: duration };
+    const subcuts = splitCutByMaxDuration(cut.start_s, cut.end_s, 5);
+
+    return subcuts.map((subcut, subIndex) => ({
+      slug: subcuts.length === 1 ? `sample-${index + 1}` : `sample-${index + 1}-${subIndex + 1}`,
+      order: order++,
+      start_s: subcut.start_s,
+      end_s: subcut.end_s,
       narrative_role: scriptRole(index, beats.length),
       scene_anchor: beat.title,
-      hero_moment: index === 0,
-      description: beat.body,
-      shot_intent: "Make the explanation legible through a generated motion clip.",
+      hero_moment: index === 0 && subIndex === 0,
+      description: ps2SceneDescription(beat.body, subIndex),
+      shot_intent: "Turn the lyric into a beat-locked PS2/GTA political music-video shot.",
       information_role: index === 0 ? "hook setup" : index === beats.length - 1 ? "takeaway" : "explanatory beat",
-      texture_keywords: ["provider-backed", rendererFamily(ctx), "animated-explainer"],
+      texture_keywords: [
+        "PS2-era low-poly geometry",
+        "compressed textures",
+        "visible polygon edges",
+        "CRT glow",
+        "VHS tape noise",
+        "source-free lyric-art",
+      ],
       character_actions: [],
       shot_language: {
-        shot_size: "MS",
-        camera_movement: index % 2 === 0 ? "push_in" : "orbit_cw",
-        lighting_key: "soft",
-        lens_mm: 35,
+        shot_size: subIndex % 2 === 0 ? "MS" : "WS",
+        camera_movement: subIndex % 2 === 0 ? "push_in" : "handheld",
+        lighting_key: subIndex % 2 === 0 ? "neon" : "low_key",
+        lens_mm: subIndex % 2 === 0 ? 35 : 24,
         depth_of_field: "deep",
-        color_temperature: "daylight",
+        color_temperature: "mixed",
       },
       required_assets: [
         {
           id: clipAssetId(index),
           source: "generated",
-          notes: "OpenAI start frame plus Higgsfield motion clip for this explainer beat.",
+          notes: "Higgsfield GPT Image 2 start frame plus Higgsfield motion clip reused across split <=5s sample scenes.",
         },
       ],
-    })),
-  };
+    }));
+  });
+
+  await writeLyricPlanningArtifacts(ctx, beats, scenes);
+
+  return { scenes };
 }
 
 async function buildAssets(
@@ -357,7 +517,7 @@ async function buildAssets(
   decisions: DecisionEntry[],
   options: PaidSampleDispatcherOptions,
 ): Promise<unknown> {
-  const imageTool = await toolFor(ctx, "openai_image", "image_generation");
+  const imageTool = await toolFor(ctx, lyricMusicMode(ctx) ? "higgsfield_image" : "openai_image", "image_generation");
   const videoTool = await toolFor(ctx, "higgsfield", "image_to_video");
   const beats = await sampleBeats(ctx);
   const imageAssets: Array<Record<string, unknown>> = [];
@@ -367,30 +527,39 @@ async function buildAssets(
 
   for (const beat of beats) {
     const imagePromptText = imagePrompt(ctx, beat);
+    const imageModel = imageTool.name === "higgsfield_image" ? "gpt_image_2" : "gpt-image-1";
     const imageResult = await imageTool.execute(
-      {
-        prompt: imagePromptText,
-        size: imageSize(ctx),
-        quality: "low",
-      },
+      imageTool.name === "higgsfield_image"
+        ? {
+            prompt: imagePromptText,
+            aspect_ratio: aspect(ctx).startsWith("9:16") ? "9:16" : "16:9",
+            quality: "low",
+            resolution: "2k",
+          }
+        : {
+            prompt: imagePromptText,
+            size: imageSize(ctx),
+            quality: "low",
+          },
       toolContext(ctx, {
         reason: `Generate paid-demo explainer start frame ${beat.index + 1}.`,
-        model: "gpt-image-1",
+        model: imageModel,
         units: 1,
       }),
     );
     const image = recordValue(imageResult);
-    const imageFileName = beat.index === 0 ? "openai-sample.png" : `openai-sample-${beat.index + 1}.png`;
+    const imagePrefix = imageTool.name === "higgsfield_image" ? "higgsfield" : "openai";
+    const imageFileName = beat.index === 0 ? `${imagePrefix}-sample.png` : `${imagePrefix}-sample-${beat.index + 1}.png`;
     const imagePath = await episodeMediaPath(ctx, stringValue(image?.image_path), "assets", imageFileName);
     imagePaths.push(imagePath);
     costEntries.push(
-      costEntry("openai_image", "openai", stringValue(image?.model) ?? "gpt-image-1", 1, numberValue(image?.cost_usd) ?? 0),
+      costEntry(imageTool.name, imageTool.provider, stringValue(image?.model) ?? imageModel, 1, numberValue(image?.cost_usd) ?? 0),
     );
 
     const videoInput =
-      typeof image?.url === "string"
-        ? { image_url: image.url, prompt: motionPrompt(ctx, beat), duration: higgsfieldDuration(ctx) }
-        : { image_path: imagePath, prompt: motionPrompt(ctx, beat), duration: higgsfieldDuration(ctx) };
+      videoTool.name === "higgsfield" || typeof image?.url !== "string"
+        ? { image_path: imagePath, prompt: motionPrompt(ctx, beat), duration: higgsfieldDuration(ctx) }
+        : { image_url: image.url, prompt: motionPrompt(ctx, beat), duration: higgsfieldDuration(ctx) };
     const videoResult = await videoTool.execute(
       videoInput,
       toolContext(ctx, {
@@ -413,8 +582,8 @@ async function buildAssets(
       kind: "image",
       path: imagePath,
       scene_ref: `sample-${beat.index + 1}`,
-      provider: "openai",
-      model: stringValue(image?.model) ?? "gpt-image-1",
+      provider: imageTool.provider,
+      model: stringValue(image?.model) ?? imageModel,
       prompt: imagePromptText,
       cost_usd: numberValue(image?.cost_usd) ?? 0,
     });
@@ -469,8 +638,8 @@ async function buildAssets(
   }
 
   decisions.push(
-    providerDecision(ctx, "image_generation", "openai", options),
-    modelDecision(ctx, "openai", "gpt-image-1", options),
+    providerDecision(ctx, "image_generation", imageTool.provider, options),
+    modelDecision(ctx, imageTool.provider, imageTool.name === "higgsfield_image" ? "gpt_image_2" : "gpt-image-1", options),
     providerDecision(ctx, "image_to_video", "higgsfield", options),
     modelDecision(ctx, "higgsfield", "seedance_2_0", options),
   );
@@ -499,16 +668,33 @@ async function buildAssets(
 function buildEditDecisions(ctx: StageContext, state: PaidSampleState): unknown {
   const duration = sampleDuration(ctx);
   const clipPaths = state.clipPaths && state.clipPaths.length > 0 ? state.clipPaths : state.clipPath ? [state.clipPath] : [];
+  const scenes = recordValue(state.scene_plan)?.scenes;
+  const sceneCuts = Array.isArray(scenes)
+    ? scenes.map((scene, index) => {
+        const record = recordValue(scene);
+        const requiredAssets = record?.required_assets;
+        const firstAsset = Array.isArray(requiredAssets) ? recordValue(requiredAssets[0]) : undefined;
+
+        return {
+          start_s: numberValue(record?.start_s) ?? 0,
+          end_s: numberValue(record?.end_s) ?? duration,
+          asset_id: stringValue(firstAsset?.id) ?? clipAssetId(index % Math.max(1, clipPaths.length)),
+          provider: "higgsfield",
+        };
+      })
+    : undefined;
   const clipCount = Math.max(1, clipPaths.length);
   const cutDuration = duration / clipCount;
 
   return {
-    cuts: Array.from({ length: clipCount }, (_value, index) => ({
-      start_s: roundTime(index * cutDuration),
-      end_s: roundTime(index === clipCount - 1 ? duration : (index + 1) * cutDuration),
-      asset_id: clipAssetId(index),
-      provider: "higgsfield",
-    })),
+    cuts:
+      sceneCuts ??
+      Array.from({ length: clipCount }, (_value, index) => ({
+        start_s: roundTime(index * cutDuration),
+        end_s: roundTime(index === clipCount - 1 ? duration : (index + 1) * cutDuration),
+        asset_id: clipAssetId(index),
+        provider: "higgsfield",
+      })),
     overlays: [],
     audio:
       state.narrationPath === undefined
@@ -672,7 +858,16 @@ async function preferredTtsTool(ctx: StageContext): Promise<Tool> {
 async function toolFor(ctx: StageContext, name: string, capability: string): Promise<Tool> {
   const named = ctx.registry.get(name);
   if (named !== undefined) {
-    return named;
+    const cached = ctx.registry.getAvailability(name);
+    if (cached?.available === true) {
+      return named;
+    }
+    if (cached === undefined) {
+      const availability = await named.isAvailable({ projectRoot: ctx.show.projectRoot });
+      if (availability.available) {
+        return named;
+      }
+    }
   }
 
   return ctx.registry.select(capability, { prefer: [name], context: { projectRoot: ctx.show.projectRoot } });
@@ -742,6 +937,75 @@ async function episodeMediaPath(
   return projectRelativePath(ctx.show.projectRoot, destination);
 }
 
+async function writeEpisodeJson(ctx: StageContext, relativePath: string, payload: unknown): Promise<string> {
+  const filePath = path.join(projectDir(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug), relativePath);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  return projectRelativePath(ctx.show.projectRoot, filePath);
+}
+
+async function writeLyricPlanningArtifacts(
+  ctx: StageContext,
+  beats: readonly SampleBeat[],
+  scenes: readonly unknown[],
+): Promise<void> {
+  const fullScenes = scenes.map((scene, index) => {
+    const record = recordValue(scene);
+    const slug = stringValue(record?.slug) ?? `sample-${index + 1}`;
+    const beat = beatForSceneSlug(slug, beats) ?? beats[index % Math.max(1, beats.length)];
+    const prompt = lyricArtImagePrompt(ctx, beat);
+    const name = `${String(index + 1).padStart(3, "0")}_${safeFileSlug(slug)}`;
+    const promptPath = path.posix.join(
+      "projects",
+      ctx.show.slug,
+      ctx.episode.slug,
+      "artifacts",
+      "gpt_image2_full_prompts",
+      `${name}.txt`,
+    );
+
+    return {
+      id: `gpt2-${String(index + 1).padStart(3, "0")}`,
+      source_scene_id: slug,
+      start: numberValue(record?.start_s) ?? 0,
+      end: numberValue(record?.end_s) ?? 0,
+      duration: roundTime((numberValue(record?.end_s) ?? 0) - (numberValue(record?.start_s) ?? 0)),
+      section: beat?.section ?? "sample",
+      lyric_text: beat?.sourceLine ?? null,
+      name,
+      module: "source_free_music_video",
+      concept: stringValue(record?.description) ?? beat?.body ?? "",
+      prompt_file: promptPath,
+      image_path: path.posix.join("projects", ctx.show.slug, ctx.episode.slug, "assets", `${name}.png`),
+      video_path: path.posix.join("projects", ctx.show.slug, ctx.episode.slug, "clips", `${name}.mp4`),
+      image_prompt: prompt,
+      motion_prompt: lyricArtMotionPrompt(ctx, beat),
+      hero_moment: record?.hero_moment === true,
+    };
+  });
+
+  await Promise.all(
+    fullScenes.map((scene) => writeTextArtifact(ctx, scene.prompt_file, `${scene.image_prompt}`)),
+  );
+  await writeEpisodeJson(ctx, "artifacts/gpt_image2_full_scene_plan.json", {
+    version: "1.0",
+    project: `${ctx.show.slug}/${ctx.episode.slug}`,
+    duration_seconds: sampleDuration(ctx),
+    scene_count: fullScenes.length,
+    max_scene_duration: Math.max(...fullScenes.map((scene) => numberValue(scene.duration) ?? 0)),
+    image_provider: { provider: "higgsfield", model: "gpt_image_2", execution_path: "higgsfield CLI" },
+    video_provider: { provider: "higgsfield", model: "seedance_2_0", execution_path: "higgsfield CLI image-to-video" },
+    storyboard_first: true,
+    scenes: fullScenes,
+  });
+}
+
+async function writeTextArtifact(ctx: StageContext, projectRelative: string, contents: string): Promise<void> {
+  const filePath = path.resolve(ctx.show.projectRoot, projectRelative);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, contents, "utf8");
+}
+
 async function downloadMedia(url: string, destination: string): Promise<void> {
   const response = await fetch(url);
   if (!response.ok) {
@@ -763,6 +1027,25 @@ async function narrationText(ctx: StageContext): Promise<string> {
 }
 
 async function sampleBeats(ctx: StageContext): Promise<SampleBeat[]> {
+  if (lyricMusicMode(ctx)) {
+    const lyrics = await textInput(ctx, "lyrics");
+    const lyricLines = lyrics === undefined ? [] : parseLyricLines(lyrics).filter((line) => !isFillerLyricLine(line.text));
+    if (lyricLines.length > 0) {
+      const desiredCount = paidSampleSceneCount(ctx, lyricLines.length);
+      return lyricLines.slice(0, desiredCount).map((line, index) => {
+        const split = splitBeatLine(line.text, index);
+        return {
+          index,
+          title: split.title,
+          body: lyricConcept(line.text, index),
+          narration: line.text,
+          section: line.section,
+          sourceLine: line.text,
+        };
+      });
+    }
+  }
+
   const direct = await sourceText(ctx);
   const source =
     direct ??
@@ -792,10 +1075,10 @@ async function sourceText(ctx: StageContext): Promise<string | undefined> {
     (await textInput(ctx, "narration")) ??
     (await textInput(ctx, "script")) ??
     (await textInput(ctx, "host_script")) ??
+    (await textInput(ctx, "lyrics")) ??
     (await textInput(ctx, "brief")) ??
     (await textInput(ctx, "diary")) ??
-    (await textInput(ctx, "notes")) ??
-    (await textInput(ctx, "lyrics"))
+    (await textInput(ctx, "notes"))
   );
 }
 
@@ -812,6 +1095,42 @@ function splitSentences(value: string): string[] {
     .split(/(?<=[.!?])\s+/u)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
+}
+
+function parseLyricLines(value: string): LyricLine[] {
+  const lines: LyricLine[] = [];
+  let section = "sample";
+
+  for (const raw of value.split(/\r?\n/u)) {
+    const line = raw.trim();
+    if (line.length === 0) {
+      continue;
+    }
+
+    const sectionMatch = /^\[(?<section>.+)\]$/u.exec(line);
+    if (sectionMatch?.groups?.section) {
+      section = sectionMatch.groups.section.trim() || section;
+      continue;
+    }
+
+    lines.push({ section, text: line });
+  }
+
+  return lines;
+}
+
+function isFillerLyricLine(line: string): boolean {
+  const normalized = line
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}'\s]+/gu, " ")
+    .trim();
+  if (normalized.length === 0) {
+    return true;
+  }
+
+  const tokens = normalized.split(/\s+/u).filter(Boolean);
+  const filler = new Set(["ah", "ayy", "hey", "hm", "hmm", "mmm", "oh", "ooh", "uh", "uhh", "woah", "woo", "yeah", "yo"]);
+  return tokens.length <= 2 && tokens.every((token) => filler.has(token.replace(/'+$/u, "")));
 }
 
 function splitBeatLine(value: string, index: number): { title: string; body: string } {
@@ -831,6 +1150,24 @@ function splitBeatLine(value: string, index: number): { title: string; body: str
   };
 }
 
+function lyricConcept(line: string, index: number): string {
+  const motifs = [
+    "ordinary creators and workers using accessible AI tools while luxury towers flicker above them",
+    "CRT market-panic screens and old-money silhouettes losing control as open tools spread through the city",
+    "street-level builders turning a rigged financial map into public infrastructure",
+    "neon protest energy moving from isolation toward collective creative leverage",
+  ];
+  return `Visualize the lyric without printing it: "${line}". Show ${motifs[index % motifs.length]}.`;
+}
+
+function lyricMusicMode(ctx: StageContext): boolean {
+  if (typeof ctx.episode.inputs.lyrics === "string") {
+    return ctx.pipeline.master_clock === "audio" || ctx.pipeline.slug.includes("music") || ctx.pipeline.slug.includes("song");
+  }
+
+  return false;
+}
+
 function paidSampleSceneCount(ctx: StageContext, availableSegments: number): number {
   const maxScenes = Math.max(1, ctx.pipeline.sample?.max_scenes ?? 3);
   const budget = ctx.runOptions.budget_usd ?? ctx.pipeline.sample?.max_cost_usd;
@@ -848,6 +1185,41 @@ function sampleBeatCuts(duration: number, beats: readonly SampleBeat[]): Array<{
     start_s: roundTime(index * beatDuration),
     end_s: roundTime(index === beatCount - 1 ? duration : (index + 1) * beatDuration),
   }));
+}
+
+function splitCutByMaxDuration(start: number, end: number, maxDuration: number): Array<{ start_s: number; end_s: number }> {
+  const duration = Math.max(0, end - start);
+  const parts = Math.max(1, Math.ceil(duration / maxDuration));
+  const partDuration = duration / parts;
+
+  return Array.from({ length: parts }, (_value, index) => ({
+    start_s: roundTime(start + index * partDuration),
+    end_s: roundTime(index === parts - 1 ? end : start + (index + 1) * partDuration),
+  }));
+}
+
+function ps2SceneDescription(body: string, variant: number): string {
+  const motif =
+    variant % 2 === 0
+      ? "low-poly workers and creators building AI tools from apartment desks while old-money towers flicker in the background"
+      : "CRT market-panic screens, gated penthouse silhouettes, and open-source neon code spilling through locked doors";
+
+  return `${body}. The ChaosFM PS2/GTA political music-video lyric-art shot: ${motif}, compressed textures, visible polygon edges, vertex lighting, CRT scanlines, VHS tape noise, foggy render distance, no fake article pages, no readable invented logos.`;
+}
+
+function beatForSceneSlug(slug: string, beats: readonly SampleBeat[]): SampleBeat | undefined {
+  const match = /^sample-(?<index>\d+)/u.exec(slug);
+  const index = match?.groups?.index === undefined ? undefined : Number.parseInt(match.groups.index, 10) - 1;
+
+  if (index === undefined || !Number.isInteger(index) || index < 0 || index >= beats.length) {
+    return undefined;
+  }
+
+  return beats[index];
+}
+
+function isSourceFree(ctx: StageContext): boolean {
+  return ctx.episode.inputs.sources === null || ctx.episode.inputs.sources === undefined;
 }
 
 function scriptRole(index: number, count: number): "hook" | "setup" | "rising_action" | "resolution" {
@@ -879,7 +1251,7 @@ async function textInput(ctx: StageContext, key: string): Promise<string | undef
   }
 
   try {
-    return await readFile(value, "utf8");
+    return await readFile(projectReadPath(ctx, value), "utf8");
   } catch {
     return value;
   }
@@ -892,14 +1264,19 @@ async function firstExistingInput(ctx: StageContext, keys: string[]): Promise<st
       continue;
     }
     try {
-      await access(value);
-      return value;
+      const resolved = projectReadPath(ctx, value);
+      await access(resolved);
+      return resolved;
     } catch {
       return value;
     }
   }
 
   return undefined;
+}
+
+function projectReadPath(ctx: StageContext, value: string): string {
+  return path.isAbsolute(value) ? value : path.resolve(ctx.show.projectRoot, value);
 }
 
 function stringInput(ctx: StageContext, key: string): string | undefined {
@@ -912,6 +1289,10 @@ function trimForNarration(value: string): string {
 }
 
 function imagePrompt(ctx: StageContext, beat?: SampleBeat): string {
+  if (lyricMusicMode(ctx)) {
+    return lyricArtImagePrompt(ctx, beat);
+  }
+
   return [
     `Create a polished animated-explainer start frame for ${ctx.episode.title}.`,
     `Pipeline: ${ctx.pipeline.slug}.`,
@@ -924,8 +1305,37 @@ function imagePrompt(ctx: StageContext, beat?: SampleBeat): string {
 }
 
 function motionPrompt(ctx: StageContext, beat?: SampleBeat): string {
+  if (lyricMusicMode(ctx)) {
+    return lyricArtMotionPrompt(ctx, beat);
+  }
+
   const beatText = beat === undefined ? "the sample frame" : `"${beat.title}"`;
   return `Animate ${beatText} as a short ${rendererFamily(ctx)} explainer beat with distinct subject motion, moving diagram elements, clean camera drift, and readable demo-safe pacing.`;
+}
+
+function lyricArtImagePrompt(ctx: StageContext, beat?: SampleBeat): string {
+  return [
+    `Use case: stylized-concept.`,
+    `Asset type: ${aspect(ctx)} keyframe for a PS2/GTA political music video.`,
+    `Primary request: ${beat?.body ?? `Create a source-free lyric-art start frame for ${ctx.episode.title}.`}`,
+    beat?.sourceLine === undefined ? undefined : `Lyric beat being visualized, not printed in the image: ${beat.sourceLine}`,
+    "Source policy: source-free protest music video; no fake article pages, fake screenshots, fake publisher mastheads, fake agency pages, captions, subtitles, watermarks, or invented readable logos.",
+    "Style: low-poly early-2000s video game cinematic, compressed textures, visible polygon edges, simple shaders, vertex lighting, baked shadows, CRT glow, VHS tape noise, foggy render distance, dramatic urban lighting, gritty political rap energy.",
+    "Camera and texture: handheld push-in or tracking shot, low-angle or Dutch angle when useful, rain haze, neon reflections, surveillance-camera tension, grainy motion blur.",
+    "Safety and likeness: nonviolent class-power metaphor; avoid photoreal portraits of real people, gore, severe injuries, and celebratory harm.",
+  ]
+    .filter((part): part is string => typeof part === "string")
+    .join("\n");
+}
+
+function lyricArtMotionPrompt(ctx: StageContext, beat?: SampleBeat): string {
+  const subject = beat === undefined ? "the supplied keyframe" : `"${beat.title}"`;
+  return [
+    "Image-to-video clip. Use the supplied keyframe as the first frame, composition lock, lighting lock, and style lock.",
+    `Animate ${subject} as a short ${rendererFamily(ctx)} PS2/GTA political music-video shot.`,
+    "Use one continuous shot with handheld drift, subtle rain, CRT flicker, neon reflections, low-poly character or crowd motion, VHS artifacts, and a tense push-in or parallax move.",
+    "Do not add captions, new readable text, fake news pages, real logos, gore, face morphing, or major composition changes.",
+  ].join(" ");
 }
 
 function hasReferenceInput(ctx: StageContext): boolean {
@@ -1188,6 +1598,14 @@ function runtimeOptionsConsidered(ctx: StageContext, picked: RenderRuntime): Dec
 
 function projectRelativePath(projectRoot: string, absolutePath: string): string {
   return path.relative(projectRoot, absolutePath).split(path.sep).join("/");
+}
+
+function safeFileSlug(value: string): string {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, "_")
+    .replace(/^_+|_+$/gu, "");
+  return slug.length > 0 ? slug : "scene";
 }
 
 function nowIso(): string {
