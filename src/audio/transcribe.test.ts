@@ -119,6 +119,7 @@ describe("transcribe", () => {
   it("uses a preferred alternative transcriber when registered and available", async () => {
     const whisperCalls: ToolCall[] = [];
     const scribeCalls: ToolCall[] = [];
+    const decisions: unknown[] = [];
     const registry = new Registry({
       tools: [
         transcriptionTool("whisper-cpp", "whisper", whisperCalls, [segment("local", 0.9)]),
@@ -126,11 +127,71 @@ describe("transcribe", () => {
       ],
     });
 
-    const result = await transcribe(track(), { registry, prefer: ["elevenlabs-scribe"] });
+    const result = await transcribe(track(), {
+      registry,
+      prefer: ["elevenlabs-scribe"],
+      logger: captureLogger([]),
+      decisionTimestamp: "2026-05-13T12:00:00.000Z",
+      recordDecision: async (entry) => {
+        decisions.push(entry);
+      },
+    });
 
     expect(scribeCalls).toHaveLength(1);
     expect(whisperCalls).toHaveLength(0);
     expect(result.segments[0]?.text).toBe("scribe");
+    expect(decisions).toContainEqual(
+      expect.objectContaining({
+        id: "transcription_provider-2026-05-13T12-00-00-000Z",
+        category: "provider_selection",
+        scope: { capability: "transcribe", provider: "elevenlabs-scribe" },
+        picked: "elevenlabs-scribe",
+      }),
+    );
+  });
+
+  it("falls back to whisper-cpp when preferred Scribe is unavailable and records the selection", async () => {
+    const whisperCalls: ToolCall[] = [];
+    const scribeCalls: ToolCall[] = [];
+    const decisions: unknown[] = [];
+    const registry = new Registry({
+      tools: [
+        transcriptionTool("elevenlabs-scribe", "transcribe", scribeCalls, [segment("scribe", 0.99)], {
+          available: false,
+          reason: "missing env: ELEVENLABS_API_KEY",
+          fix: "env",
+        }),
+        transcriptionTool("whisper-cpp", "whisper", whisperCalls, [segment("local", 0.9)]),
+      ],
+    });
+
+    const result = await transcribe(track(), {
+      registry,
+      prefer: ["elevenlabs-scribe"],
+      logger: captureLogger([]),
+      decisionTimestamp: "2026-05-13T12:30:00.000Z",
+      recordDecision: async (entry) => {
+        decisions.push(entry);
+      },
+    });
+
+    expect(scribeCalls).toHaveLength(0);
+    expect(whisperCalls).toEqual([{ audio_path: "/tmp/audio.wav", model: "medium.en" }]);
+    expect(result.segments[0]?.text).toBe("local");
+    expect(decisions).toContainEqual(
+      expect.objectContaining({
+        id: "transcription_provider-2026-05-13T12-30-00-000Z",
+        category: "provider_selection",
+        scope: { capability: "transcribe", provider: "whisper-cpp" },
+        picked: "whisper-cpp",
+        options_considered: expect.arrayContaining([
+          expect.objectContaining({
+            label: "elevenlabs-scribe",
+            rejected_because: expect.stringContaining("unavailable"),
+          }),
+        ]),
+      }),
+    );
   });
 
   it("skips provider-selection markers when selecting a concrete transcriber", async () => {

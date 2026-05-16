@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ActionTimelineSchema } from "../artifacts/action-timeline.js";
+import { AudioEnergySchema } from "../artifacts/audio-energy.js";
 import { AssetManifestSchema } from "../artifacts/asset-manifest.js";
 import { BriefSchema } from "../artifacts/brief.js";
 import { CharacterDesignSchema } from "../artifacts/character-design.js";
@@ -9,6 +10,7 @@ import { DecisionLogSchema } from "../artifacts/decision-log.js";
 import { EditDecisionsSchema } from "../artifacts/edit-decisions.js";
 import { EndTagPlanSchema } from "../artifacts/end-tag-plan.js";
 import { FinalReviewSchema } from "../artifacts/final-review.js";
+import { LyricsAlignedSchema } from "../artifacts/lyrics-aligned.js";
 import { PoseLibrarySchema } from "../artifacts/pose-library.js";
 import { ProposalPacketSchema } from "../artifacts/proposal-packet.js";
 import { RenderReportSchema } from "../artifacts/render-report.js";
@@ -22,6 +24,7 @@ import { VideoAnalysisBriefSchema } from "../artifacts/video-analysis-brief.js";
 
 const ARTIFACT_SCHEMAS = {
   action_timeline: ActionTimelineSchema,
+  audio_energy: AudioEnergySchema,
   asset_manifest: AssetManifestSchema,
   assets: AssetManifestSchema,
   brief: BriefSchema,
@@ -34,6 +37,7 @@ const ARTIFACT_SCHEMAS = {
   edit_decisions: EditDecisionsSchema,
   end_tag_plan: EndTagPlanSchema,
   final_review: FinalReviewSchema,
+  lyrics_aligned: LyricsAlignedSchema,
   idea: BriefSchema,
   pose_library: PoseLibrarySchema,
   proposal: ProposalPacketSchema,

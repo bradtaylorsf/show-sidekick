@@ -28,6 +28,29 @@
             "type": "number",
             "minimum": 0
           },
+          "timing_anchor": {
+            "type": "string"
+          },
+          "timing_source": {
+            "type": "string",
+            "enum": [
+              "lyric",
+              "word",
+              "beat",
+              "section",
+              "climax",
+              "manual",
+              "audio_energy"
+            ]
+          },
+          "start_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
           "narrative_role": {
             "type": "string",
             "enum": [

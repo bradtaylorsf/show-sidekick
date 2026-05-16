@@ -1,4 +1,5 @@
 export * from "./action-timeline.js";
+export * from "./audio-energy.js";
 export * from "./asset-manifest.js";
 export * from "./brief.js";
 export * from "./capture-manifest.js";
@@ -21,6 +22,7 @@ export * from "./publish-log.js";
 export * from "./research-brief.js";
 export * from "./render-report.js";
 export * from "./rig-plan.js";
+export * from "./lyrics-aligned.js";
 export * from "./review.js";
 export * from "./scene-plan.js";
 export * from "./script.js";

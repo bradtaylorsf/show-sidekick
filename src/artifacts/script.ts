@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { NarrativeRoleSchema } from "./enums.js";
+import { TimingSourceSchema } from "./scene-plan.js";
 
 export const DialogueLineSchema = z.object({
   character: z.string(),
@@ -13,6 +14,10 @@ export const ScriptSchema = z.object({
       role: NarrativeRoleSchema.optional(),
       start_s: z.number().nonnegative(),
       end_s: z.number().nonnegative(),
+      timing_anchor: z.string().optional(),
+      timing_source: TimingSourceSchema.optional(),
+      start_ms: z.number().int().nonnegative().optional(),
+      end_ms: z.number().int().nonnegative().optional(),
       narration: z.string().optional(),
       dialogue: z.array(DialogueLineSchema).default([]),
       enhancement_cues: z.array(z.string()).default([]),

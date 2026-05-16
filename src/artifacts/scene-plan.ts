@@ -19,6 +19,15 @@ export const ShotLanguageSchema = z.object({
   color_temperature: ColorTemperatureSchema,
 });
 
+export const TimingSourceSchema = z.enum(["lyric", "word", "beat", "section", "climax", "manual", "audio_energy"]);
+
+const TimingMetadataSchema = {
+  timing_anchor: z.string().optional(),
+  timing_source: TimingSourceSchema.optional(),
+  start_ms: z.number().int().nonnegative().optional(),
+  end_ms: z.number().int().nonnegative().optional(),
+} as const;
+
 export const ScenePlanSchema = z.object({
   scenes: z
     .array(
@@ -27,6 +36,7 @@ export const ScenePlanSchema = z.object({
         order: z.number().int().nonnegative(),
         start_s: z.number().nonnegative(),
         end_s: z.number().nonnegative(),
+        ...TimingMetadataSchema,
         narrative_role: NarrativeRoleSchema,
         scene_anchor: z.string(),
         hero_moment: z.boolean().optional(),

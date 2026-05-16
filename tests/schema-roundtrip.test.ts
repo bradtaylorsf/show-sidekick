@@ -6,6 +6,7 @@ import type { ZodTypeAny } from "zod";
 import {
   ActionTimelineSchema,
   AssetManifestSchema,
+  AudioEnergySchema,
   AudioArchitectureSchema,
   BriefSchema,
   CaptureManifestSchema,
@@ -17,6 +18,7 @@ import {
   EditDecisionsSchema,
   EndTagPlanSchema,
   FinalReviewSchema,
+  LyricsAlignedSchema,
   PoseLibrarySchema,
   ProposalPacketSchema,
   PublishLogSchema,
@@ -38,6 +40,7 @@ const bundledSchemasDir = path.join(repoRoot, "bundled", "schemas", "artifacts")
 
 const zodSchemasByArtifact = {
   action_timeline: ActionTimelineSchema,
+  audio_energy: AudioEnergySchema,
   asset_manifest: AssetManifestSchema,
   audio_architecture: AudioArchitectureSchema,
   brief: BriefSchema,
@@ -50,6 +53,7 @@ const zodSchemasByArtifact = {
   edit_decisions: EditDecisionsSchema,
   end_tag_plan: EndTagPlanSchema,
   final_review: FinalReviewSchema,
+  lyrics_aligned: LyricsAlignedSchema,
   pose_library: PoseLibrarySchema,
   proposal_packet: ProposalPacketSchema,
   publish_log: PublishLogSchema,
