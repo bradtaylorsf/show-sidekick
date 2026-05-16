@@ -1,6 +1,6 @@
 slug: paid-demo
 display_name: Paid Demo
-description: Higgsfield GPT Image 2 stills, OpenAI direct image/TTS fallback, ElevenLabs TTS, Higgsfield image-to-video, and local ffmpeg assembly.
+description: OpenAI GPT Image 2 stills, ElevenLabs TTS, OpenAI TTS fallback, Higgsfield image-to-video, and local ffmpeg assembly.
 required_tools:
   - higgsfield_image
   - openai_image
@@ -16,7 +16,7 @@ preflight:
   - ffmpeg
   - ffprobe
 selected_stack:
-  image_generation: higgsfield_image
+  image_generation: openai_image
   tts_primary: elevenlabs_tts
   tts_fallback: openai_tts
   image_to_video: higgsfield

@@ -29,13 +29,13 @@ export type ProviderProfile = {
 export const PAID_DEMO_PROFILE: ProviderProfile = {
   slug: "paid-demo",
   display_name: "Paid Demo",
-  description: "Higgsfield GPT Image 2 stills, OpenAI direct image/TTS fallback, ElevenLabs TTS, Higgsfield image-to-video, and local ffmpeg assembly.",
+  description: "OpenAI GPT Image 2 stills, ElevenLabs TTS, OpenAI TTS fallback, Higgsfield image-to-video, and local ffmpeg assembly.",
   required_tools: ["higgsfield_image", "openai_image", "openai_tts", "elevenlabs_tts", "higgsfield", "ffmpeg"],
   checks: [
     {
       id: "openai-api-key",
       label: "OPENAI_API_KEY",
-      description: "OpenAI direct image fallback and OpenAI TTS fallback",
+      description: "OpenAI GPT Image 2 stills and OpenAI TTS fallback",
       integration: {
         kind: "api",
         env: ["OPENAI_API_KEY"],
@@ -110,7 +110,7 @@ export const PAID_DEMO_PROFILE: ProviderProfile = {
     {
       label: "paid-demo",
       rejected_because: null,
-      notes: "Selected profile: Higgsfield GPT Image 2 stills, OpenAI direct image/TTS fallback, ElevenLabs narration, Higgsfield clips, and ffmpeg assembly.",
+      notes: "Selected profile: OpenAI GPT Image 2 stills, ElevenLabs narration, OpenAI TTS fallback, Higgsfield clips, and ffmpeg assembly.",
     },
     {
       label: "free-zero-cost",

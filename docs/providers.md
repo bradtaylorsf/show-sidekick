@@ -135,7 +135,7 @@ pnpm run docs:providers
 | `flux_image` | beta | api | bfl | `BFL_API_KEY` | high-quality FLUX prompt-to-image generation with API cost tracking | $0.04 / image |
 | `google_imagen` | beta | api | google | `GOOGLE_APPLICATION_CREDENTIALS` | Google Imagen API generations through Vertex AI with service-account authentication | $0.04 / image |
 | `grok_image` | beta | api | xai | `XAI_API_KEY` | Grok image generations through xAI's OpenAI-compatible image endpoint | $0.07 / image |
-| `openai_image` | beta | api | openai | `OPENAI_API_KEY` | gpt-image-1 generations, especially images that require legible text | $0.04 / image |
+| `openai_image` | beta | api | openai | `OPENAI_API_KEY` | GPT Image 2 generations through the OpenAI Image API, especially images that require legible text. | $0.04 / image |
 | `recraft_image` | beta | api | recraft | `RECRAFT_API_KEY` | Recraft v3 prompt-to-image generation for design-forward still assets | $0.04 / image |
 | `diagram_gen` | beta | binary | mmdc | none | rendering Mermaid diagrams to PNG or SVG visual assets | $0 / image |
 | `local_diffusion` | experimental | binary | python3 | none | local SD/SDXL image generation on machines with a local model and LOCAL_GPU runtime | $0 / image |

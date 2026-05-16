@@ -186,7 +186,7 @@ describe("API image generation tools", () => {
     );
   });
 
-  it("generates an OpenAI image and writes the decoded base64 bytes", async () => {
+  it("generates an OpenAI GPT Image 2 image and writes the decoded base64 bytes", async () => {
     originalEnv = { ...process.env };
     process.env.OPENAI_API_KEY = "openai-key";
     const root = await tempDir();
@@ -203,14 +203,30 @@ describe("API image generation tools", () => {
       }),
     );
     expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({
-      model: "gpt-image-1",
+      model: "gpt-image-2",
       prompt: "poster text that reads Launch Day",
       size: "1024x1536",
       quality: "auto",
       n: 1,
     });
     await expect(readFile(result.image_path)).resolves.toEqual(imageBytes);
-    expect(result).toMatchObject({ provider: "openai", model: "gpt-image-1", cost_usd: 0.04 });
+    expect(result).toMatchObject({ provider: "openai", model: "gpt-image-2", cost_usd: 0.04 });
+  });
+
+  it("allows explicit legacy OpenAI GPT Image model selection", async () => {
+    originalEnv = { ...process.env };
+    process.env.OPENAI_API_KEY = "openai-key";
+    const root = await tempDir();
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(jsonResponse({ data: [{ b64_json: imageBase64 }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await openaiImage.execute({ prompt: "legacy model frame", model: "gpt-image-1.5", size: "1024x1024" }, testContext(root));
+
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toMatchObject({
+      model: "gpt-image-1.5",
+      prompt: "legacy model frame",
+    });
+    expect(result).toMatchObject({ provider: "openai", model: "gpt-image-1.5" });
   });
 
   it("generates a Grok image through xAI", async () => {

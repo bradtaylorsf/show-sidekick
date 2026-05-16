@@ -73,8 +73,8 @@ In user projects, the same keys can live in the generated, gitignored `.env`; `.
 
 Provider expectations for `paid-demo`:
 
-- Higgsfield: GPT Image 2 still generation through the `higgsfield` CLI, image-to-video through the same CLI, and an authenticated `higgsfield account status --json`.
-- OpenAI: direct image fallback and fallback TTS through `OPENAI_API_KEY`.
+- OpenAI: GPT Image 2 still generation and fallback TTS through `OPENAI_API_KEY`.
+- Higgsfield: image-to-video through the `higgsfield` CLI, optional GPT Image 2 still generation through the same CLI, and an authenticated `higgsfield account status --json`.
 - ElevenLabs: primary TTS through `ELEVENLABS_API_KEY`.
 - Local media: `ffmpeg` and `ffprobe` on `PATH`.
 

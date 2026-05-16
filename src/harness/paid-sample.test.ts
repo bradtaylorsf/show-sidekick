@@ -232,7 +232,7 @@ describe("paid sample dispatcher", () => {
     });
   });
 
-  it("plans source-free news-song samples from lyrics, skips filler ad-libs, and uses Higgsfield GPT Image 2", async () => {
+  it("plans source-free news-song samples from lyrics, skips filler ad-libs, and uses OpenAI GPT Image 2", async () => {
     const root = await scratchProject();
     const show: LoadedShow = {
       ...loadedShow(root, "remotion"),
@@ -351,18 +351,18 @@ describe("paid sample dispatcher", () => {
     await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
       artifact: {
         assets: expect.arrayContaining([
-          expect.objectContaining({ id: "paid_sample_image", provider: "higgsfield", model: "gpt_image_2" }),
+          expect.objectContaining({ id: "paid_sample_image", provider: "openai", model: "gpt-image-2" }),
           expect.objectContaining({ id: "paid_sample_clip", provider: "higgsfield", model: "seedance_2_0" }),
         ]),
       },
     });
     await expect(readCostLog(root, "show", "episode")).resolves.toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ tool: "higgsfield_image", provider: "higgsfield", usd: 0.04, mode: "sample" }),
+        expect.objectContaining({ tool: "openai_image", provider: "openai", usd: 0.04, mode: "sample" }),
       ]),
     );
     expect(higgsfieldInputs[0]).toMatchObject({
-      image_path: "projects/show/episode/assets/higgsfield-sample.png",
+      image_path: "projects/show/episode/assets/openai-sample.png",
       prompt: expect.stringContaining("PS2/GTA political music-video shot"),
     });
     expect(videoComposeInputs[0]).toMatchObject({
@@ -385,7 +385,8 @@ describe("paid sample dispatcher", () => {
       await readFile(path.join(root, "projects", "show", "episode", "artifacts", "gpt_image2_full_scene_plan.json"), "utf8"),
     ) as Record<string, unknown>;
     expect(fullPlan).toMatchObject({
-      image_provider: { provider: "higgsfield", model: "gpt_image_2" },
+      image_provider: { provider: "openai", model: "gpt-image-2" },
+      alternate_image_provider: { provider: "higgsfield", model: "gpt_image_2" },
       storyboard_first: true,
       scene_count: 6,
       max_scene_duration: 3,
@@ -569,7 +570,7 @@ function paidSampleTools(
       : []),
     fixtureTool("openai_image", "image_generation", "openai", 0.04, async () => {
       await writeFixture(imagePath, "image");
-      return { image_path: imagePath, provider: "openai", model: "gpt-image-1", cost_usd: 0.04 };
+      return { image_path: imagePath, provider: "openai", model: "gpt-image-2", cost_usd: 0.04 };
     }),
     fixtureTool("elevenlabs_tts", "tts", "elevenlabs", 0.0003, async () => {
       await writeFixture(audioPath, "audio");

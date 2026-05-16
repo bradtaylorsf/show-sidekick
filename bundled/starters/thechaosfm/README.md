@@ -18,7 +18,7 @@ TheChaosFM/Ain't No Crowns is tracked as a show-level benchmark reference, not a
 - Aspect: `16:9`
 - Captions: none
 - Source policy: source-free
-- Image generation: Higgsfield GPT Image 2 still generation through the `higgsfield` CLI, with direct OpenAI image generation as fallback
+- Image generation: OpenAI GPT Image 2 still generation through the Image API, with Higgsfield CLI `gpt_image_2` as an alternate
 - Clip generation: Higgsfield Seedance image-to-video clips
 - Render target: HyperFrames
 

@@ -3,10 +3,12 @@ import { decodeBase64Image, responseBytes, responseJson, writeGeneratedImage } f
 import { defineTool } from "../registry/index.js";
 
 const OPENAI_IMAGE_COST_USD = 0.04;
-const MODEL = "gpt-image-1";
+const DEFAULT_MODEL = "gpt-image-2";
+const modelSchema = z.enum(["gpt-image-2", "gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"]);
 
 export const OpenAiImageInputSchema = z.object({
   prompt: z.string().min(1),
+  model: modelSchema.default(DEFAULT_MODEL),
   size: z.string().default("1024x1024"),
   quality: z.enum(["auto", "low", "medium", "high"]).default("auto"),
 });
@@ -15,7 +17,7 @@ export const OpenAiImageOutputSchema = z.object({
   image_path: z.string(),
   url: z.string().url().optional(),
   provider: z.literal("openai"),
-  model: z.literal(MODEL),
+  model: modelSchema,
   cost_usd: z.number().nonnegative(),
 });
 
@@ -37,8 +39,8 @@ export default defineTool({
     env: ["OPENAI_API_KEY"],
     install: "Set OPENAI_API_KEY to an OpenAI API key.",
   },
-  best_for: 'gpt-image-1 generations, especially images that require legible text',
-  supports: ["gpt-image-1", "text-to-image", "legible-text"],
+  best_for: "GPT Image 2 generations through the OpenAI Image API, especially images that require legible text.",
+  supports: ["gpt-image-2", "gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini", "text-to-image", "legible-text"],
   cost: { unit: "image", usd: OPENAI_IMAGE_COST_USD },
   input: OpenAiImageInputSchema,
   output: OpenAiImageOutputSchema,
@@ -53,7 +55,7 @@ export default defineTool({
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          model: MODEL,
+          model: input.model,
           prompt: input.prompt,
           size: input.size,
           quality: input.quality,
@@ -70,7 +72,7 @@ export default defineTool({
       image_path: imagePath,
       url: image?.url,
       provider: "openai",
-      model: MODEL,
+      model: input.model,
       cost_usd: OPENAI_IMAGE_COST_USD,
     });
   },

@@ -465,7 +465,7 @@ function paidSampleTools(root: string): Tool[] {
       async execute() {
         await mkdir(path.dirname(imagePath), { recursive: true });
         await writeFile(imagePath, "image", "utf8");
-        return { image_path: imagePath, provider: "openai", model: "gpt-image-1", cost_usd: 0.04 };
+        return { image_path: imagePath, provider: "openai", model: "gpt-image-2", cost_usd: 0.04 };
       },
     }),
     defineTool({

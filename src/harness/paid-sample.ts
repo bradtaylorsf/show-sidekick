@@ -517,7 +517,7 @@ async function buildAssets(
   decisions: DecisionEntry[],
   options: PaidSampleDispatcherOptions,
 ): Promise<unknown> {
-  const imageTool = await toolFor(ctx, lyricMusicMode(ctx) ? "higgsfield_image" : "openai_image", "image_generation");
+  const imageTool = await toolFor(ctx, "openai_image", "image_generation");
   const videoTool = await toolFor(ctx, "higgsfield", "image_to_video");
   const beats = await sampleBeats(ctx);
   const imageAssets: Array<Record<string, unknown>> = [];
@@ -527,7 +527,7 @@ async function buildAssets(
 
   for (const beat of beats) {
     const imagePromptText = imagePrompt(ctx, beat);
-    const imageModel = imageTool.name === "higgsfield_image" ? "gpt_image_2" : "gpt-image-1";
+    const imageModel = imageTool.name === "higgsfield_image" ? "gpt_image_2" : "gpt-image-2";
     const imageResult = await imageTool.execute(
       imageTool.name === "higgsfield_image"
         ? {
@@ -538,6 +538,7 @@ async function buildAssets(
           }
         : {
             prompt: imagePromptText,
+            model: imageModel,
             size: imageSize(ctx),
             quality: "low",
           },
@@ -639,7 +640,7 @@ async function buildAssets(
 
   decisions.push(
     providerDecision(ctx, "image_generation", imageTool.provider, options),
-    modelDecision(ctx, imageTool.provider, imageTool.name === "higgsfield_image" ? "gpt_image_2" : "gpt-image-1", options),
+    modelDecision(ctx, imageTool.provider, imageTool.name === "higgsfield_image" ? "gpt_image_2" : "gpt-image-2", options),
     providerDecision(ctx, "image_to_video", "higgsfield", options),
     modelDecision(ctx, "higgsfield", "seedance_2_0", options),
   );
@@ -993,7 +994,8 @@ async function writeLyricPlanningArtifacts(
     duration_seconds: sampleDuration(ctx),
     scene_count: fullScenes.length,
     max_scene_duration: Math.max(...fullScenes.map((scene) => numberValue(scene.duration) ?? 0)),
-    image_provider: { provider: "higgsfield", model: "gpt_image_2", execution_path: "higgsfield CLI" },
+    image_provider: { provider: "openai", model: "gpt-image-2", execution_path: "OpenAI Image API" },
+    alternate_image_provider: { provider: "higgsfield", model: "gpt_image_2", execution_path: "higgsfield CLI" },
     video_provider: { provider: "higgsfield", model: "seedance_2_0", execution_path: "higgsfield CLI image-to-video" },
     storyboard_first: true,
     scenes: fullScenes,
