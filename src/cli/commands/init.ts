@@ -33,7 +33,7 @@ export type RunGit = (args: string[], cwd: string) => Promise<void>;
 
 export type InitHandlerDeps = {
   bundledRoot?: () => string;
-  copyBundledInto?: (targetPreditDir: string) => Promise<void>;
+  copyBundledInto?: (targetCacheDir: string) => Promise<void>;
   computeBundledChecksum?: () => Promise<string>;
   writeCacheVersion?: typeof writeCacheVersion;
   scaffoldShow?: typeof scaffoldShow;
@@ -69,7 +69,7 @@ export function createInitHandler(io: CliIo, deps: InitHandlerDeps = {}) {
     await mkdir(path.join(projectRoot, "music_library"), { recursive: true });
     await copyUserProjectTemplates(sourceBundledRoot, projectRoot);
 
-    const copyCache = deps.copyBundledInto ?? ((targetPreditDir: string) => copyBundledInto(targetPreditDir, sourceBundledRoot));
+    const copyCache = deps.copyBundledInto ?? ((targetCacheDir: string) => copyBundledInto(targetCacheDir, sourceBundledRoot));
     await copyCache(cacheDir);
     await syncAgentSkillMirrors(projectRoot);
 

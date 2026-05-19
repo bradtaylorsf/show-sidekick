@@ -9,4 +9,4 @@ Specialty WW2 diary starter for short narration-first historical rough cuts. Thi
 - Expected sample duration: 15 seconds
 - Sample inputs: `diary.txt` and `reference.jpg`
 
-The sample episode is pre-filled for `predit init --starter ww2-diary` and uses project-relative input paths under `shows/ww2-diary/inputs/sample-episode/`.
+The sample episode is pre-filled for `showkick init --starter ww2-diary` and uses project-relative input paths under `shows/ww2-diary/inputs/sample-episode/`.

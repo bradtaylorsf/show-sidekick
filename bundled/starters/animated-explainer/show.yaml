@@ -23,5 +23,5 @@ ingest:
       pipeline: animated-explainer
       slug_from: parent_dir
 starter:
-  fixture_size_bytes: 1979
+  fixture_size_bytes: 1986
   expected_sample_duration_s: 30

@@ -127,6 +127,68 @@ describe("public-flip checklist", () => {
     });
   });
 
+  it("fails the stale public-name check when packaged bundled content mentions the old name", async () => {
+    const result = await runPublicFlipChecklist({
+      allowLocalMigrationBridge: true,
+      repoRoot,
+      runShell: async (command, args, options) => {
+        if (command === "git" && args[0] === "grep") {
+          const needleIndex = args.indexOf("-e");
+          const needle = needleIndex >= 0 ? args[needleIndex + 1] : undefined;
+          if (needle === "predit") {
+            return {
+              status: 0,
+              stdout: "bundled/starters/animated-explainer/README.md:12:predit init --starter animated-explainer\n",
+              stderr: "",
+            };
+          }
+
+          return { status: 1, stdout: "", stderr: "" };
+        }
+
+        return passingRunShell()(command, args, options);
+      },
+      skipBuild: true,
+    });
+
+    const check = result.checks.find((candidate) => candidate.id === "no-stale-public-names");
+    expect(check).toMatchObject({
+      status: "fail",
+      detail: expect.stringContaining("bundled/starters/animated-explainer/README.md:12"),
+    });
+  });
+
+  it("fails the sibling-path check when packaged notes mention sibling-of-record", async () => {
+    const result = await runPublicFlipChecklist({
+      allowLocalMigrationBridge: true,
+      repoRoot,
+      runShell: async (command, args, options) => {
+        if (command === "git" && args[0] === "grep") {
+          const needleIndex = args.indexOf("-e");
+          const needle = needleIndex >= 0 ? args[needleIndex + 1] : undefined;
+          if (needle === "sibling-of-record") {
+            return {
+              status: 0,
+              stdout: "bundled/notes/provider-scoring.md\n",
+              stderr: "",
+            };
+          }
+
+          return { status: 1, stdout: "", stderr: "" };
+        }
+
+        return passingRunShell()(command, args, options);
+      },
+      skipBuild: true,
+    });
+
+    const check = result.checks.find((candidate) => candidate.id === "no-sibling-paths");
+    expect(check).toMatchObject({
+      status: "fail",
+      detail: expect.stringContaining("sibling-of-record: bundled/notes/provider-scoring.md"),
+    });
+  });
+
   it("allows internal migration-note stale names", async () => {
     const result = await runPublicFlipChecklist({
       allowLocalMigrationBridge: true,

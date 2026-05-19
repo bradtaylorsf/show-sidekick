@@ -1,14 +1,21 @@
 export const FORBIDDEN_TRACKED_PATHS = [".migration/"] as const;
 
-export const SIBLING_REPO_PATH_NEEDLES = ["sibling-repo", "sibling repo", "reference codebase"] as const;
+export const SIBLING_REPO_PATH_NEEDLES = [
+  "sibling-repo",
+  "sibling repo",
+  "sibling-of-record",
+  "reference codebase",
+] as const;
 
 export const STALE_PUBLIC_NAME_NEEDLES = [
   "predit",
+  "Predit",
   ".predit/",
   "PREDIT_",
   ".migration",
   "sibling-repo",
   "sibling repo",
+  "sibling-of-record",
   "reference codebase",
 ] as const;
 
@@ -22,8 +29,7 @@ export const STALE_PUBLIC_NAME_GREP_TARGETS = [
   ":(exclude)src/**/__snapshots__/**",
   "docs",
   "specs",
-  "bundled/templates",
-  "bundled/skills",
+  "bundled",
 ] as const;
 
 export const INTERNAL_MIGRATION_STALE_PUBLIC_NAME_LINE_ALLOWLIST = [
@@ -145,8 +151,7 @@ export const CI_READY_STALE_PUBLIC_NAME_GREP_TARGETS = [
   "CHANGELOG.md",
   "docs",
   "specs",
-  "bundled/templates",
-  "bundled/skills",
+  "bundled",
 ] as const;
 
 export const SIBLING_REPO_GREP_EXCLUDES = [

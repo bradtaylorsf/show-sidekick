@@ -356,8 +356,7 @@ async function checkCacheDirRename(repoRoot: string, runShell: RunShell): Promis
     ":(exclude)src/**/*.test.ts",
     ":(exclude)src/*.test.ts",
     ":(exclude)src/**/__snapshots__/**",
-    "bundled/templates",
-    "bundled/skills",
+    "bundled",
     "docs",
     "README.md",
   ] as const;
@@ -389,7 +388,7 @@ async function checkEnvPrefixRename(repoRoot: string, runShell: RunShell): Promi
     ":(exclude)src/**/*.test.ts",
     ":(exclude)src/*.test.ts",
     ":(exclude)src/**/__snapshots__/**",
-    "bundled/templates",
+    "bundled",
     "docs",
     "README.md",
     "CHANGELOG.md",

@@ -6,7 +6,7 @@
     "category": "pipeline_selection",
     "scope": {
       "capability": "pipeline",
-      "provider": "predit"
+      "provider": "show-sidekick"
     },
     "options_considered": [
       {

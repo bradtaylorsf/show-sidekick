@@ -15,7 +15,7 @@ type UpdateOptions = GlobalOptions & {
 
 type UpdateDeps = {
   findProjectRoot?: typeof findProjectRoot;
-  copyBundledInto?: (targetPreditDir: string) => Promise<void>;
+  copyBundledInto?: (targetCacheDir: string) => Promise<void>;
   computeBundledChecksum?: () => Promise<string>;
   readCacheVersion?: typeof readCacheVersion;
   writeCacheVersion?: typeof writeCacheVersion;
@@ -71,7 +71,7 @@ export function createUpdateHandler(io: CliIo, deps: UpdateDeps = {}) {
       await rm(path.join(cacheDir, dirname), { recursive: true, force: true });
     }
 
-    const copyCache = deps.copyBundledInto ?? ((targetPreditDir: string) => copyBundledInto(targetPreditDir, sourceBundledRoot));
+    const copyCache = deps.copyBundledInto ?? ((targetCacheDir: string) => copyBundledInto(targetCacheDir, sourceBundledRoot));
     await copyCache(cacheDir);
     await syncAgentSkillMirrors(projectRoot);
 

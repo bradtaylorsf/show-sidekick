@@ -10,4 +10,4 @@ Specialty AI workflow demo starter for short synthetic terminal walkthroughs.
 - Expected sample duration: 15 seconds
 - Sample inputs: `terminal-steps.yaml` and `narration.txt`
 
-The sample episode is pre-filled for `predit init --starter ai-workflow-demo` and uses project-relative input paths under `shows/ai-workflow-demo/inputs/sample-episode/`.
+The sample episode is pre-filled for `showkick init --starter ai-workflow-demo` and uses project-relative input paths under `shows/ai-workflow-demo/inputs/sample-episode/`.

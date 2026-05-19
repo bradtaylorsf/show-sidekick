@@ -9,4 +9,4 @@ Visual-led documentary starter for short narration-first rough cuts.
 - Expected sample duration: 15 seconds
 - Sample inputs: `narration.txt` and `reference.jpg`
 
-The sample episode is pre-filled for `predit init --starter documentary` and uses project-relative input paths under `shows/documentary/inputs/sample-episode/`.
+The sample episode is pre-filled for `showkick init --starter documentary` and uses project-relative input paths under `shows/documentary/inputs/sample-episode/`.
