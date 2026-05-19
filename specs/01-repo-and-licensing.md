@@ -18,8 +18,10 @@ Run before flipping the repo public:
 
 `pnpm release:check` runs the automated public-flip gate, including the bundled starter sample E2E. `pnpm release:check:full` also runs the fresh-clone install/build/test command sequence.
 
+Record each release audit pass in [`docs/public-readiness-audit.md`](../docs/public-readiness-audit.md), including secret scans, tracked-file leak sweeps, package contents, standard local checks, zero-key smoke status, and any open blockers with their owning issue.
+
 - [x] Private bridge material removed from the working tree
-- [x] `git grep` for private source-path names returns no hits in tracked files
+- [x] `git grep` for private source-path names returns no hits outside release guardrail code/tests
 - [x] `LICENSE` present, Apache 2.0
 - [x] `README.md` states what Show Sidekick does, requirements, install, quickstart
 - [x] At least one fully working show + episode + pipeline ships in the repo as a runnable example

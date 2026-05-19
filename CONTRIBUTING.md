@@ -18,7 +18,6 @@ Useful checks:
 pnpm lint
 pnpm run test:smoke
 pnpm run docs:providers:check
-pnpm run audit:coverage-drift
 ```
 
 ## Repo Layout
@@ -31,7 +30,7 @@ pnpm run audit:coverage-drift
 | `scripts/` | Maintenance scripts and generated-doc tooling. |
 | `tests/` | Smoke, schema, and integration-style Vitest coverage outside `src/`. |
 
-Do not create, edit, or reference `.migration/` content unless explicitly asked. It is private reference material and must not leak into public docs or committed files.
+Do not commit private reference material, local machine paths, generated media, credentials, or user-project runtime workspaces.
 
 ## Authoring a Pipeline
 

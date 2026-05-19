@@ -37,8 +37,6 @@
     "release:check": "node --import tsx scripts/public-flip-checklist.ts --with-e2e",
     "release:check:full": "node --import tsx scripts/public-flip-checklist.ts --with-build --with-e2e",
     "release:smoke:pack": "pnpm build && SHOW_SIDEKICK_PACKED_TARBALL_SMOKE=1 vitest run tests/release/packed-tarball-smoke.test.ts",
-    "audit:coverage-drift": "node scripts/audit-coverage-drift.ts",
-    "audit:l3v-drift": "node scripts/audit-l3v-drift.ts",
     "demo-matrix": "node --import tsx/esm scripts/demo-matrix.ts",
     "docs:providers": "node --import tsx/esm scripts/generate-providers-doc.ts",
     "docs:providers:check": "node --import tsx/esm scripts/generate-providers-doc.ts --check",

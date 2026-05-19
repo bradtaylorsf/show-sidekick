@@ -54,6 +54,24 @@ export const INTERNAL_MIGRATION_STALE_PUBLIC_NAME_LINE_ALLOWLIST = [
     needle: "PREDIT_",
     linePattern: "^PREDIT_[A-Z0-9_]+=$",
   },
+  {
+    filePath: "docs/public-readiness-audit.md",
+    needle: "predit",
+    linePattern:
+      "^- Open \\(#227/#228/#229\\): package name/bin still use `predit`, cache references still use `\\.predit/`, and env vars still use `PREDIT_`; .*$",
+  },
+  {
+    filePath: "docs/public-readiness-audit.md",
+    needle: ".predit/",
+    linePattern:
+      "^- Open \\(#227/#228/#229\\): package name/bin still use `predit`, cache references still use `\\.predit/`, and env vars still use `PREDIT_`; .*$",
+  },
+  {
+    filePath: "docs/public-readiness-audit.md",
+    needle: "PREDIT_",
+    linePattern:
+      "^- Open \\(#227/#228/#229\\): package name/bin still use `predit`, cache references still use `\\.predit/`, and env vars still use `PREDIT_`; .*$",
+  },
 ] as const;
 
 export const ACCIDENTAL_STALE_PUBLIC_NAME_LINE_ALLOWLIST = [] as const;

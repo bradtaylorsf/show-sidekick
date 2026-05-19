@@ -12,7 +12,7 @@
 
 ## Critical Rules
 - Specs in `specs/` are the contract; if behavior changes, update the relevant spec with the code.
-- Do not modify or reference `.migration/` in committed/public files; it is private study material only.
+- Do not commit private reference material, generated media, credentials, or user-project runtime workspaces.
 - Keep pipelines declarative: workflow belongs in `pipelines/*.yaml` and director skills, concrete integrations in `src/tools/`, not mixed into orchestration code.
 - Consumer contracts need care: `show.yaml`, `episode.yaml`, tool shape, pipeline manifests, checkpoints, and bundled cache behavior can break user projects if changed casually.
 - Alpha Loop assets sync from `.alpha-loop/templates/` into agent folders; avoid hand-editing synced copies unless debugging sync output.

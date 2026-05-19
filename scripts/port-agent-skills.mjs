@@ -775,16 +775,14 @@ function normalizeRepoTerms(value) {
     .replace(/(?<!\.predit\/)skills\/agents\//gu, ".predit/skills/agents/")
     .replaceAll(".predit/.predit/", ".predit/")
     .replace(
-      /Vendored into predit from C:\\Users\\ishan\\Documents\\hyperframes\\skills\\([^\n]+)/gu,
+      /Vendored into predit from C:[\\/]+Users[\\/]+[^\\/]+[\\/]+Documents[\\/]hyperframes[\\/]skills[\\/]([^\n]+)/gu,
       "Adapted for predit from the HyperFrames skill package ($1)",
     )
-    .replaceAll("C:\\Users\\ishan\\Documents\\hyperframes", "<hyperframes-clone>")
-    .replaceAll("C:\\Users\\ishan\\Documents\\predit", "<predit-repo>")
-    .replaceAll("C:/Users/ishan/Documents/hyperframes", "<hyperframes-clone>")
-    .replaceAll("C:/Users/ishan/Documents/predit", "<predit-repo>")
+    .replace(/C:[\\/]+Users[\\/]+[^\\/]+[\\/]+Documents[\\/]hyperframes[\\/]skills[\\/]/gu, "hyperframes-skills/")
+    .replace(/C:[\\/]+Users[\\/]+[^\\/]+[\\/]+Documents[\\/]hyperframes/gu, "<hyperframes-clone>")
+    .replace(/C:[\\/]+Users[\\/]+[^\\/]+[\\/]+Documents[\\/]predit/gu, "<predit-repo>")
     .replaceAll("\\SKILL.md", "/SKILL.md")
     .replace(/([A-Za-z0-9_-]+)\/SKILL\.md/gu, "$1.md")
-    .replaceAll("C:/Users/ishan/Documents/hyperframes/skills/", "hyperframes-skills/")
     .replaceAll(".predit/skills/agents/remotion-official/", ".predit/skills/agents/remotion-best-practices/")
     .replaceAll("tools.tool_registry", "predit registry")
     .replaceAll("tools.analysis.composition_validator", "src/tools/composition-validator")
