@@ -11,6 +11,7 @@ import {
   RENDERER_FAMILY,
   SHOT_SIZE,
 } from "./enums.js";
+import { BRANDING } from "../branding.js";
 
 export type JsonSchema = {
   readonly $schema?: string;
@@ -56,7 +57,7 @@ function objectJson(
 ): JsonSchema {
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",
-    $id: `predit://artifacts/${id}`,
+    $id: `${BRANDING.packageName}://artifacts/${id}`,
     type: "object",
     additionalProperties: false,
     properties,

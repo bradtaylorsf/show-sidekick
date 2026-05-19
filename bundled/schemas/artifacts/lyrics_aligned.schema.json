@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/lyrics_aligned",
+  "$id": "show-sidekick://artifacts/lyrics_aligned",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -16,7 +16,7 @@
       "type": "array",
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/lyrics_aligned.line",
+        "$id": "show-sidekick://artifacts/lyrics_aligned.line",
         "type": "object",
         "additionalProperties": false,
         "properties": {

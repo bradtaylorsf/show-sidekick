@@ -28,11 +28,11 @@ export function providerSelectionMarker(config: ProviderSelectionMarkerConfig) {
   return defineTool({
     name: config.name,
     capability: config.capability,
-    provider: "predit",
+    provider: "show-sidekick",
     status: "beta",
     integration: {
       kind: "library",
-      package: "predit",
+      package: "show-sidekick",
       install: "bundled",
     },
     best_for: config.best_for,

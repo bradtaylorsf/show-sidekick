@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Command } from "commander";
 import { afterEach, describe, expect, it } from "vitest";
+import { BRANDING } from "../../branding.js";
 import { createWatchHandler, type WatchFactory } from "./watch.js";
 
 let scratchDirs: string[] = [];
@@ -40,7 +41,7 @@ describe("watch command", () => {
     await createWatchHandler(io, { watch })(command({}));
 
     expect(output().stdout).toContain(
-      "predit import music_library/thechaosfm-news/pilot/track.mp3 --as thechaosfm/pilot",
+      `${BRANDING.primaryCli} import music_library/thechaosfm-news/pilot/track.mp3 --as thechaosfm/pilot`,
     );
   });
 
@@ -68,7 +69,7 @@ describe("watch command", () => {
       show: "thechaosfm",
       pipeline: "news-song",
       path: "music_library/thechaosfm-news/pilot/track.mp3",
-      suggested_command: "predit import music_library/thechaosfm-news/pilot/track.mp3 --as thechaosfm/pilot",
+      suggested_command: `${BRANDING.primaryCli} import music_library/thechaosfm-news/pilot/track.mp3 --as thechaosfm/pilot`,
     });
   });
 

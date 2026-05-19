@@ -8,13 +8,13 @@ epic: 8
 issue: 80
 ---
 
-## predit Usage Contract
+## Show Sidekick Usage Contract
 
 - Read this skill before calling any tool that lists it in `agent_skills`.
-- Route execution through the predit registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
+- Route execution through the Show Sidekick registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
 - Announce paid or externally visible generation before running it, and log provider/model decisions when they affect output.
 - Keep this skill aligned with `bundled/templates/user-project/AGENTS.md`, `specs/06-tool-registry.md`, `specs/08-skills.md`.
-- The source body below is normalized for predit paths and terminology while preserving the original operational details.
+- The source body below is normalized for Show Sidekick paths and terminology while preserving the original operational details.
 
 # Synthetic Screen Recording (Remotion TerminalScene)
 
@@ -24,7 +24,7 @@ issue: 80
 
 ## Why this exists
 
-v3 of the predit showcase tried to use Windows-MCP + `screen_recorder` to drive a Git-Bash window for the install walkthrough. It stalled on window positioning, focus races, and taskbar privacy concerns. We pivoted to **pure Remotion rendering** — a React component named `TerminalScene` that draws a fake terminal and types commands character-by-character. The output is visually indistinguishable from a real screen recording (same traffic-light window chrome, blinking cursor, scrolling output) but deterministic, privacy-safe, pixel-perfect at 1080p, and pace-controllable to the frame.
+v3 of the Show Sidekick showcase tried to use Windows-MCP + `screen_recorder` to drive a Git-Bash window for the install walkthrough. It stalled on window positioning, focus races, and taskbar privacy concerns. We pivoted to **pure Remotion rendering** — a React component named `TerminalScene` that draws a fake terminal and types commands character-by-character. The output is visually indistinguishable from a real screen recording (same traffic-light window chrome, blinking cursor, scrolling output) but deterministic, privacy-safe, pixel-perfect at 1080p, and pace-controllable to the frame.
 
 That component + pattern is the capability this skill makes discoverable.
 
@@ -84,9 +84,9 @@ Author a new scene by adding a cut to `build_composition.py` (or your equivalent
 ```python
 install_steps = [
     {"kind": "pause", "seconds": 7.0},                 # wait for intro narration
-    {"kind": "cmd", "text": "git clone https://github.com/calesthio/predit.git",
+    {"kind": "cmd", "text": "git clone https://github.com/calesthio/Show Sidekick.git",
      "typeSpeed": 0.045, "holdSeconds": 0.3},
-    {"kind": "out", "text": "Cloning into 'predit'..."},
+    {"kind": "out", "text": "Cloning into 'Show Sidekick'..."},
     {"kind": "out", "text": "remote: Enumerating objects: 2847, done."},
     {"kind": "pill", "text": "repo cloned", "color": "#34D399", "durationSeconds": 2.6},
     {"kind": "pause", "seconds": 3.8},                 # bridge to next narration cue
@@ -96,7 +96,7 @@ install_steps = [
 cuts.append({
     "id": "install-terminal",
     "type": "terminal_scene",
-    "terminalTitle": "bash — predit setup",
+    "terminalTitle": "bash — showkick setup",
     "prompt": "$",
     "accentColor": "#22D3EE",
     "steps": install_steps,
@@ -152,7 +152,7 @@ See `lib/verify_scene_pacing.py` for a reusable version of this script.
 
 ## `ProviderChip` (companion component)
 
-The `.predit/skills/agents/synthetic-screen-recording` pattern also owns `ProviderChip` — a rotating badge overlay that cycles through a list of provider names at a fixed cadence. Used in the v3 showcase to cycle through all 11 AI video-gen providers during the "generated motion" section.
+The `.show-sidekick/skills/agents/synthetic-screen-recording` pattern also owns `ProviderChip` — a rotating badge overlay that cycles through a list of provider names at a fixed cadence. Used in the v3 showcase to cycle through all 11 AI video-gen providers during the "generated motion" section.
 
 ```python
 overlays.append({
@@ -183,12 +183,12 @@ The pattern generalizes. When you need to fake another UI surface (Claude Code c
 
 ## Related skills
 
-- `.predit/skills/agents/remotion` — general Remotion authoring (hooks, springs, sequences)
-- `.predit/skills/agents/playwright-recording` — real browser-flow capture for web apps
+- `.show-sidekick/skills/agents/remotion` — general Remotion authoring (hooks, springs, sequences)
+- `.show-sidekick/skills/agents/playwright-recording` — real browser-flow capture for web apps
 - `src/tools/capture/screen_recorder` — ffmpeg-based desktop capture
 - `src/tools/capture/cap_recorder` — Cap.so polished desktop capture
 - `skills/pipelines/screen-demo/asset-director.md` — chooses between synthetic and real for a screen-demo project
 
 ## Provenance
 
-Introduced: predit showcase v3 render (2026-04-16). Original motivation: the v3 setup walkthrough section needed a 60-second install demo where every command aligned to Chirp 3 HD narration cues, and Windows-MCP-driven real capture was too flaky in practice. See `projects/predit-showcase/build_composition.py` for the reference implementation.
+Introduced: Show Sidekick showcase v3 render (2026-04-16). Original motivation: the v3 setup walkthrough section needed a 60-second install demo where every command aligned to Chirp 3 HD narration cues, and Windows-MCP-driven real capture was too flaky in practice. See `projects/Show Sidekick-showcase/build_composition.py` for the reference implementation.

@@ -1,4 +1,4 @@
 Hook: Your agent can make a useful first video before you add any API keys.
 You: Tell the agent what you do, then it writes this middle beat around your real work.
-Workflow: predit turns the brief into script cards, scene timing, assets, runtime decisions, and a render.
+Workflow: Show Sidekick turns the brief into script cards, scene timing, assets, runtime decisions, and a render.
 Next: Review the sample, improve the prompt, then add paid tools for generated images, voices, and video.

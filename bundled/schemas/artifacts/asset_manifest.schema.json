@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/asset-manifest",
+  "$id": "show-sidekick://artifacts/asset-manifest",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -8,7 +8,7 @@
       "type": "array",
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/asset",
+        "$id": "show-sidekick://artifacts/asset",
         "type": "object",
         "additionalProperties": false,
         "properties": {

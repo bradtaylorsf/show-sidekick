@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { MissingEnvError } from "./errors.js";
+import { BRANDING, LEGACY_BRANDING } from "../branding.js";
+import { LegacyEnvVarError, MissingEnvError } from "./errors.js";
 import { findProjectRoot } from "./project.js";
 
 export function loadEnv(command?: string, root: string = findProjectRoot()): Record<string, string> {
@@ -48,8 +49,51 @@ export function requireEnv(name: string, command?: string, root?: string): strin
   return value;
 }
 
+export function requireProcessEnv(name: string): string {
+  const value = optionalProcessEnv(name);
+
+  if (value === undefined || value.trim() === "") {
+    throw new MissingEnvError(name);
+  }
+
+  return value;
+}
+
+export function optionalProcessEnv(name: string): string | undefined {
+  const value = process.env[name];
+  if (value !== undefined) {
+    return value;
+  }
+
+  const legacyName = legacyNameForPublicEnv(name);
+  if (legacyName !== undefined && process.env[legacyName] !== undefined) {
+    throw new LegacyEnvVarError(legacyName, name);
+  }
+
+  return undefined;
+}
+
 export function optionalEnv(name: string, command?: string, root?: string): string | undefined {
-  return process.env[name] ?? loadEnv(command, root)[name];
+  const values = loadEnv(command, root);
+  const value = values[name];
+  if (value !== undefined) {
+    return value;
+  }
+
+  const legacyName = legacyNameForPublicEnv(name);
+  if (legacyName !== undefined && values[legacyName] !== undefined) {
+    throw new LegacyEnvVarError(legacyName, name);
+  }
+
+  return undefined;
+}
+
+export function legacyNameForPublicEnv(name: string): string | undefined {
+  if (!name.startsWith(BRANDING.envPrefix)) {
+    return undefined;
+  }
+
+  return `${LEGACY_BRANDING.envPrefix}${name.slice(BRANDING.envPrefix.length)}`;
 }
 
 function parseEnv(contents: string): Record<string, string> {

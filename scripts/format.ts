@@ -9,7 +9,6 @@ const ignoredSegments = new Set([
   ".agents",
   ".claude",
   ".git",
-  ".migration",
   ".worktrees",
   "bundled/schemas",
   "bundled/skills/agents",

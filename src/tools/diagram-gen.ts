@@ -39,7 +39,7 @@ export default defineTool({
 
   async execute(params, ctx) {
     const input = DiagramGenInputSchema.parse(params);
-    const tempDir = await mkdtemp(join(tmpdir(), "predit-diagram-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "show-sidekick-diagram-"));
     const sourcePath = join(tempDir, "diagram.mmd");
     const outputPath = await generatedAssetPath(ctx, { extension: input.format });
     const args = ["-i", sourcePath, "-o", outputPath, "-t", input.theme, "-b", input.background];

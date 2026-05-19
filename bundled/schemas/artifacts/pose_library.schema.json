@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/pose_library",
+  "$id": "show-sidekick://artifacts/pose_library",
   "type": "object",
   "additionalProperties": false,
   "properties": {

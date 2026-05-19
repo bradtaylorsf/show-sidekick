@@ -1,6 +1,6 @@
 ---
 name: onboarding
-description: Orient new predit users, classify vague requests, and offer setup-aware starter prompts.
+description: Orient new Show Sidekick users, classify vague requests, and offer setup-aware starter prompts.
 applies_to: meta
 cross_refs:
   - specs/16-onboarding-and-discovery.md
@@ -30,12 +30,12 @@ If fewer than two signals are present, treat it as vague and onboard. If classif
 Before saying anything creative, make sure the project-local harness cache is current, then inspect the local setup:
 
 ```bash
-predit update --check --json
-predit doctor --profile paid-demo --json
-predit ls tools --json
+showkick update --check --json
+showkick doctor --profile paid-demo --json
+showkick ls tools --json
 ```
 
-If `predit update --check --json` reports a stale, missing, or incompatible cache, run `predit update` before reading `.predit/` resources or recommending a pipeline. The cache owns the bundled skills, pipeline manifests, schemas, playbooks, and starters that agents use to guide production.
+If `showkick update --check --json` reports a stale, missing, or incompatible cache, run `showkick update` before reading `.show-sidekick/` resources or recommending a pipeline. The cache owns the bundled skills, pipeline manifests, schemas, playbooks, and starters that agents use to guide production.
 
 Parse the result into:
 
@@ -47,7 +47,9 @@ Parse the result into:
 
 Composition runtimes are their own discovery block: Remotion, HyperFrames, and FFmpeg. Do not bury them inside a generic "video tools" list.
 
-If Remotion or HyperFrames is unavailable, offer `predit setup runtimes` before the first video that would benefit from motion graphics, animated overlays, or runtime choice. Explain that it installs project-local Remotion, the Remotion CLI, aligned support deps, and HyperFrames; only run it after user approval.
+If Remotion or HyperFrames is unavailable, offer `showkick setup runtimes` before the first video that would benefit from motion graphics, animated overlays, or runtime choice. Explain that it installs project-local Remotion, the Remotion CLI, aligned support deps, and HyperFrames; only run it after user approval.
+
+Python and uv are optional tool runtimes. They can unlock local analysis, transcription, or model-backed tools, but they are not prerequisites for the first no-key animated explainer. Only ask to install or configure them when the selected workflow needs a Python-backed tool.
 
 ### Step 2: Determine Setup Tier
 
@@ -68,7 +70,7 @@ Give a short, friendly capability summary. Do not dump raw JSON.
 Template:
 
 ```text
-Welcome to predit. With your current setup I can:
+Welcome to Show Sidekick. With your current setup I can:
 
 Ready to go:
 - <2-4 plain-language capabilities>
@@ -112,7 +114,7 @@ Adapt your wording to the operator:
 
 When both Remotion and HyperFrames are available, say so explicitly. Do not choose one during onboarding.
 
-When only one is available, name it and briefly say what the other would unlock. When neither is available, explain that the user is currently on ffmpeg-only composition and ask whether they want to run `predit setup runtimes` for this video.
+When only one is available, name it and briefly say what the other would unlock. When neither is available, explain that the user is currently on ffmpeg-only composition and ask whether they want to run `showkick setup runtimes` for this video.
 
 This primes the later "present both runtimes" hard rule in `bundled/skills/meta/announce-and-escalate.md`.
 
@@ -122,7 +124,7 @@ Offer exactly three prompts. Each should target a different pipeline or style an
 
 Examples:
 
-> "Make my first no-key predit video: ask what I do, suggest three video ideas tailored to that answer, pick the strongest one, and render a 30-second animated explainer with local narration." (animated-explainer starter)
+> "Make my first no-key Show Sidekick video: ask what I do, suggest three video ideas tailored to that answer, pick the strongest one, and render a 30-second animated explainer with local narration." (animated-explainer starter)
 
 > "Make a 45-second animated explainer about why the sky is blue." (animated-explainer pipeline)
 
@@ -138,14 +140,14 @@ Rules:
 
 ### Personalized Zero-Key First Video
 
-When the user asks for a first video without a specific brief, use the no-key `animated-explainer` starter as a personalized 30-second predit explainer:
+When the user asks for a first video without a specific brief, use the no-key `animated-explainer` starter as a personalized 30-second Show Sidekick explainer:
 
 1. Ask: "What do you do, and what kind of videos would be useful for you?"
 2. Use only context the user has shared in this session or project. It is fine to say "based on this project folder and what you've told me"; do not infer sensitive traits, private facts, or hidden preferences.
 3. Offer exactly three concrete video ideas that the current setup can produce.
-4. If the user told you to proceed, choose the strongest idea and scaffold `predit new show first-video --from animated-explainer` unless a suitable animated-explainer starter show already exists.
-5. Rewrite `shows/<show>/inputs/sample-episode/script.txt` into four concise narrated scene lines: personalized hook, personal-use beat, predit workflow beat, next step. Keep `duration_s: 30`.
-6. Run `predit build <show>/sample-episode --sample`, then export an editor handoff.
+4. If the user told you to proceed, choose the strongest idea and scaffold `showkick new show first-video --from animated-explainer` unless a suitable animated-explainer starter show already exists.
+5. Rewrite `shows/<show>/inputs/sample-episode/script.txt` into four concise narrated scene lines: personalized hook, personal-use beat, Show Sidekick workflow beat, next step. Keep `duration_s: 30`.
+6. Run `showkick build <show>/sample-episode --sample`, then export an editor handoff.
 
 The zero-key renderer turns those script lines into procedural motion-graphics scenes with visible layout animation, generates local narration when a free local TTS path is available, writes a voiceover cuesheet for export, and uses Remotion when installed. This path should feel like a useful first artifact, not only a technical smoke test.
 
@@ -164,20 +166,20 @@ When you give me a prompt, I will understand the brief, propose concepts with co
 Use this sequence for a first video:
 
 ```bash
-predit update --check
-predit doctor --profile paid-demo
-predit ls starters
-predit new show first-video --from animated-explainer
+showkick update --check
+showkick doctor --profile paid-demo
+showkick ls starters
+showkick new show first-video --from animated-explainer
 # Edit shows/first-video/inputs/sample-episode/script.txt into four short narrated scene lines.
-predit build first-video/sample-episode --sample
-predit export first-video/sample-episode --target premiere
+showkick build first-video/sample-episode --sample
+showkick export first-video/sample-episode --target premiere
 ```
 
-For a zero-key starter, use `predit init --starter animated-explainer`, then run
-`predit build animated-explainer/sample-episode --sample`. Run `predit setup runtimes`
+For a zero-key starter, use `showkick init --starter animated-explainer`, then run
+`showkick build animated-explainer/sample-episode --sample`. Run `showkick setup runtimes`
 if runtime setup was skipped or blocked and the user approves installing project-local Remotion/HyperFrames. For custom workflows, use
-`predit new pipeline <slug>` to create a local manifest and first director skill,
-then bind a show to it with `predit new show <show> --pipelines <slug>`.
+`showkick new pipeline <slug>` to create a local manifest and first director skill,
+then bind a show to it with `showkick new show <show> --pipelines <slug>`.
 
 **What does it cost?**
 

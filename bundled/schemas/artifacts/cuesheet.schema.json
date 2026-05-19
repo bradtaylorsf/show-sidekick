@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/cuesheet",
+  "$id": "show-sidekick://artifacts/cuesheet",
   "type": "object",
   "additionalProperties": true,
   "properties": {
     "audio": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "predit://artifacts/cuesheet.audio",
+      "$id": "show-sidekick://artifacts/cuesheet.audio",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -68,7 +68,7 @@
       "type": "array",
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/cuesheet.scene_anchor",
+        "$id": "show-sidekick://artifacts/cuesheet.scene_anchor",
         "type": "object",
         "additionalProperties": false,
         "properties": {
@@ -96,7 +96,7 @@
           },
           "source": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "predit://artifacts/cuesheet.scene_anchor.source",
+            "$id": "show-sidekick://artifacts/cuesheet.scene_anchor.source",
             "type": "object",
             "additionalProperties": false,
             "properties": {

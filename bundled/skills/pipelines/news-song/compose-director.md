@@ -13,7 +13,7 @@ Use this stage after edit decisions are approved. Render the 15-20 sec no-captio
 
 ## HyperFrames Preference
 
-Use HyperFrames for HUD/source flyouts, title cards, and compositing when available. Read `.predit/skills/core/hyperframes.md` before HyperFrames work.
+Use HyperFrames for HUD/source flyouts, title cards, and compositing when available. Read `.show-sidekick/skills/core/hyperframes.md` before HyperFrames work.
 
 ## Runtime Lock
 

@@ -40,16 +40,16 @@ printf 'local-diffusion-image' > "$out"
 `,
     );
     process.env.PATH = `${binDir}:${originalEnv.PATH ?? ""}`;
-    delete process.env.PREDIT_LOCAL_SD_MODEL;
+    delete process.env.SHOW_SIDEKICK_LOCAL_SD_MODEL;
     process.env.PREDIT_FAKE_ARGS_LOG = argsLog;
 
     await expect(localDiffusion.isAvailable()).resolves.toEqual({
       available: false,
-      reason: "missing env: PREDIT_LOCAL_SD_MODEL",
+      reason: "missing env: SHOW_SIDEKICK_LOCAL_SD_MODEL",
       fix: "env",
     });
 
-    process.env.PREDIT_LOCAL_SD_MODEL = modelDir;
+    process.env.SHOW_SIDEKICK_LOCAL_SD_MODEL = modelDir;
     await expect(localDiffusion.isAvailable()).resolves.toEqual({ available: true });
 
     const result = await localDiffusion.execute(
@@ -70,6 +70,16 @@ printf 'local-diffusion-image' > "$out"
     expect(args).toContain("--seed\n99\n");
     await expect(readFile(result.image_path, "utf8")).resolves.toBe("local-diffusion-image");
     expect(result).toMatchObject({ provider: "local", model: modelDir, cost_usd: 0, seed: 99 });
+  });
+
+  it("rejects legacy local diffusion env vars with migration guidance", async () => {
+    originalEnv = { ...process.env };
+    const root = await tempDir("predit-local-diffusion-root-");
+    process.env.PREDIT_LOCAL_SD_MODEL = root;
+
+    await expect(
+      localDiffusion.execute({ prompt: "legacy env", model: undefined }, testContext(root)),
+    ).rejects.toThrow("Rename it to SHOW_SIDEKICK_LOCAL_SD_MODEL");
   });
 
   it("renders code_snippet as a transparent PNG", async () => {

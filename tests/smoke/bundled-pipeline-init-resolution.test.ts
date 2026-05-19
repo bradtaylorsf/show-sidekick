@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Command } from "commander";
 import { afterEach, describe, expect, it } from "vitest";
+import { BRANDING } from "../../src/branding.js";
 import { createInitHandler } from "../../src/cli/commands/init.js";
 import { BUNDLED_MANIFEST_INVENTORY_SLUGS } from "../../src/pipelines/demo-inventory.js";
 import { bundledRoot, computeBundledChecksum, copyBundledInto } from "../../src/version/bundled.js";
@@ -31,8 +32,8 @@ describe("bundled pipeline init resolution", () => {
     })(command({ setupRuntimes: false }));
 
     for (const slug of BUNDLED_MANIFEST_INVENTORY_SLUGS) {
-      expect(existsSync(path.join(projectRoot, ".predit", "pipelines", `${slug}.yaml`)), slug).toBe(true);
-      expect(existsSync(path.join(projectRoot, ".predit", "skills", "pipelines", slug)), slug).toBe(true);
+      expect(existsSync(path.join(projectRoot, BRANDING.cacheDir, "pipelines", `${slug}.yaml`)), slug).toBe(true);
+      expect(existsSync(path.join(projectRoot, BRANDING.cacheDir, "skills", "pipelines", slug)), slug).toBe(true);
     }
   });
 });

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/scene-plan",
+  "$id": "show-sidekick://artifacts/scene-plan",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -9,7 +9,7 @@
       "minItems": 1,
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/scene",
+        "$id": "show-sidekick://artifacts/scene",
         "type": "object",
         "additionalProperties": false,
         "properties": {
@@ -45,7 +45,7 @@
           },
           "timing_ref": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "predit://artifacts/timing-ref",
+            "$id": "show-sidekick://artifacts/timing-ref",
             "type": "object",
             "additionalProperties": false,
             "properties": {
@@ -105,7 +105,7 @@
             "type": "array",
             "items": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "$id": "predit://artifacts/character-action",
+              "$id": "show-sidekick://artifacts/character-action",
               "type": "object",
               "additionalProperties": false,
               "properties": {
@@ -124,7 +124,7 @@
           },
           "shot_language": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "predit://artifacts/shot-language",
+            "$id": "show-sidekick://artifacts/shot-language",
             "type": "object",
             "additionalProperties": false,
             "properties": {
@@ -225,7 +225,7 @@
             "type": "array",
             "items": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "$id": "predit://artifacts/required-asset",
+              "$id": "show-sidekick://artifacts/required-asset",
               "type": "object",
               "additionalProperties": false,
               "properties": {

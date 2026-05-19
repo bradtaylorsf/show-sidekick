@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/research-brief",
+  "$id": "show-sidekick://artifacts/research-brief",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -11,7 +11,7 @@
       "type": "array",
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/source",
+        "$id": "show-sidekick://artifacts/source",
         "type": "object",
         "additionalProperties": false,
         "properties": {
@@ -37,7 +37,7 @@
       "type": "array",
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/finding",
+        "$id": "show-sidekick://artifacts/finding",
         "type": "object",
         "additionalProperties": false,
         "properties": {

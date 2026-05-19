@@ -1,5 +1,11 @@
 # 14 — Decision Log
 
+## Harness Decision Records
+
+Material harness-level choices are recorded in specs as well as in issue or PR discussion. The public naming contract is locked in [`18-public-naming-contract.md`](18-public-naming-contract.md): the product is **Show Sidekick**, the npm package is `show-sidekick`, the primary CLI is `showkick`, aliases are `show-sidekick` and `showsidekick`, the domain is `showsidekick.com`, the user-project cache is `.show-sidekick/`, and the environment prefix is `SHOW_SIDEKICK_`.
+
+The pre-public `predit` implementation name receives a hard public rename with no retained CLI binary alias. A temporary project-cache migration from `.predit/` to `.show-sidekick/` remains only through `v0.2.0`; legacy `PREDIT_*` environment variables fail with explicit `SHOW_SIDEKICK_*` remediation.
+
 ## Why
 
 Production runs make dozens of material choices: which TTS provider, which image model, which render runtime, which music track, which voice, which playbook, what to do when the primary path is blocked. The decision log is the cumulative audit trail of those choices. It lets the user (and the reviewer) verify that the agent considered alternatives, gave honest reasons, and didn't quietly substitute one path for another.
@@ -124,5 +130,5 @@ The reviewer flags a `render_runtime_selection` decision with fewer options cons
 ## What the decision log enables
 
 - **The reviewer can fact-check the agent.** Did the agent really consider both runtimes? The log says so explicitly.
-- **The user can re-run with a different choice.** `predit revise --decision render_runtime_selection --pick remotion` (future feature) re-runs from the relevant stage with a different decision.
+- **The user can re-run with a different choice.** `showkick revise --decision render_runtime_selection --pick remotion` (future feature) re-runs from the relevant stage with a different decision.
 - **Post-mortems are tractable.** When a render comes out wrong, the decision log explains the path that was taken — and the alternatives that weren't.

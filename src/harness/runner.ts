@@ -15,6 +15,7 @@ import { ProposalPacketSchema } from "../artifacts/proposal-packet.js";
 import { RenderReportSchema } from "../artifacts/render-report.js";
 import { ReviewSchema, type Review } from "../artifacts/review.js";
 import type { VideoAnalysisBrief } from "../artifacts/video-analysis-brief.js";
+import { BRANDING } from "../branding.js";
 import {
   latestSampleVersion,
   listCheckpoints,
@@ -1753,7 +1754,7 @@ function emitFinalReviewFailed(opts: RunnerOptions, stage: string, preservedPath
       episode: opts.episode.slug,
       stage,
       preserved_path: preservedPath,
-      cta: "predit approve --force <reason>",
+      cta: `${BRANDING.primaryCli} approve --force <reason>`,
     })}\n`,
   );
 }

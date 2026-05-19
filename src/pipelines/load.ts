@@ -65,7 +65,7 @@ function throwMissingPipeline(projectRoot: string, slug: string): never {
   const paths = projectPaths(projectRoot);
   const fileName = path.extname(slug) ? slug : `${slug}.yaml`;
   const localPath = path.join(paths.pipelines, fileName);
-  const bundledPath = path.join(paths.predit, "pipelines", fileName);
+  const bundledPath = path.join(paths.cache, "pipelines", fileName);
 
   throw new ConfigError({
     filePath: localPath,

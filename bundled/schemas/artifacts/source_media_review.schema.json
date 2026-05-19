@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/source_media_review",
+  "$id": "show-sidekick://artifacts/source_media_review",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -9,7 +9,7 @@
       "minItems": 1,
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/source_media_review.file",
+        "$id": "show-sidekick://artifacts/source_media_review.file",
         "type": "object",
         "additionalProperties": false,
         "properties": {

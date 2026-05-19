@@ -2,8 +2,12 @@ import { access } from "node:fs/promises";
 import { z } from "zod";
 import { generatedAssetPath } from "../media/generated-path.js";
 import { binaryOnPath, runCommand } from "../media/process.js";
+import { LegacyEnvVarError } from "../paths/errors.js";
+import { optionalProcessEnv } from "../paths/env.js";
 import { defineTool } from "../registry/index.js";
 import type { Availability } from "../registry/index.js";
+
+const LOCAL_SD_MODEL_ENV = "SHOW_SIDEKICK_LOCAL_SD_MODEL";
 
 const LOCAL_DIFFUSION_SCRIPT = String.raw`
 import argparse
@@ -71,7 +75,7 @@ export default defineTool({
   integration: {
     kind: "binary",
     binary: "python3",
-    install: "pip install diffusers torch accelerate; set PREDIT_LOCAL_SD_MODEL to a local SD/SDXL model path.",
+    install: "pip install diffusers torch accelerate; set SHOW_SIDEKICK_LOCAL_SD_MODEL to a local SD/SDXL model path.",
   },
   best_for: "local SD/SDXL image generation on machines with a local model and LOCAL_GPU runtime",
   supports: ["sd15", "sdxl", "LOCAL_GPU"],
@@ -82,9 +86,9 @@ export default defineTool({
 
   async execute(params, ctx) {
     const input = LocalDiffusionInputSchema.parse(params);
-    const model = input.model ?? process.env.PREDIT_LOCAL_SD_MODEL;
+    const model = input.model ?? optionalLocalModelEnv();
     if (!model) {
-      throw new Error("missing env: PREDIT_LOCAL_SD_MODEL");
+      throw new Error(`missing env: ${LOCAL_SD_MODEL_ENV}`);
     }
     await access(model);
 
@@ -132,9 +136,9 @@ async function localDiffusionAvailability(): Promise<Availability> {
     return { available: false, reason: "binary not on PATH: python3", fix: "install" };
   }
 
-  const model = process.env.PREDIT_LOCAL_SD_MODEL;
+  const model = optionalLocalModelEnv();
   if (!model || model.trim() === "") {
-    return { available: false, reason: "missing env: PREDIT_LOCAL_SD_MODEL", fix: "env" };
+    return { available: false, reason: `missing env: ${LOCAL_SD_MODEL_ENV}`, fix: "env" };
   }
 
   try {
@@ -142,5 +146,16 @@ async function localDiffusionAvailability(): Promise<Availability> {
     return { available: true };
   } catch {
     return { available: false, reason: `local diffusion model not found: ${model}`, fix: "manual" };
+  }
+}
+
+function optionalLocalModelEnv(): string | undefined {
+  try {
+    return optionalProcessEnv(LOCAL_SD_MODEL_ENV);
+  } catch (error) {
+    if (error instanceof LegacyEnvVarError) {
+      throw new Error(error.message);
+    }
+    throw error;
   }
 }

@@ -7,6 +7,7 @@ import {
 import { CreativeArtifactJsonSchemas, type JsonSchema } from "./creative-json-schema.js";
 import { DECISION_CATEGORY } from "./decision-log.js";
 import { FINAL_REVIEW_THRESHOLDS } from "./final-review.js";
+import { BRANDING } from "../branding.js";
 
 const stringJson = { type: "string" } as const satisfies JsonSchema;
 const booleanJson = { type: "boolean" } as const satisfies JsonSchema;
@@ -38,7 +39,7 @@ const timingRefJson = objectJson(
 function withMeta(id: string, schema: JsonSchema): JsonSchema {
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",
-    $id: `predit://artifacts/${id}`,
+    $id: `${BRANDING.packageName}://artifacts/${id}`,
     ...schema,
   };
 }

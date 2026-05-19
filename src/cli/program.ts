@@ -20,15 +20,16 @@ import { type CliIo, createStubHandler, defaultIo, type GlobalOptions } from "./
 import { createUpdateHandler } from "./commands/update.js";
 import { createWatchHandler } from "./commands/watch.js";
 import { suggest } from "./fuzzy.js";
+import { BRANDING, LEGACY_BRANDING } from "../branding.js";
 import { configure } from "../log/mode.js";
 import { loadEnvIntoProcess } from "../paths/env.js";
 import { ProjectRootNotFoundError } from "../paths/errors.js";
-import { findProjectRoot } from "../paths/project.js";
+import { findProjectRoot, migrateLegacyProjectCache, publicCacheDir } from "../paths/project.js";
 import { BUNDLED_CACHE_DIRS, bundledRoot, computeBundledChecksum, copyBundledInto } from "../version/bundled.js";
 import { compareVersions, readCacheVersion, writeCacheVersion } from "../version/cache.js";
 import { VERSION } from "../version.js";
 
-const CLI_DESCRIPTION = "AI pre-production for video - build the rough cut, finish in your NLE.";
+const CLI_DESCRIPTION = `${BRANDING.productDisplayName}: AI pre-production for video - build the rough cut, finish in your NLE.`;
 
 const COMMAND_NAMES = [
   "init",
@@ -65,7 +66,7 @@ export function createProgram(input: CliIo | ProgramOptions = defaultIo): Comman
   const program = new Command();
 
   program
-    .name("predit")
+    .name(BRANDING.primaryCli)
     .description(CLI_DESCRIPTION)
     .version(VERSION)
     .option("--json", "emit machine-readable NDJSON")
@@ -110,9 +111,11 @@ function registerUnknownCommandSuggestion(program: Command): void {
   patched.unknownCommand = function unknownCommand() {
     const input = this.args[0] as string;
     const match = suggest(input, COMMAND_NAMES);
-    const suffix = match ? `, did you mean "${match}"?` : "";
+    const suffix = match ? `, did you mean "${match}"` : "";
 
-    this.error(`unknown command "${input}"${suffix}`, { code: "commander.unknownCommand" });
+    this.error(`unknown command "${input}"${suffix}. Run '${BRANDING.primaryCli} --help'.`, {
+      code: "commander.unknownCommand",
+    });
   };
 }
 
@@ -124,7 +127,7 @@ type RegisterCommandOptions = {
 function registerCommands(program: Command, io: CliIo, options: RegisterCommandOptions = {}): void {
   program
     .command("init")
-    .description("scaffold a new predit project in cwd")
+    .description(`scaffold a new ${BRANDING.productDisplayName} project in cwd`)
     .option("--git", "initialize git and commit the scaffold")
     .option("--starter <name>", "clone a bundled starter show into shows/<name>/")
     .option("--setup-runtimes", "install Remotion, Remotion CLI deps, and HyperFrames during init")
@@ -143,7 +146,7 @@ function registerCommands(program: Command, io: CliIo, options: RegisterCommandO
   newCommand
     .command("show <slug>")
     .description("scaffold shows/<slug>/")
-    .option("--from <starter>", "starter to copy from .predit/starters")
+    .option("--from <starter>", `starter to copy from ${BRANDING.cacheDir}/starters`)
     .option("--pipelines <list>", "comma-separated pipeline slugs")
     .action(newHandlers.show);
   newCommand
@@ -259,8 +262,8 @@ function registerCommands(program: Command, io: CliIo, options: RegisterCommandO
 
   program
     .command("update")
-    .description("refresh the local .predit cache")
-    .option("--check", "check whether .predit is current without writing")
+    .description(`refresh the local ${BRANDING.cacheDir} cache`)
+    .option("--check", `check whether ${BRANDING.cacheDir} is current without writing`)
     .action(createUpdateHandler(io));
 }
 
@@ -269,15 +272,28 @@ async function checkProjectCache(commandName: string, projectRoot: string | null
     return;
   }
 
+  const migration = await migrateLegacyProjectCache(projectRoot);
+  if (migration === "migrated") {
+    io.stderr.write(
+      `warning: migrated legacy ${LEGACY_BRANDING.cacheDir} cache to ${BRANDING.cacheDir}; legacy cache compatibility ends in v0.2.0\n`,
+    );
+  } else if (migration === "legacy-ignored") {
+    io.stderr.write(
+      `warning: ignored legacy ${LEGACY_BRANDING.cacheDir} cache because ${BRANDING.cacheDir} already exists; remove ${LEGACY_BRANDING.cacheDir} after verifying the project\n`,
+    );
+  }
+
   const cached = await readCacheVersion(projectRoot);
   if (cached === null) {
-    if (commandName !== "update" && !existsSync(path.join(projectRoot, ".predit"))) {
+    if (commandName !== "update" && !existsSync(publicCacheDir(projectRoot))) {
       await refreshProjectCache(projectRoot);
-      io.stderr.write(`info: refreshed ${projectRoot}/.predit for predit v${VERSION}\n`);
+      io.stderr.write(`info: refreshed ${projectRoot}/${BRANDING.cacheDir} for ${BRANDING.packageName} v${VERSION}\n`);
       return;
     }
 
-    io.stderr.write(`warning: ${projectRoot}/.predit/version.json is missing; run 'predit update'\n`);
+    io.stderr.write(
+      `warning: ${projectRoot}/${BRANDING.cacheDir}/${BRANDING.cacheVersionFileName} is missing; run '${BRANDING.primaryCli} update'\n`,
+    );
     return;
   }
 
@@ -292,7 +308,7 @@ async function checkProjectCache(commandName: string, projectRoot: string | null
     if (commandName !== "update") {
       await refreshProjectCache(projectRoot, sourceBundledRoot, bundledChecksum);
       io.stderr.write(
-        `info: refreshed .predit cache from predit v${cached.harness_version} to installed v${VERSION}\n`,
+        `info: refreshed ${BRANDING.cacheDir} cache from ${BRANDING.packageName} v${cached.harness_version} to installed v${VERSION}\n`,
       );
     }
     return;
@@ -301,15 +317,15 @@ async function checkProjectCache(commandName: string, projectRoot: string | null
   if (comparison === "match") {
     if (commandName !== "update") {
       await refreshProjectCache(projectRoot, sourceBundledRoot, bundledChecksum);
-      io.stderr.write("info: refreshed stale .predit bundled cache\n");
+      io.stderr.write(`info: refreshed stale ${BRANDING.cacheDir} bundled cache\n`);
     }
     return;
   }
 
   const message = [
-    `.predit cache is incompatible with installed predit: project has v${cached.harness_version}, installed is v${VERSION}.`,
-    "Run 'predit update' to refresh the project cache, or install a matching harness with",
-    `'pnpm i -g predit@${cached.harness_version}'.`,
+    `${BRANDING.cacheDir} cache is incompatible with installed ${BRANDING.packageName}: project has v${cached.harness_version}, installed is v${VERSION}.`,
+    `Run '${BRANDING.primaryCli} update' to refresh the project cache, or install a matching harness with`,
+    `'npm install -g ${BRANDING.packageName}@${cached.harness_version}'.`,
   ].join(" ");
 
   if (commandName === "update") {
@@ -325,13 +341,13 @@ async function refreshProjectCache(
   sourceBundledRoot: string = bundledRoot(),
   bundledChecksum?: string,
 ): Promise<void> {
-  const preditDir = path.join(projectRoot, ".predit");
+  const cacheDir = publicCacheDir(projectRoot);
 
   for (const dirname of BUNDLED_CACHE_DIRS) {
-    await rm(path.join(preditDir, dirname), { recursive: true, force: true });
+    await rm(path.join(cacheDir, dirname), { recursive: true, force: true });
   }
 
-  await copyBundledInto(preditDir, sourceBundledRoot);
+  await copyBundledInto(cacheDir, sourceBundledRoot);
   await writeCacheVersion(projectRoot, {
     harness_version: VERSION,
     bundled_checksum: bundledChecksum ?? (await computeBundledChecksum(sourceBundledRoot)),
@@ -357,7 +373,7 @@ function requireProjectRoot(commandName: string): string | null {
 function topLevelCommandName(command: Command): string {
   let current = command;
 
-  while (current.parent && current.parent.name() !== "predit") {
+  while (current.parent && current.parent.name() !== BRANDING.primaryCli) {
     current = current.parent;
   }
 

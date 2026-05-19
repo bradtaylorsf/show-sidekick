@@ -110,7 +110,7 @@ async function renderWithRemotionCli(
   durationS: number,
 ): Promise<Omit<RenderReport, "validation_steps">> {
   const outputPath = resolveAssetPath(input.output_path ?? "renders/remotion.mp4", projectRoot);
-  const workspace = join(projectRoot, ".predit-work", `remotion-${Date.now()}`);
+  const workspace = join(projectRoot, ".show-sidekick-work", `remotion-${Date.now()}`);
   const entryPoint = join(workspace, "index.jsx");
   const publicDir = join(workspace, "public");
   const durationInFrames = Math.max(1, Math.ceil(durationS * input.fps));
@@ -126,7 +126,7 @@ async function renderWithRemotionCli(
       "remotion",
       "render",
       entryPoint,
-      "PreditSample",
+      "ShowSidekickSample",
       outputPath,
       "--codec",
       "h264",
@@ -452,7 +452,7 @@ function NextStep({ progress, accent }) {
   );
 }
 
-function PreditSample({ cuts, audioSrc }) {
+function ShowSidekickSample({ cuts, audioSrc }) {
   return (
     <AbsoluteFill style={{ backgroundColor: "#0b1020" }}>
       {cuts.map((cut) => (
@@ -467,8 +467,8 @@ function PreditSample({ cuts, audioSrc }) {
 
 export const RemotionRoot = () => (
   <Composition
-    id="PreditSample"
-    component={PreditSample}
+    id="ShowSidekickSample"
+    component={ShowSidekickSample}
     durationInFrames={${durationInFrames}}
     fps={props.fps}
     width={props.width}

@@ -197,7 +197,7 @@ const playwrightRecording = defineTool({
   async execute(params: PlaywrightRecordingInput, ctx): Promise<PlaywrightRecordingOutput> {
     const input = inputSchema.parse(params);
     const outputPath = resolveProjectPath(input.output_path, ctx.projectRoot);
-    const recordingDir = await mkdtemp(join(tmpdir(), "predit-playwright-"));
+    const recordingDir = await mkdtemp(join(tmpdir(), "show-sidekick-playwright-"));
     await mkdir(dirname(outputPath), { recursive: true });
 
     const startedAt = Date.now();

@@ -16,9 +16,13 @@ import {
   type LaneVerification,
   type VerifyLaneInput,
 } from "./lib/verify-render.ts";
+import { sampleSupportAllowsMode, validateShowTypeCatalog } from "./lib/show-types-catalog.ts";
+import { BRANDING } from "../src/branding.js";
 
 export type DemoMatrixMode = "zero-key" | "paid-demo";
 export type SampleSupport = "zero-key" | "paid" | "both" | "unsupported";
+export type DemoMatrixLaneSource = "starters" | "show-types";
+export type ShowTypeLaneStatus = "not-run" | "unsupported" | "setup-missing" | "build-failed" | "export-failed" | "verified";
 
 export type DemoMatrixCliArgs = {
   readonly mode: DemoMatrixMode;
@@ -26,10 +30,13 @@ export type DemoMatrixCliArgs = {
   readonly keepWorkdir: boolean;
   readonly json: boolean;
   readonly cliPath?: string;
+  readonly laneSource: DemoMatrixLaneSource;
 };
 
 export type DemoMatrixLane = {
   readonly slug: string;
+  readonly laneId?: string;
+  readonly starterSlug?: string;
   readonly showSlug: string;
   readonly pipeline: string;
   readonly sampleSupport: SampleSupport;
@@ -119,6 +126,7 @@ export function parseDemoMatrixArgs(argv: readonly string[]): DemoMatrixCliArgs 
   let keepWorkdir = false;
   let json = false;
   let cliPath: string | undefined;
+  let laneSource: DemoMatrixLaneSource = "starters";
   const only: string[] = [];
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -137,6 +145,10 @@ export function parseDemoMatrixArgs(argv: readonly string[]): DemoMatrixCliArgs 
     }
     if (arg === "--json") {
       json = true;
+      continue;
+    }
+    if (arg === "--from-show-types") {
+      laneSource = "show-types";
       continue;
     }
     if (arg === "--only") {
@@ -182,6 +194,7 @@ export function parseDemoMatrixArgs(argv: readonly string[]): DemoMatrixCliArgs 
     keepWorkdir,
     json,
     cliPath,
+    laneSource,
   };
 }
 
@@ -228,6 +241,56 @@ export async function discoverDemoMatrixLanes(input: {
   return runnable;
 }
 
+export async function discoverShowTypeMatrixLanes(input: {
+  readonly repoRoot: string;
+  readonly mode: DemoMatrixMode;
+  readonly only?: readonly string[];
+}): Promise<DemoMatrixLane[]> {
+  const validation = await validateShowTypeCatalog({ repoRoot: input.repoRoot });
+  if (validation.errors.length > 0) {
+    throw new UsageError(`show type catalog is invalid:\n${validation.errors.map((error) => `- ${error}`).join("\n")}`);
+  }
+
+  const requested = new Set(input.only ?? []);
+  const allLaneIds = new Set(validation.catalog.rows.map((row) => row.laneId));
+  const missing = [...requested].filter((laneId) => !allLaneIds.has(laneId));
+  if (missing.length > 0) {
+    throw new UsageError(`unknown show type lane: ${missing.join(", ")}`);
+  }
+
+  const lanes = validation.resolutions.flatMap((resolution) => {
+    const row = resolution.row;
+    if (requested.size > 0 && !requested.has(row.laneId)) {
+      return [];
+    }
+    if (resolution.starter === undefined) {
+      return [];
+    }
+    if (!sampleSupportAllowsMode(resolution.starter.sampleSupport, input.mode)) {
+      return [];
+    }
+
+    return [
+      {
+        slug: row.laneId,
+        laneId: row.laneId,
+        starterSlug: resolution.starter.slug,
+        showSlug: resolution.starter.slug,
+        pipeline: row.pipelineSlug,
+        sampleSupport: resolution.starter.sampleSupport,
+        target: `${resolution.starter.slug}/sample-episode`,
+      } satisfies DemoMatrixLane,
+    ];
+  });
+
+  if (lanes.length === 0) {
+    const scope = requested.size > 0 ? [...requested].join(", ") : "all catalog lanes";
+    throw new UsageError(`no ${input.mode} show type lanes selected for ${scope}`);
+  }
+
+  return lanes;
+}
+
 export async function runDemoMatrix(options: DemoMatrixRunOptions = {}): Promise<DemoMatrixResult> {
   const startedAt = Date.now();
   const args = parseDemoMatrixArgs(options.argv ?? []);
@@ -237,7 +300,10 @@ export async function runDemoMatrix(options: DemoMatrixRunOptions = {}): Promise
   const write = options.write ?? ((line: string) => process.stdout.write(line));
   const output = createOutput(args.json, write);
   const workingDir = await createMatrixWorkdir(repoRoot, options.tempRoot);
-  const lanes = await discoverDemoMatrixLanes({ repoRoot, mode: args.mode, only: args.only });
+  const lanes =
+    args.laneSource === "show-types"
+      ? await discoverShowTypeMatrixLanes({ repoRoot, mode: args.mode, only: args.only })
+      : await discoverDemoMatrixLanes({ repoRoot, mode: args.mode, only: args.only });
   const cli = await resolveCliInvocation(args.cliPath, repoRoot, runCommand, env);
   const envAvailability = await snapshotDemoMatrixEnv({ cwd: repoRoot, env, runCommand });
   const providerProfile = args.mode === "paid-demo" ? "paid-demo" : undefined;
@@ -349,10 +415,11 @@ async function runLane(input: {
   readonly now: () => Date;
 }): Promise<DemoMatrixLaneResult> {
   const startedAt = Date.now();
-  const projectDir = path.join(input.workingDir, input.lane.slug);
+  const projectDir = path.join(input.workingDir, laneProjectDirName(input.lane));
   await mkdir(projectDir, { recursive: true });
 
-  const initArgs = [...input.cli.baseArgs, "--json", "init", "--starter", input.lane.slug];
+  const starterSlug = input.lane.starterSlug ?? input.lane.slug;
+  const initArgs = [...input.cli.baseArgs, "--json", "init", "--starter", starterSlug];
   const init = await input.runCommand(input.cli.command, initArgs, {
     cwd: projectDir,
     env: input.env,
@@ -484,7 +551,7 @@ function explicitCliInvocation(cliPath: string): Omit<CliInvocation, "version"> 
 
 async function createMatrixWorkdir(repoRoot: string, tempRoot: string | undefined): Promise<string> {
   const root = path.resolve(tempRoot ?? tmpdir());
-  const workingDir = await mkdtemp(path.join(root, "predit-demo-matrix-"));
+  const workingDir = await mkdtemp(path.join(root, "show-sidekick-demo-matrix-"));
   assertOutsideRepo(repoRoot, workingDir);
   return workingDir;
 }
@@ -500,7 +567,7 @@ async function collectArtifactPaths(projectDir: string, lane: DemoMatrixLane): P
   const roots = [
     path.join(projectDir, "projects", lane.showSlug, "sample-episode"),
     path.join(projectDir, "exports"),
-    path.join(projectDir, ".predit", "decisions"),
+    path.join(projectDir, BRANDING.cacheDir, "decisions"),
   ];
   const paths: string[] = [];
 
@@ -566,6 +633,52 @@ function eventStatus(result: SpawnResult): string {
   }
 
   return result.exitCode === 0 ? "unknown" : "failed";
+}
+
+const setupMissingPattern = /\b(auth|credential|doctor|env|ffmpeg|ffprobe|higgsfield|login|missing|not found|openai|provider|setup|unauthorized)\b/i;
+
+export function classifyShowTypeLaneStatus(input: {
+  readonly selected: boolean;
+  readonly runnable: boolean;
+  readonly result?: DemoMatrixLaneResult;
+}): ShowTypeLaneStatus {
+  if (!input.selected) {
+    return "not-run";
+  }
+  if (!input.runnable) {
+    return "unsupported";
+  }
+  if (input.result === undefined) {
+    return "not-run";
+  }
+  if (input.result.status === "completed") {
+    return hasRequiredExportCoverage(input.result.verification) ? "verified" : "export-failed";
+  }
+  if (input.result.verification?.export_results.some((result) => result.status === "failed") === true) {
+    return "export-failed";
+  }
+  if (input.result.command.includes(" init ") || setupMissingPattern.test(input.result.error ?? "")) {
+    return "setup-missing";
+  }
+
+  return "build-failed";
+}
+
+function hasRequiredExportCoverage(verification: LaneVerification | undefined): boolean {
+  if (verification === undefined) {
+    return false;
+  }
+  const edl = verification.export_results.find((result) => result.target === "edl");
+  if (edl?.status !== "completed") {
+    return false;
+  }
+
+  const richerTargets = verification.export_results.filter((result) => result.target !== "edl");
+  return richerTargets.length === 0 || richerTargets.some((result) => result.status === "completed" || result.status === "skipped_unsupported");
+}
+
+function laneProjectDirName(lane: DemoMatrixLane): string {
+  return (lane.laneId ?? lane.slug).replace(/[^A-Za-z0-9._-]+/g, "-");
 }
 
 async function resolveStarterSampleSupport(repoRoot: string, show: Record<string, unknown>, defaultPipeline: string): Promise<SampleSupport> {
@@ -642,7 +755,7 @@ function findRepoRoot(): string {
 
 function usageText(): string {
   return [
-    "Usage: pnpm demo-matrix [--zero-key | --paid-demo] [--only <slug>...] [--keep-workdir] [--json] [--cli-path <path>]",
+    "Usage: pnpm demo-matrix [--zero-key | --paid-demo] [--only <slug>...] [--keep-workdir] [--json] [--cli-path <path>] [--from-show-types]",
     "",
     "Runs bundled starter sample builds in fresh temp user projects outside the harness repo.",
   ].join("\n");

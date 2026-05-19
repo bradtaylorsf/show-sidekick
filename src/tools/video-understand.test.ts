@@ -45,7 +45,7 @@ describe("video_understand", () => {
   it("registers the video understanding capability", () => {
     expect(videoUnderstand.name).toBe("video_understand");
     expect(videoUnderstand.capability).toBe("video_understanding");
-    expect(videoUnderstand.integration).toMatchObject({ kind: "library", package: "predit" });
+    expect(videoUnderstand.integration).toMatchObject({ kind: "library", package: "show-sidekick" });
   });
 
   it("parses inputs and fixture-like outputs", () => {

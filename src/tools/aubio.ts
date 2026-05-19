@@ -120,7 +120,7 @@ async function analyzeWithAubio(audioPath: string, params: AubioInput): Promise<
 }
 
 async function analyzeViaTemporaryWav(params: AubioInput): Promise<AubioOutput> {
-  const dir = await mkdtemp(join(tmpdir(), "predit-aubio-wav-"));
+  const dir = await mkdtemp(join(tmpdir(), "show-sidekick-aubio-wav-"));
   const wavPath = join(dir, "input.wav");
 
   try {

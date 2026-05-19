@@ -174,7 +174,7 @@ Run at **every stage** when a VideoAnalysisBrief exists (reference-driven produc
 
 ## Slideshow Risk Review
 
-Run at **scene_plan** and **edit** stages. Use the predit slideshow-risk reviewer/tooling when available to compute the score.
+Run at **scene_plan** and **edit** stages. Use the Show Sidekick slideshow-risk reviewer/tooling when available to compute the score.
 
 ### At scene_plan stage:
 1. Compute `score_slideshow_risk(scenes, renderer_family=renderer_family)`
@@ -225,7 +225,7 @@ Run at **every stage** after proposal. The decision log (`schemas/artifacts/deci
 Run at **scene_plan** and **edit** stages. Prevents the "every video looks the same" failure mode.
 
 ### Checks:
-1. **Variation check** (scene_plan only): use the predit variation/creative-differentiation reviewer to check scene variation.
+1. **Variation check** (scene_plan only): use the Show Sidekick variation/creative-differentiation reviewer to check scene variation.
    - If verdict is "poor" (score ≤ 2): **CRITICAL** — "Scene plan lacks variety: [list violations]"
    - If verdict is "fair" (score ≤ 3): **SUGGESTION** — note specific suggestions from the checker
 
@@ -249,14 +249,14 @@ Run at **scene_plan** and **edit** stages. Prevents the "every video looks the s
    - Runtime unavailable at compose time is not an excuse for silent swap — the correct behavior is to escalate, get approval, log a decision, then run.
 
 6. **Runtime selection presented both options** (proposal stage, MANDATORY):
-   - Query registry availability or `predit doctor --json`. If both `remotion` and `hyperframes` are available, the `render_runtime_selection` decision in `decision_log` MUST have BOTH runtimes in `options_considered`.
+   - Query registry availability or `showkick doctor --json`. If both `remotion` and `hyperframes` are available, the `render_runtime_selection` decision in `decision_log` MUST have BOTH runtimes in `options_considered`.
    - A `render_runtime_selection` with only one runtime in `options_considered` when both were available on the machine → **CRITICAL**. The agent silently defaulted; the user was not presented the alternative. Re-open the proposal stage and present both.
    - If only one runtime was available, `options_considered` must still list the unavailable one with `rejected_because: "runtime not available on this machine"` — otherwise the audit trail loses the fact that the choice was constrained, not discretionary.
    - Per `specs/15-announce-and-escalate.md` > "Present both composition runtimes": the pipeline's suggested runtime is NOT a license to skip the conversation with the user.
 
 ## Delivery Promise Review
 
-Run at **edit** and **compose** stages. Uses predit delivery-promise review logic.
+Run at **edit** and **compose** stages. Uses Show Sidekick delivery-promise review logic.
 
 ### At edit stage:
 1. Extract delivery promise from proposal packet or edit_decisions metadata

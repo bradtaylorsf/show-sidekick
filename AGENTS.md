@@ -1,16 +1,16 @@
-# predit — harness contributor contract
+# Show Sidekick — harness contributor contract
 
-This file is the operating contract for agents (Claude Code, Codex, others) working **inside the predit harness repo** — adding features, fixing bugs, authoring new pipelines or skills, evolving the architecture.
+This file is the operating contract for agents (Claude Code, Codex, others) working **inside the Show Sidekick harness repo** — adding features, fixing bugs, authoring new pipelines or skills, evolving the architecture.
 
-**If you are an agent running production inside a user project** — making videos, building episodes, calling generation tools — you want the user-project AGENTS.md scaffolded into that project by `predit init`. The template lives at `bundled/templates/user-project/AGENTS.md` in this repo. Do not use the file you are currently reading for production work.
+**If you are an agent running production inside a user project** — making videos, building episodes, calling generation tools — you want the user-project AGENTS.md scaffolded into that project by `showkick init`. The template lives at `bundled/templates/user-project/AGENTS.md` in this repo. Do not use the file you are currently reading for production work.
 
-## What predit is
+## What Show Sidekick is
 
 A show-first AI pre-production harness for video. Each show owns its pipeline, look, characters, brand. Episodes are the unit of work — one episode equals one rendered output. The harness ships as a CLI; users run it inside their own folder. Audio is the master clock for music-led content; voiceover is the master clock for narration-led content. The harness assembles a rough cut and an editor handoff (EDL / Premiere XML / CapCut draft) so a human can finish in a real NLE.
 
 ## Alpha Loop orchestration
 
-This repo is initialized for Alpha Loop. `.alpha-loop.yaml` is the loop config, and GitHub issues are the source of truth for epic/task execution.
+This repo is initialized for Alpha Loop. `.alpha-loop.yaml` is the loop config, and GitHub issues are the source of truth for epic/task execution. Use the epic body and ordered sub-issue checklists as the source of truth for loop runs.
 
 Default loop roles:
 
@@ -29,9 +29,6 @@ Alpha Loop generated learnings, sessions, traces, auth state, and backup files a
 2. [`specs/00-overview.md`](specs/00-overview.md) and [`specs/10-installation-and-user-projects.md`](specs/10-installation-and-user-projects.md) — the architectural foundation.
 3. [`specs/11-agent-driven-production.md`](specs/11-agent-driven-production.md) — the philosophy that makes the rest of the system make sense.
 4. The spec(s) covering whatever you are touching today.
-5. If `.migration/` exists locally and the task touches an area covered there, read [`.migration/concepts.md`](.migration/concepts.md) before designing or implementing.
-
-`.migration/` is a private, gitignored bridge used during the initial build phase to consult a separate reference codebase for inspiration. It is never committed and is removed before the repo is ever made public. Treat its contents as study material, not as a source of code to copy.
 
 ## Operating principles (for contributors to the harness)
 
@@ -53,7 +50,5 @@ pnpm dev <args>                 # tsx watch src/cli/index.ts
 
 ## What not to do
 
-- Do not create or edit anything inside `.migration/` unless the user explicitly asks. It is reference material, not part of the product.
-- Do not reference `.migration/` content, file paths, or upstream sibling-repo names in code, public specs, README, or any committed file.
-- Do not commit credentials. `predit` does not store credentials; CLI tools own their own auth.
+- Do not commit credentials. Show Sidekick does not store credentials; CLI tools own their own auth.
 - Do not add a feature without first checking whether an existing pipeline + skill could express it. New code is the last resort, not the first.

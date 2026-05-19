@@ -33,6 +33,8 @@ export function renderProvidersDoc(tools: readonly Tool[]): string {
     "pnpm run docs:providers",
     "```",
     "",
+    "Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_*` environment prefix. Legacy `PREDIT_*` names from pre-public projects are rejected with migration guidance.",
+    "",
   ];
 
   for (const [capability, capabilityTools] of groupByCapability(sortedTools)) {

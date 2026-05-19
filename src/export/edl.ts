@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { Cuesheet, EditDecisions, RenderReport } from "../artifacts/index.js";
+import { BRANDING } from "../branding.js";
 import { atomicWrite } from "../checkpoints/io.js";
 import type { LinkedAudioTrack, LinkedTimelineAsset } from "./fcp7-xml.js";
 
@@ -196,7 +197,7 @@ function toDropFrameNumber(totalFrames: number, nominalFrameRate: number): numbe
 }
 
 function sanitizeTitle(value: string): string {
-  return value.replace(/[\r\n]+/gu, " ").trim() || "predit export";
+  return value.replace(/[\r\n]+/gu, " ").trim() || `${BRANDING.productDisplayName} export`;
 }
 
 function edlReadme(projectName: string): string {

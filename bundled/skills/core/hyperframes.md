@@ -8,8 +8,8 @@ cross_refs:
 ---
 # HyperFrames Skill (Layer 2)
 
-This is the **predit-specific** guide to HyperFrames. It explains when
-predit pipelines should choose HyperFrames over Remotion, how predit
+This is the **Show Sidekick-specific** guide to HyperFrames. It explains when
+Show Sidekick pipelines should choose HyperFrames over Remotion, how Show Sidekick
 artifacts map to HyperFrames project files, and how the compose stage drives
 the HyperFrames CLI.
 
@@ -17,18 +17,18 @@ For raw HyperFrames knowledge (authoring contract, `data-*` attributes, GSAP
 timeline rules, CLI flags, registry blocks, website-to-video), read the Layer 3
 skills:
 
-- `.predit/skills/agents/hyperframes/` — composition authoring contract + GSAP rules
-- `.predit/skills/agents/hyperframes-cli/` — init, lint, validate, preview, render
-- `.predit/skills/agents/hyperframes-registry/` — `hyperframes add` + block wiring
-- `.predit/skills/agents/website-to-hyperframes/` — capture-to-video workflow
+- `.show-sidekick/skills/agents/hyperframes/` — composition authoring contract + GSAP rules
+- `.show-sidekick/skills/agents/hyperframes-cli/` — init, lint, validate, preview, render
+- `.show-sidekick/skills/agents/hyperframes-registry/` — `hyperframes add` + block wiring
+- `.show-sidekick/skills/agents/website-to-hyperframes/` — capture-to-video workflow
 
 This file teaches the bridge between the two.
 
 ---
 
-## When predit should pick HyperFrames (vs Remotion vs FFmpeg)
+## When Show Sidekick should pick HyperFrames (vs Remotion vs FFmpeg)
 
-predit separates two concepts:
+Show Sidekick separates two concepts:
 
 - **`renderer_family`** — the creative grammar (`explainer-data`,
   `cinematic-trailer`, `product-reveal`, etc.). Chosen at proposal.
@@ -50,7 +50,7 @@ logged in `decision_log`. Silent runtime swaps are a contract violation.
 | Product promo / launch reel / marketing title card | **HyperFrames** | CSS/GSAP composition grammar matches how designers already think about these. Templates (`kinetic-type`, `product-promo`, `swiss-grid`) give a strong starting point. |
 | Website-to-video / UI-driven composition | **HyperFrames** | The `website-to-hyperframes` workflow exists for exactly this. |
 | Registry block needed (data chart, grain overlay, shimmer sweep, shader transition) | **HyperFrames** | The registry is HyperFrames-only. Remotion does not have `hyperframes add`. |
-| Synthetic UI / fake terminal / fake browser demo | Either — depends on existing coverage | predit already ships Remotion `TerminalScene` (see `synthetic-screen-recording` Layer 3). For UI chrome beyond terminal, HyperFrames HTML is easier. |
+| Synthetic UI / fake terminal / fake browser demo | Either — depends on existing coverage | Show Sidekick already ships Remotion `TerminalScene` (see `synthetic-screen-recording` Layer 3). For UI chrome beyond terminal, HyperFrames HTML is easier. |
 | Pure concat / trim of source clips, no composition | **FFmpeg** | Neither Remotion nor HyperFrames add value here. |
 | Remotion is not installed on this machine | **HyperFrames** (if available) or **FFmpeg** | Do not silently fall back. Tell the user before downgrading. |
 
@@ -126,7 +126,7 @@ projects/<project-name>/
 ```
 
 The workspace is generated at compose time by `hyperframes_compose` from
-`edit_decisions` + `asset_manifest` + the active playbook. predit also keeps
+`edit_decisions` + `asset_manifest` + the active playbook. Show Sidekick also keeps
 the `hyperframes` runtime tool name for internal routing. The workspace is
 regenerable and gitignored along with the rest of `projects/`.
 
@@ -144,9 +144,9 @@ regenerable and gitignored along with the rest of `projects/`.
 ## Artifact → HyperFrames mapping
 
 When `render_runtime = "hyperframes"`, the compose stage translates
-predit artifacts into HyperFrames project files:
+Show Sidekick artifacts into HyperFrames project files:
 
-| predit artifact field | HyperFrames target |
+| Show Sidekick artifact field | HyperFrames target |
 |---|---|
 | `edit_decisions.cuts[]` (sequence of scenes) | `index.html` timeline, one `<div data-composition-id data-composition-src>` per cut |
 | `edit_decisions.cuts[i].in_seconds / out_seconds` | `data-start` / `data-duration` on the clip element |
@@ -166,7 +166,7 @@ with the path to the generated MP4. See `src/tools/hyperframes.ts` and the
 ### Workspace-local authoring artifacts
 
 Upstream's `website-to-hyperframes` skill uses `DESIGN.md`, `SCRIPT.md`, and
-`STORYBOARD.md` as step-by-step workspace files. predit does **not**
+`STORYBOARD.md` as step-by-step workspace files. Show Sidekick does **not**
 replace its canonical artifact contracts with these — `brief`, `script`,
 `scene_plan`, `edit_decisions`, etc. remain the source of truth under
 `projects/<p>/artifacts/`. Treat the upstream files as **convenience copies**
@@ -205,7 +205,7 @@ artifact wins.
 
 ## Preflight — HyperFrames availability
 
-At preflight, `predit doctor --json` and registry availability report
+At preflight, `showkick doctor --json` and registry availability report
 HyperFrames readiness. Track these fields in the preflight summary when
 available:
 
@@ -265,7 +265,7 @@ cannot.
 
 ## Style bridge (playbook → CSS)
 
-predit playbooks translate into shared theme data for Remotion and CSS
+Show Sidekick playbooks translate into shared theme data for Remotion and CSS
 variables for HyperFrames. For HyperFrames, the translation produces:
 
 - A block of CSS custom properties on `:root` (`--color-bg`, `--color-fg`,
@@ -423,7 +423,7 @@ the `deterministicFonts.ts` mapping table. Safe bets: `Outfit`,
   carries colors, typography, and motion.
 - ❌ Writing HyperFrames compositions that reference `src/remotion/public/`
   — the HyperFrames workspace is separate and self-contained.
-- ❌ Running `hyperframes init` from the predit orchestrator. `init`
+- ❌ Running `hyperframes init` from the Show Sidekick orchestrator. `init`
   creates its own project semantics and installs agent skills — it's meant
   for humans bootstrapping a project, not for the pipeline. `hyperframes`
   generates the project files directly.

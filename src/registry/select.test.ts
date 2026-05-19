@@ -88,7 +88,7 @@ describe("Registry.select", () => {
     const registry = new Registry({
       tools: [
         testTool("tts_selector", { available: true }, undefined, {
-          provider: "predit",
+          provider: "show-sidekick",
           supports: ["provider-selection"],
         }),
         testTool("concrete-tts", { available: true }),
@@ -102,7 +102,7 @@ describe("Registry.select", () => {
     const registry = new Registry({
       tools: [
         testTool("tts_selector", { available: true }, undefined, {
-          provider: "predit",
+          provider: "show-sidekick",
           supports: ["provider-selection"],
         }),
       ],

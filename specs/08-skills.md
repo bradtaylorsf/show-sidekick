@@ -2,7 +2,7 @@
 
 ## What a skill is
 
-A Markdown file that tells the agent *how* to do something. Skills are the instruction layer — `predit` is intentionally instruction-driven, so an agent can be retargeted at new pipelines or vendors by editing prose, not code.
+A Markdown file that tells the agent *how* to do something. Skills are the instruction layer — Show Sidekick is intentionally instruction-driven, so an agent can be retargeted at new pipelines or vendors by editing prose, not code.
 
 ## Skill types
 
@@ -52,14 +52,14 @@ Four resolution tiers, checked in order (first match wins):
 ```
 shows/<show>/skills/<stage>-director.md                          # show-specific override (highest priority)
 skills/pipelines/<pipeline>/<stage>-director.md                  # project-local override
-.predit/skills/pipelines/<pipeline>/<stage>-director.md          # bundled per-pipeline default
-.predit/skills/pipelines/_shared/<stage>-director.md             # bundled shared default (lowest)
+.show-sidekick/skills/pipelines/<pipeline>/<stage>-director.md          # bundled per-pipeline default
+.show-sidekick/skills/pipelines/_shared/<stage>-director.md             # bundled shared default (lowest)
 ```
 
 The harness reads at most one director skill per stage.
 
 ```
-.predit/skills/                       # bundled, refreshed by `predit update`
+.show-sidekick/skills/                       # bundled, refreshed by `showkick update`
 ├── pipelines/
 │   ├── <pipeline>/<stage>-director.md
 │   └── _shared/<stage>-director.md   # reusable across pipelines (cuesheet, etc.)
@@ -80,8 +80,8 @@ When resolving a director skill for a given stage:
 
 1. Look for `shows/<show>/skills/<stage>-director.md`. If present, use it.
 2. Otherwise, look for `skills/pipelines/<pipeline>/<stage>-director.md` (project-local override).
-3. Otherwise, look for `.predit/skills/pipelines/<pipeline>/<stage>-director.md` (bundled per-pipeline default).
-4. Otherwise, use `.predit/skills/pipelines/_shared/<stage>-director.md` (bundled shared default).
+3. Otherwise, look for `.show-sidekick/skills/pipelines/<pipeline>/<stage>-director.md` (bundled per-pipeline default).
+4. Otherwise, use `.show-sidekick/skills/pipelines/_shared/<stage>-director.md` (bundled shared default).
 
 The `_shared/` tier lets reusable director skills — like the cuesheet stage's director, which is identical across music-video, news-song, trailer, etc. — live in one place. A pipeline-specific override at tier 3 wins when present.
 
@@ -91,7 +91,7 @@ Shows don't fork pipelines to tweak a single stage — they shadow the specific 
 
 Tools reference vendor skills via `agent_skills: ['higgsfield-generate', 'ai-video-gen']`. The agent reads these before crafting prompts for that tool. Layer 3 is where prompt structures, parameter sweet spots, camera-direction syntax, and quality keywords live. Hand-edit any time without a TypeScript rebuild.
 
-Bundled Layer 3 skills live in `.predit/skills/agents/<name>.md` and should use frontmatter like:
+Bundled Layer 3 skills live in `.show-sidekick/skills/agents/<name>.md` and should use frontmatter like:
 
 ```yaml
 name: higgsfield-generate

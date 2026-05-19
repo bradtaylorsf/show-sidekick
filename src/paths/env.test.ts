@@ -3,7 +3,8 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { MissingEnvError } from "./errors.js";
+import { BRANDING, LEGACY_BRANDING } from "../branding.js";
+import { LegacyEnvVarError, MissingEnvError } from "./errors.js";
 import { loadEnv, loadEnvIntoProcess, optionalEnv, requireEnv } from "./env.js";
 
 let scratchDirs: string[] = [];
@@ -14,8 +15,8 @@ const hydratedEnvKey = "PREDIT_TEST_HYDRATED_ENV";
 async function scratchProject(): Promise<string> {
   const root = path.join(tmpdir(), `predit-env-${randomUUID()}`);
   scratchDirs.push(root);
-  await mkdir(path.join(root, ".predit"), { recursive: true });
-  await writeFile(path.join(root, "CLAUDE.md"), "# project\n", "utf8");
+  await mkdir(path.join(root, BRANDING.cacheDir), { recursive: true });
+  await writeFile(path.join(root, "AGENTS.md"), "# project\n", "utf8");
   return root;
 }
 
@@ -25,6 +26,8 @@ afterEach(async () => {
   delete process.env[processEnvKey];
   delete process.env[missingEnvKey];
   delete process.env[hydratedEnvKey];
+  delete process.env.SHOW_SIDEKICK_TEST_VALUE;
+  delete process.env.PREDIT_TEST_VALUE;
 });
 
 describe("env loader", () => {
@@ -68,6 +71,18 @@ describe("env loader", () => {
     const root = await scratchProject();
 
     expect(optionalEnv(missingEnvKey, undefined, root)).toBeUndefined();
+  });
+
+  it("rejects legacy public env var names with migration guidance", async () => {
+    const root = await scratchProject();
+    const publicName = `${BRANDING.envPrefix}TEST_VALUE`;
+    const legacyName = `${LEGACY_BRANDING.envPrefix}TEST_VALUE`;
+    await writeFile(path.join(root, ".env"), `${legacyName}=legacy\n`, "utf8");
+
+    expect(() => requireEnv(publicName, undefined, root)).toThrow(LegacyEnvVarError);
+    expect(() => requireEnv(publicName, undefined, root)).toThrow(
+      `Rename it to ${publicName}`,
+    );
   });
 
   it("hydrates process.env from project env files without replacing existing values", async () => {

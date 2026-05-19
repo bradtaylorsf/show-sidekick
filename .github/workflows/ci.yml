@@ -11,12 +11,14 @@ permissions:
 
 jobs:
   ci:
-    name: Typecheck, test, smoke, drift
+    name: Typecheck, test, smoke
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -31,6 +33,23 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Detect no-release label
+        if: github.event_name == 'pull_request'
+        id: release_label
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+
+          const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
+          const labels = event.pull_request?.labels ?? [];
+          const noRelease = labels.some((label) => label.name === "no-release");
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `no_release=${noRelease}\n`);
+          NODE
+
+      - name: Changeset status
+        if: github.event_name == 'pull_request' && steps.release_label.outputs.no_release != 'true'
+        run: pnpm changeset:status
 
       - name: Install media binaries
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
@@ -53,7 +72,5 @@ jobs:
       - name: Framework smoke E2E
         run: pnpm run test:smoke
 
-      - name: Coverage drift audit
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm run audit:coverage-drift
+      - name: Launch gates
+        run: pnpm release:check

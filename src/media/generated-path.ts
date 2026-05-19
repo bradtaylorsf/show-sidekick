@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { publicCacheDir } from "../paths/project.js";
 import type { ToolContext } from "../registry/index.js";
 
 export async function generatedAssetPath(ctx: ToolContext, options: { extension?: string } = {}): Promise<string> {
   const extension = sanitizeExtension(options.extension ?? "png");
-  const outputDir = join(ctx.projectRoot, ".predit", "cache", "images");
+  const outputDir = join(publicCacheDir(ctx.projectRoot), "cache", "images");
 
   await mkdir(outputDir, { recursive: true });
 

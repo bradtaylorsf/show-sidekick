@@ -12,6 +12,7 @@ export type DemoReadinessInventoryEntry = {
   defaultStarterTarget: boolean;
 };
 
+// docs/show-types.md maps this bundled pipeline inventory to public validation lanes.
 export const DEMO_READINESS_INVENTORY = {
   "animated-explainer": { classification: "core_default", defaultStarterTarget: true },
   animation: { classification: "seeded_extension", defaultStarterTarget: true },

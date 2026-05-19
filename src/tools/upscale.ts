@@ -17,12 +17,12 @@ const outputSchema = z.object({
 const upscale = defineTool({
   name: "upscale",
   capability: "upscale",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "capability discovery for increasing image or clip resolution",
   supports: ["upscale", "resolution-enhancement", "provider-selection"],

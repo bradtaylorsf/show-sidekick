@@ -1,5 +1,6 @@
 import type { Command } from "commander";
 import { writePublishLog } from "../../artifacts/index.js";
+import { BRANDING } from "../../branding.js";
 import { assembleExportPackage, type AssembleExportPackageResult } from "../../export/index.js";
 import { loadRunTargetInput, selectRunTargetPipeline, type LoadedRunTarget, type LoadedRunTargetInput } from "./run-target.js";
 import type { CliIo, GlobalOptions } from "./stub.js";
@@ -80,7 +81,7 @@ function requestedExportTarget(options: ExportCommandOptions, runTarget: LoadedR
     runTarget.show.export?.default_target ??
     runTarget.pipeline.export?.default_target;
   if (rawTarget === undefined || rawTarget.trim() === "") {
-    throw new Error("predit export requires --target <target> or --format edl");
+    throw new Error(`${BRANDING.primaryCli} export requires --target <target> or --format edl`);
   }
 
   return rawTarget.trim().toLowerCase();

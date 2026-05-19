@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Command } from "commander";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { BRANDING } from "../../branding.js";
 import { loadShow } from "../../shows/load.js";
 import { BUNDLED_CACHE_DIRS, computeBundledChecksum, copyBundledInto } from "../../version/bundled.js";
 import { readCacheVersion } from "../../version/cache.js";
@@ -47,7 +48,7 @@ describe("init command", () => {
     expect(setupRuntimes).toHaveBeenCalledWith(projectRoot);
     await expect(readFile(path.join(projectRoot, "CLAUDE.md"), "utf8")).resolves.toContain("AGENTS.md");
     await expect(readFile(path.join(projectRoot, "AGENTS.md"), "utf8")).resolves.toContain("user project");
-    await expect(readFile(path.join(projectRoot, ".gitignore"), "utf8")).resolves.toContain(".predit/");
+    await expect(readFile(path.join(projectRoot, ".gitignore"), "utf8")).resolves.toContain(`${BRANDING.cacheDir}/`);
     await expect(readFile(path.join(projectRoot, ".gitignore"), "utf8")).resolves.toContain("exports/");
     await expect(readFile(path.join(projectRoot, ".env.example"), "utf8")).resolves.toContain("OPENAI_API_KEY=");
     await expect(readFile(path.join(projectRoot, ".env"), "utf8")).resolves.toContain("OPENAI_API_KEY=");
@@ -58,12 +59,12 @@ describe("init command", () => {
     });
 
     for (const dirname of BUNDLED_CACHE_DIRS) {
-      await expect(readFile(path.join(projectRoot, ".predit", dirname, `${dirname}.txt`), "utf8")).resolves.toBe(
+      await expect(readFile(path.join(projectRoot, BRANDING.cacheDir, dirname, `${dirname}.txt`), "utf8")).resolves.toBe(
         `${dirname}\n`,
       );
     }
     await expect(
-      readFile(path.join(projectRoot, ".predit", "skills", "agents", "threejs-animation", "SKILL.md"), "utf8"),
+      readFile(path.join(projectRoot, BRANDING.cacheDir, "skills", "agents", "threejs-animation", "SKILL.md"), "utf8"),
     ).resolves.toContain("name: threejs-animation");
     await expect(
       readFile(path.join(projectRoot, ".agents", "skills", "threejs-animation", "SKILL.md"), "utf8"),
@@ -88,7 +89,26 @@ describe("init command", () => {
     const { io } = captureIo();
     await expect(
       createInitHandler(io, { bundledRoot: () => bundledRoot, cwd: () => projectRoot })(command({})),
-    ).rejects.toThrow("predit update");
+    ).rejects.toThrow(`${BRANDING.primaryCli} update`);
+  });
+
+  it("uses publish-safe dotfile template names from packed packages", async () => {
+    const projectRoot = await scratchDir("project");
+    const bundledRoot = await scratchDir("bundled");
+    await writeFakeBundled(bundledRoot, { packedDotfileTemplates: true });
+    const { io } = captureIo();
+
+    await createInitHandler(io, {
+      bundledRoot: () => bundledRoot,
+      copyBundledInto: (target) => copyBundledInto(target, bundledRoot),
+      computeBundledChecksum: () => computeBundledChecksum(bundledRoot),
+      cwd: () => projectRoot,
+      setupRuntimes: vi.fn(async () => undefined),
+    })(command({}));
+
+    await expect(readFile(path.join(projectRoot, ".gitignore"), "utf8")).resolves.toContain(`${BRANDING.cacheDir}/`);
+    await expect(readFile(path.join(projectRoot, ".env.example"), "utf8")).resolves.toContain("OPENAI_API_KEY=");
+    await expect(readFile(path.join(projectRoot, ".env"), "utf8")).resolves.toContain("OPENAI_API_KEY=");
   });
 
   it("runs git initialization commands in order when --git is set", async () => {
@@ -110,7 +130,11 @@ describe("init command", () => {
       setupRuntimes: vi.fn(async () => undefined),
     })(command({ git: true }));
 
-    expect(calls).toEqual([["init"], ["add", "."], ["commit", "-m", "Initial predit project scaffold."]]);
+    expect(calls).toEqual([
+      ["init"],
+      ["add", "."],
+      ["commit", "-m", `Initial ${BRANDING.productDisplayName} project scaffold.`],
+    ]);
   });
 
   it("installs rich composition runtimes during init by default", async () => {
@@ -175,13 +199,13 @@ describe("init command", () => {
       setupRuntimes: vi.fn(async () => undefined),
     })(command({}));
 
-    expect(output().stdout).toContain("predit doctor --profile paid-demo");
+    expect(output().stdout).toContain(`${BRANDING.primaryCli} doctor --profile paid-demo`);
     expect(output().stdout).toContain("installed Remotion/HyperFrames");
     expect(output().stdout).toContain("edit .env with any provider keys");
-    expect(output().stdout).toContain("predit ls starters");
-    expect(output().stdout).toContain("predit new show first-video --from animated-explainer");
-    expect(output().stdout).toContain("Read AGENTS.md and .predit/skills/meta/onboarding.md");
-    expect(output().stdout).toContain("30-second animated predit explainer");
+    expect(output().stdout).toContain(`${BRANDING.primaryCli} ls starters`);
+    expect(output().stdout).toContain(`${BRANDING.primaryCli} new show first-video --from animated-explainer`);
+    expect(output().stdout).toContain(`Read AGENTS.md and ${BRANDING.cacheDir}/skills/meta/onboarding.md`);
+    expect(output().stdout).toContain(`30-second animated ${BRANDING.productDisplayName} explainer`);
   });
 
   it("clones a requested starter and normalizes show.yaml to the starter slug", async () => {
@@ -218,7 +242,7 @@ describe("init command", () => {
         command({ starter: "missing" }),
       ),
     ).rejects.toThrow("starter 'missing' not found");
-    await expect(stat(path.join(projectRoot, ".predit"))).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(stat(path.join(projectRoot, BRANDING.cacheDir))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("rejects starters whose bundled pipeline binding is missing", async () => {
@@ -249,7 +273,7 @@ describe("init command", () => {
         command({ starter: "broken-starter" }),
       ),
     ).rejects.toThrow("starter 'broken-starter' references bundled pipeline 'undecided-pipeline'");
-    await expect(stat(path.join(projectRoot, ".predit"))).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(stat(path.join(projectRoot, BRANDING.cacheDir))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("rejects invalid starter slugs", async () => {
@@ -266,13 +290,20 @@ describe("init command", () => {
   });
 });
 
-async function writeFakeBundled(root: string): Promise<void> {
+async function writeFakeBundled(
+  root: string,
+  options: { readonly packedDotfileTemplates?: boolean } = {},
+): Promise<void> {
   await mkdir(path.join(root, "templates", "user-project"), { recursive: true });
   await writeFile(path.join(root, "templates", "user-project", "CLAUDE.md"), "# test\nRead AGENTS.md\n", "utf8");
   await writeFile(path.join(root, "templates", "user-project", "AGENTS.md"), "# test user project\n", "utf8");
-  await writeFile(path.join(root, "templates", "user-project", ".gitignore"), ".predit/\nprojects/\nexports/\n.env\n", "utf8");
   await writeFile(
-    path.join(root, "templates", "user-project", ".env.example"),
+    path.join(root, "templates", "user-project", options.packedDotfileTemplates ? "gitignore.template" : ".gitignore"),
+    `${BRANDING.cacheDir}/\nprojects/\nexports/\n.env\n`,
+    "utf8",
+  );
+  await writeFile(
+    path.join(root, "templates", "user-project", options.packedDotfileTemplates ? "env.example.template" : ".env.example"),
     "OPENAI_API_KEY=\nELEVENLABS_API_KEY=\n",
     "utf8",
   );

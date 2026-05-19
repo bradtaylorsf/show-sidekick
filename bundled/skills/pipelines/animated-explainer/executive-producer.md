@@ -5,7 +5,7 @@ applies_to: "pipelines/animated-explainer"
 ---
 # Executive Producer - Animated Explainer
 
-This is the demo readiness lane: animated-explainer. Keep the workflow predit-native and resolve all skills from the user project's .predit cache or explicit project overrides.
+This is the demo readiness lane: animated-explainer. Keep the workflow Show Sidekick-native and resolve all skills from the user project's .show-sidekick cache or explicit project overrides.
 
 ## Pipeline State
 

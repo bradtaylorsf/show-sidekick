@@ -5,6 +5,7 @@ import YAML from "yaml";
 import { z } from "zod";
 import { AssetManifestSchema, CostLogSchema, DecisionLogSchema, EditDecisionsSchema, RenderReportSchema } from "../../src/artifacts/index.js";
 import { ffprobe, type FfprobeResult } from "../../src/audio/ffprobe.js";
+import { BRANDING } from "../../src/branding.js";
 import { projectDir } from "../../src/checkpoints/paths.js";
 import { costLogFile } from "../../src/cost/paths.js";
 import { decisionsPath } from "../../src/decisions/store.js";
@@ -260,7 +261,9 @@ async function loadVerificationContext(input: VerifyLaneInput): Promise<Verifica
   const [show, episode] = parseTarget(input.target);
   const showConfig = await readYamlRecord(path.join(input.projectDir, "shows", show, "show.yaml"));
   const episodeConfig = await readYamlRecord(path.join(input.projectDir, "shows", show, "episodes", `${episode}.yaml`));
-  const pipeline = PipelineManifestSchema.parse(await readYamlRecord(path.join(input.projectDir, ".predit", "pipelines", `${input.pipeline}.yaml`)));
+  const pipeline = PipelineManifestSchema.parse(
+    await readYamlRecord(path.join(input.projectDir, BRANDING.cacheDir, "pipelines", `${input.pipeline}.yaml`)),
+  );
 
   return {
     show,

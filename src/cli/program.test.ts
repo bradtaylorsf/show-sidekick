@@ -5,6 +5,7 @@ import path from "node:path";
 import { CommanderError } from "commander";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import { BRANDING, LEGACY_BRANDING } from "../branding.js";
 import { resetLoggerMode } from "../log/mode.js";
 import { defineTool, Registry, type Availability, type Integration } from "../registry/index.js";
 import { VERSION } from "../version.js";
@@ -41,6 +42,12 @@ afterEach(async () => {
 });
 
 describe("createProgram", () => {
+  it("uses the public primary command name", () => {
+    const { program } = captureProgram();
+
+    expect(program.name()).toBe(BRANDING.primaryCli);
+  });
+
   it("registers every top-level command from the CLI spec", () => {
     const { program } = captureProgram();
     const names = program.commands.map((command) => command.name());
@@ -53,6 +60,15 @@ describe("createProgram", () => {
     const flags = program.options.map((option) => option.long);
 
     expect(flags).toEqual(expect.arrayContaining(["--json", "--dry-run", "--verbose", "--no-color", "--config"]));
+  });
+
+  it("keeps help output aligned to the public command surface", () => {
+    const { program } = captureProgram();
+    const help = program.helpInformation();
+
+    expect(help).toContain(`Usage: ${BRANDING.primaryCli}`);
+    expect(help).toContain(BRANDING.productDisplayName);
+    expect(help).not.toContain(LEGACY_BRANDING.primaryCli);
   });
 
   it("defines the build reference option", () => {
@@ -203,7 +219,7 @@ describe("createProgram", () => {
     process.chdir(root);
     const { program } = captureProgram();
 
-    await expect(program.parseAsync(["node", "predit", "doctor"], { from: "node" })).rejects.toThrow("predit init");
+    await expect(program.parseAsync(["node", "showkick", "doctor"], { from: "node" })).rejects.toThrow("showkick init");
   });
 
   it("allows init to run outside an existing project", async () => {
@@ -211,21 +227,21 @@ describe("createProgram", () => {
     process.chdir(root);
     const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "init", "--no-setup-runtimes"], { from: "node" });
+    await program.parseAsync(["node", "showkick", "init", "--no-setup-runtimes"], { from: "node" });
 
-    expect(output().stdout).toContain("init: scaffolded predit project at");
-    await expect(access(path.join(root, ".predit", "version.json"))).resolves.toBeUndefined();
+    expect(output().stdout).toContain(`init: scaffolded ${BRANDING.productDisplayName} project at`);
+    await expect(access(path.join(root, BRANDING.cacheDir, BRANDING.cacheVersionFileName))).resolves.toBeUndefined();
   });
 
   it("throws on unknown commands with a fuzzy suggestion", async () => {
     const { program, output } = captureProgram();
     program.exitOverride();
 
-    await expect(program.parseAsync(["node", "predit", "buid"], { from: "node" })).rejects.toThrow(CommanderError);
-    expect(output().stderr).toContain('unknown command "buid", did you mean "build"?');
+    await expect(program.parseAsync(["node", "showkick", "buid"], { from: "node" })).rejects.toThrow(CommanderError);
+    expect(output().stderr).toContain(`unknown command "buid", did you mean "build". Run '${BRANDING.primaryCli} --help'.`);
   });
 
-  it("refreshes the project cache before commands when .predit was locked by a different installed version", async () => {
+  it("refreshes the project cache before commands when the cache was locked by a different installed version", async () => {
     const root = await scratchProject({
       harness_version: sameMajorDifferentVersion(),
       bundled_checksum: "cached",
@@ -236,7 +252,7 @@ describe("createProgram", () => {
 
     await program.parseAsync(["node", "predit", "tools", "fixture"], { from: "node" });
 
-    expect(output().stderr).toContain("refreshed .predit cache");
+    expect(output().stderr).toContain(`refreshed ${BRANDING.cacheDir} cache`);
     expect(output().stdout).toContain("tools: not yet implemented");
     await expect(readCacheVersion(root)).resolves.toMatchObject({
       harness_version: VERSION,
@@ -255,7 +271,7 @@ describe("createProgram", () => {
 
     await program.parseAsync(["node", "predit", "tools", "fixture"], { from: "node" });
 
-    expect(output().stderr).toContain("refreshed stale .predit bundled cache");
+    expect(output().stderr).toContain(`refreshed stale ${BRANDING.cacheDir} bundled cache`);
     expect(output().stdout).toContain("tools: not yet implemented");
     await expect(readCacheVersion(root)).resolves.toMatchObject({
       harness_version: VERSION,
@@ -263,7 +279,7 @@ describe("createProgram", () => {
     });
   });
 
-  it("restores the gitignored .predit cache before commands in a shared scaffold clone", async () => {
+  it("restores the gitignored cache before commands in a shared scaffold clone", async () => {
     const root = await scratchSharedProjectWithoutCache();
     process.chdir(root);
     const { program, output } = captureProgram();
@@ -271,7 +287,7 @@ describe("createProgram", () => {
     await program.parseAsync(["node", "predit", "tools", "fixture"], { from: "node" });
 
     expect(output().stderr).toContain("refreshed");
-    expect(output().stderr).toContain(".predit");
+    expect(output().stderr).toContain(BRANDING.cacheDir);
     expect(output().stdout).toContain("tools: not yet implemented");
     await expect(readCacheVersion(root)).resolves.toMatchObject({
       harness_version: VERSION,
@@ -294,7 +310,7 @@ describe("createProgram", () => {
     expect(output().stdout).toContain("tools: not yet implemented");
   });
 
-  it("refuses commands when .predit was locked by an incompatible major version", async () => {
+  it("refuses commands when the cache was locked by an incompatible major version", async () => {
     const incompatibleVersion = differentMajorVersion();
     const root = await scratchProject({
       harness_version: incompatibleVersion,
@@ -305,8 +321,24 @@ describe("createProgram", () => {
     const { program } = captureProgram();
 
     await expect(program.parseAsync(["node", "predit", "doctor"], { from: "node" })).rejects.toThrow(
-      `pnpm i -g predit@${incompatibleVersion}`,
+      `npm install -g ${BRANDING.packageName}@${incompatibleVersion}`,
     );
+  });
+
+  it("migrates a legacy .predit cache before commands run", async () => {
+    const root = await scratchLegacyProject({
+      harness_version: VERSION,
+      bundled_checksum: await computeBundledChecksum(),
+      locked_at: "2026-05-14T00:00:00.000Z",
+    });
+    process.chdir(root);
+    const { program, output } = captureProgram();
+
+    await program.parseAsync(["node", "showkick", "tools", "fixture"], { from: "node" });
+
+    expect(output().stderr).toContain("migrated legacy .predit cache to .show-sidekick");
+    await expect(access(path.join(root, BRANDING.cacheDir, BRANDING.cacheVersionFileName))).resolves.toBeUndefined();
+    await expect(access(path.join(root, LEGACY_BRANDING.cacheDir))).rejects.toMatchObject({ code: "ENOENT" });
   });
 });
 
@@ -317,9 +349,13 @@ async function scratchProject(version: {
 }): Promise<string> {
   const root = path.join(tmpdir(), `predit-program-${randomUUID()}`);
   scratchDirs.push(root);
-  await mkdir(path.join(root, ".predit"), { recursive: true });
-  await writeFile(path.join(root, "CLAUDE.md"), "# project\n", "utf8");
-  await writeFile(path.join(root, ".predit", "version.json"), `${JSON.stringify(version, null, 2)}\n`, "utf8");
+  await mkdir(path.join(root, BRANDING.cacheDir), { recursive: true });
+  await writeFile(path.join(root, "AGENTS.md"), "# project\n", "utf8");
+  await writeFile(
+    path.join(root, BRANDING.cacheDir, BRANDING.cacheVersionFileName),
+    `${JSON.stringify(version, null, 2)}\n`,
+    "utf8",
+  );
   return root;
 }
 
@@ -335,9 +371,25 @@ async function scratchSharedProjectWithoutCache(): Promise<string> {
   const root = path.join(tmpdir(), `predit-program-${randomUUID()}`);
   scratchDirs.push(root);
   await mkdir(root, { recursive: true });
-  await writeFile(path.join(root, "CLAUDE.md"), "# project\n", "utf8");
   await writeFile(path.join(root, "AGENTS.md"), "# agents\n", "utf8");
   await writeFile(path.join(root, ".env.example"), "OPENAI_API_KEY=\n", "utf8");
+  return root;
+}
+
+async function scratchLegacyProject(version: {
+  harness_version: string;
+  bundled_checksum: string;
+  locked_at: string;
+}): Promise<string> {
+  const root = path.join(tmpdir(), `predit-program-${randomUUID()}`);
+  scratchDirs.push(root);
+  await mkdir(path.join(root, LEGACY_BRANDING.cacheDir), { recursive: true });
+  await writeFile(path.join(root, "AGENTS.md"), "# project\n", "utf8");
+  await writeFile(
+    path.join(root, LEGACY_BRANDING.cacheDir, BRANDING.cacheVersionFileName),
+    `${JSON.stringify(version, null, 2)}\n`,
+    "utf8",
+  );
   return root;
 }
 

@@ -2,8 +2,10 @@ import { spawn } from "node:child_process";
 import { cp, mkdir, stat } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
+import { BRANDING } from "../../branding.js";
 import { loadYaml } from "../../config/loader.js";
 import { ProjectAlreadyInitializedError } from "../../paths/errors.js";
+import { legacyCacheDir, publicCacheDir } from "../../paths/project.js";
 import { ShowSchema, type Show } from "../../shows/show.js";
 import { bundledRoot, computeBundledChecksum, copyBundledInto, syncAgentSkillMirrors } from "../../version/bundled.js";
 import { writeCacheVersion } from "../../version/cache.js";
@@ -31,7 +33,7 @@ export type RunGit = (args: string[], cwd: string) => Promise<void>;
 
 export type InitHandlerDeps = {
   bundledRoot?: () => string;
-  copyBundledInto?: (targetPreditDir: string) => Promise<void>;
+  copyBundledInto?: (targetCacheDir: string) => Promise<void>;
   computeBundledChecksum?: () => Promise<string>;
   writeCacheVersion?: typeof writeCacheVersion;
   scaffoldShow?: typeof scaffoldShow;
@@ -60,14 +62,15 @@ export function createInitHandler(io: CliIo, deps: InitHandlerDeps = {}) {
       await assertRuntimeSetupPrerequisites(projectRoot);
     }
 
-    await mkdir(path.join(projectRoot, ".predit"), { recursive: true });
+    const cacheDir = publicCacheDir(projectRoot);
+    await mkdir(cacheDir, { recursive: true });
     await mkdir(path.join(projectRoot, "shows"), { recursive: true });
     await mkdir(path.join(projectRoot, "projects"), { recursive: true });
     await mkdir(path.join(projectRoot, "music_library"), { recursive: true });
     await copyUserProjectTemplates(sourceBundledRoot, projectRoot);
 
-    const copyCache = deps.copyBundledInto ?? ((targetPreditDir: string) => copyBundledInto(targetPreditDir, sourceBundledRoot));
-    await copyCache(path.join(projectRoot, ".predit"));
+    const copyCache = deps.copyBundledInto ?? ((targetCacheDir: string) => copyBundledInto(targetCacheDir, sourceBundledRoot));
+    await copyCache(cacheDir);
     await syncAgentSkillMirrors(projectRoot);
 
     const bundledChecksum = await (deps.computeBundledChecksum ?? (() => computeBundledChecksum(sourceBundledRoot)))();
@@ -89,7 +92,7 @@ export function createInitHandler(io: CliIo, deps: InitHandlerDeps = {}) {
       const runGit = deps.runGit ?? defaultRunGit;
       await runGit(["init"], projectRoot);
       await runGit(["add", "."], projectRoot);
-      await runGit(["commit", "-m", "Initial predit project scaffold."], projectRoot);
+      await runGit(["commit", "-m", `Initial ${BRANDING.productDisplayName} project scaffold.`], projectRoot);
     }
 
     emitInitialized(io, options, {
@@ -103,7 +106,12 @@ export function createInitHandler(io: CliIo, deps: InitHandlerDeps = {}) {
 }
 
 async function assertNotInitialized(projectRoot: string): Promise<void> {
-  if ((await exists(path.join(projectRoot, "CLAUDE.md"))) || (await exists(path.join(projectRoot, ".predit")))) {
+  if (
+    (await exists(path.join(projectRoot, "AGENTS.md"))) ||
+    (await exists(path.join(projectRoot, "CLAUDE.md"))) ||
+    (await exists(publicCacheDir(projectRoot))) ||
+    (await exists(legacyCacheDir(projectRoot)))
+  ) {
     throw new ProjectAlreadyInitializedError(projectRoot);
   }
 }
@@ -148,18 +156,42 @@ async function copyUserProjectTemplates(sourceBundledRoot: string, projectRoot: 
     errorOnExist: true,
     force: false,
   });
-  await cp(path.join(templateRoot, ".gitignore"), path.join(projectRoot, ".gitignore"), {
+  await copyTemplateFile(templateRoot, ".gitignore", path.join(projectRoot, ".gitignore"));
+  await copyTemplateFile(templateRoot, ".env.example", path.join(projectRoot, ".env.example"));
+  await copyTemplateFile(templateRoot, ".env.example", path.join(projectRoot, ".env"));
+}
+
+async function copyTemplateFile(templateRoot: string, sourceName: string, targetPath: string): Promise<void> {
+  const sourcePath = await resolveTemplatePath(templateRoot, sourceName);
+  await cp(sourcePath, targetPath, {
     errorOnExist: true,
     force: false,
   });
-  await cp(path.join(templateRoot, ".env.example"), path.join(projectRoot, ".env.example"), {
-    errorOnExist: true,
-    force: false,
-  });
-  await cp(path.join(templateRoot, ".env.example"), path.join(projectRoot, ".env"), {
-    errorOnExist: true,
-    force: false,
-  });
+}
+
+async function resolveTemplatePath(templateRoot: string, sourceName: string): Promise<string> {
+  const dotfilePath = path.join(templateRoot, sourceName);
+  if (await exists(dotfilePath)) {
+    return dotfilePath;
+  }
+
+  const packedTemplatePath = path.join(templateRoot, packedTemplateName(sourceName));
+  if (await exists(packedTemplatePath)) {
+    return packedTemplatePath;
+  }
+
+  return dotfilePath;
+}
+
+function packedTemplateName(sourceName: string): string {
+  switch (sourceName) {
+    case ".env.example":
+      return "env.example.template";
+    case ".gitignore":
+      return "gitignore.template";
+    default:
+      return sourceName;
+  }
 }
 
 async function defaultRunGit(args: string[], cwd: string): Promise<void> {
@@ -206,7 +238,7 @@ async function assertRuntimeSetupPrerequisites(projectRoot: string): Promise<voi
   if (!Number.isFinite(major) || major < 22) {
     throw new Error(
       `runtime setup requires Node 22+; current Node is ${process.versions.node}. ` +
-        "Install or switch to Node 22+, then rerun `predit init`. " +
+        `Install or switch to Node 22+, then rerun \`${BRANDING.primaryCli} init\`. ` +
         "If an agent is helping, it should ask before installing system prerequisites.",
     );
   }
@@ -216,7 +248,7 @@ async function assertRuntimeSetupPrerequisites(projectRoot: string): Promise<voi
   } catch (error) {
     throw new Error(
       "runtime setup requires npm on PATH so Remotion and HyperFrames can be installed locally. " +
-        "Install Node 22+ from https://nodejs.org/ or through your preferred package manager, then rerun `predit init`. " +
+        `Install Node 22+ from https://nodejs.org/ or through your preferred package manager, then rerun \`${BRANDING.primaryCli} init\`. ` +
         "If an agent is helping, it should ask before installing system prerequisites.",
       { cause: error },
     );
@@ -274,26 +306,28 @@ function emitInitialized(io: CliIo, options: InitOptions, event: InitEvent): voi
     ? [
         "next:",
         "  edit .env with any provider keys you want to use",
-        "  predit doctor --profile paid-demo",
+        `  ${BRANDING.primaryCli} doctor --profile paid-demo`,
         ...(event.setup_runtimes
           ? []
-          : ["  predit setup runtimes  # optional: install Remotion + HyperFrames locally"]),
-        `  predit build ${event.starter}/sample-episode --sample`,
-        `  predit export ${event.starter}/sample-episode --target premiere`,
+          : [`  ${BRANDING.primaryCli} setup runtimes  # optional: install Remotion + HyperFrames locally`]),
+        `  ${BRANDING.primaryCli} build ${event.starter}/sample-episode --sample`,
+        `  ${BRANDING.primaryCli} export ${event.starter}/sample-episode --target premiere`,
       ]
     : [
         "next:",
         "  edit .env with any provider keys you want to use",
-        "  predit doctor --profile paid-demo",
+        `  ${BRANDING.primaryCli} doctor --profile paid-demo`,
         ...(event.setup_runtimes
           ? []
-          : ["  predit setup runtimes  # optional: install Remotion + HyperFrames locally"]),
-        "  predit ls starters",
-        "  predit new show first-video --from animated-explainer",
+          : [`  ${BRANDING.primaryCli} setup runtimes  # optional: install Remotion + HyperFrames locally`]),
+        `  ${BRANDING.primaryCli} ls starters`,
+        `  ${BRANDING.primaryCli} new show first-video --from animated-explainer`,
       ];
   const agentPrompt = [
-    'agent prompt: "Read AGENTS.md and .predit/skills/meta/onboarding.md. Ask me what I do and what I want to make, suggest three personalized no-key first-video ideas, then render a 30-second animated predit explainer with local TTS and Remotion when available."',
+    `agent prompt: "Read AGENTS.md and ${BRANDING.cacheDir}/skills/meta/onboarding.md. Ask me what I do and what I want to make, suggest three personalized no-key first-video ideas, then render a 30-second animated ${BRANDING.productDisplayName} explainer with local TTS and Remotion when available."`,
   ];
 
-  io.stdout.write(`init: scaffolded predit project at ${event.path}${starter}${git}${runtimes}\n${[...nextSteps, ...agentPrompt].join("\n")}\n`);
+  io.stdout.write(
+    `init: scaffolded ${BRANDING.productDisplayName} project at ${event.path}${starter}${git}${runtimes}\n${[...nextSteps, ...agentPrompt].join("\n")}\n`,
+  );
 }

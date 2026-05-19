@@ -20,7 +20,6 @@ module.exports = {
     ".alpha-loop/",
     ".agents/",
     ".claude/",
-    ".migration/",
     "projects/",
     ".worktrees/",
     "bundled/skills/agents/",

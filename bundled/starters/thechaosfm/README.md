@@ -9,7 +9,7 @@ Audio-led The Chaos FM starter for PS2-era political news songs.
 - Expected sample duration: 15 seconds
 - Sample inputs: synthesized `track.wav` and `lyrics.txt`
 
-The sample episode is pre-filled for `predit init --starter thechaosfm` and uses project-relative input paths under `shows/thechaosfm/inputs/sample-episode/`.
+The sample episode is pre-filled for `showkick init --starter thechaosfm` and uses project-relative input paths under `shows/thechaosfm/inputs/sample-episode/`.
 
 ## Benchmark Metadata
 
@@ -22,4 +22,4 @@ TheChaosFM/Ain't No Crowns is tracked as a show-level benchmark reference, not a
 - Clip generation: Higgsfield Seedance image-to-video clips
 - Render target: HyperFrames
 
-Use the [baseline comparison template](../../../docs/baseline-comparison.md) when comparing this show benchmark against a predit demo run. Record it as `show=thechaosfm`, `pipeline=news-song`, and `playbook=thechaosfm-gta-political`.
+Use the [baseline comparison template](../../../docs/baseline-comparison.md) when comparing this show benchmark against a Show Sidekick demo run. Record it as `show=thechaosfm`, `pipeline=news-song`, and `playbook=thechaosfm-gta-political`.

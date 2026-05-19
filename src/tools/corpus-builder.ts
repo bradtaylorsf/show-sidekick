@@ -134,12 +134,12 @@ async function sampleMidpointFrame(path: string, outputDir: string): Promise<str
 const corpusBuilder = defineTool({
   name: "corpus_builder",
   capability: "corpus_index",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "indexing local clip and image directories for visual similarity search",
   supports: ["image-index", "video-midpoint-frame-index", "clip-search"],
@@ -151,7 +151,7 @@ const corpusBuilder = defineTool({
     const inputDir = resolveProjectReadPath(input.dir, ctx.projectRoot);
     const outputPath = resolveProjectPath(input.output_path, ctx.projectRoot);
     const files = await enumerateCorpusFiles(inputDir, input.glob);
-    const frameDir = join(dirname(outputPath), ".predit-corpus-frames");
+    const frameDir = join(dirname(outputPath), ".show-sidekick-corpus-frames");
     const embedder = await selectClipEmbeddingTool(ctx);
 
     const index = await buildCorpusIndex(files, async (file) => {

@@ -27,12 +27,12 @@ const outputSchema = z.object({
 const transcriber = defineTool({
   name: "transcriber",
   capability: "transcriber",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "capability discovery for concrete transcription providers",
   supports: ["whisper-cpp", "elevenlabs-scribe", "provider-selection"],

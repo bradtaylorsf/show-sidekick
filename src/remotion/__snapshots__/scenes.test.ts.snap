@@ -1620,7 +1620,7 @@ exports[`remotion scene library > renders terminal_scene against its fixture 1`]
           ],
           "props": {
             "cursor": true,
-            "prompt": "predit$",
+            "prompt": "showkick$",
             "style": {
               "background": "#050816",
               "color": "#a3e635",

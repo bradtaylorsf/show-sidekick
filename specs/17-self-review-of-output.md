@@ -129,7 +129,7 @@ Any `silent_downgrade_detected: true` or `runtime_swap_detected: true` (without 
 
 - **pass** → the harness presents the render to the user.
 - **revise** → the harness reports the issues to the agent, which decides whether to re-render automatically (e.g. a missing subtitle track is regeneratable cheaply) or surface to the user.
-- **fail** → the harness halts. The user is shown the issues and asked how to proceed. The pipeline **must not** advance to publish or hand-off stages on a failing self-review. The rendered output is preserved at `projects/<show>/<episode>/renders/final-failed.mp4` so the user can inspect it before deciding to retry, revise, or `predit approve --force` (audited).
+- **fail** → the harness halts. The user is shown the issues and asked how to proceed. The pipeline **must not** advance to publish or hand-off stages on a failing self-review. The rendered output is preserved at `projects/<show>/<episode>/renders/final-failed.mp4` so the user can inspect it before deciding to retry, revise, or `showkick approve --force` (audited).
 
 ## Why this is non-negotiable
 

@@ -24,7 +24,7 @@ export default defineTool({
   async execute(params, ctx) {
     const input = ttsProviderInputSchema.parse(params);
     const voice = input.voice_id ?? DEFAULT_VOICE;
-    const requestId = `predit-${Date.now().toString()}`;
+    const requestId = `show-sidekick-${Date.now().toString()}`;
 
     return postTts({
       provider: "doubao",
@@ -39,7 +39,7 @@ export default defineTool({
           token: envValue("DOUBAO_API_KEY"),
           cluster: "volcano_tts",
         },
-        user: { uid: "predit" },
+        user: { uid: "show-sidekick" },
         audio: {
           voice_type: voice,
           encoding: input.format ?? "mp3",

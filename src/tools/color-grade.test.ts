@@ -16,7 +16,7 @@ describe("color_grade", () => {
   it("registers the color grade capability marker", async () => {
     expect(colorGrade.name).toBe("color_grade");
     expect(colorGrade.capability).toBe("color_grade");
-    expect(colorGrade.integration).toMatchObject({ kind: "library", package: "predit" });
+    expect(colorGrade.integration).toMatchObject({ kind: "library", package: "show-sidekick" });
     await expect(colorGrade.isAvailable()).resolves.toEqual({ available: true });
   });
 

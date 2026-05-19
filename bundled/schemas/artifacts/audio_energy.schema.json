@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/audio_energy",
+  "$id": "show-sidekick://artifacts/audio_energy",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -16,7 +16,7 @@
       "type": "array",
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/audio_energy.raw_point",
+        "$id": "show-sidekick://artifacts/audio_energy.raw_point",
         "type": "object",
         "additionalProperties": false,
         "properties": {
@@ -41,7 +41,7 @@
       "type": "array",
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/audio_energy.window",
+        "$id": "show-sidekick://artifacts/audio_energy.window",
         "type": "object",
         "additionalProperties": false,
         "properties": {
@@ -91,7 +91,7 @@
       "anyOf": [
         {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "predit://artifacts/audio_energy.best_window",
+          "$id": "show-sidekick://artifacts/audio_energy.best_window",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -135,7 +135,7 @@
       "type": "array",
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/audio_energy.window",
+        "$id": "show-sidekick://artifacts/audio_energy.window",
         "type": "object",
         "additionalProperties": false,
         "properties": {

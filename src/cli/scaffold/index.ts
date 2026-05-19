@@ -41,7 +41,7 @@ export async function scaffoldShow(projectRoot: string, options: ShowScaffoldOpt
   await mkdir(path.dirname(showDir), { recursive: true });
 
   if (starter) {
-    const starterDir = path.join(paths.predit, "starters", starter);
+    const starterDir = path.join(paths.cache, "starters", starter);
     const starterShowPath = path.join(starterDir, "show.yaml");
     if (!(await exists(starterDir))) {
       throw new Error(`starter '${starter}' not found at ${starterDir}`);

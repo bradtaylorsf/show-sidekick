@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/cost_log",
+  "$id": "show-sidekick://artifacts/cost_log",
   "type": "array",
   "items": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "predit://artifacts/cost_log.entry",
+    "$id": "show-sidekick://artifacts/cost_log.entry",
     "type": "object",
     "additionalProperties": false,
     "properties": {

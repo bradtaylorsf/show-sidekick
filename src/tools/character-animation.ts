@@ -50,7 +50,7 @@ export function estimateCharacterAnimationDuration(input: CharacterAnimationInpu
 const characterAnimation = defineTool({
   name: "character_animation",
   capability: "character_animation",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "binary",

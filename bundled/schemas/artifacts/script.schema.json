@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/script",
+  "$id": "show-sidekick://artifacts/script",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -8,7 +8,7 @@
       "type": "array",
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/script-section",
+        "$id": "show-sidekick://artifacts/script-section",
         "type": "object",
         "additionalProperties": false,
         "properties": {
@@ -55,7 +55,7 @@
           },
           "timing_ref": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "predit://artifacts/timing-ref",
+            "$id": "show-sidekick://artifacts/timing-ref",
             "type": "object",
             "additionalProperties": false,
             "properties": {
@@ -91,7 +91,7 @@
             "type": "array",
             "items": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "$id": "predit://artifacts/dialogue-line",
+              "$id": "show-sidekick://artifacts/dialogue-line",
               "type": "object",
               "additionalProperties": false,
               "properties": {

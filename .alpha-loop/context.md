@@ -1,5 +1,5 @@
 ## Architecture
-- CLI entry is `src/cli/index.ts`, exposed as `predit` via `dist/cli/index.js`; it calls `createProgram()` in `src/cli/program.ts`, which registers all Commander commands and pre-action project/cache/env setup.
+- CLI entry is `src/cli/index.ts`, exposed as `showkick` via `dist/cli/index.js`; it calls `createProgram()` in `src/cli/program.ts`, which registers all Commander commands and pre-action project/cache/env setup.
 - `build` loads `show.yaml`, `episode.yaml`, and the selected pipeline via `src/cli/commands/run-target.ts`, discovers tools from `src/tools/`, then runs stages through `src/harness/runner.ts` and dispatchers in `src/harness/dispatcher.ts`.
 - No database: state is filesystem YAML/JSON. Schemas live beside domains (`src/shows`, `src/pipelines`, `src/artifacts`, `src/checkpoints`) and are loaded with Zod-backed `loadYaml`/`loadJson`.
 - Key directories: `src/cli` commands, `src/harness` orchestration, `src/registry` tool discovery/selection, `src/tools` integrations, `bundled/` shipped pipelines/playbooks/skills/starters, `specs/` product contract.
@@ -15,7 +15,7 @@
 - Specs are the contract: if code and `specs/` disagree, surface it and update the relevant spec with the code change.
 - Do not break user contracts casually: `show.yaml`, `episode.yaml`, pipeline manifests, tool shape, checkpoint schemas, and editor exports are consumer-facing.
 - `.alpha-loop/templates/` is the source for loop agent/skill assets; do not hand-edit synced `.claude/`, `.codex/`, or `.agents/` copies except when debugging sync output.
-- User project resolution depends on local resources overriding `.predit/` cache; cache refresh/version behavior in `src/cli/program.ts`, `src/version/*`, and `src/paths/project.ts` must stay aligned.
+- User project resolution depends on local resources overriding the `.show-sidekick/` cache; legacy `.predit/` migration, cache refresh/version behavior, and project-root detection in `src/cli/program.ts`, `src/version/*`, and `src/paths/project.ts` must stay aligned.
 - Do not commit credentials or generated/runtime output; `.env*`, `projects/`, `exports/`, `renders/`, caches, and loop traces are intentionally ignored.
 
 ## Active State

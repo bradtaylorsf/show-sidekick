@@ -18,7 +18,6 @@ Useful checks:
 pnpm lint
 pnpm run test:smoke
 pnpm run docs:providers:check
-pnpm run audit:coverage-drift
 ```
 
 ## Repo Layout
@@ -31,7 +30,7 @@ pnpm run audit:coverage-drift
 | `scripts/` | Maintenance scripts and generated-doc tooling. |
 | `tests/` | Smoke, schema, and integration-style Vitest coverage outside `src/`. |
 
-Do not create, edit, or reference `.migration/` content unless explicitly asked. It is private reference material and must not leak into public docs or committed files.
+Do not commit private reference material, local machine paths, generated media, credentials, or user-project runtime workspaces.
 
 ## Authoring a Pipeline
 
@@ -106,3 +105,7 @@ pnpm run docs:providers:check
 ```
 
 Reference the GitHub issue, explain user-visible behavior, list test results, and call out any spec changes. Breaking changes to `show.yaml`, `episode.yaml`, pipeline manifests, tool registry shape, or checkpoint schemas need a migration note.
+
+## Releasing
+
+Maintainers should use the [public release checklist](docs/release-checklist.md) for ownership setup, launch verification, support triage, and rollback steps before publishing.

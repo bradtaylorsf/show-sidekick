@@ -7,6 +7,7 @@ import type { CostEntry } from "../artifacts/cost-log.js";
 import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { RenderReport, RenderRuntime } from "../artifacts/index.js";
 import { writeLyricsAligned, type LyricsAligned } from "../artifacts/lyrics-aligned.js";
+import { BRANDING } from "../branding.js";
 import { encodeRgbaPng } from "../media/png.js";
 import { projectDir } from "../checkpoints/paths.js";
 import { runFfmpeg } from "../media/ffmpeg-runner.js";
@@ -168,7 +169,7 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
       id: card.id,
       kind: "image",
       path: card.relativePath,
-      provider: "predit",
+      provider: BRANDING.packageName,
       prompt: starterCardPrompt(card),
       cost_usd: 0,
     })),
@@ -453,11 +454,11 @@ function buildSourceMediaReview(input: {
 }
 
 function buildBrief(input: { durationS: number; lyricText: string; cards: StarterCard[] }): unknown {
-  const fallbackHook = lyricWords(input.lyricText).slice(0, 6).join(" ") || "Your first predit video";
+  const fallbackHook = lyricWords(input.lyricText).slice(0, 6).join(" ") || `Your first ${BRANDING.productDisplayName} video`;
 
   return {
     title: "Zero-Key First Video Idea Reel",
-    audience: "new predit operators",
+    audience: `new ${BRANDING.productDisplayName} operators`,
     platform: "vertical social",
     tone: "personalized, practical, and demo-ready",
     duration_s: input.durationS,
@@ -480,7 +481,7 @@ function buildProposalPacket(input: {
       {
         slug: "personalized-first-video",
         hook: "A no-key explainer that feels tailored to the user's work.",
-        treatment: "Turn the user's answer into one personal middle beat inside a fixed first-run predit tutorial.",
+        treatment: `Turn the user's answer into one personal middle beat inside a fixed first-run ${BRANDING.productDisplayName} tutorial.`,
       },
       {
         slug: "workflow-walkthrough",
@@ -591,7 +592,7 @@ function buildScenePlan(input: { cards: StarterCard[]; cuts: SampleCut[] }): unk
         shot_intent:
           index === 0
             ? "Show that a no-key first run can still feel tailored."
-            : "Give the user a concrete predit direction they can improve next.",
+            : `Give the user a concrete ${BRANDING.productDisplayName} direction they can improve next.`,
         information_role: index === 0 ? "hook setup" : index === input.cards.length - 1 ? "next step" : "idea option",
         hero_moment: index === 1,
         texture_keywords: ["starter", "agent-personalized", "no-key", "motion-graphics"],
@@ -1545,7 +1546,7 @@ function mediaProjectPath(projectRoot: string, value: string): string {
 function zeroCostEntry(ctx: StageContext): CostEntry {
   return {
     tool: "starter_sample",
-    provider: "predit",
+    provider: BRANDING.packageName,
     model: "deterministic-zero-key",
     units: 1,
     usd: 0,
@@ -1558,7 +1559,7 @@ function stageDecisions(ctx: StageContext, artifacts: StarterSampleArtifactSet):
 
   if (ctx.stage.slug === "proposal") {
     return [
-      decisionEntry(ctx, "proposal", "concept_selection", "personalized-first-video", "Use the personalized first-video concept so the artifact teaches predit while speaking to the user's own work.", [
+      decisionEntry(ctx, "proposal", "concept_selection", "personalized-first-video", `Use the personalized first-video concept so the artifact teaches ${BRANDING.productDisplayName} while speaking to the user's own work.`, [
         { label: "personalized-first-video", rejected_because: null, notes: "Selected for the zero-key onboarding path." },
         { label: "workflow-walkthrough", rejected_because: "Less personal as the opening artifact.", notes: null },
         { label: "provider-upgrade", rejected_because: "Better as the closing beat after the free sample proves the loop.", notes: null },
@@ -1606,7 +1607,7 @@ function stageDecisions(ctx: StageContext, artifacts: StarterSampleArtifactSet):
         ctx,
         "assets",
         "provider_selection",
-        "predit-zero-key",
+        "show-sidekick-zero-key",
         "Use deterministic local starter assets so the zero-key demo lane can run without provider credentials.",
       ),
     ];

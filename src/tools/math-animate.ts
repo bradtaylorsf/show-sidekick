@@ -37,7 +37,7 @@ export default defineTool({
 
   async execute(params, ctx) {
     const input = MathAnimateInputSchema.parse(params);
-    const tempDir = await mkdtemp(join(tmpdir(), "predit-manim-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "show-sidekick-manim-"));
     const scenePath = join(tempDir, "scene.py");
     const outputName = `${input.scene_class}-${Date.now()}`;
     const outputPath = await generatedAssetPath(ctx, { extension: input.output_format });

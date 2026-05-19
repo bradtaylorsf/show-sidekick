@@ -1,0 +1,137 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  release:
+    name: Version and publish
+    runs-on: ubuntu-latest
+    environment: npm
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install media binaries
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Block publishing before public package rename
+        run: |
+          PACKAGE_NAME="$(node -p "require('./package.json').name")"
+          if [ "$PACKAGE_NAME" != "show-sidekick" ]; then
+            echo "::error::package.json name is '$PACKAGE_NAME'; SR-2 must rename it to show-sidekick before npm publishing."
+            exit 1
+          fi
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Provider docs check
+        run: pnpm run docs:providers:check
+
+      - name: Show type catalog check
+        run: pnpm show-types:check
+
+      - name: Show type zero-key matrix report
+        run: |
+          set -euo pipefail
+          mkdir -p release-artifacts
+          pnpm show-types:matrix --zero-key --json | tee release-artifacts/show-types-matrix-output.json
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import path from "node:path";
+
+          const output = fs.readFileSync("release-artifacts/show-types-matrix-output.json", "utf8")
+            .trim()
+            .split(/\n/u)
+            .filter(Boolean)
+            .at(-1);
+          if (output === undefined) {
+            throw new Error("show-types:matrix did not emit a JSON report");
+          }
+          const report = JSON.parse(output);
+          for (const key of ["json_report_path", "markdown_report_path"]) {
+            if (typeof report[key] !== "string") {
+              throw new Error(`missing ${key} in show-types matrix output`);
+            }
+            fs.copyFileSync(report[key], path.join("release-artifacts", path.basename(report[key])));
+          }
+          NODE
+
+      - name: Upload show type validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: show-type-validation-report
+          path: release-artifacts/*
+
+      - name: Zero-key smoke
+        run: pnpm run test:smoke
+
+      - name: Package dry run
+        run: |
+          mkdir -p /tmp/show-sidekick-pack
+          pnpm pack --pack-destination /tmp/show-sidekick-pack
+          npm publish --dry-run --provenance --access public
+
+      - name: Launch gates
+        run: pnpm release:check
+
+      - name: Create release PR or publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          title: "chore: version packages"
+          commit: "chore: version packages"
+          version: pnpm changeset:version
+          publish: pnpm changeset:publish
+          createGithubReleases: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Link show type report from GitHub Release
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="v$VERSION"
+          gh release view "$TAG" --json body --jq .body > /tmp/release-notes.md
+          {
+            echo ""
+            echo "Show-type validation report: $RUN_URL (artifact: show-type-validation-report)"
+          } >> /tmp/release-notes.md
+          gh release edit "$TAG" --notes-file /tmp/release-notes.md

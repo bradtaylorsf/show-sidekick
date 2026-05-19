@@ -22,7 +22,7 @@ steps:
   - kind: pause
     seconds: 2.0
   - kind: cmd
-    text: "predit build ai-workflow-demo/sample-episode --sample"
+    text: "showkick build ai-workflow-demo/sample-episode --sample"
     typeSpeed: 0.035
     holdSeconds: 0.4
   - kind: out

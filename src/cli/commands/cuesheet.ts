@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { writeAudioEnergy, type AudioEnergy } from "../../artifacts/audio-energy.js";
 import type { DecisionEntry } from "../../artifacts/decision-log.js";
 import { CuesheetSchema, writeCuesheet, type Cuesheet } from "../../artifacts/cuesheet.js";
+import { BRANDING } from "../../branding.js";
 import { readLyricsAlignmentOverrides } from "../../artifacts/lyrics-alignment-overrides.js";
 import { writeLyricsAligned } from "../../artifacts/lyrics-aligned.js";
 import { projectDir } from "../../checkpoints/paths.js";
@@ -271,7 +272,7 @@ async function deriveVoiceoverCuesheet(projectRoot: string, show: string, episod
 
   if (durationS === undefined || audioPath === undefined) {
     throw new Error(
-      "episode.inputs.track is missing and completed artifacts do not include render duration plus an audio track for `predit cuesheet`",
+      `episode.inputs.track is missing and completed artifacts do not include render duration plus an audio track for \`${BRANDING.primaryCli} cuesheet\``,
     );
   }
 

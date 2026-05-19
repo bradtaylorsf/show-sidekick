@@ -3,6 +3,7 @@ import { existsSync, statSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { preferredCacheDir } from "../paths/project.js";
 
 type ErrorWithCode = Error & { code?: string };
 
@@ -28,12 +29,12 @@ export function bundledRoot(): string {
   }
 }
 
-export async function copyBundledInto(targetPreditDir: string, sourceBundledRoot: string = bundledRoot()): Promise<void> {
-  await mkdir(targetPreditDir, { recursive: true });
+export async function copyBundledInto(targetCacheDir: string, sourceBundledRoot: string = bundledRoot()): Promise<void> {
+  await mkdir(targetCacheDir, { recursive: true });
 
   for (const dirname of BUNDLED_CACHE_DIRS) {
     const source = path.join(sourceBundledRoot, dirname);
-    const target = path.join(targetPreditDir, dirname);
+    const target = path.join(targetCacheDir, dirname);
 
     if (!(await exists(source))) {
       await mkdir(target, { recursive: true });
@@ -43,11 +44,11 @@ export async function copyBundledInto(targetPreditDir: string, sourceBundledRoot
     await cp(source, target, { recursive: true, force: true });
   }
 
-  await materializeAgentNativeSkillFolders(path.join(targetPreditDir, "skills"));
+  await materializeAgentNativeSkillFolders(path.join(targetCacheDir, "skills"));
 }
 
 export async function syncAgentSkillMirrors(projectRoot: string): Promise<void> {
-  const sourceAgentsDir = path.join(projectRoot, ".predit", "skills", "agents");
+  const sourceAgentsDir = path.join(preferredCacheDir(projectRoot), "skills", "agents");
   if (!(await exists(sourceAgentsDir))) {
     return;
   }
