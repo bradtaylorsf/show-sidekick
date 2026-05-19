@@ -9,6 +9,9 @@ import {
   FORBIDDEN_TRACKED_PATHS,
   SIBLING_REPO_GREP_EXCLUDES,
   SIBLING_REPO_PATH_NEEDLES,
+  STALE_PUBLIC_NAME_GREP_TARGETS,
+  STALE_PUBLIC_NAME_LINE_ALLOWLIST,
+  STALE_PUBLIC_NAME_NEEDLES,
 } from "./lib/sibling-repo-paths.ts";
 
 const defaultShellTimeoutMs = 10 * 60 * 1000;
@@ -19,6 +22,7 @@ export type PublicFlipCheck = {
   readonly id:
     | "migration-removed"
     | "no-sibling-paths"
+    | "no-stale-public-names"
     | "license-apache-2"
     | "readme-complete"
     | "changelog-v0.1.0"
@@ -81,6 +85,11 @@ export async function runPublicFlipChecklist(
       id: "no-sibling-paths",
       label: "No sibling-repo path names",
       run: () => checkSiblingRepoNeedles(repoRoot, runShell),
+    },
+    {
+      id: "no-stale-public-names",
+      label: "No stale public product names",
+      run: () => checkStalePublicNames(repoRoot, runShell),
     },
     {
       id: "license-apache-2",
@@ -224,6 +233,75 @@ async function checkSiblingRepoNeedles(repoRoot: string, runShell: RunShell): Pr
   return pass(`No hits for ${SIBLING_REPO_PATH_NEEDLES.length} forbidden needles outside release docs`);
 }
 
+async function checkStalePublicNames(repoRoot: string, runShell: RunShell): Promise<CheckResult> {
+  const hits: string[] = [];
+
+  for (const needle of STALE_PUBLIC_NAME_NEEDLES) {
+    const grep = await runGit(runShell, repoRoot, [
+      "grep",
+      "-n",
+      "--fixed-strings",
+      "-e",
+      needle,
+      "--",
+      ...STALE_PUBLIC_NAME_GREP_TARGETS,
+    ]);
+
+    if (grep.status === 1) {
+      continue;
+    }
+    if (grep.status !== 0) {
+      return fail(`git grep failed for ${JSON.stringify(needle)}: ${formatShellFailure(grep)}`);
+    }
+
+    const files = grep.stdout
+      .trim()
+      .split(/\n/u)
+      .map((hit) => parseGrepHit(hit, needle))
+      .filter((hit): hit is GrepHit => hit !== undefined)
+      .filter((hit) => !isAllowedStalePublicNameHit(hit))
+      .map((hit) => `${hit.needle}: ${hit.filePath}:${hit.lineNumber}: ${hit.line}`);
+    hits.push(...files);
+  }
+
+  if (hits.length > 0) {
+    return fail(hits.join("; "));
+  }
+
+  return pass(`No stale public name hits across ${STALE_PUBLIC_NAME_GREP_TARGETS.length} public target(s)`);
+}
+
+type GrepHit = {
+  readonly needle: string;
+  readonly filePath: string;
+  readonly lineNumber: string;
+  readonly line: string;
+};
+
+function parseGrepHit(hit: string, needle: string): GrepHit | undefined {
+  const match = /^(?<filePath>.*?):(?<lineNumber>\d+):(?<line>.*)$/u.exec(hit);
+  if (match?.groups === undefined) {
+    return undefined;
+  }
+
+  return {
+    needle,
+    filePath: match.groups.filePath ?? "",
+    lineNumber: match.groups.lineNumber ?? "",
+    line: match.groups.line ?? "",
+  };
+}
+
+function isAllowedStalePublicNameHit(hit: GrepHit): boolean {
+  return STALE_PUBLIC_NAME_LINE_ALLOWLIST.some((allow) => {
+    if (allow.filePath !== hit.filePath || allow.needle !== hit.needle) {
+      return false;
+    }
+
+    return new RegExp(allow.linePattern, "u").test(hit.line.trim());
+  });
+}
+
 async function checkLicense(repoRoot: string): Promise<CheckResult> {
   const license = await readFile(path.join(repoRoot, "LICENSE"), "utf8");
   const packageJson = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8")) as {
@@ -245,10 +323,13 @@ async function checkLicense(repoRoot: string): Promise<CheckResult> {
 async function checkReadme(repoRoot: string): Promise<CheckResult> {
   const readme = await readFile(path.join(repoRoot, "README.md"), "utf8");
   const requiredHeadings = [
-    "## Install",
-    "## 60-Second Quickstart",
-    "## Features",
-    "## CLI Surface",
+    "## What It Does",
+    "## Requirements",
+    "## Quickstart",
+    "## No-Key Starter",
+    "## Paid Provider Upgrade",
+    "## What Show Sidekick Can Make",
+    "## Docs",
     "## License",
   ];
   const missingHeadings = requiredHeadings.filter((heading) => !readme.includes(heading));
@@ -256,13 +337,22 @@ async function checkReadme(repoRoot: string): Promise<CheckResult> {
     return fail(`Missing README headings: ${missingHeadings.join(", ")}`);
   }
 
-  const requiredPhrases = ["Node 22", "pnpm 9", "ffmpeg", "predit init", "predit build", "--sample"];
+  const requiredPhrases = [
+    "Node 22",
+    "npm",
+    "Git",
+    "FFmpeg",
+    "npx -y show-sidekick@latest init --starter animated-explainer --git",
+    "showkick doctor --profile paid-demo",
+    "showkick build animated-explainer/sample-episode --sample",
+    "showkick export animated-explainer/sample-episode --target premiere",
+  ];
   const missingPhrases = requiredPhrases.filter((phrase) => !readme.includes(phrase));
   if (missingPhrases.length > 0) {
     return fail(`README required content is missing: ${missingPhrases.join(", ")}`);
   }
 
-  return pass("README includes purpose, requirements, install, quickstart, CLI surface, and license");
+  return pass("README includes purpose, requirements, quickstart, no-key path, paid upgrade, docs, and license");
 }
 
 async function checkChangelog(repoRoot: string): Promise<CheckResult> {

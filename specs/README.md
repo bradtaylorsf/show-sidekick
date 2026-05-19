@@ -1,12 +1,12 @@
-# predit specs
+# Show Sidekick specs
 
-These specs capture the locked design decisions for `predit`. Implementation must follow what's here. Anything not in a spec is open to design at implementation time, with the result then captured back here.
+These specs capture the locked design decisions for Show Sidekick. Implementation must follow what's here. Anything not in a spec is open to design at implementation time, with the result then captured back here.
 
 ## Read order
 
 ### Foundations
 
-1. [`00-overview.md`](00-overview.md) — what predit is and the three-layer mental model
+1. [`00-overview.md`](00-overview.md) — what Show Sidekick is and the three-layer mental model
 2. [`01-repo-and-licensing.md`](01-repo-and-licensing.md) — repo visibility, license, public-flip plan
 3. [`02-build-stack.md`](02-build-stack.md) — runtime, package manager, build, test, CLI library
 

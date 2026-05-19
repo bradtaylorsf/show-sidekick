@@ -8,7 +8,7 @@ describe("visual_qa", () => {
   it("registers the visual QA capability", async () => {
     expect(visualQa.name).toBe("visual_qa");
     expect(visualQa.capability).toBe("visual_qa");
-    expect(visualQa.integration).toMatchObject({ kind: "library", package: "predit" });
+    expect(visualQa.integration).toMatchObject({ kind: "library", package: "show-sidekick" });
     await expect(visualQa.isAvailable()).resolves.toEqual({ available: true });
   });
 

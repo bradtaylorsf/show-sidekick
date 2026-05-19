@@ -13,24 +13,24 @@ upstream, or be recorded in the local-edit log below.
 
 ## Mirrored directories
 
-| predit path                               | Upstream path                             |
+| Show Sidekick path                               | Upstream path                             |
 | ---------------------------------------------- | ----------------------------------------- |
-| `.predit/skills/agents/hyperframes/`                  | `skills/hyperframes/`                     |
-| `.predit/skills/agents/hyperframes-cli/`              | `skills/hyperframes-cli/`                 |
-| `.predit/skills/agents/hyperframes-registry/`         | `skills/hyperframes-registry/`            |
-| `.predit/skills/agents/website-to-hyperframes/`       | `skills/website-to-hyperframes/`          |
+| `.show-sidekick/skills/agents/hyperframes/`                  | `skills/hyperframes/`                     |
+| `.show-sidekick/skills/agents/hyperframes-cli/`              | `skills/hyperframes-cli/`                 |
+| `.show-sidekick/skills/agents/hyperframes-registry/`         | `skills/hyperframes-registry/`            |
+| `.show-sidekick/skills/agents/website-to-hyperframes/`       | `skills/website-to-hyperframes/`          |
 
-The `gsap` upstream skill is NOT re-vendored — predit already ships its
-own GSAP skill family under `.predit/skills/agents/gsap*/`.
+The `gsap` upstream skill is NOT re-vendored — Show Sidekick already ships its
+own GSAP skill family under `.show-sidekick/skills/agents/gsap*/`.
 
 ## Local edits
 
 Any divergence from upstream is noted at the top of the edited file as an
-HTML comment starting with `predit-local`. Current edits:
+HTML comment starting with `Show Sidekick-local`. Current edits:
 
 - `hyperframes-cli.md` — added `validate` to the command list and a
   dedicated Validation section. Upstream omits it, but the CLI ships it and
-  predit's HyperFrames runtime path relies on `hyperframes validate` as
+  Show Sidekick's HyperFrames runtime path relies on `hyperframes validate` as
   a real browser-based contract check before render.
 
 ## Re-sync procedure
@@ -40,20 +40,20 @@ HTML comment starting with `predit-local`. Current edits:
 cd <hyperframes-clone>
 git pull
 
-# From predit
-cd <predit-repo>
-rm -rf .predit/skills/agents/hyperframes .predit/skills/agents/hyperframes-cli \
-       .predit/skills/agents/hyperframes-registry .predit/skills/agents/website-to-hyperframes
-cp -r <hyperframes-clone>/skills/hyperframes          .predit/skills/agents/
-cp -r <hyperframes-clone>/skills/hyperframes-cli      .predit/skills/agents/
-cp -r <hyperframes-clone>/skills/hyperframes-registry .predit/skills/agents/
-cp -r <hyperframes-clone>/skills/website-to-hyperframes .predit/skills/agents/
+# From Show Sidekick
+cd <Show Sidekick-repo>
+rm -rf .show-sidekick/skills/agents/hyperframes .show-sidekick/skills/agents/hyperframes-cli \
+       .show-sidekick/skills/agents/hyperframes-registry .show-sidekick/skills/agents/website-to-hyperframes
+cp -r <hyperframes-clone>/skills/hyperframes          .show-sidekick/skills/agents/
+cp -r <hyperframes-clone>/skills/hyperframes-cli      .show-sidekick/skills/agents/
+cp -r <hyperframes-clone>/skills/hyperframes-registry .show-sidekick/skills/agents/
+cp -r <hyperframes-clone>/skills/website-to-hyperframes .show-sidekick/skills/agents/
 # Then re-apply the local edits listed above and bump the vendored commit SHA.
 ```
 
 ## Why we vendor instead of referencing the upstream clone directly
 
-1. predit contributors may not have the HyperFrames monorepo on disk.
-2. Skills must be readable from the predit tree for agent discovery.
+1. Show Sidekick contributors may not have the HyperFrames monorepo on disk.
+2. Skills must be readable from the Show Sidekick tree for agent discovery.
 3. We want deterministic knowledge — upstream moves; we control when we pick
    up changes.

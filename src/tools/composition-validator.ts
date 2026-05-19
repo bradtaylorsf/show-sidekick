@@ -78,12 +78,12 @@ function coverageRatio(cuts: Cut[], totalDurationS: number): number {
 const compositionValidator = defineTool({
   name: "composition_validator",
   capability: "composition_validation",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "checking edit decisions for full-duration cut coverage without gaps or overlaps",
   supports: ["gap-detection", "overlap-detection", "coverage-ratio"],

@@ -60,7 +60,7 @@ Every completed or awaiting-human checkpoint contains:
 
 ## Resume protocol
 
-At the start of any `predit build` or `predit resume` invocation, the harness:
+At the start of any `showkick build` or `showkick resume` invocation, the harness:
 
 1. Loads `projects/<show>/<episode>/state.json` if present.
 2. Scans `projects/<show>/<episode>/checkpoints/` to determine the highest-completed stage.
@@ -73,7 +73,7 @@ At the start of any `predit build` or `predit resume` invocation, the harness:
 
 ## Human approval presentation
 
-When a stage's `human_approval` is `required` (or `optional` in interactive mode), the harness prepares a presentation block and either prompts inline (interactive) or exits awaiting `predit approve` / `predit revise` (non-interactive).
+When a stage's `human_approval` is `required` (or `optional` in interactive mode), the harness prepares a presentation block and either prompts inline (interactive) or exits awaiting `showkick approve` / `showkick revise` (non-interactive).
 
 ```
 ## Stage complete: scene_plan
@@ -114,7 +114,7 @@ The sample checkpoint:
 - Proposal-time sample-first halts may write `sample_video_path: "pending"` until the rendered sample exists.
 - Records sample cost and projected full cost.
 - Status is always `awaiting_human` — the user must approve before the full run begins.
-- Is versioned so `predit revise <show>/<episode> "<note>"` can preserve each human revision request as its own sub-checkpoint.
+- Is versioned so `showkick revise <show>/<episode> "<note>"` can preserve each human revision request as its own sub-checkpoint.
 
 Paid sample mode does not bypass normal stage checkpoints. It may additionally halt before a stage when `pipeline.sample.max_cost_usd` or `pipeline.sample.max_scenes` would be exceeded; the halted stage receives a failed checkpoint with `artifact.error: "sample_limit_exceeded"`.
 

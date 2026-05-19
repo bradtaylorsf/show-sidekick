@@ -15,12 +15,12 @@ const outputSchema = z.object({
 const eyeEnhance = defineTool({
   name: "eye_enhance",
   capability: "eye_enhance",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "capability discovery for sharpening and clarifying eyes in character or portrait assets",
   supports: ["eye-detail", "portrait-enhancement", "provider-selection"],

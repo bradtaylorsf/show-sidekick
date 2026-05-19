@@ -11,7 +11,7 @@ cross_refs:
 
 An executive producer (EP) skill is a pipeline-level governance skill. It owns cross-stage judgment that individual stage directors cannot see. Use it when a pipeline needs cumulative state, explicit gates, or a durable philosophy across stages.
 
-The reference pipeline library used three successful EP patterns. predit accepts all three.
+The reference pipeline library used three successful EP patterns. Show Sidekick accepts all three.
 
 ## Pattern 1: State-Machine EP
 

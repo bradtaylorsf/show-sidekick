@@ -52,13 +52,13 @@ required_phrases:
   - file: executive-producer.md
     phrase: "Sample-first is not optional for any production estimated > $0.50 or > 15 min"
   - file: executive-producer.md
-    phrase: ".predit/skills/meta/announce-and-escalate.md"
+    phrase: ".show-sidekick/skills/meta/announce-and-escalate.md"
   - file: executive-producer.md
-    phrase: ".predit/skills/meta/reviewer.md"
+    phrase: ".show-sidekick/skills/meta/reviewer.md"
   - file: executive-producer.md
-    phrase: ".predit/skills/core/hyperframes.md"
+    phrase: ".show-sidekick/skills/core/hyperframes.md"
   - file: executive-producer.md
-    phrase: ".predit/skills/agents/higgsfield-generate.md"
+    phrase: ".show-sidekick/skills/agents/higgsfield-generate.md"
 required_numerics:
   - file: executive-producer.md
     numeric: "1080×1920 vertical (9:16)"

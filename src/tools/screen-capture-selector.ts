@@ -14,12 +14,12 @@ const outputSchema = z.object({
 const screenCaptureSelector = defineTool({
   name: "screen_capture_selector",
   capability: "screen_capture",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "capability discovery for selecting a concrete screen capture provider",
   supports: ["screen-capture", "provider-selection"],

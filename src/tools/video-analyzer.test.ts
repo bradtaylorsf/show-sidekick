@@ -10,7 +10,7 @@ describe("video_analyzer", () => {
   it("registers the video analysis capability", () => {
     expect(videoAnalyzer.name).toBe("video_analyzer");
     expect(videoAnalyzer.capability).toBe("video_analysis");
-    expect(videoAnalyzer.integration).toMatchObject({ kind: "library", package: "predit" });
+    expect(videoAnalyzer.integration).toMatchObject({ kind: "library", package: "show-sidekick" });
   });
 
   it("classifies remote sources and motion types", () => {

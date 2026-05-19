@@ -63,12 +63,12 @@ export function inferUnderstandingDuration(frames: SampledFrame[], transcriptSeg
 const videoUnderstand = defineTool({
   name: "video_understand",
   capability: "video_understanding",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "combining sampled frames and transcription into a quick content summary",
   supports: ["frame-sampling", "audio-transcription", "content-summary"],

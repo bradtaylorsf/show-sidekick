@@ -16,7 +16,7 @@ describe("lip_sync", () => {
   it("registers the lip sync capability marker", async () => {
     expect(lipSync.name).toBe("lip_sync");
     expect(lipSync.capability).toBe("lip_sync");
-    expect(lipSync.integration).toMatchObject({ kind: "library", package: "predit" });
+    expect(lipSync.integration).toMatchObject({ kind: "library", package: "show-sidekick" });
     await expect(lipSync.isAvailable()).resolves.toEqual({ available: true });
   });
 

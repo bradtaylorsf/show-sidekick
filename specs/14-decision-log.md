@@ -124,5 +124,5 @@ The reviewer flags a `render_runtime_selection` decision with fewer options cons
 ## What the decision log enables
 
 - **The reviewer can fact-check the agent.** Did the agent really consider both runtimes? The log says so explicitly.
-- **The user can re-run with a different choice.** `predit revise --decision render_runtime_selection --pick remotion` (future feature) re-runs from the relevant stage with a different decision.
+- **The user can re-run with a different choice.** `showkick revise --decision render_runtime_selection --pick remotion` (future feature) re-runs from the relevant stage with a different decision.
 - **Post-mortems are tractable.** When a render comes out wrong, the decision log explains the path that was taken — and the alternatives that weren't.

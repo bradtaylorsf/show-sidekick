@@ -11,6 +11,8 @@ This catalog is generated from the tool registry. Regenerate it after changing a
 pnpm run docs:providers
 ```
 
+Compatibility note: some current hosting and local-model adapters still document legacy `PREDIT_*` environment variables where those names are the active registry contract. Keep using the names listed here until replacement aliases ship.
+
 ## audio_energy
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
@@ -47,7 +49,7 @@ pnpm run docs:providers
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `bg_remove` | beta | library | predit | none | capability discovery for background removal from still images or short clips | not declared |
+| `bg_remove` | beta | library | show-sidekick | none | capability discovery for background removal from still images or short clips | not declared |
 
 ## character_animation
 
@@ -84,37 +86,37 @@ pnpm run docs:providers
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `color_grade` | beta | library | predit | none | capability discovery for applying LUTs and simple color transforms to media | not declared |
+| `color_grade` | beta | library | show-sidekick | none | capability discovery for applying LUTs and simple color transforms to media | not declared |
 
 ## composition_validation
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `composition_validator` | beta | library | predit | none | checking edit decisions for full-duration cut coverage without gaps or overlaps | not declared |
+| `composition_validator` | beta | library | show-sidekick | none | checking edit decisions for full-duration cut coverage without gaps or overlaps | not declared |
 
 ## corpus_index
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `corpus_builder` | beta | library | predit | none | indexing local clip and image directories for visual similarity search | not declared |
+| `corpus_builder` | beta | library | show-sidekick | none | indexing local clip and image directories for visual similarity search | not declared |
 
 ## eye_enhance
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `eye_enhance` | beta | library | predit | none | capability discovery for sharpening and clarifying eyes in character or portrait assets | not declared |
+| `eye_enhance` | beta | library | show-sidekick | none | capability discovery for sharpening and clarifying eyes in character or portrait assets | not declared |
 
 ## face_enhance
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `face_enhance` | beta | library | predit | none | capability discovery for general face detail enhancement in portraits and character assets | not declared |
+| `face_enhance` | beta | library | show-sidekick | none | capability discovery for general face detail enhancement in portraits and character assets | not declared |
 
 ## face_restore
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `face_restore` | beta | library | predit | none | capability discovery for restoring degraded or low-quality face imagery | not declared |
+| `face_restore` | beta | library | show-sidekick | none | capability discovery for restoring degraded or low-quality face imagery | not declared |
 
 ## face_tracking
 
@@ -143,8 +145,8 @@ pnpm run docs:providers
 | `showcase_card` | production | binary | ffmpeg | none | deterministic product or brand showcase cards composed from local assets | not declared |
 | `higgsfield_image` | beta | cli | higgsfield / higgsfield | cli-login (higgsfield account status --json) | GPT Image 2 still-frame generation through the Higgsfield CLI. | $0.04 / image |
 | `code_snippet` | beta | library | node:zlib | none | transparent PNG code overlays for explainers and talking-head terminal shots | $0 / image |
-| `image_generation` | beta | library | predit | none | Compatibility alias for selecting a concrete image generation provider. | not declared |
-| `image_selector` | beta | library | predit | none | Provider-selection marker for choosing a concrete image-generation tool at runtime | not declared |
+| `image_generation` | beta | library | show-sidekick | none | Compatibility alias for selecting a concrete image generation provider. | not declared |
+| `image_selector` | beta | library | show-sidekick | none | Provider-selection marker for choosing a concrete image-generation tool at runtime | not declared |
 
 ## image_hosting
 
@@ -153,7 +155,7 @@ pnpm run docs:providers
 | `catbox_host` | production | api | catbox | none | free temporary/public image hosting for image-to-video inputs; catbox has an about 50 uploads/day soft limit | $0 / call |
 | `r2_host` | production | api | r2 | `PREDIT_R2_BUCKET`, `PREDIT_R2_ACCOUNT_ID`, `PREDIT_R2_ACCESS_KEY_ID`, `PREDIT_R2_SECRET_ACCESS_KEY`, `PREDIT_R2_PUBLIC_BASE_URL` | Cloudflare R2-backed image hosting with a public bucket or custom domain | $0 / call |
 | `s3_host` | production | api | s3 | `PREDIT_S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | S3-backed image hosting with an env-var configured bucket | $0 / call |
-| `image_hosting` | beta | library | predit | none | Compatibility alias for selecting a concrete image hosting provider. | not declared |
+| `image_hosting` | beta | library | show-sidekick | none | Compatibility alias for selecting a concrete image hosting provider. | not declared |
 
 ## image_to_video
 
@@ -171,14 +173,14 @@ pnpm run docs:providers
 | `ltx_video_local` | experimental | binary | ltx-video | none | Local LTX video generation on a CUDA GPU with no per-clip provider charge. | $0 / clip |
 | `higgsfield` | production | cli | higgsfield / higgsfield | cli-login (higgsfield account status --json) | Seedance 2.0 image-to-video through the current Higgsfield CLI. | $0.3 / clip |
 | `higgsfield_video` | production | cli | higgsfield / higgsfield | cli-login (higgsfield account status --json) | Compatibility alias for Higgsfield image-to-video generation | $0.3 / clip |
-| `image_to_video` | beta | library | predit | none | Compatibility alias for selecting a concrete image-to-video provider. | not declared |
-| `video_selector` | beta | library | predit | none | Provider-selection marker for choosing a concrete image-to-video tool at runtime | not declared |
+| `image_to_video` | beta | library | show-sidekick | none | Compatibility alias for selecting a concrete image-to-video provider. | not declared |
+| `video_selector` | beta | library | show-sidekick | none | Provider-selection marker for choosing a concrete image-to-video tool at runtime | not declared |
 
 ## lip_sync
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `lip_sync` | beta | library | predit | none | capability discovery for concrete lip-sync providers that animate a still or video from audio | not declared |
+| `lip_sync` | beta | library | show-sidekick | none | capability discovery for concrete lip-sync providers that animate a still or video from audio | not declared |
 
 ## music_generation
 
@@ -208,7 +210,7 @@ pnpm run docs:providers
 | `screen_recorder` | beta | binary | ffmpeg | none | generic local screen capture on macOS via avfoundation or Linux via x11grab | not declared |
 | `cap_recorder` | beta | cli | cap / cap | none | macOS Cap CLI recordings of fixture windows or full-screen capture | not declared |
 | `playwright_recording` | beta | library | playwright | none | deterministic browser flow recordings from fixture pages and source URLs | not declared |
-| `screen_capture_selector` | beta | library | predit | none | capability discovery for selecting a concrete screen capture provider | not declared |
+| `screen_capture_selector` | beta | library | show-sidekick | none | capability discovery for selecting a concrete screen capture provider | not declared |
 
 ## source_media_review
 
@@ -230,7 +232,7 @@ pnpm run docs:providers
 | `pixabay_stock` | beta | api | pixabay | `PIXABAY_API_KEY` | searching Pixabay for broad stock images with attribution metadata | $0 / call |
 | `unsplash` | beta | api | unsplash | `UNSPLASH_ACCESS_KEY` | Searching Unsplash image assets for documentary and explainer visual coverage. | $0 / call |
 | `unsplash_stock` | beta | api | unsplash | `UNSPLASH_ACCESS_KEY` | searching Unsplash for high-quality stock photography with creator attribution | $0 / call |
-| `stock_image` | beta | library | predit | none | Compatibility alias for selecting a concrete stock image provider. | not declared |
+| `stock_image` | beta | library | show-sidekick | none | Compatibility alias for selecting a concrete stock image provider. | not declared |
 
 ## stock_video
 
@@ -251,7 +253,7 @@ pnpm run docs:providers
 | `pond5_pd` | beta | api | pond5 | `POND5_PD_FEED_URL` | Searching a configured Pond5 public-domain video manifest. | $0 / call |
 | `videvo` | beta | api | videvo | `VIDEVO_FEED_URL` | Searching a configured Videvo stock-video manifest while preserving per-clip license metadata. | $0 / call |
 | `wikimedia` | beta | api | wikimedia | none | Searching Wikimedia Commons video files with per-file license metadata. | $0 / call |
-| `stock_video` | beta | library | predit | none | Compatibility alias for selecting a concrete stock video provider. | not declared |
+| `stock_video` | beta | library | show-sidekick | none | Compatibility alias for selecting a concrete stock video provider. | not declared |
 
 ## subtitle_generation
 
@@ -263,7 +265,7 @@ pnpm run docs:providers
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `talking_head` | beta | library | predit | none | capability discovery for avatar presenter generation from script, voice, and avatar selection | not declared |
+| `talking_head` | beta | library | show-sidekick | none | capability discovery for avatar presenter generation from script, voice, and avatar selection | not declared |
 
 ## text_to_video
 
@@ -282,7 +284,7 @@ pnpm run docs:providers
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `transcriber` | beta | library | predit | none | capability discovery for concrete transcription providers | not declared |
+| `transcriber` | beta | library | show-sidekick | none | capability discovery for concrete transcription providers | not declared |
 
 ## transcript_fetch
 
@@ -299,19 +301,19 @@ pnpm run docs:providers
 | `google_tts` | production | api | google | `GOOGLE_API_KEY` | Cost-conscious narration using Google Chirp3-HD voices. | $0.000016 / token |
 | `openai_tts` | production | api | openai | `OPENAI_API_KEY` | Fast general-purpose narration with OpenAI gpt-4o-mini-tts voices. | $0.000015 / token |
 | `piper_tts` | production | binary | piper | none | Zero-cost local narration when a Piper voice model is installed. | $0 / call |
-| `tts_selector` | beta | library | predit | none | Provider-selection marker for choosing a concrete TTS tool at runtime | not declared |
+| `tts_selector` | beta | library | show-sidekick | none | Provider-selection marker for choosing a concrete TTS tool at runtime | not declared |
 
 ## upscale
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `upscale` | beta | library | predit | none | capability discovery for increasing image or clip resolution | not declared |
+| `upscale` | beta | library | show-sidekick | none | capability discovery for increasing image or clip resolution | not declared |
 
 ## video_analysis
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `video_analyzer` | beta | library | predit | none | reference-driven source video analysis briefs for scene planning and QA | not declared |
+| `video_analyzer` | beta | library | show-sidekick | none | reference-driven source video analysis briefs for scene planning and QA | not declared |
 
 ## video_compose
 
@@ -326,7 +328,7 @@ pnpm run docs:providers
 | `hyperframes_compose` | production | cli | hyperframes / npx | none | Compatibility alias for HyperFrames composition specs | not declared |
 | `remotion` | beta | library | remotion | none | typed Remotion-compatible scene catalog validation with word-level caption checks; renderer invocation lands with the compose runner | not declared |
 | `remotion_caption_burn` | beta | library | remotion | none | Compatibility alias for Remotion caption burn and compose validation | not declared |
-| `video_compose` | production | library | predit | none | runtime routing for FFmpeg, Remotion, and HyperFrames with pre-compose validation | not declared |
+| `video_compose` | production | library | show-sidekick | none | runtime routing for FFmpeg, Remotion, and HyperFrames with pre-compose validation | not declared |
 
 ## video_download
 
@@ -338,23 +340,23 @@ pnpm run docs:providers
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `video_understand` | beta | library | predit | none | combining sampled frames and transcription into a quick content summary | not declared |
+| `video_understand` | beta | library | show-sidekick | none | combining sampled frames and transcription into a quick content summary | not declared |
 
 ## visual_qa
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `visual_qa` | beta | library | predit | none | agent-driven visual inspection of sampled render or source frames | not declared |
+| `visual_qa` | beta | library | show-sidekick | none | agent-driven visual inspection of sampled render or source frames | not declared |
 
 ## web_search
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `web_search` | beta | library | predit | none | Agent-side research capability marker for browser-backed web search | not declared |
+| `web_search` | beta | library | show-sidekick | none | Agent-side research capability marker for browser-backed web search | not declared |
 
 ## whisper
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
 | `whisper-cpp` | production | binary | whisper-cli | none | local word-level ASR; default medium.en for English, medium for other languages, large-v3 retry for music-heavy audio | not declared |
-| `whisper` | beta | library | predit | none | Compatibility alias for selecting a concrete Whisper transcription provider. | not declared |
+| `whisper` | beta | library | show-sidekick | none | Compatibility alias for selecting a concrete Whisper transcription provider. | not declared |

@@ -2,13 +2,13 @@
 
 ## Where shows live
 
-Shows live in the **user project**, not in the harness. Paths in this spec are relative to the user project root (the folder where `predit init` ran). The harness ships starter shows in its bundled cache; users clone them into their project via `predit new show <slug> --from <starter>`. See [`10-installation-and-user-projects.md`](10-installation-and-user-projects.md).
+Shows live in the **user project**, not in the harness. Paths in this spec are relative to the user project root (the folder where `showkick init` ran). The harness ships starter shows in its bundled cache; users clone them into their project via `showkick new show <slug> --from <starter>`. See [`10-installation-and-user-projects.md`](10-installation-and-user-projects.md).
 
 > **Multi-pipeline shows.** Each show declares the *set* of pipelines it uses via `show.pipelines: { <name>: { ... } }`. A show is the brand/channel/identity; pipelines under it are the technical workflows that identity runs. A YouTube channel that publishes news raps and evergreen songs, or a consulting brand that publishes product demos and spokesperson videos, is one show with two pipelines — not two shows.
 
 ## Shows are first-class
 
-`shows/` is the API of `predit`. A show is the **brand/channel/identity** layer — it owns the recurring elements that persist across episodes and across pipelines. Each show owns:
+`shows/` is the API of Show Sidekick. A show is the **brand/channel/identity** layer — it owns the recurring elements that persist across episodes and across pipelines. Each show owns:
 
 - the brand (logo, palette, typography, voice)
 - the recurring cast (characters)
@@ -74,7 +74,7 @@ defaults:
   language: en
   provider_profile: paid-demo             # optional show-wide provider default
 
-# Ingest: what predit watches, and how a drop becomes an episode.
+# Ingest: what Show Sidekick watches, and how a drop becomes an episode.
 # Each watch entry routes to a specific pipeline within this show.
 ingest:
   episode_template: ./episode.template.yaml
@@ -98,7 +98,7 @@ Ingest `path` values resolve relative to `shows/<show>/`. A drop matches when th
 
 When `slug_from` is `parent_dir`, watch suggestions derive the episode slug from the matched file's parent folder. `filename` derives it from the matched file basename. `prompt` requires a human-supplied slug and is rejected by non-interactive ingest.
 
-`predit import` uses the episode slug from `--as`, the matched watch entry's `pipeline`, and sibling files next to the matched file to populate `inputs`. Audio files become `track`, `.txt` becomes `lyrics`, `.yaml` / `.yml` becomes `sources`, video files become `reference`, and other files become `source`.
+`showkick import` uses the episode slug from `--as`, the matched watch entry's `pipeline`, and sibling files next to the matched file to populate `inputs`. Audio files become `track`, `.txt` becomes `lyrics`, `.yaml` / `.yml` becomes `sources`, video files become `reference`, and other files become `source`.
 
 A single-pipeline show is just a `pipelines:` map with one entry. The model degrades cleanly to "one workflow per show" when that's all the show needs.
 
@@ -137,7 +137,7 @@ cast: [host-mc, ambient-crowd]
 tags: [news-song, ps2, political-rap]
 ```
 
-`inputs.reference` is optional. When present, `predit build` treats it the same as `--reference`: a URL is parsed with `new URL()`, while local paths resolve against cwd and then `<project>/music_library/`. The resulting `video_analysis_brief` is saved under `projects/<show>/<episode>/artifacts/` and supplied to downstream stages and reviewer checks. Reference analysis happens before pipeline selection; when `episode.pipeline` is omitted, the brief can steer the run from the show default to a declared reference-capable pipeline. An explicit `episode.pipeline` remains authoritative.
+`inputs.reference` is optional. When present, `showkick build` treats it the same as `--reference`: a URL is parsed with `new URL()`, while local paths resolve against cwd and then `<project>/music_library/`. The resulting `video_analysis_brief` is saved under `projects/<show>/<episode>/artifacts/` and supplied to downstream stages and reviewer checks. Reference analysis happens before pipeline selection; when `episode.pipeline` is omitted, the brief can steer the run from the show default to a declared reference-capable pipeline. An explicit `episode.pipeline` remains authoritative.
 
 ## Resolution order
 
@@ -145,8 +145,8 @@ When the harness loads an episode, it merges configuration in this order (later 
 
 1. **Resolve reference input, if any.** `--reference` wins over `inputs.reference`. The reference analyst writes `video_analysis_brief` before pipeline selection so it can inform routing.
 2. **Resolve the pipeline.** `episode.pipeline` (if set), else a reference-capable pipeline hinted by `video_analysis_brief`, else `show.defaults.pipeline`. The resolved name MUST be a key in `show.pipelines`; otherwise the harness fails with a structured error.
-3. **Load the pipeline manifest.** `pipelines/<pipeline>.yaml` (project-local override) or `.predit/pipelines/<pipeline>.yaml` (bundled). Provides workflow, stages, tools available, success criteria.
-4. **Resolve the playbook.** `episode.playbook` > `show.pipelines[<pipeline>].playbook`. Load `playbooks/<playbook>.yaml` (project-local) or `.predit/playbooks/<playbook>.yaml` (bundled).
+3. **Load the pipeline manifest.** `pipelines/<pipeline>.yaml` (project-local override) or `.show-sidekick/pipelines/<pipeline>.yaml` (bundled). Provides workflow, stages, tools available, success criteria.
+4. **Resolve the playbook.** `episode.playbook` > `show.pipelines[<pipeline>].playbook`. Load `playbooks/<playbook>.yaml` (project-local) or `.show-sidekick/playbooks/<playbook>.yaml` (bundled).
 5. **Apply per-pipeline playbook overrides.** `show.pipelines[<pipeline>].playbook_overrides` is deep-merged on top of the playbook.
 6. **Apply per-pipeline defaults.** `show.pipelines[<pipeline>]` defaults (runtime, aspect, budget, provider profile) deep-merge on top of the pipeline manifest's defaults.
 7. **Apply episode overrides.** `episode.*` deep-merges on top of the merged result. For paid sample routing, provider profile precedence is CLI `--provider-profile` > `episode.provider_profile` > `show.pipelines[<pipeline>].provider_profile` > `show.defaults.provider_profile`.
@@ -154,7 +154,7 @@ When the harness loads an episode, it merges configuration in this order (later 
 9. **Resolve skills** (first match wins):
    - show-level: `shows/<show>/skills/<stage>-director.md`
    - project-local: `skills/pipelines/<pipeline>/<stage>-director.md`
-   - bundled default: `.predit/skills/pipelines/<pipeline>/<stage>-director.md`
+   - bundled default: `.show-sidekick/skills/pipelines/<pipeline>/<stage>-director.md`
 9. **Resolve tools per stage** via the registry.
 
 ## Deep-merge semantics

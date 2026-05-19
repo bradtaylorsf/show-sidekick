@@ -8,20 +8,20 @@ epic: 8
 issue: 80
 ---
 
-## predit Usage Contract
+## Show Sidekick Usage Contract
 
 - Read this skill before calling any tool that lists it in `agent_skills`.
-- Route execution through the predit registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
+- Route execution through the Show Sidekick registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
 - Announce paid or externally visible generation before running it, and log provider/model decisions when they affect output.
 - Keep this skill aligned with `bundled/templates/user-project/AGENTS.md`, `specs/06-tool-registry.md`, `specs/08-skills.md`.
-- The source body below is normalized for predit paths and terminology while preserving the original operational details.
+- The source body below is normalized for Show Sidekick paths and terminology while preserving the original operational details.
 
 <!--
-Adapted for predit from the HyperFrames skill package (hyperframes-cli.md)
+Adapted for Show Sidekick from the HyperFrames skill package (hyperframes-cli.md)
 Source commit: d291358 (2026-04-17)
-See .predit/skills/agents/hyperframes/PROVENANCE.md for re-sync instructions.
+See .show-sidekick/skills/agents/hyperframes/PROVENANCE.md for re-sync instructions.
 
-predit-local edit: added `validate` to the top-line command list and a
+Show Sidekick-local edit: added `validate` to the top-line command list and a
 dedicated "Validation" section — upstream omits it even though the CLI ships it
 and `hyperframes validate` is the real browser-based contract check (contrast,
 timelines, assets) that runs before render.

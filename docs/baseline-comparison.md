@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Use this report to compare equivalent inputs run through a reference baseline and through `predit`. The goal is not to force byte-for-byte parity. The goal is to preserve production intent, catch migration bugs, and separate expected CLI-model differences from provider or creative variance.
+Use this report to compare equivalent inputs run through a reference baseline and through Show Sidekick. The goal is not to force byte-for-byte parity. The goal is to preserve production intent, catch migration bugs, and separate expected CLI-model differences from provider or creative variance.
 
-Fill one report per demo lane or show benchmark. The predit side should come from the demo matrix JSON and verification report. The baseline side comes from the matching reference run and reviewer notes.
+Fill one report per demo lane or show benchmark. The Show Sidekick side should come from the demo matrix JSON and verification report. The baseline side comes from the matching reference run and reviewer notes.
 
 ## Evidence Model
 
-| Field | Baseline Evidence | predit Evidence | Notes |
+| Field | Baseline Evidence | Show Sidekick Evidence | Notes |
 |---|---|---|---|
 | Pipeline slug | Reference workflow or show lane name | `pipeline` from `demo-matrix-verification.json` lane | For show benchmarks, record the show and the actual bundled pipeline separately. |
 | Provider choices | Baseline provider/model notes | `decision_log`, provider profile, tool invocations | Include OpenAI, ElevenLabs, Higgsfield, ffmpeg, Remotion, or HyperFrames choices when used. |
@@ -24,7 +24,7 @@ Fill one report per demo lane or show benchmark. The predit side should come fro
 
 Use exactly one primary category for each material difference. Add a secondary note only when a difference plausibly spans categories.
 
-`migration_bug`: The reference and predit inputs are equivalent, but predit drops required content, produces invalid or missing artifacts, breaks export handoff, violates the demo brief, or fails a behavior the CLI model is expected to preserve. File a harness bug.
+`migration_bug`: The reference and Show Sidekick inputs are equivalent, but Show Sidekick drops required content, produces invalid or missing artifacts, breaks export handoff, violates the demo brief, or fails a behavior the CLI model is expected to preserve. File a harness bug.
 
 `intentional_cli_difference`: The difference follows from the installed CLI/user-project model, declarative pipeline boundaries, sample-mode limits, or an explicitly accepted harness design choice. Document the reason and confirm the result remains useful for reviewers.
 
@@ -58,7 +58,7 @@ The Ain't No Crowns reference is a TheChaosFM show benchmark, not a default-pipe
 - Date:
 - Reviewer:
 - Baseline source:
-- predit command:
+- Show Sidekick command:
 - Demo matrix report:
 - Difference summary:
 
@@ -72,7 +72,7 @@ The Ain't No Crowns reference is a TheChaosFM show benchmark, not a default-pipe
 
 ## Evidence
 
-| Field | Baseline | predit | Finding |
+| Field | Baseline | Show Sidekick | Finding |
 |---|---|---|---|
 | Provider choices |  |  |  |
 | Stage artifacts |  |  |  |

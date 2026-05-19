@@ -24,12 +24,12 @@ Otherwise treat as **vague** and onboard. When the classification is genuinely u
 Before saying anything creative, the agent knows what it's working with. Call:
 
 ```bash
-predit update --check --json
-predit doctor --profile paid-demo --json
-predit ls tools --json
+showkick update --check --json
+showkick doctor --profile paid-demo --json
+showkick ls tools --json
 ```
 
-If `predit update --check --json` reports the `.predit/` cache is stale, missing, or incompatible, run `predit update` before reading bundled skills, pipeline manifests, playbooks, schemas, or starters. Agents reason from the project-local cache, so onboarding must keep it aligned with the installed harness.
+If `showkick update --check --json` reports the `.show-sidekick/` cache is stale, missing, or incompatible, run `showkick update` before reading bundled skills, pipeline manifests, playbooks, schemas, or starters. Agents reason from the project-local cache, so onboarding must keep it aligned with the installed harness.
 
 Parse the output into three buckets:
 
@@ -37,7 +37,9 @@ Parse the output into three buckets:
 - **Quick unlocks** — tools that are 1-minute fixes (env var or `cli-login`).
 - **Hardware unlocks** — tools requiring local GPU or model downloads.
 
-Also check composition runtime availability — Remotion, HyperFrames, ffmpeg — surfaced as distinct entries from `predit ls tools --json`. If Remotion or HyperFrames is unavailable, the setup offer is `predit setup runtimes`.
+Also check composition runtime availability — Remotion, HyperFrames, ffmpeg — surfaced as distinct entries from `showkick ls tools --json`. If Remotion or HyperFrames is unavailable, the setup offer is `showkick setup runtimes`.
+
+Python and uv are optional tool runtimes. They can unlock local analysis, transcription, or model-backed tools, but they are not prerequisites for the first no-key animated explainer. Agents should only ask to install or configure Python/uv when the selected workflow actually requires a Python-backed tool.
 
 ### 2. Setup-tier classification
 
@@ -66,7 +68,7 @@ Rules:
 Template:
 
 ```
-Welcome to predit. With your current setup I can:
+Welcome to Show Sidekick. With your current setup I can:
 
 Ready to go:
   - <2–4 capabilities in plain language>
@@ -106,7 +108,7 @@ Agents should adapt language to the operator:
 
 If both Remotion and HyperFrames are available, name **both** explicitly. Do not pick one in onboarding — runtime selection happens at proposal time after the agent understands the brief. See [`15-announce-and-escalate.md`](15-announce-and-escalate.md) → present-both-runtimes hard rule.
 
-If only one is available, name it and mention what the other would unlock. If neither, the user is on ffmpeg only. Ask whether the user wants to run `predit setup runtimes` for this video; explain that it installs project-local Remotion, the Remotion CLI, aligned support deps, and HyperFrames, and that FFmpeg remains available if they skip.
+If only one is available, name it and mention what the other would unlock. If neither, the user is on ffmpeg only. Ask whether the user wants to run `showkick setup runtimes` for this video; explain that it installs project-local Remotion, the Remotion CLI, aligned support deps, and HyperFrames, and that FFmpeg remains available if they skip.
 
 ### 5. Offer three starter prompts
 
@@ -115,7 +117,7 @@ Present exactly three prompts the user can copy now. Each targets a different pi
 Tier-specific examples:
 
 **Zero-key:**
-> "Make my first no-key predit video: ask what I do, suggest three video ideas tailored to that answer, pick the strongest one, and render a 30-second animated explainer with local narration." (animated-explainer starter)
+> "Make my first no-key Show Sidekick video: ask what I do, suggest three video ideas tailored to that answer, pick the strongest one, and render a 30-second animated explainer with local narration." (animated-explainer starter)
 
 **Starter:**
 > "Make a music video for the track I just dropped in `music_library/midnight-train/`." (music-video pipeline)
@@ -135,7 +137,35 @@ Rules:
 - Brief note explains what makes the prompt a good fit.
 - Use blockquote formatting so prompts are easy to copy.
 
-### 5a. Personalized zero-key first video
+### 5a. Public website copy-paste prompt
+
+The website prompt for non-technical users should be safe to paste into Codex, Claude Code, or a similar local agent on macOS or Windows:
+
+```text
+Help me set up Show Sidekick and make my first no-key video.
+
+First, identify whether I am on macOS or Windows. Check system prerequisites without changing my machine: Node 22+, npm, Git, and FFmpeg. Also check whether Python and uv are installed, but treat them as optional tool runtimes, not blockers for the first no-key video.
+
+If a system prerequisite is missing, explain what it is for and ask before installing it. On macOS, prefer the official Node installer or Homebrew only after I approve. On Windows, prefer the official Node installer or winget only after I approve. Do not install Python, uv, FFmpeg, Git, Node, npm, Homebrew, winget packages, or any provider CLI without asking first.
+
+After system preflight is clear, initialize the project with:
+
+npx -y show-sidekick@latest init --starter animated-explainer --git
+
+Then run project preflight before any paid work:
+
+showkick doctor --profile paid-demo
+showkick ls tools --json
+
+For the first artifact, do not use paid provider credits. Read AGENTS.md and .show-sidekick/skills/meta/onboarding.md, ask what I do, suggest three personalized no-key video ideas, choose the strongest one if I ask you to proceed, run:
+
+showkick build animated-explainer/sample-episode --sample
+showkick export animated-explainer/sample-episode --target premiere
+
+Before any later command that may spend provider credits, stop and ask me for approval with the likely provider, model, purpose, and rough cost.
+```
+
+### 5b. Personalized zero-key first video
 
 When a user asks an agent to help create the first video without giving a specific creative brief, the default no-key path is a personalized animated explainer, not a generic smoke sample.
 
@@ -145,8 +175,8 @@ Protocol:
 2. Use only safe context the user has shared in the current session or project. Do not infer sensitive personal attributes or reveal private facts.
 3. Offer exactly three concrete video ideas the current setup can produce.
 4. If the user asked the agent to proceed, pick the strongest idea and use the `animated-explainer` starter because it has the zero-key narrated motion-graphics renderer.
-5. Write four short narrated scene lines to `shows/<show>/inputs/sample-episode/script.txt`: tailored hook, personal-use beat, predit workflow beat, next step. Keep `duration_s: 30`.
-6. Run `predit build <show>/sample-episode --sample` without a paid provider profile, then export an editor handoff.
+5. Write four short narrated scene lines to `shows/<show>/inputs/sample-episode/script.txt`: tailored hook, personal-use beat, Show Sidekick workflow beat, next step. Keep `duration_s: 30`.
+6. Run `showkick build <show>/sample-episode --sample` without a paid provider profile, then export an editor handoff.
 
 The zero-key renderer turns the script lines into multiple procedural motion-graphics scenes with visible layout animation, generates local narration when a free local TTS path is available, emits a voiceover cuesheet for export, and uses Remotion when installed. This keeps the first artifact free while making it feel specific to the operator.
 

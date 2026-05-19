@@ -109,7 +109,7 @@ async function selectFirstAvailable(
 }
 
 function isProviderSelectionMarker(tool: Tool): boolean {
-  return tool.provider === "predit" && (tool.supports ?? []).includes("provider-selection");
+  return tool.provider === "show-sidekick" && (tool.supports ?? []).includes("provider-selection");
 }
 
 async function runTool(

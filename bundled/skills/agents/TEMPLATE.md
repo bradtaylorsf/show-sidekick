@@ -10,10 +10,10 @@ issue: 0
 
 # Example Provider
 
-## predit Usage Contract
+## Show Sidekick Usage Contract
 
 - Read this skill before calling any tool that lists it in `agent_skills`.
-- Route execution through the predit registry or CLI workflow.
+- Route execution through the Show Sidekick registry or CLI workflow.
 - Announce paid or externally visible generation before running it.
 - Log provider/model decisions when they affect output quality, cost, duration, or format.
 

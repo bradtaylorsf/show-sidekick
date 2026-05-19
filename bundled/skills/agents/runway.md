@@ -1,6 +1,6 @@
 ---
 name: "runway"
-description: "Runway Gen-4 and Runway-hosted Seedance routing notes for predit video generation."
+description: "Runway Gen-4 and Runway-hosted Seedance routing notes for Show Sidekick video generation."
 applies_to: "agents"
 agent_skill: true
 critical: false
@@ -8,10 +8,10 @@ epic: 8
 issue: 73
 ---
 
-## predit Usage Contract
+## Show Sidekick Usage Contract
 
 - Read this skill before calling any tool that lists it in `agent_skills`.
-- Route execution through the predit registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
+- Route execution through the Show Sidekick registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
 - Announce paid or externally visible generation before running it, and log provider/model decisions when they affect output.
 - Keep this skill aligned with `bundled/templates/user-project/AGENTS.md`, `specs/06-tool-registry.md`, `specs/08-skills.md`.
 
@@ -39,7 +39,7 @@ focused motion, simple shot, photoreal, cinematic, controlled camera, clean acti
 
 Do not pack multiple unrelated scenes into a single Runway clip. Do not use Runway as a silent substitute after a Seedance decision without logging the provider change and getting approval.
 
-## predit Routing
+## Show Sidekick Routing
 
 - Prefer `ai-video-gen` for capability-level provider selection.
 - Prefer `seedance-2-0` when the brief requires premium multi-shot motion, native audio, or lip-sync and a configured gateway exists.

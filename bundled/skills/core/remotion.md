@@ -1,6 +1,6 @@
 ---
 name: "remotion"
-description: "predit Remotion composition routing, scene catalog, prop patterns, validation, and render verification."
+description: "Show Sidekick Remotion composition routing, scene catalog, prop patterns, validation, and render verification."
 applies_to: "core"
 cross_refs:
   - "bundled/skills/meta/animation-runtime-selector.md"
@@ -16,9 +16,9 @@ data-driven batch rendering. For simple cuts, burns, and encodes, prefer FFmpeg 
 
 ## Relationship to Remotion Agent Skills
 
-The **bundled/vendor agent skills** (`.predit/skills/agents/remotion-best-practices.md`, when installed) teach correct
+The **bundled/vendor agent skills** (`.show-sidekick/skills/agents/remotion-best-practices.md`, when installed) teach correct
 Remotion API usage — imports, timing, animation constraints, code patterns.
-**This file** teaches how predit uses Remotion — which compositions map to pipeline
+**This file** teaches how Show Sidekick uses Remotion — which compositions map to pipeline
 stages, how artifacts flow in, and how renders are triggered.
 
 ## Runtime Position
@@ -48,7 +48,7 @@ decision-log entry.
 
 ## Supported Scene Types (Cut Types)
 
-The current predit Remotion scene library lives in `src/remotion/scenes/`. Each
+The current Show Sidekick Remotion scene library lives in `src/remotion/scenes/`. Each
 scene exports a component function and a Zod props schema.
 
 | Type | Props Required | Best For |
@@ -162,7 +162,7 @@ const result = await compositionValidator.execute(
 **Audio duration alignment:**
 - After generating TTS narration, the tool returns `audio_duration_seconds`.
 - If narration exceeds video duration: shorten script and regenerate, OR extend the last scene.
-- Use `ffprobe` or the duration metadata returned by the predit audio tools to check any audio file's duration.
+- Use `ffprobe` or the duration metadata returned by the Show Sidekick audio tools to check any audio file's duration.
 - Music should be ≥ video duration; the player handles fade-out via `fadeOutSeconds`.
 
 ## Architecture
@@ -191,7 +191,7 @@ src/remotion/
 
 ### How Artifacts Map to Remotion Props
 
-| predit Artifact | Remotion Prop | Maps To |
+| Show Sidekick Artifact | Remotion Prop | Maps To |
 |---------------------|---------------|---------|
 | `scene_plan.json` → `scenes[]` | `scenes` prop | `<TransitionSeries>` children |
 | `scene.type` | Component selector | `talking_head` → `<Video>`, `diagram` → `<DiagramOverlay>`, etc. |
@@ -222,11 +222,11 @@ npx remotion render Explainer \
 
 **Note:** Do NOT specify `src/index.ts` as entry point — Remotion auto-discovers compositions. The composition name is `Explainer` (not `ExplainerVideo`).
 
-In predit, invoke through the registry-backed `video_compose` or `remotion` tool path; do not shell around the registry for production work.
+In Show Sidekick, invoke through the registry-backed `video_compose` or `remotion` tool path; do not shell around the registry for production work.
 
 ### Media Profile Mapping
 
-| predit Profile | Remotion Config |
+| Show Sidekick Profile | Remotion Config |
 |--------------------|-----------------|
 | `youtube_landscape` | `width: 1920, height: 1080, fps: 30` |
 | `youtube_shorts` | `width: 1080, height: 1920, fps: 30` |

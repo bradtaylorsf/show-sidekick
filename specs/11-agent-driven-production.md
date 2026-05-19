@@ -2,7 +2,7 @@
 
 ## Philosophy
 
-`predit` is instruction-driven. The agent (Claude Code, Codex, or any harness reading the same skill markdown) **is** the production intelligence — it reads instructions, makes decisions, calls tools, checks its own work, revises, and presents to the human for approval. The code is the orchestration shell; the markdown skills are the brain.
+Show Sidekick is instruction-driven. The agent (Claude Code, Codex, or any harness reading the same skill markdown) **is** the production intelligence — it reads instructions, makes decisions, calls tools, checks its own work, revises, and presents to the human for approval. The code is the orchestration shell; the markdown skills are the brain.
 
 This means the agent's behavior can be improved by editing prose — without rebuilds, without releases, without code review. Adding a new pipeline is a YAML manifest plus a handful of Markdown director skills, not a Python or TypeScript refactor.
 

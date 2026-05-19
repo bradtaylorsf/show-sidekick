@@ -40,7 +40,7 @@ These 12 skills are mandatory quality gates for Epic 8 and must contain the sect
 - `acestep`
 - `whisperx`
 
-When editing one of these files, preserve those headings and keep the original provider guidance below the predit usage contract unless the source itself is wrong or stale.
+When editing one of these files, preserve those headings and keep the original provider guidance below the Show Sidekick usage contract unless the source itself is wrong or stale.
 
 ## Resource Layout
 

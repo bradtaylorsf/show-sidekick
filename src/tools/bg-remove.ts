@@ -15,12 +15,12 @@ const outputSchema = z.object({
 const bgRemove = defineTool({
   name: "bg_remove",
   capability: "bg_remove",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "capability discovery for background removal from still images or short clips",
   supports: ["background-removal", "alpha-output", "provider-selection"],

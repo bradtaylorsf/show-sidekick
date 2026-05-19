@@ -16,7 +16,7 @@ describe("face_enhance", () => {
   it("registers the face enhance capability marker", async () => {
     expect(faceEnhance.name).toBe("face_enhance");
     expect(faceEnhance.capability).toBe("face_enhance");
-    expect(faceEnhance.integration).toMatchObject({ kind: "library", package: "predit" });
+    expect(faceEnhance.integration).toMatchObject({ kind: "library", package: "show-sidekick" });
     await expect(faceEnhance.isAvailable()).resolves.toEqual({ available: true });
   });
 

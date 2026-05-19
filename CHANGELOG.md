@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [0.1.0] - 2026-05-14
 
+### Migration Note
+
+- Public launch renames build-era `predit` to Show Sidekick, with npm package `show-sidekick` and CLI `showkick`.
+- User-project cache/docs move from `.predit/` to `.show-sidekick/`. Current `PREDIT_*` env vars remain documented as legacy compatibility names until replacement aliases ship.
+
 ### Added
 
 - Public README, [quickstart](docs/quickstart.md), contributor guide, generated [provider catalog](docs/providers.md), and user-project roadmap template.

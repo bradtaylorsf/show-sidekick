@@ -16,7 +16,7 @@ describe("talking_head", () => {
   it("registers the talking head capability marker", async () => {
     expect(talkingHead.name).toBe("talking_head");
     expect(talkingHead.capability).toBe("talking_head");
-    expect(talkingHead.integration).toMatchObject({ kind: "library", package: "predit" });
+    expect(talkingHead.integration).toMatchObject({ kind: "library", package: "show-sidekick" });
     await expect(talkingHead.isAvailable()).resolves.toEqual({ available: true });
   });
 

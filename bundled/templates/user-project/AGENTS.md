@@ -1,10 +1,10 @@
-# Agent operating contract — predit user project
+# Agent operating contract — Show Sidekick user project
 
-This is a `predit` user project. The CLI is installed globally (or runnable via `npx predit`). The folder you are in owns the shows, episodes, brand assets, characters, and runtime workspace. The harness — pipelines, playbooks, skills, schemas, starter shows — is bundled with the installed CLI and mirrored locally in `.predit/` for you to read.
+This is a Show Sidekick user project. The CLI is installed globally (or runnable via `npx -y show-sidekick@latest`). The folder you are in owns the shows, episodes, brand assets, characters, and runtime workspace. The harness — pipelines, playbooks, skills, schemas, starter shows — is bundled with the installed CLI and mirrored locally in `.show-sidekick/` for you to read.
 
 You are the production intelligence. The CLI is the orchestration shell. Skills (Markdown) tell you how to do the creative work. Tools (called via the CLI / registry) carry out concrete actions. This file is your operating contract.
 
-Treat this user-project folder as canonical for production work. Do not edit anything inside `.predit/`; it is a bundled cache refreshed by the CLI. When validating local harness changes from a checkout, follow the CLI/user-project model in `docs/demo-readiness.md#operating-models`.
+Treat this user-project folder as canonical for production work. Do not edit anything inside `.show-sidekick/`; it is a bundled cache refreshed by the CLI. When validating local harness changes from a checkout, follow the CLI/user-project model in `docs/demo-readiness.md#operating-models`.
 
 ## Rule zero: every production goes through a pipeline
 
@@ -21,26 +21,27 @@ The intelligence is in the skills, not in improvised code. An agent that reads t
 ## Read order on first contact
 
 1. This file in full.
-2. The user's request. If it is vague or exploratory, run the onboarding flow described in `.predit/skills/meta/onboarding.md`. If it is specific and actionable, go straight to pipeline selection.
-3. The pipeline's manifest (`.predit/pipelines/<pipeline>.yaml` or `./pipelines/<pipeline>.yaml` if overridden locally).
-4. The director skill for the stage you are about to run (`.predit/skills/pipelines/<pipeline>/<stage>-director.md`, or the local / show-level override if one exists).
-5. The Layer 3 vendor skill for every generation tool you are about to call (`.predit/skills/agents/<vendor>/SKILL.md`, with `.agents/skills/<vendor>/SKILL.md` and `.claude/skills/<vendor>/SKILL.md` generated as native agent-discovery mirrors).
+2. The user's request. If it is vague or exploratory, run the onboarding flow described in `.show-sidekick/skills/meta/onboarding.md`. If it is specific and actionable, go straight to pipeline selection.
+3. The pipeline's manifest (`.show-sidekick/pipelines/<pipeline>.yaml` or `./pipelines/<pipeline>.yaml` if overridden locally).
+4. The director skill for the stage you are about to run (`.show-sidekick/skills/pipelines/<pipeline>/<stage>-director.md`, or the local / show-level override if one exists).
+5. The Layer 3 vendor skill for every generation tool you are about to call (`.show-sidekick/skills/agents/<vendor>/SKILL.md`, with `.agents/skills/<vendor>/SKILL.md` and `.claude/skills/<vendor>/SKILL.md` generated as native agent-discovery mirrors).
 
 ## First-run flow for agents
 
 When a user says "help me make the first video", "what can this project do?", or gives a broad creative goal, guide them through this path:
 
-1. Run `predit update --check --json`. If the bundled cache is stale or missing, run `predit update` before reading `.predit/` skills, pipelines, playbooks, schemas, or starters. This keeps the project-local agent instructions aligned with the installed harness.
-2. Run `predit doctor --profile paid-demo --json` and `predit ls tools --json`, then summarize what is ready, what needs env vars, what needs CLI login, and which composition runtimes are available. If env vars are missing, point the user at the scaffolded `.env` file and the committed `.env.example`; shell exports are also valid and win over file values.
+1. Run `showkick update --check --json`. If the bundled cache is stale or missing, run `showkick update` before reading `.show-sidekick/` skills, pipelines, playbooks, schemas, or starters. This keeps the project-local agent instructions aligned with the installed harness.
+2. Run `showkick doctor --profile paid-demo --json` and `showkick ls tools --json`, then summarize what is ready, what needs env vars, what needs CLI login, and which composition runtimes are available. If env vars are missing, point the user at the scaffolded `.env` file and the committed `.env.example`; shell exports are also valid and win over file values.
 3. For a broad first-video request, ask one short question before proposing: "What do you do, and what kind of videos would be useful for you?" Use only safe context the user answers with in this session or project. Do not infer or reveal sensitive personal attributes. Offer exactly three specific video ideas, then pick the strongest one if the user asked you to proceed without another choice.
-4. Run `predit ls starters` and recommend one starter or one pipeline based on the user's goal. For the default first run, use `animated-explainer` so the output is a narrated motion-graphics explainer, not a music-video smoke test.
-5. If Remotion or HyperFrames is unavailable and the video would benefit from motion graphics, animated overlays, or runtime choice, explain that runtime setup may have been skipped or blocked by missing npm. Ask before installing system-level prerequisites such as Node/npm; after approval, run `predit setup runtimes`. The default first-video path uses Remotion when available and falls back only when the runtime is unavailable.
-6. If the project has no show yet, scaffold one with `predit new show <slug> --from <starter>` for starter-backed work, or `predit new show <slug> --pipelines <pipeline>` for a custom show.
-7. Create or select an episode with `predit new episode <show> <episode>`.
-8. For a zero-key personalized first video, use the `animated-explainer` starter and rewrite `shows/<show>/inputs/<episode>/script.txt` into four concise narrated scene lines: a tailored hook, one personal-use beat, one workflow beat, and the next step. Keep `duration_s: 30`. Then run `predit build <show>/<episode> --sample`.
-9. Before spending provider credits, explain the selected pipeline, likely tools, rough cost, and expected output path.
-10. Run `predit build <show>/<episode> --sample --provider-profile paid-demo` for paid samples, or omit the provider profile for zero-key samples.
-11. Export with `predit export <show>/<episode> --target premiere` and, when useful, `predit export <show>/<episode> --format edl`.
+4. Run `showkick ls starters` and recommend one starter or one pipeline based on the user's goal. For the default first run, use `animated-explainer` so the output is a narrated motion-graphics explainer, not a music-video smoke test.
+5. If Remotion or HyperFrames is unavailable and the video would benefit from motion graphics, animated overlays, or runtime choice, explain that runtime setup may have been skipped or blocked by missing npm. Ask before installing system-level prerequisites such as Node/npm; after approval, run `showkick setup runtimes`. The default first-video path uses Remotion when available and falls back only when the runtime is unavailable.
+6. Treat Python and uv as optional tool runtimes for specialized providers or local analysis, not prerequisites for the first no-key video. Mention them only when `showkick ls tools --json` reports a missing Python-backed tool the selected workflow actually needs.
+7. If the project has no show yet, scaffold one with `showkick new show <slug> --from <starter>` for starter-backed work, or `showkick new show <slug> --pipelines <pipeline>` for a custom show.
+8. Create or select an episode with `showkick new episode <show> <episode>`.
+9. For a zero-key personalized first video, use the `animated-explainer` starter and rewrite `shows/<show>/inputs/<episode>/script.txt` into four concise narrated scene lines: a tailored hook, one personal-use beat, one workflow beat, and the next step. Keep `duration_s: 30`. Then run `showkick build <show>/<episode> --sample`.
+10. Before spending provider credits, explain the selected pipeline, likely tools, rough cost, and expected output path.
+11. Run `showkick build <show>/<episode> --sample --provider-profile paid-demo` for paid samples, or omit the provider profile for zero-key samples.
+12. Export with `showkick export <show>/<episode> --target premiere` and, when useful, `showkick export <show>/<episode> --format edl`.
 
 Record any issue, confusing output, failed tool call, or manual fix in `projects/<show>/<episode>/notes.md` so a coding agent can improve the harness later.
 
@@ -72,18 +73,18 @@ Match the user's comfort level without changing the production contract:
 ├── .env.example                   # committed — blank provider key template
 ├── .agents/skills/                 # gitignored — generated Codex-style Layer 3 skill mirror
 ├── .claude/skills/                 # gitignored — generated Claude-style Layer 3 skill mirror
-└── .predit/                       # gitignored — bundled cache (read-only)
+└── .show-sidekick/                       # gitignored — bundled cache (read-only)
     ├── pipelines/
     ├── playbooks/
     ├── skills/
     └── schemas/
 ```
 
-`predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before commands run. Shell-exported values win over file values. Never commit `.env`. Commit `.env.example`, shows, pipelines, playbooks, and skills so workflows can be shared safely.
+Show Sidekick loads `.env`, `.env.<command>`, and `.env.local` from the project root before commands run. Shell-exported values win over file values. Never commit `.env`. Commit `.env.example`, shows, pipelines, playbooks, and skills so workflows can be shared safely.
 
-`predit init` installs Remotion, the Remotion CLI, aligned Remotion support deps, and HyperFrames locally for this project by default when npm is available. `predit setup runtimes` repairs or adds those dependencies later if setup was skipped or blocked. Ask before installing system-level prerequisites such as Node/npm; project-local npm dependencies are expected during init unless the user passed `--no-setup-runtimes`.
+`showkick init` installs Remotion, the Remotion CLI, aligned Remotion support deps, and HyperFrames locally for this project by default when npm is available. `showkick setup runtimes` repairs or adds those dependencies later if setup was skipped or blocked. Ask before installing system-level prerequisites such as Node/npm; project-local npm dependencies are expected during init unless the user passed `--no-setup-runtimes`.
 
-When resolving any resource (pipeline, playbook, skill, schema), check the project-local path first, then `.predit/`. Project-local always wins. For director skills, also check `shows/<show>/skills/` before either.
+When resolving any resource (pipeline, playbook, skill, schema), check the project-local path first, then `.show-sidekick/`. Project-local always wins. For director skills, also check `shows/<show>/skills/` before either.
 
 ## Operating principles
 
@@ -102,35 +103,35 @@ When resolving any resource (pipeline, playbook, skill, schema), check the proje
 
 The bundled cache contains the meta skills that govern these protocols. Read them when relevant:
 
-- `.predit/skills/meta/onboarding.md` — first-contact discovery and capability presentation.
-- `.predit/skills/meta/reviewer.md` — the self-review protocol with the CHAI rules.
-- `.predit/skills/meta/checkpoint-protocol.md` — when and how to checkpoint, resume, approve.
-- `.predit/skills/meta/decision-log.md` — the audit trail of material choices.
-- `.predit/skills/meta/announce-and-escalate.md` — what to say before acting and what to say when blocked.
-- `.predit/skills/meta/self-review-of-output.md` — the final pass on the rendered file before presenting to the user.
+- `.show-sidekick/skills/meta/onboarding.md` — first-contact discovery and capability presentation.
+- `.show-sidekick/skills/meta/reviewer.md` — the self-review protocol with the CHAI rules.
+- `.show-sidekick/skills/meta/checkpoint-protocol.md` — when and how to checkpoint, resume, approve.
+- `.show-sidekick/skills/meta/decision-log.md` — the audit trail of material choices.
+- `.show-sidekick/skills/meta/announce-and-escalate.md` — what to say before acting and what to say when blocked.
+- `.show-sidekick/skills/meta/self-review-of-output.md` — the final pass on the rendered file before presenting to the user.
 
-These skills are not optional — they encode the contract that makes `predit` produce coherent, honest output instead of a black-box rendering pipeline.
+These skills are not optional — they encode the contract that makes Show Sidekick produce coherent, honest output instead of a black-box rendering pipeline.
 
 ## Common commands
 
 ```bash
-predit doctor                              # capability menu — run before any creative work
-predit doctor --profile paid-demo --json   # machine-readable provider preflight for agents
-predit new show <slug> --from <starter>    # scaffold a new show
-predit new show <slug> --pipelines <list>  # scaffold a show bound to existing pipelines
-predit new episode <show> [<slug>]         # scaffold a new episode
-predit new pipeline <slug>                 # scaffold a project-local pipeline + idea director skill
-predit build <show>/<episode>              # run the pipeline interactively
-predit build <show>/<episode> --sample     # 15–20s end-to-end sample run
-predit resume <show>/<episode>             # pick up at next checkpoint
-predit approve <show>/<episode>            # advance past awaiting_human (non-interactive)
-predit revise <show>/<episode> "<note>"    # loop the current stage with revision notes
-predit export <show>/<episode> --target premiere|davinci|capcut  # NLE handoff
-predit export <show>/<episode> --format edl        # raw CMX 3600 EDL
-predit ls pipelines | playbooks | tools | starters | shows
-predit ls tools --json                    # machine-readable tool availability + install hints
-predit setup runtimes                     # install Remotion + HyperFrames locally after approval
-predit update                              # refresh .predit/ cache from the installed harness
+showkick doctor                              # capability menu — run before any creative work
+showkick doctor --profile paid-demo --json   # machine-readable provider preflight for agents
+showkick new show <slug> --from <starter>    # scaffold a new show
+showkick new show <slug> --pipelines <list>  # scaffold a show bound to existing pipelines
+showkick new episode <show> [<slug>]         # scaffold a new episode
+showkick new pipeline <slug>                 # scaffold a project-local pipeline + idea director skill
+showkick build <show>/<episode>              # run the pipeline interactively
+showkick build <show>/<episode> --sample     # 15–20s end-to-end sample run
+showkick resume <show>/<episode>             # pick up at next checkpoint
+showkick approve <show>/<episode>            # advance past awaiting_human (non-interactive)
+showkick revise <show>/<episode> "<note>"    # loop the current stage with revision notes
+showkick export <show>/<episode> --target premiere|davinci|capcut  # NLE handoff
+showkick export <show>/<episode> --format edl        # raw CMX 3600 EDL
+showkick ls pipelines | playbooks | tools | starters | shows
+showkick ls tools --json                    # machine-readable tool availability + install hints
+showkick setup runtimes                     # install Remotion + HyperFrames locally after approval
+showkick update                              # refresh .show-sidekick/ cache from the installed harness
 ```
 
 ## What not to do
@@ -140,4 +141,4 @@ predit update                              # refresh .predit/ cache from the ins
 - Do not begin asset generation before user approval on the production plan.
 - Do not change provider, model, or render runtime without telling the user and getting approval.
 - Do not silently downgrade motion-led briefs to still-led output.
-- Do not edit anything inside `.predit/` by hand — it is a cache. Override by placing same-named files in the project-local paths (`./pipelines/`, `./skills/`, etc.).
+- Do not edit anything inside `.show-sidekick/` by hand — it is a cache. Override by placing same-named files in the project-local paths (`./pipelines/`, `./skills/`, etc.).

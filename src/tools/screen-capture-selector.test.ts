@@ -16,7 +16,7 @@ describe("screen_capture_selector", () => {
   it("registers the screen capture capability marker", async () => {
     expect(screenCaptureSelector.name).toBe("screen_capture_selector");
     expect(screenCaptureSelector.capability).toBe("screen_capture");
-    expect(screenCaptureSelector.integration).toMatchObject({ kind: "library", package: "predit" });
+    expect(screenCaptureSelector.integration).toMatchObject({ kind: "library", package: "show-sidekick" });
     await expect(screenCaptureSelector.isAvailable()).resolves.toEqual({ available: true });
   });
 

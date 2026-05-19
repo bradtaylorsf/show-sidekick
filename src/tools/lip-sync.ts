@@ -16,12 +16,12 @@ const outputSchema = z.object({
 const lipSync = defineTool({
   name: "lip_sync",
   capability: "lip_sync",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "capability discovery for concrete lip-sync providers that animate a still or video from audio",
   supports: ["still-image-lip-sync", "video-lip-sync", "provider-selection"],

@@ -23,7 +23,7 @@ Higgsfield image-to-video for hero scene animations only.
 
 Kling cost assumption: `$0.30/clip`.
 
-Read `.predit/skills/agents/higgsfield-generate.md` before any Higgsfield call and `.predit/skills/meta/announce-and-escalate.md` before paid generation.
+Read `.show-sidekick/skills/agents/higgsfield-generate.md` before any Higgsfield call and `.show-sidekick/skills/meta/announce-and-escalate.md` before paid generation.
 
 ## Process
 

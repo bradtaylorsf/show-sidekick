@@ -89,7 +89,7 @@ export function createInitHandler(io: CliIo, deps: InitHandlerDeps = {}) {
       const runGit = deps.runGit ?? defaultRunGit;
       await runGit(["init"], projectRoot);
       await runGit(["add", "."], projectRoot);
-      await runGit(["commit", "-m", "Initial predit project scaffold."], projectRoot);
+      await runGit(["commit", "-m", "Initial Show Sidekick project scaffold."], projectRoot);
     }
 
     emitInitialized(io, options, {
@@ -206,7 +206,7 @@ async function assertRuntimeSetupPrerequisites(projectRoot: string): Promise<voi
   if (!Number.isFinite(major) || major < 22) {
     throw new Error(
       `runtime setup requires Node 22+; current Node is ${process.versions.node}. ` +
-        "Install or switch to Node 22+, then rerun `predit init`. " +
+        "Install or switch to Node 22+, then rerun `showkick init`. " +
         "If an agent is helping, it should ask before installing system prerequisites.",
     );
   }
@@ -216,7 +216,7 @@ async function assertRuntimeSetupPrerequisites(projectRoot: string): Promise<voi
   } catch (error) {
     throw new Error(
       "runtime setup requires npm on PATH so Remotion and HyperFrames can be installed locally. " +
-        "Install Node 22+ from https://nodejs.org/ or through your preferred package manager, then rerun `predit init`. " +
+        "Install Node 22+ from https://nodejs.org/ or through your preferred package manager, then rerun `showkick init`. " +
         "If an agent is helping, it should ask before installing system prerequisites.",
       { cause: error },
     );
@@ -274,26 +274,26 @@ function emitInitialized(io: CliIo, options: InitOptions, event: InitEvent): voi
     ? [
         "next:",
         "  edit .env with any provider keys you want to use",
-        "  predit doctor --profile paid-demo",
+        "  showkick doctor --profile paid-demo",
         ...(event.setup_runtimes
           ? []
-          : ["  predit setup runtimes  # optional: install Remotion + HyperFrames locally"]),
-        `  predit build ${event.starter}/sample-episode --sample`,
-        `  predit export ${event.starter}/sample-episode --target premiere`,
+          : ["  showkick setup runtimes  # optional: install Remotion + HyperFrames locally"]),
+        `  showkick build ${event.starter}/sample-episode --sample`,
+        `  showkick export ${event.starter}/sample-episode --target premiere`,
       ]
     : [
         "next:",
         "  edit .env with any provider keys you want to use",
-        "  predit doctor --profile paid-demo",
+        "  showkick doctor --profile paid-demo",
         ...(event.setup_runtimes
           ? []
-          : ["  predit setup runtimes  # optional: install Remotion + HyperFrames locally"]),
-        "  predit ls starters",
-        "  predit new show first-video --from animated-explainer",
+          : ["  showkick setup runtimes  # optional: install Remotion + HyperFrames locally"]),
+        "  showkick ls starters",
+        "  showkick new show first-video --from animated-explainer",
       ];
   const agentPrompt = [
-    'agent prompt: "Read AGENTS.md and .predit/skills/meta/onboarding.md. Ask me what I do and what I want to make, suggest three personalized no-key first-video ideas, then render a 30-second animated predit explainer with local TTS and Remotion when available."',
+    'agent prompt: "Read AGENTS.md and .show-sidekick/skills/meta/onboarding.md. Ask me what I do and what I want to make, suggest three personalized no-key first-video ideas, then render a 30-second animated Show Sidekick explainer with local TTS and Remotion when available."',
   ];
 
-  io.stdout.write(`init: scaffolded predit project at ${event.path}${starter}${git}${runtimes}\n${[...nextSteps, ...agentPrompt].join("\n")}\n`);
+  io.stdout.write(`init: scaffolded Show Sidekick project at ${event.path}${starter}${git}${runtimes}\n${[...nextSteps, ...agentPrompt].join("\n")}\n`);
 }

@@ -45,11 +45,11 @@ const RUNTIME_NAMES = ["ffmpeg", "remotion", "hyperframes"] as const;
 export default defineTool({
   name: "video_compose",
   capability: "video_compose",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "production",
   integration: {
     kind: "library",
-    package: "predit",
+    package: "show-sidekick",
     install: "bundled",
   },
   best_for: "runtime routing for FFmpeg, Remotion, and HyperFrames with pre-compose validation",

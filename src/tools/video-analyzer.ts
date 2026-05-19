@@ -119,12 +119,12 @@ function roundTo(value: number, digits: number): number {
 const videoAnalyzer = defineTool({
   name: "video_analyzer",
   capability: "video_analysis",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "reference-driven source video analysis briefs for scene planning and QA",
   supports: ["scene-detection", "frame-sampling", "five-aspect-breakdown"],

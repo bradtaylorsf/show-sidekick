@@ -191,7 +191,7 @@ function unavailableReason(availability: Availability | undefined): string {
 }
 
 function isProviderSelectionMarker(tool: Tool): boolean {
-  return tool.provider === "predit" && (tool.supports ?? []).includes("provider-selection");
+  return tool.provider === "show-sidekick" && (tool.supports ?? []).includes("provider-selection");
 }
 
 function defaultToolsDir(): string {

@@ -15,12 +15,12 @@ const outputSchema = z.object({
 const faceEnhance = defineTool({
   name: "face_enhance",
   capability: "face_enhance",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "capability discovery for general face detail enhancement in portraits and character assets",
   supports: ["face-detail", "portrait-enhancement", "provider-selection"],

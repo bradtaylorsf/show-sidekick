@@ -1,6 +1,6 @@
 ---
 name: "veo"
-description: "Google Veo prompt and parameter guidance for predit video generation."
+description: "Google Veo prompt and parameter guidance for Show Sidekick video generation."
 applies_to: "agents"
 agent_skill: true
 critical: false
@@ -8,10 +8,10 @@ epic: 8
 issue: 73
 ---
 
-## predit Usage Contract
+## Show Sidekick Usage Contract
 
 - Read this skill before calling any tool that lists it in `agent_skills`.
-- Route execution through the predit registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
+- Route execution through the Show Sidekick registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
 - Announce paid or externally visible generation before running it, and log provider/model decisions when they affect output.
 - Keep this skill aligned with `bundled/templates/user-project/AGENTS.md`, `specs/06-tool-registry.md`, `specs/08-skills.md`.
 
@@ -39,7 +39,7 @@ ultra-realistic, cinematic, natural motion, grounded physics, detailed lighting,
 
 Do not submit unsupported aspect ratios or long durations. Do not route to Veo just because it is familiar if Seedance 2.0 better matches multi-shot, lip-sync, or native synced-audio requirements.
 
-## predit Routing
+## Show Sidekick Routing
 
 - Prefer `ai-video-gen` for capability-level provider selection.
 - Prefer `seedance-2-0` when the brief requires premium multi-shot motion, native audio, or lip-sync and a configured gateway exists.

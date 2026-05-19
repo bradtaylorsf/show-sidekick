@@ -1,117 +1,114 @@
 # Quickstart
 
-This walks a fresh machine from install to a 30-second personalized no-key animated explainer and an editor handoff.
+This guide gets a fresh project to a free 30-second animated explainer sample and an editor handoff.
 
-## Prerequisites
+## Non-Technical Path
 
-- Node.js 22 or newer
-- pnpm 9 or newer
-- `ffmpeg` on `PATH` for local media work
+Use this path when an agent is helping you.
 
-The bundled `animated-explainer` starter sample is zero-key: it does not require API credentials. Its sample renderer turns the starter script lines into narrated procedural motion-graphics scenes, uses local TTS when available, and renders with Remotion when runtime setup is present. See [providers.md](providers.md) when you want to unlock paid image, premium TTS, music, or video generation for custom episodes.
+1. Create or open the folder where you want your video project.
+2. Paste the agent prompt from the README.
+3. Let the agent check Node 22+, npm, Git, FFmpeg, and ffprobe.
+4. If something is missing, the agent must ask before installing it.
+5. Python and uv are optional tool runtimes. They are not required for the first no-key video.
+6. After setup, the agent initializes the project and runs the starter sample without paid provider credits.
+
+The agent should run:
+
+```bash
+npx -y show-sidekick@latest init --starter animated-explainer --git
+showkick doctor --profile paid-demo
+showkick build animated-explainer/sample-episode --sample
+showkick export animated-explainer/sample-episode --target premiere
+```
+
+Before any later paid generation, the agent must ask with the likely provider, model or tool, purpose, sample/full-run scope, and rough cost.
+
+## Technical Path
+
+Check your tools:
 
 ```bash
 node --version
-pnpm --version
+npm --version
+git --version
 ffmpeg -version
-pnpm add -g predit
+ffprobe -version
+python3 --version
+uv --version
 ```
 
-## Create a Project
+Node must be 22 or newer. Python and uv may be missing unless you plan to use a Python-backed local tool.
+
+Create the project:
 
 ```bash
 mkdir my-shows
 cd my-shows
-predit init --starter animated-explainer --git
+npx -y show-sidekick@latest init --starter animated-explainer --git
 ```
 
-`predit init` creates both `.env.example` and a gitignored `.env`. Fill `.env` with any provider keys you want to use; keep `.env.example` committed as the blank setup map for collaborators and agents.
-It also mirrors bundled Layer 3 agent skills into `.agents/skills/` and `.claude/skills/` so Codex and Claude-style agents can discover provider/runtime skills natively, then installs Remotion, the Remotion CLI stack, and HyperFrames as project-local dev dependencies when npm is available. Use `--no-setup-runtimes` only when you want a scaffold without npm installs.
+The scaffold creates `AGENTS.md`, `CLAUDE.md`, `.env.example`, a gitignored `.env`, project folders, and a local `.show-sidekick/` bundled-content cache for agents to read. It also generates `.agents/skills/` and `.claude/skills/` mirrors for agent-native skill discovery.
 
-For a blank, agent-guided project, run:
+## No-Key First Video
+
+The `animated-explainer` starter can run before you configure provider keys:
 
 ```bash
-predit init
+showkick doctor --profile paid-demo
+showkick build animated-explainer/sample-episode --sample
+showkick export animated-explainer/sample-episode --target premiere
 ```
 
-Then give your agent:
-
-```text
-Read AGENTS.md and .predit/skills/meta/onboarding.md. Ask me what I do, suggest three personalized no-key first-video ideas, then render a 30-second animated predit explainer.
-```
-
-The agent contract tells Codex, Claude, or another agent to refresh/check `.predit/`, run `predit doctor --profile paid-demo`, explain available providers and runtimes, ask what you do, suggest three first-video ideas from safe project/session context, ask before paid generation, and record issues under `projects/<show>/<episode>/notes.md`.
-
-For the fastest no-key first video, the agent should scaffold the `animated-explainer` starter and rewrite `shows/<show>/inputs/sample-episode/script.txt` into four short narrated scene lines: a tailored hook, a personal-use beat, a predit workflow beat, and the next step. Then `predit build <show>/sample-episode --sample` renders a free animated explainer that the user can inspect before adding paid providers.
-
-The starter creates `shows/animated-explainer/` with:
-
-- `show.yaml` slug: `animated-explainer`
-- sample episode: `shows/animated-explainer/episodes/sample-episode.yaml`
-- sample inputs: `shows/animated-explainer/inputs/sample-episode/script.txt` and `reference.jpg`
-- expected sample duration: 30 seconds
-- fixture size: 1979 bytes
-
-## Optional Provider Setup
-
-You can render and export the starter sample before configuring any providers. For custom episodes, choose one `image_generation` tool and one `tts` tool from [providers.md](providers.md), set the listed env vars, then run `predit ls tools` to check availability.
-
-```bash
-export OPENAI_API_KEY="sk-..."
-export ELEVENLABS_API_KEY="..."
-higgsfield auth login
-predit doctor --profile paid-demo
-predit setup openai_image
-predit setup openai_tts
-predit setup higgsfield_image
-predit ls tools
-```
-
-Or keep credentials project-local by filling the generated `.env` with the same keys. `predit` loads `.env`, `.env.<command>`, and `.env.local` from the project root before each command; exported shell variables still take precedence. `.env` is gitignored by the scaffold, while `.env.example` is safe to commit.
-
-`predit setup runtimes` can be rerun if runtime setup was skipped, failed because npm was unavailable, or needs repair. It installs Remotion, the Remotion CLI, aligned support deps, and HyperFrames into the user project so agents can offer them alongside FFmpeg before locking a render runtime.
-
-## Render the Sample
-
-```bash
-predit build animated-explainer/sample-episode --sample
-```
-
-Outputs and runtime state land under:
+Runtime state lands under:
 
 ```text
 projects/animated-explainer/sample-episode/
 ```
 
-That workspace holds checkpoints, generated assets, cost logs, decisions, cuesheets, and renders for the episode. The starter sample is designed as a short narrated motion-graphics explainer from the script fixture.
-The compose stage writes `projects/animated-explainer/sample-episode/renders/sample-preview.mp4`.
-The sample also writes `projects/animated-explainer/sample-episode/cuesheet.json` so captions and editor exports have voiceover timing without a separate repair step.
+Exports land under:
 
-## Export for Editing
-
-```bash
-predit export animated-explainer/sample-episode --target premiere
+```text
+exports/
 ```
 
-Other targets:
+The sample writes a render, checkpoints, decision logs, cost records, and a voiceover cuesheet for editor handoff.
+
+## Paid Provider Upgrade
+
+You can add paid providers after the no-key sample works. Put keys in `.env` or export them in your shell, then run:
 
 ```bash
-predit export animated-explainer/sample-episode --target davinci
-predit export animated-explainer/sample-episode --target capcut
-predit export animated-explainer/sample-episode --target edl
+showkick doctor --profile paid-demo
+showkick ls tools --json
 ```
 
-Exports are written under `exports/` by default, and each export records `projects/animated-explainer/sample-episode/publish_log.json`.
-If the package already exists, re-run with `--overwrite`.
+Use [providers.md](providers.md) for the current provider catalog, required env vars, setup commands, and cost notes. Keep `.env` private and commit `.env.example` only.
 
-If an older or custom voiceover episode is missing `cuesheet.json`, run `predit cuesheet <show>/<episode>` after a completed render. When there is no `episode.inputs.track`, the command derives a voiceover cuesheet from `script.json`, `scene_plan.json`, `edit_decisions.json`, and `render_report.json`.
+Common paid unlocks include image generation, premium narration, music generation, video generation, avatar video, and hosted model APIs. Agents must ask before running commands that may spend credits.
 
-The generated `.gitignore` excludes `projects/`, `exports/`, `renders/`, `output/`, `outputs/`, `.predit/`, `.env`, and bulky local media folders. Commit `shows/`, `pipelines/`, `playbooks/`, `skills/`, and `.env.example` when you want to share the workflow without generated video assets or credentials.
-When another machine or agent clones the project, the first predit command restores the gitignored `.predit/` cache from the installed harness before running.
+## Editor Export
+
+Premiere export:
+
+```bash
+showkick export animated-explainer/sample-episode --target premiere
+```
+
+Other targets exposed by the CLI include:
+
+```bash
+showkick export animated-explainer/sample-episode --target davinci
+showkick export animated-explainer/sample-episode --target capcut
+showkick export animated-explainer/sample-episode --format edl
+```
+
+If an export already exists, rerun with `--overwrite`.
 
 ## Troubleshooting
 
-- `predit doctor` is the first command to try for project/tool preflight output.
-- `predit status animated-explainer/sample-episode` shows the current stage, last checkpoint status, and cost summary.
-- `predit update --check` verifies that `.predit/` matches the installed harness.
-- If a command says the project root is missing, run it from inside the folder created by `predit init`.
+- Run `showkick doctor` first for project and tool readiness.
+- Run `showkick update --check` if the local `.show-sidekick/` cache may be stale.
+- Run commands from inside the folder created by `showkick init`.
+- If FFmpeg is missing, install it only after approving the OS-specific command your agent proposes.
+- If a paid provider is unavailable, check [providers.md](providers.md) for the exact env vars or login command.

@@ -1,11 +1,11 @@
-# predit user project — default gitignore
+# Show Sidekick user project — default gitignore
 # Edit freely; the patterns below are recommended starting points.
 
-# Bundled-content cache, refreshed by `predit update`. Never check this in;
-# every collaborator's cache reflects their locally installed predit version.
-.predit/
+# Bundled-content cache, refreshed by `showkick update`. Never check this in;
+# every collaborator's cache reflects their locally installed Show Sidekick version.
+.show-sidekick/
 
-# Agent-native mirrors generated from .predit/skills/agents for Codex/Claude
+# Agent-native mirrors generated from .show-sidekick/skills/agents for Codex/Claude
 # discovery. Author reusable project overrides in ./skills/ instead.
 .agents/skills/
 .claude/skills/
@@ -20,7 +20,7 @@ exports/
 renders/
 output/
 outputs/
-.predit-work/
+.show-sidekick-work/
 tmp/
 temp/
 

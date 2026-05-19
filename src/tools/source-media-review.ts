@@ -257,7 +257,7 @@ function isRecord(value: unknown): value is FfprobeRecord {
 const sourceMediaReview = defineTool({
   name: "source_media_review",
   capability: "source_media_review",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "binary",

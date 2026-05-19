@@ -14,7 +14,7 @@ export class ProjectAlreadyInitializedError extends Error {
   readonly projectRoot: string;
 
   constructor(projectRoot: string) {
-    super(`Refusing to initialize an existing predit project at ${projectRoot}. Run 'predit update' to refresh it.`);
+    super(`Refusing to initialize an existing Show Sidekick project at ${projectRoot}. Run 'showkick update' to refresh it.`);
     this.name = "ProjectAlreadyInitializedError";
     this.projectRoot = projectRoot;
   }
