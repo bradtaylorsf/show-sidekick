@@ -122,6 +122,25 @@ describe("public-flip checklist", () => {
     const check = result.checks.find((candidate) => candidate.id === "no-stale-public-names");
     expect(check).toMatchObject({ status: "pass" });
   });
+
+  // Enforces SR-6 / #232: the stale-name and sibling-path guards must run in CI
+  // (via `pnpm test`) against the real repo, not just against mocked grep output,
+  // so future agent edits cannot reintroduce stale public naming and stay green.
+  describe("real repository scan (CI enforcement)", () => {
+    const realScanPromise = runPublicFlipChecklist({
+      allowLocalMigrationBridge: true,
+      repoRoot,
+      skipBuild: true,
+      skipE2E: true,
+    });
+
+    for (const checkId of ["no-stale-public-names", "no-sibling-paths", "migration-removed"] as const) {
+      it(`passes ${checkId} against the actual repository`, { timeout: 60_000 }, async () => {
+        const check = await findCheck(realScanPromise, checkId);
+        expect(check.status, check.detail).toBe("pass");
+      });
+    }
+  });
 });
 
 async function findCheck(
