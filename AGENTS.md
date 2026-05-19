@@ -10,7 +10,7 @@ A show-first AI pre-production harness for video. Each show owns its pipeline, l
 
 ## Alpha Loop orchestration
 
-This repo is initialized for Alpha Loop. `.alpha-loop.yaml` is the loop config, and `IMPLEMENTATION.md` is structured for `alpha-loop run --epic <N>`.
+This repo is initialized for Alpha Loop. `.alpha-loop.yaml` is the loop config, and GitHub issues are the source of truth for epic/task execution.
 
 Default loop roles:
 
@@ -20,6 +20,8 @@ Default loop roles:
 - Codex validates when live verification is needed.
 
 Alpha Loop source-of-truth agent assets live in `.alpha-loop/templates/` and sync to `.claude/`, `.codex/`, and `.agents/`. Edit `.alpha-loop/templates/` for loop agent/skill changes; do not hand-edit synced copies unless you are intentionally debugging sync output.
+
+Alpha Loop generated learnings, sessions, traces, auth state, and backup files are ephemeral. They are intentionally gitignored and should not be committed or treated as product documentation.
 
 ## Read order on first contact
 
