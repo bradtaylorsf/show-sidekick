@@ -17,6 +17,9 @@ export const STALE_PUBLIC_NAME_GREP_TARGETS = [
   "CHANGELOG.md",
   "package.json",
   "src",
+  ":(exclude)src/**/*.test.ts",
+  ":(exclude)src/*.test.ts",
+  ":(exclude)src/**/__snapshots__/**",
   "docs",
   "specs",
   "bundled/templates",
@@ -42,35 +45,91 @@ export const INTERNAL_MIGRATION_STALE_PUBLIC_NAME_LINE_ALLOWLIST = [
   {
     filePath: "CHANGELOG.md",
     needle: "PREDIT_",
-    linePattern: "^- User-project cache/docs move from `.predit/` to `.show-sidekick/`\\. Current `PREDIT_\\*` env vars .*$",
+    linePattern:
+      "^- User-project cache/docs move from `.predit/` to `.show-sidekick/`\\. Legacy `PREDIT_\\*` env vars fail with guidance to rename them to matching `SHOW_SIDEKICK_\\*` names\\.$",
   },
   {
     filePath: "docs/providers.md",
     needle: "PREDIT_",
-    linePattern: "^.*PREDIT_.*$",
+    linePattern:
+      "^Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_\\*` environment prefix\\. Legacy `PREDIT_\\*` names from pre-public projects are rejected with migration guidance\\.$",
   },
   {
-    filePath: "bundled/templates/user-project/.env.example",
-    needle: "PREDIT_",
-    linePattern: "^PREDIT_[A-Z0-9_]+=$",
-  },
-  {
-    filePath: "docs/public-readiness-audit.md",
+    filePath: "specs/14-decision-log.md",
     needle: "predit",
     linePattern:
-      "^- Open \\(#227/#228/#229\\): package name/bin still use `predit`, cache references still use `\\.predit/`, and env vars still use `PREDIT_`; .*$",
+      "^The pre-public `predit` implementation name receives a hard public rename with no retained CLI binary alias\\. A temporary project-cache migration from `\\.predit/` to `\\.show-sidekick/` remains only through `v0\\.2\\.0`; legacy `PREDIT_\\*` environment variables fail with explicit `SHOW_SIDEKICK_\\*` remediation\\.$",
   },
   {
-    filePath: "docs/public-readiness-audit.md",
+    filePath: "specs/14-decision-log.md",
     needle: ".predit/",
     linePattern:
-      "^- Open \\(#227/#228/#229\\): package name/bin still use `predit`, cache references still use `\\.predit/`, and env vars still use `PREDIT_`; .*$",
+      "^The pre-public `predit` implementation name receives a hard public rename with no retained CLI binary alias\\. A temporary project-cache migration from `\\.predit/` to `\\.show-sidekick/` remains only through `v0\\.2\\.0`; legacy `PREDIT_\\*` environment variables fail with explicit `SHOW_SIDEKICK_\\*` remediation\\.$",
   },
   {
-    filePath: "docs/public-readiness-audit.md",
+    filePath: "specs/14-decision-log.md",
     needle: "PREDIT_",
     linePattern:
-      "^- Open \\(#227/#228/#229\\): package name/bin still use `predit`, cache references still use `\\.predit/`, and env vars still use `PREDIT_`; .*$",
+      "^The pre-public `predit` implementation name receives a hard public rename with no retained CLI binary alias\\. A temporary project-cache migration from `\\.predit/` to `\\.show-sidekick/` remains only through `v0\\.2\\.0`; legacy `PREDIT_\\*` environment variables fail with explicit `SHOW_SIDEKICK_\\*` remediation\\.$",
+  },
+  {
+    filePath: "specs/18-public-naming-contract.md",
+    needle: "predit",
+    linePattern:
+      "^`predit` is a pre-public implementation name\\. It does not remain as a public npm package, package binary, CLI command, cache name, docs vocabulary, or environment prefix\\.$",
+  },
+  {
+    filePath: "specs/18-public-naming-contract.md",
+    needle: "predit",
+    linePattern: "^The public release is a hard rename for the npm package and CLI: no `predit` binary alias is retained\\.$",
+  },
+  {
+    filePath: "specs/18-public-naming-contract.md",
+    needle: "predit",
+    linePattern:
+      "^Pre-public user projects may still contain `\\.predit/` caches\\. The harness migrates that cache to `\\.show-sidekick/` when possible and keeps the migration path only through `v0\\.2\\.0`\\. Legacy `PREDIT_\\*` environment variables are not accepted as public configuration; commands must fail with migration guidance that names the matching `SHOW_SIDEKICK_\\*` variable\\.$",
+  },
+  {
+    filePath: "specs/18-public-naming-contract.md",
+    needle: ".predit/",
+    linePattern:
+      "^Pre-public user projects may still contain `\\.predit/` caches\\. The harness migrates that cache to `\\.show-sidekick/` when possible and keeps the migration path only through `v0\\.2\\.0`\\. Legacy `PREDIT_\\*` environment variables are not accepted as public configuration; commands must fail with migration guidance that names the matching `SHOW_SIDEKICK_\\*` variable\\.$",
+  },
+  {
+    filePath: "specs/18-public-naming-contract.md",
+    needle: "PREDIT_",
+    linePattern:
+      "^Pre-public user projects may still contain `\\.predit/` caches\\. The harness migrates that cache to `\\.show-sidekick/` when possible and keeps the migration path only through `v0\\.2\\.0`\\. Legacy `PREDIT_\\*` environment variables are not accepted as public configuration; commands must fail with migration guidance that names the matching `SHOW_SIDEKICK_\\*` variable\\.$",
+  },
+  {
+    filePath: "src/branding.ts",
+    needle: "predit",
+    linePattern: '^(productName|packageName|primaryCli): "predit",$',
+  },
+  {
+    filePath: "src/branding.ts",
+    needle: "predit",
+    linePattern: 'cacheDir: "\\.predit",',
+  },
+  {
+    filePath: "src/branding.ts",
+    needle: "predit",
+    linePattern: 'lockfileName: "predit\\.lock",',
+  },
+  {
+    filePath: "src/branding.ts",
+    needle: ".predit",
+    linePattern: 'cacheDir: "\\.predit",',
+  },
+  {
+    filePath: "src/branding.ts",
+    needle: ".predit/",
+    linePattern: 'cacheDir: "\\.predit",',
+  },
+  {
+    filePath: "src/branding.ts",
+    needle: "PREDIT_",
+    linePattern: 'envPrefix: "PREDIT_",',
   },
 ] as const;
 

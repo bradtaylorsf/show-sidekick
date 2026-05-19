@@ -1,6 +1,7 @@
 import { watch as fsWatch } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
+import { BRANDING } from "../../branding.js";
 import { findProjectRoot } from "../../paths/project.js";
 import {
   deriveSlug,
@@ -124,7 +125,7 @@ function emitDrop(
   const relativePath = projectRelativePath(projectRoot, match.matchedFilePath);
   const slug = deriveSlug(match.matchedFilePath, match.watchEntry);
   const target = `${match.show.slug}/${slug}`;
-  const suggestedCommand = `predit import ${shellQuote(relativePath)} --as ${shellQuote(target)}`;
+  const suggestedCommand = `${BRANDING.primaryCli} import ${shellQuote(relativePath)} --as ${shellQuote(target)}`;
 
   if (options.json) {
     const event: DropDetectedEvent = {

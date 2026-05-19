@@ -101,7 +101,7 @@ async function listShows(projectRoot: string): Promise<Row[]> {
   const paths = projectPaths(projectRoot);
   return mergeNamedRows(
     await listDirectories(paths.shows),
-    await listDirectories(path.join(paths.predit, "shows")),
+    await listDirectories(path.join(paths.cache, "shows")),
     "show_listed",
     "shows",
   );
@@ -112,7 +112,7 @@ async function listEpisodes(projectRoot: string, showInput: string): Promise<Row
   const paths = projectPaths(projectRoot);
   return mergeNamedRows(
     await listYamlFiles(path.join(paths.shows, show, "episodes")),
-    await listYamlFiles(path.join(paths.predit, "shows", show, "episodes")),
+    await listYamlFiles(path.join(paths.cache, "shows", show, "episodes")),
     "episode_listed",
     "episodes",
   );
@@ -122,7 +122,7 @@ async function listPipelines(projectRoot: string): Promise<Row[]> {
   const paths = projectPaths(projectRoot);
   const merged = mergeNamedEntries(
     await listYamlFiles(paths.pipelines),
-    await listYamlFiles(path.join(paths.predit, "pipelines")),
+    await listYamlFiles(path.join(paths.cache, "pipelines")),
   );
   const rows: Row[] = [];
 
@@ -146,7 +146,7 @@ async function listPlaybooks(projectRoot: string): Promise<Row[]> {
   const paths = projectPaths(projectRoot);
   return mergeNamedRows(
     await listYamlFiles(paths.playbooks),
-    await listYamlFiles(path.join(paths.predit, "playbooks")),
+    await listYamlFiles(path.join(paths.cache, "playbooks")),
     "playbook_listed",
     "playbooks",
   );
@@ -154,7 +154,7 @@ async function listPlaybooks(projectRoot: string): Promise<Row[]> {
 
 async function listStarters(projectRoot: string): Promise<Row[]> {
   const paths = projectPaths(projectRoot);
-  const entries = await listDirectories(path.join(paths.predit, "starters"));
+  const entries = await listDirectories(path.join(paths.cache, "starters"));
   const rows = await Promise.all(
     entries.map(async (entry) => {
       const showPath = path.join(entry.path, "show.yaml");

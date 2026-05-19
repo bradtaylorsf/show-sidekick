@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/edit_decisions",
+  "$id": "show-sidekick://artifacts/edit_decisions",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -8,7 +8,7 @@
       "type": "array",
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/edit_decisions.cut",
+        "$id": "show-sidekick://artifacts/edit_decisions.cut",
         "type": "object",
         "additionalProperties": false,
         "properties": {
@@ -37,7 +37,7 @@
           },
           "timing_ref": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "predit://artifacts/timing_ref",
+            "$id": "show-sidekick://artifacts/timing_ref",
             "type": "object",
             "additionalProperties": false,
             "properties": {
@@ -92,7 +92,7 @@
     },
     "subtitles": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "predit://artifacts/edit_decisions.subtitles",
+      "$id": "show-sidekick://artifacts/edit_decisions.subtitles",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -137,7 +137,7 @@
     },
     "brand": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "predit://artifacts/edit_decisions.brand",
+      "$id": "show-sidekick://artifacts/edit_decisions.brand",
       "type": "object",
       "additionalProperties": false,
       "properties": {

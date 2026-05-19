@@ -4,12 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Locked the public naming contract for Show Sidekick: npm package `show-sidekick`, primary CLI `showkick`, CLI aliases `show-sidekick` and `showsidekick`, domain `showsidekick.com`, cache `.show-sidekick/`, and env prefix `SHOW_SIDEKICK_`.
+- Recorded the npm availability publish gate for `show-sidekick`, `showkick`, `show-kick`, and `showsidekick`; the 2026-05-19 registry check returned `E404` for each name, so `show-sidekick` remains the intended public package and `showkick` the primary CLI.
+
 ## [0.1.0] - 2026-05-14
 
 ### Migration Note
 
 - Public launch renames build-era `predit` to Show Sidekick, with npm package `show-sidekick` and CLI `showkick`.
-- User-project cache/docs move from `.predit/` to `.show-sidekick/`. Current `PREDIT_*` env vars remain documented as legacy compatibility names until replacement aliases ship.
+- User-project cache/docs move from `.predit/` to `.show-sidekick/`. Legacy `PREDIT_*` env vars fail with guidance to rename them to matching `SHOW_SIDEKICK_*` names.
 
 ### Added
 

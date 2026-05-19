@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/video_analysis_brief",
+  "$id": "show-sidekick://artifacts/video_analysis_brief",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -21,7 +21,7 @@
       "type": "array",
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/video_analysis_brief.scene",
+        "$id": "show-sidekick://artifacts/video_analysis_brief.scene",
         "type": "object",
         "additionalProperties": false,
         "properties": {

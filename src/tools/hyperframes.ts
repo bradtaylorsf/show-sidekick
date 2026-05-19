@@ -55,7 +55,7 @@ export default defineTool({
   async execute(params, ctx) {
     const parsed = HyperframesComposeInputSchema.parse(params);
     const hyperCtx = ctx as HyperframesContext;
-    const tempDir = parsed.composition_spec_path ? undefined : await mkdtemp(join(tmpdir(), "predit-hyperframes-"));
+    const tempDir = parsed.composition_spec_path ? undefined : await mkdtemp(join(tmpdir(), "show-sidekick-hyperframes-"));
     const specPath = parsed.composition_spec_path ?? join(tempDir as string, "composition.hyperframes.json");
 
     try {

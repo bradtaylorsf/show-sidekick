@@ -30,6 +30,7 @@ These specs capture the locked design decisions for Show Sidekick. Implementatio
 16. [`15-announce-and-escalate.md`](15-announce-and-escalate.md) — decision communication contract
 17. [`16-onboarding-and-discovery.md`](16-onboarding-and-discovery.md) — first-contact UX
 18. [`17-self-review-of-output.md`](17-self-review-of-output.md) — final review of rendered output
+19. [`18-public-naming-contract.md`](18-public-naming-contract.md) — Show Sidekick public naming contract
 
 ## How to update a spec
 

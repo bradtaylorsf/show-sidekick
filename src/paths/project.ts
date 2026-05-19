@@ -1,5 +1,7 @@
 import { existsSync, statSync } from "node:fs";
+import { rename } from "node:fs/promises";
 import path from "node:path";
+import { BRANDING, LEGACY_BRANDING } from "../branding.js";
 import { InvalidResourceNameError, InvalidShowEpisodeError, ProjectRootNotFoundError } from "./errors.js";
 
 export type ResourceKind =
@@ -7,7 +9,6 @@ export type ResourceKind =
   | "pipelines"
   | "playbooks"
   | "skills"
-  | ".predit"
   | "projects"
   | "music_library";
 
@@ -16,7 +17,7 @@ export type ProjectPaths = {
   pipelines: string;
   playbooks: string;
   skills: string;
-  predit: string;
+  cache: string;
   projects: string;
   musicLibrary: string;
 };
@@ -52,7 +53,7 @@ export function projectPaths(root: string): ProjectPaths {
     pipelines: path.join(absoluteRoot, "pipelines"),
     playbooks: path.join(absoluteRoot, "playbooks"),
     skills: path.join(absoluteRoot, "skills"),
-    predit: path.join(absoluteRoot, ".predit"),
+    cache: preferredCacheDir(absoluteRoot),
     projects: path.join(absoluteRoot, "projects"),
     musicLibrary: path.join(absoluteRoot, "music_library"),
   };
@@ -61,7 +62,7 @@ export function projectPaths(root: string): ProjectPaths {
 export function resolve(kind: ResourceKind, name: string, root: string = findProjectRoot()): string {
   const absoluteRoot = path.resolve(root);
   const localParent = path.join(absoluteRoot, resourceDirectory(kind));
-  const cacheParent = path.join(absoluteRoot, ".predit", resourceDirectory(kind));
+  const cacheParent = path.join(preferredCacheDir(absoluteRoot), resourceDirectory(kind));
   const localBase = path.join(localParent, name);
   const cacheBase = path.join(cacheParent, name);
 
@@ -69,7 +70,7 @@ export function resolve(kind: ResourceKind, name: string, root: string = findPro
     throw new InvalidResourceNameError(name);
   }
 
-  // User-owned resources override the bundled .predit cache.
+  // User-owned resources override the bundled cache.
   for (const candidate of [...pathVariants(localBase), ...pathVariants(cacheBase)]) {
     if (existsSync(candidate)) {
       return candidate;
@@ -107,9 +108,14 @@ function isProjectRoot(candidate: string): boolean {
   const claudePath = path.join(candidate, "CLAUDE.md");
   const agentsPath = path.join(candidate, "AGENTS.md");
   const envExamplePath = path.join(candidate, ".env.example");
-  const preditPath = path.join(candidate, ".predit");
+  const publicCachePath = publicCacheDir(candidate);
+  const legacyCachePath = legacyCacheDir(candidate);
 
-  return existsSync(claudePath) && (isDirectory(preditPath) || (existsSync(agentsPath) && existsSync(envExamplePath)));
+  return (
+    (existsSync(agentsPath) && (isDirectory(publicCachePath) || existsSync(envExamplePath))) ||
+    (existsSync(agentsPath) && isDirectory(legacyCachePath)) ||
+    (existsSync(claudePath) && (isDirectory(publicCachePath) || isDirectory(legacyCachePath)))
+  );
 }
 
 function isDirectory(candidate: string): boolean {
@@ -122,6 +128,43 @@ function isDirectory(candidate: string): boolean {
 
 function resourceDirectory(kind: ResourceKind): string {
   return kind;
+}
+
+export function publicCacheDir(root: string): string {
+  return path.join(path.resolve(root), BRANDING.cacheDir);
+}
+
+export function legacyCacheDir(root: string): string {
+  return path.join(path.resolve(root), LEGACY_BRANDING.cacheDir);
+}
+
+export function preferredCacheDir(root: string): string {
+  const publicCachePath = publicCacheDir(root);
+  const legacyCachePath = legacyCacheDir(root);
+
+  if (isDirectory(publicCachePath) || !isDirectory(legacyCachePath)) {
+    return publicCachePath;
+  }
+
+  return legacyCachePath;
+}
+
+export type LegacyCacheMigrationResult = "none" | "migrated" | "legacy-ignored";
+
+export async function migrateLegacyProjectCache(root: string): Promise<LegacyCacheMigrationResult> {
+  const publicCachePath = publicCacheDir(root);
+  const legacyCachePath = legacyCacheDir(root);
+
+  if (!isDirectory(legacyCachePath)) {
+    return "none";
+  }
+
+  if (isDirectory(publicCachePath)) {
+    return "legacy-ignored";
+  }
+
+  await rename(legacyCachePath, publicCachePath);
+  return "migrated";
 }
 
 function pathVariants(base: string): string[] {

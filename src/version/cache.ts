@@ -1,7 +1,10 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import { BRANDING } from "../branding.js";
 import { atomicWrite } from "../checkpoints/io.js";
+import { legacyCacheDir, publicCacheDir } from "../paths/project.js";
 
 type ErrorWithCode = Error & { code?: string };
 
@@ -16,7 +19,7 @@ export type CacheVersion = z.infer<typeof CacheVersionSchema>;
 export type VersionComparison = "match" | "mismatch" | "incompatible";
 
 export async function readCacheVersion(projectRoot: string): Promise<CacheVersion | null> {
-  const filePath = versionFile(projectRoot);
+  const filePath = readableVersionFile(projectRoot);
   let raw: string;
 
   try {
@@ -35,6 +38,10 @@ export async function readCacheVersion(projectRoot: string): Promise<CacheVersio
 export async function writeCacheVersion(projectRoot: string, payload: CacheVersion): Promise<void> {
   const parsed = CacheVersionSchema.parse(payload);
   await atomicWrite(versionFile(projectRoot), `${JSON.stringify(parsed, null, 2)}\n`);
+}
+
+export function versionFile(projectRoot: string): string {
+  return path.join(publicCacheDir(projectRoot), BRANDING.cacheVersionFileName);
 }
 
 export function compareVersions(
@@ -59,8 +66,17 @@ export function compareVersions(
   return "mismatch";
 }
 
-function versionFile(projectRoot: string): string {
-  return path.join(projectRoot, ".predit", "version.json");
+function readableVersionFile(projectRoot: string): string {
+  const publicPath = versionFile(projectRoot);
+  if (pathExists(publicPath)) {
+    return publicPath;
+  }
+
+  return path.join(legacyCacheDir(projectRoot), BRANDING.cacheVersionFileName);
+}
+
+function pathExists(filePath: string): boolean {
+  return existsSync(filePath);
 }
 
 function majorVersion(version: string): number | null {

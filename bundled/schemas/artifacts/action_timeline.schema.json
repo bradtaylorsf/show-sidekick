@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/action_timeline",
+  "$id": "show-sidekick://artifacts/action_timeline",
   "type": "object",
   "additionalProperties": {
     "type": "array",
     "items": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "predit://artifacts/action_timeline.entry",
+      "$id": "show-sidekick://artifacts/action_timeline.entry",
       "type": "object",
       "additionalProperties": false,
       "properties": {

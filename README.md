@@ -87,8 +87,8 @@ Maintainers can validate the catalog without publishing:
 
 ```bash
 pnpm show-types:check
-pnpm show-types:matrix -- --zero-key
-pnpm show-types:matrix -- --paid-demo
+pnpm show-types:matrix --zero-key
+pnpm show-types:matrix --paid-demo
 ```
 
 ## Docs

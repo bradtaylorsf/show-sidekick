@@ -1,10 +1,12 @@
 {
-  "name": "predit",
+  "name": "show-sidekick",
   "version": "0.0.0",
-  "description": "AI pre-production for video — build the rough cut, finish in your NLE.",
+  "description": "Show-first AI pre-production for video — build the rough cut, finish in your NLE.",
   "type": "module",
   "bin": {
-    "predit": "dist/cli/index.js"
+    "showkick": "./dist/cli/index.js",
+    "show-sidekick": "./dist/cli/index.js",
+    "showsidekick": "./dist/cli/index.js"
   },
   "files": [
     "dist",

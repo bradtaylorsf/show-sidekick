@@ -6,6 +6,7 @@ import path from "node:path";
 import type { Command } from "commander";
 import { parse as parseYaml } from "yaml";
 import { afterEach, describe, expect, it } from "vitest";
+import { BRANDING } from "../branding.js";
 import { BUNDLED_MANIFEST_INVENTORY_SLUGS, SHOW_ONLY_DENYLIST } from "./demo-inventory.js";
 import { PipelineManifestSchema, type PipelineManifest } from "./manifest.js";
 import { createInitHandler } from "../cli/commands/init.js";
@@ -1141,14 +1142,14 @@ function resolveProjectSkill(projectRoot: string, skillPath: string): string {
   const normalized = skillPath.endsWith(".md") ? skillPath : `${skillPath}.md`;
 
   if (normalized.startsWith("pipelines/")) {
-    return path.join(projectRoot, ".predit", "skills", normalized);
+    return path.join(projectRoot, BRANDING.cacheDir, "skills", normalized);
   }
 
   if (normalized.startsWith("meta/")) {
-    return path.join(projectRoot, ".predit", "skills", normalized);
+    return path.join(projectRoot, BRANDING.cacheDir, "skills", normalized);
   }
 
-  return path.join(projectRoot, ".predit", "skills", normalized);
+  return path.join(projectRoot, BRANDING.cacheDir, "skills", normalized);
 }
 
 async function freshInitializedProject(): Promise<string> {

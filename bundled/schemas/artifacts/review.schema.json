@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/review",
+  "$id": "show-sidekick://artifacts/review",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -25,7 +25,7 @@
     },
     "summary": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "predit://artifacts/review.summary",
+      "$id": "show-sidekick://artifacts/review.summary",
       "type": "object",
       "additionalProperties": false,
       "properties": {

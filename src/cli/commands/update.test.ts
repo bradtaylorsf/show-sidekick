@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Command } from "commander";
 import { afterEach, describe, expect, it } from "vitest";
+import { BRANDING } from "../../branding.js";
 import { ProjectRootNotFoundError } from "../../paths/errors.js";
 import { BUNDLED_CACHE_DIRS, computeBundledChecksum, copyBundledInto } from "../../version/bundled.js";
 import { readCacheVersion, writeCacheVersion } from "../../version/cache.js";
@@ -32,8 +33,8 @@ describe("update command", () => {
     const projectRoot = await scratchProject();
     const bundledRoot = await scratchDir("bundled");
     await writeFakeBundled(bundledRoot, "fresh");
-    await writeFile(path.join(projectRoot, ".predit", "pipelines", "old.yaml"), "old\n", "utf8");
-    await writeFile(path.join(projectRoot, ".predit", "local-note.txt"), "keep\n", "utf8");
+    await writeFile(path.join(projectRoot, BRANDING.cacheDir, "pipelines", "old.yaml"), "old\n", "utf8");
+    await writeFile(path.join(projectRoot, BRANDING.cacheDir, "local-note.txt"), "keep\n", "utf8");
     const { io, output } = captureIo();
 
     await createUpdateHandler(io, {
@@ -51,13 +52,13 @@ describe("update command", () => {
         bundled_checksum: await computeBundledChecksum(bundledRoot),
       }),
     );
-    await expect(stat(path.join(projectRoot, ".predit", "pipelines", "old.yaml"))).rejects.toMatchObject({
+    await expect(stat(path.join(projectRoot, BRANDING.cacheDir, "pipelines", "old.yaml"))).rejects.toMatchObject({
       code: "ENOENT",
     });
-    await expect(readFile(path.join(projectRoot, ".predit", "pipelines", "fresh.txt"), "utf8")).resolves.toBe(
+    await expect(readFile(path.join(projectRoot, BRANDING.cacheDir, "pipelines", "fresh.txt"), "utf8")).resolves.toBe(
       "fresh\n",
     );
-    await expect(readFile(path.join(projectRoot, ".predit", "local-note.txt"), "utf8")).resolves.toBe("keep\n");
+    await expect(readFile(path.join(projectRoot, BRANDING.cacheDir, "local-note.txt"), "utf8")).resolves.toBe("keep\n");
     await expect(readCacheVersion(projectRoot)).resolves.toEqual({
       harness_version: VERSION,
       bundled_checksum: await computeBundledChecksum(bundledRoot),
@@ -75,7 +76,7 @@ describe("update command", () => {
       bundled_checksum: "stale",
       locked_at: "2026-05-14T12:00:00.000Z",
     });
-    await writeFile(path.join(projectRoot, ".predit", "pipelines", "old.yaml"), "old\n", "utf8");
+    await writeFile(path.join(projectRoot, BRANDING.cacheDir, "pipelines", "old.yaml"), "old\n", "utf8");
     const { io, output } = captureIo();
 
     await createUpdateHandler(io, {
@@ -87,7 +88,9 @@ describe("update command", () => {
     const event = JSON.parse(output().stdout.trim()) as { event: string; status: string };
     expect(event).toEqual(expect.objectContaining({ event: "cache_checked", status: "mismatch" }));
     expect(process.exitCode).toBe(1);
-    await expect(readFile(path.join(projectRoot, ".predit", "pipelines", "old.yaml"), "utf8")).resolves.toBe("old\n");
+    await expect(readFile(path.join(projectRoot, BRANDING.cacheDir, "pipelines", "old.yaml"), "utf8")).resolves.toBe(
+      "old\n",
+    );
   });
 
   it("--check exits cleanly when version and checksum match", async () => {
@@ -112,7 +115,7 @@ describe("update command", () => {
     expect(process.exitCode).toBeUndefined();
   });
 
-  it("errors when run outside a predit project", async () => {
+  it("errors when run outside a Show Sidekick project", async () => {
     originalExitCode = process.exitCode;
     const root = await scratchDir("outside");
     const { io } = captureIo();
@@ -129,8 +132,8 @@ describe("update command", () => {
 
 async function scratchProject(): Promise<string> {
   const root = await scratchDir("project");
-  await mkdir(path.join(root, ".predit", "pipelines"), { recursive: true });
-  await writeFile(path.join(root, "CLAUDE.md"), "# test project\n", "utf8");
+  await mkdir(path.join(root, BRANDING.cacheDir, "pipelines"), { recursive: true });
+  await writeFile(path.join(root, "AGENTS.md"), "# test project\n", "utf8");
   return root;
 }
 

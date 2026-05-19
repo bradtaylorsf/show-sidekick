@@ -28,7 +28,7 @@ const KEYWORDS = new Set([
 export const CodeSnippetInputSchema = z.object({
   code: z.string().min(1),
   language: z.string().default("text"),
-  theme: z.string().default("predit-dark"),
+  theme: z.string().default("show-sidekick-dark"),
   font_size: z.number().int().positive().default(18),
   padding: z.number().int().nonnegative().default(24),
   background: z.string().default("transparent"),

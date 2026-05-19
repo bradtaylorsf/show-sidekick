@@ -118,7 +118,7 @@ async function preparedInput(input: ClipEmbedderInput): Promise<{
     return { argsInput: { path: input.path, text: input.text, modality: input.modality } };
   }
 
-  const tempDir = await mkdtemp(join(tmpdir(), "predit-clip-frame-"));
+  const tempDir = await mkdtemp(join(tmpdir(), "show-sidekick-clip-frame-"));
   const framePath = join(tempDir, "midpoint.png");
 
   try {

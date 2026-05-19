@@ -44,7 +44,7 @@ export default defineTool({
     ),
   }),
   async execute(params) {
-    const tempDir = await mkdtemp(join(tmpdir(), "predit-whisper-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "show-sidekick-whisper-"));
     const extension = extname(params.audio_path);
     const tempAudioPath = join(tempDir, `input${extension || ".audio"}`);
     const outputBase = join(tempDir, "transcript");

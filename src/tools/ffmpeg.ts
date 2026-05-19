@@ -167,7 +167,7 @@ function trimArgs(params: Extract<FfmpegInput, { operation: "trim" }>): string[]
 }
 
 async function concat(params: Extract<FfmpegInput, { operation: "concat" }>): Promise<FfmpegOutput> {
-  const dir = await mkdtemp(join(tmpdir(), "predit-ffmpeg-concat-"));
+  const dir = await mkdtemp(join(tmpdir(), "show-sidekick-ffmpeg-concat-"));
   const listPath = join(dir, "inputs.txt");
 
   try {

@@ -69,7 +69,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-artifacts
-          pnpm show-types:matrix -- --zero-key --json | tee release-artifacts/show-types-matrix-output.json
+          pnpm show-types:matrix --zero-key --json | tee release-artifacts/show-types-matrix-output.json
           node --input-type=module <<'NODE'
           import fs from "node:fs";
           import path from "node:path";

@@ -6,7 +6,7 @@ type Match = {
   reference: string;
 };
 
-const BUNDLED_TOOL_PATH_PATTERN = /(?:^|[\s"'`(])((?:src\/tools\/|\.predit\/tools\/)[^\s"'`)]+)/iu;
+const BUNDLED_TOOL_PATH_PATTERN = /(?:^|[\s"'`(])((?:src\/tools\/|\.show-sidekick\/tools\/)[^\s"'`)]+)/iu;
 const MODIFY_PATTERN = /\b(modif(?:y|ies|ied|ication)|edit(?:s|ed|ing)?|patch(?:es|ed|ing)?|update(?:s|d|ing)?|replace(?:s|d|ing)?|overwrite(?:s|n|ing)?)\b/iu;
 const WRAPPER_PATTERN = /\b(wrapper|wrap|adapter|facade|shim)\b/iu;
 

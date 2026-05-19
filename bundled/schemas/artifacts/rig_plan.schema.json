@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/rig_plan",
+  "$id": "show-sidekick://artifacts/rig_plan",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -12,7 +12,7 @@
       "minItems": 1,
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/rig_plan.joint",
+        "$id": "show-sidekick://artifacts/rig_plan.joint",
         "type": "object",
         "additionalProperties": false,
         "properties": {
@@ -27,7 +27,7 @@
           },
           "pivot": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "predit://artifacts/rig_plan.point",
+            "$id": "show-sidekick://artifacts/rig_plan.point",
             "type": "object",
             "additionalProperties": false,
             "properties": {
@@ -48,7 +48,7 @@
           },
           "range_deg": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "predit://artifacts/rig_plan.range",
+            "$id": "show-sidekick://artifacts/rig_plan.range",
             "type": "object",
             "additionalProperties": false,
             "properties": {

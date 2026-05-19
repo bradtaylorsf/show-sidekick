@@ -31,20 +31,7 @@ const checkIds: readonly PublicFlipCheck["id"][] = [
   "pnpm-green",
   "pre-release-issues-clear",
 ];
-const currentlyPassingCheckIds: readonly PublicFlipCheck["id"][] = [
-  "migration-removed",
-  "no-sibling-paths",
-  "docs-links",
-  "provider-catalog",
-  "pack-manifest",
-  "license-apache-2",
-  "readme-complete",
-  "changelog-v0.1.0",
-  "bundled-runnable-example",
-  "watch-import-fixture",
-  "pnpm-green",
-  "pre-release-issues-clear",
-];
+const currentlyPassingCheckIds: readonly PublicFlipCheck["id"][] = checkIds;
 
 const resultPromise = runPublicFlipChecklist({
   allowLocalMigrationBridge: true,
@@ -100,12 +87,12 @@ describe("public-flip checklist", () => {
     });
   });
 
-  it("fails package/bin rename before the public package is renamed", async () => {
+  it("passes package/bin rename after the public package is renamed", async () => {
     const check = await findCheck(resultPromise, "package-bin-rename");
 
     expect(check).toMatchObject({
-      status: "fail",
-      detail: expect.stringContaining('expected "show-sidekick"'),
+      status: "pass",
+      detail: expect.stringContaining("show-sidekick"),
     });
   });
 
@@ -153,7 +140,7 @@ describe("public-flip checklist", () => {
               status: 0,
               stdout: [
                 "CHANGELOG.md:11:- Public launch renames build-era `predit` to Show Sidekick, with npm package `show-sidekick` and CLI `showkick`.",
-                "CHANGELOG.md:12:- User-project cache/docs move from `.predit/` to `.show-sidekick/`. Current `PREDIT_*` env vars remain documented as legacy compatibility names until replacement aliases ship.",
+                "specs/18-public-naming-contract.md:21:`predit` is a pre-public implementation name. It does not remain as a public npm package, package binary, CLI command, cache name, docs vocabulary, or environment prefix.",
                 "",
               ].join("\n"),
               stderr: "",
@@ -163,7 +150,7 @@ describe("public-flip checklist", () => {
             return {
               status: 0,
               stdout:
-                "CHANGELOG.md:12:- User-project cache/docs move from `.predit/` to `.show-sidekick/`. Current `PREDIT_*` env vars remain documented as legacy compatibility names until replacement aliases ship.\n",
+                "CHANGELOG.md:12:- User-project cache/docs move from `.predit/` to `.show-sidekick/`. Legacy `PREDIT_*` env vars fail with guidance to rename them to matching `SHOW_SIDEKICK_*` names.\n",
               stderr: "",
             };
           }
@@ -171,9 +158,9 @@ describe("public-flip checklist", () => {
             return {
               status: 0,
               stdout: [
-                "CHANGELOG.md:12:- User-project cache/docs move from `.predit/` to `.show-sidekick/`. Current `PREDIT_*` env vars remain documented as legacy compatibility names until replacement aliases ship.",
-                "docs/providers.md:14:Compatibility note: some current hosting and local-model adapters still document legacy `PREDIT_*` environment variables where those names are the active registry contract. Keep using the names listed here until replacement aliases ship.",
-                "bundled/templates/user-project/.env.example:160:PREDIT_R2_BUCKET=",
+                "CHANGELOG.md:12:- User-project cache/docs move from `.predit/` to `.show-sidekick/`. Legacy `PREDIT_*` env vars fail with guidance to rename them to matching `SHOW_SIDEKICK_*` names.",
+                "docs/providers.md:14:Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_*` environment prefix. Legacy `PREDIT_*` names from pre-public projects are rejected with migration guidance.",
+                'src/branding.ts:22:  envPrefix: "PREDIT_",',
                 "",
               ].join("\n"),
               stderr: "",

@@ -16,7 +16,7 @@ This is the human-owned release playbook for maintainers. Automation lives in [`
 - Review README, quickstart, provider docs, demo readiness, show types, and changelog for the target version.
 - Review the [public readiness audit](public-readiness-audit.md) and confirm every open blocker is fixed, moved to a tracked release issue, or intentionally deferred.
 - Run `pnpm show-types:check`.
-- Run `pnpm show-types:matrix -- --zero-key` and archive the generated report.
+- Run `pnpm show-types:matrix --zero-key` and archive the generated report.
 - Run the no-key animated explainer path from a fresh user project.
 - Run `showkick doctor --profile paid-demo` in the paid-demo environment and confirm expected providers are green.
 - Run at least one paid-demo preflight lane when provider credentials and budget are approved.

@@ -335,7 +335,7 @@ async function checkPackageBinRename(repoRoot: string): Promise<CheckResult> {
     failures.push("package.json bin must be an object with a showkick entry");
   } else {
     const binEntries = bin as Record<string, unknown>;
-    if (binEntries.showkick !== "dist/cli/index.js") {
+    if (binEntries.showkick !== "dist/cli/index.js" && binEntries.showkick !== "./dist/cli/index.js") {
       failures.push('package.json bin.showkick must point to "dist/cli/index.js"');
     }
     if (Object.hasOwn(binEntries, "predit")) {
@@ -351,7 +351,16 @@ async function checkPackageBinRename(repoRoot: string): Promise<CheckResult> {
 }
 
 async function checkCacheDirRename(repoRoot: string, runShell: RunShell): Promise<CheckResult> {
-  const grepTargets = ["src", "bundled/templates", "bundled/skills", "docs", "README.md"] as const;
+  const grepTargets = [
+    "src",
+    ":(exclude)src/**/*.test.ts",
+    ":(exclude)src/*.test.ts",
+    ":(exclude)src/**/__snapshots__/**",
+    "bundled/templates",
+    "bundled/skills",
+    "docs",
+    "README.md",
+  ] as const;
   const hits = await grepDisallowedFixedString(repoRoot, runShell, ".predit", grepTargets);
   const requiredDocs = [
     ["README.md", ".show-sidekick/"],
@@ -375,7 +384,16 @@ async function checkCacheDirRename(repoRoot: string, runShell: RunShell): Promis
 }
 
 async function checkEnvPrefixRename(repoRoot: string, runShell: RunShell): Promise<CheckResult> {
-  const grepTargets = ["src", "bundled/templates", "docs", "README.md", "CHANGELOG.md"] as const;
+  const grepTargets = [
+    "src",
+    ":(exclude)src/**/*.test.ts",
+    ":(exclude)src/*.test.ts",
+    ":(exclude)src/**/__snapshots__/**",
+    "bundled/templates",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+  ] as const;
   const hits = await grepDisallowedFixedString(repoRoot, runShell, "PREDIT_", grepTargets);
   const replacementHits = await runGit(runShell, repoRoot, [
     "grep",

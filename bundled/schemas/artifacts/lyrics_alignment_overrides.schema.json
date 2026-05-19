@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/lyrics_alignment_overrides",
+  "$id": "show-sidekick://artifacts/lyrics_alignment_overrides",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -8,7 +8,7 @@
       "type": "array",
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/lyrics_alignment_overrides.override",
+        "$id": "show-sidekick://artifacts/lyrics_alignment_overrides.override",
         "type": "object",
         "additionalProperties": false,
         "properties": {

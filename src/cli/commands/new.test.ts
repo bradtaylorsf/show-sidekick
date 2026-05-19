@@ -3,6 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { BRANDING } from "../../branding.js";
 import { loadPipeline } from "../../pipelines/load.js";
 import { resolveSkill } from "../../skills/resolver.js";
 import { loadEpisode, loadShow } from "../../shows/load.js";
@@ -14,7 +15,7 @@ const originalCwd = process.cwd();
 async function scratchProject(): Promise<string> {
   const root = path.join(tmpdir(), `predit-new-${randomUUID()}`);
   scratchDirs.push(root);
-  await mkdir(path.join(root, ".predit"), { recursive: true });
+  await mkdir(path.join(root, BRANDING.cacheDir), { recursive: true });
   await writeFile(path.join(root, "CLAUDE.md"), "# test project\n", "utf8");
   return root;
 }
@@ -125,7 +126,7 @@ describe("new command", () => {
 
     await expect(
       program.parseAsync(["node", "predit", "new", "show", "missing", "--from", "nope"], { from: "node" }),
-    ).rejects.toThrow(path.join(root, ".predit", "starters", "nope"));
+    ).rejects.toThrow(path.join(root, BRANDING.cacheDir, "starters", "nope"));
   });
 
   it("refuses to clobber an existing show directory", async () => {
@@ -219,9 +220,9 @@ function captureProgram() {
 }
 
 async function writeMinimalPipeline(root: string, slug: string): Promise<void> {
-  await mkdir(path.join(root, ".predit", "pipelines"), { recursive: true });
+  await mkdir(path.join(root, BRANDING.cacheDir, "pipelines"), { recursive: true });
   await writeFile(
-    path.join(root, ".predit", "pipelines", `${slug}.yaml`),
+    path.join(root, BRANDING.cacheDir, "pipelines", `${slug}.yaml`),
     [
       `slug: ${slug}`,
       "master_clock: none",
@@ -236,7 +237,7 @@ async function writeMinimalPipeline(root: string, slug: string): Promise<void> {
 }
 
 async function writeStarter(root: string, name: string): Promise<void> {
-  const starterDir = path.join(root, ".predit", "starters", name);
+  const starterDir = path.join(root, BRANDING.cacheDir, "starters", name);
   await mkdir(path.join(starterDir, "brand"), { recursive: true });
   await mkdir(path.join(starterDir, "episodes"), { recursive: true });
   await mkdir(path.join(starterDir, "inputs", "sample-episode"), { recursive: true });

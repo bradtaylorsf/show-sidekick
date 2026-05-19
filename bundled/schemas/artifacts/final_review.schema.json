@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/final_review",
+  "$id": "show-sidekick://artifacts/final_review",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -24,7 +24,7 @@
     },
     "checks": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "predit://artifacts/final_review.checks",
+      "$id": "show-sidekick://artifacts/final_review.checks",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -67,7 +67,7 @@
     },
     "thresholds": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "predit://artifacts/final_review.thresholds",
+      "$id": "show-sidekick://artifacts/final_review.thresholds",
       "type": "object",
       "additionalProperties": false,
       "properties": {

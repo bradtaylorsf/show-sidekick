@@ -28,7 +28,7 @@ describe("release workflow", () => {
     expect(runText).toContain("pnpm build");
     expect(runText).toContain("pnpm run docs:providers:check");
     expect(runText).toContain("pnpm show-types:check");
-    expect(runText).toContain("pnpm show-types:matrix -- --zero-key --json");
+    expect(runText).toContain("pnpm show-types:matrix --zero-key --json");
     expect(runText).toContain("pnpm run test:smoke");
     expect(runText).toContain("pnpm release:check");
     expect(runText).toContain("pnpm pack --pack-destination /tmp/show-sidekick-pack");

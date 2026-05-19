@@ -1,0 +1,43 @@
+# Show Sidekick user project — default gitignore
+# Edit freely; the patterns below are recommended starting points.
+
+# Bundled-content cache, refreshed by `showkick update`. Never check this in;
+# every collaborator's cache reflects their locally installed Show Sidekick version.
+.show-sidekick/
+
+# Agent-native mirrors generated from .show-sidekick/skills/agents for Codex/Claude
+# discovery. Author reusable project overrides in ./skills/ instead.
+.agents/skills/
+.claude/skills/
+
+# Runtime workspace - generated assets, intermediate artifacts, renders.
+# Everything in here is regenerable. Do not commit.
+projects/
+
+# Default export/render scratch roots. Keep final videos in external storage or
+# commit them deliberately by overriding this ignore file for a specific path.
+exports/
+renders/
+output/
+outputs/
+.show-sidekick-work/
+tmp/
+temp/
+
+# Drop zone for input media (audio, source video). Often large binary files;
+# commit them separately if you want them in version control.
+music_library/
+
+# Keep source workflows shareable. The following project-local override folders
+# are intentionally not ignored:
+#   shows/ pipelines/ playbooks/ skills/
+
+# Editor / OS detritus
+.DS_Store
+*.log
+.env
+.env.local
+.env.*
+!.env.example
+.env.*.local
+node_modules/

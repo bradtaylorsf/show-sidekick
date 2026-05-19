@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import { BRANDING } from "../../branding.js";
 import { getProviderProfile, PAID_DEMO_PROFILE, providerProfileNames, type ProviderProfile } from "../../providers/profiles.js";
 import { probe, Registry, type Availability, type Integration } from "../../registry/index.js";
 import type { CliIo, GlobalOptions } from "./stub.js";
@@ -94,7 +95,7 @@ async function checkProfile(profile: ProviderProfile, registry: Registry, deps: 
         description: check.description,
         status: "missing",
         reason: `unregistered tool: ${missingTools.join(", ")}`,
-        setup: "Refresh the installed harness cache with `predit update`.",
+        setup: `Refresh the installed harness cache with \`${BRANDING.primaryCli} update\`.`,
         tools: check.tool_names,
       });
       continue;

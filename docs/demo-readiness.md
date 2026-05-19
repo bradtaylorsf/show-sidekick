@@ -38,7 +38,7 @@ cd "$HARNESS"
 pnpm install
 pnpm build
 pnpm show-types:check
-pnpm show-types:matrix -- --zero-key
+pnpm show-types:matrix --zero-key
 
 mkdir -p "$DEMO_ROOT"
 cd "$DEMO_ROOT"

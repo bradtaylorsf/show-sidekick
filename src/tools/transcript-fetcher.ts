@@ -135,7 +135,7 @@ const transcriptFetcher = defineTool({
   output: outputSchema,
   async execute(params: TranscriptFetcherInput): Promise<TranscriptFetcherOutput> {
     const input = inputSchema.parse(params);
-    const tempDir = await mkdtemp(join(tmpdir(), "predit-captions-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "show-sidekick-captions-"));
 
     try {
       await runFile("yt-dlp", [

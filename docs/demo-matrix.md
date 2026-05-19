@@ -14,8 +14,8 @@ pnpm demo-matrix --paid-demo
 pnpm demo-matrix --paid-demo --only news-song --keep-workdir
 pnpm demo-matrix --paid-demo --json
 pnpm show-types:check
-pnpm show-types:matrix -- --zero-key
-pnpm show-types:matrix -- --paid-demo
+pnpm show-types:matrix --zero-key
+pnpm show-types:matrix --paid-demo
 ```
 
 - `--zero-key` runs starters whose `sample_support` includes `zero-key`. This is the default mode.

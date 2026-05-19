@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/character_qa_report",
+  "$id": "show-sidekick://artifacts/character_qa_report",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -10,7 +10,7 @@
     },
     "summary": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "predit://artifacts/character_qa_report.summary",
+      "$id": "show-sidekick://artifacts/character_qa_report.summary",
       "type": "object",
       "additionalProperties": false,
       "properties": {

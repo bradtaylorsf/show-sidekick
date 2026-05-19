@@ -33,7 +33,7 @@ export function renderProvidersDoc(tools: readonly Tool[]): string {
     "pnpm run docs:providers",
     "```",
     "",
-    "Compatibility note: some current hosting and local-model adapters still document legacy `PREDIT_*` environment variables where those names are the active registry contract. Keep using the names listed here until replacement aliases ship.",
+    "Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_*` environment prefix. Legacy `PREDIT_*` names from pre-public projects are rejected with migration guidance.",
     "",
   ];
 

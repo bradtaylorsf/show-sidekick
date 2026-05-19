@@ -1,7 +1,8 @@
 import { rm } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
-import { findProjectRoot } from "../../paths/project.js";
+import { BRANDING } from "../../branding.js";
+import { findProjectRoot, publicCacheDir } from "../../paths/project.js";
 import { BUNDLED_CACHE_DIRS, bundledRoot, computeBundledChecksum, copyBundledInto, syncAgentSkillMirrors } from "../../version/bundled.js";
 import { compareVersions, readCacheVersion, writeCacheVersion, type VersionComparison } from "../../version/cache.js";
 import { VERSION } from "../../version.js";
@@ -57,7 +58,7 @@ export function createUpdateHandler(io: CliIo, deps: UpdateDeps = {}) {
         cached_harness_version: cached?.harness_version,
         bundled_checksum: bundledChecksum,
         cached_bundled_checksum: cached?.bundled_checksum,
-        path: path.join(projectRoot, ".predit"),
+        path: publicCacheDir(projectRoot),
       });
       if (status !== "match") {
         process.exitCode = 1;
@@ -65,13 +66,13 @@ export function createUpdateHandler(io: CliIo, deps: UpdateDeps = {}) {
       return;
     }
 
-    const preditDir = path.join(projectRoot, ".predit");
+    const cacheDir = publicCacheDir(projectRoot);
     for (const dirname of BUNDLED_CACHE_DIRS) {
-      await rm(path.join(preditDir, dirname), { recursive: true, force: true });
+      await rm(path.join(cacheDir, dirname), { recursive: true, force: true });
     }
 
     const copyCache = deps.copyBundledInto ?? ((targetPreditDir: string) => copyBundledInto(targetPreditDir, sourceBundledRoot));
-    await copyCache(preditDir);
+    await copyCache(cacheDir);
     await syncAgentSkillMirrors(projectRoot);
 
     const bundledChecksum = await computeChecksum();
@@ -85,7 +86,7 @@ export function createUpdateHandler(io: CliIo, deps: UpdateDeps = {}) {
       event: "cache_updated",
       harness_version: VERSION,
       bundled_checksum: bundledChecksum,
-      path: preditDir,
+      path: cacheDir,
     });
   };
 }
@@ -105,7 +106,7 @@ function emitUpdated(io: CliIo, options: UpdateOptions, event: CacheUpdatedEvent
     return;
   }
 
-  io.stdout.write(`update: refreshed ${event.path} for predit v${event.harness_version}\n`);
+  io.stdout.write(`update: refreshed ${event.path} for ${BRANDING.packageName} v${event.harness_version}\n`);
 }
 
 function emitCheck(io: CliIo, options: UpdateOptions, event: CacheCheckedEvent): void {
@@ -115,9 +116,9 @@ function emitCheck(io: CliIo, options: UpdateOptions, event: CacheCheckedEvent):
   }
 
   if (event.status === "match") {
-    io.stdout.write(`update: ${event.path} is current for predit v${event.harness_version}\n`);
+    io.stdout.write(`update: ${event.path} is current for ${BRANDING.packageName} v${event.harness_version}\n`);
     return;
   }
 
-  io.stdout.write(`update: ${event.path} is stale; run 'predit update'\n`);
+  io.stdout.write(`update: ${event.path} is stale; run '${BRANDING.primaryCli} update'\n`);
 }

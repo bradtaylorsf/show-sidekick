@@ -4,6 +4,7 @@ import { createInterface } from "node:readline/promises";
 import { CommanderError, type Command } from "commander";
 import { z } from "zod";
 import type { VideoAnalysisBrief } from "../../artifacts/index.js";
+import { BRANDING } from "../../branding.js";
 import { loadYaml } from "../../config/loader.js";
 import {
   analyzeReference,
@@ -247,7 +248,7 @@ function ensureSampleSupport(input: {
 
 function sampleUnsupported(message: string, io: CliIo): CommanderError {
   io.stderr.write(`${message}\n`);
-  return new CommanderError(2, "predit.sample_unsupported", message);
+  return new CommanderError(2, `${BRANDING.packageName}.sample_unsupported`, message);
 }
 
 function emitSampleUnsupported(input: {

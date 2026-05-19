@@ -17,6 +17,7 @@ import {
   type VerifyLaneInput,
 } from "./lib/verify-render.ts";
 import { sampleSupportAllowsMode, validateShowTypeCatalog } from "./lib/show-types-catalog.ts";
+import { BRANDING } from "../src/branding.js";
 
 export type DemoMatrixMode = "zero-key" | "paid-demo";
 export type SampleSupport = "zero-key" | "paid" | "both" | "unsupported";
@@ -550,7 +551,7 @@ function explicitCliInvocation(cliPath: string): Omit<CliInvocation, "version"> 
 
 async function createMatrixWorkdir(repoRoot: string, tempRoot: string | undefined): Promise<string> {
   const root = path.resolve(tempRoot ?? tmpdir());
-  const workingDir = await mkdtemp(path.join(root, "predit-demo-matrix-"));
+  const workingDir = await mkdtemp(path.join(root, "show-sidekick-demo-matrix-"));
   assertOutsideRepo(repoRoot, workingDir);
   return workingDir;
 }
@@ -566,7 +567,7 @@ async function collectArtifactPaths(projectDir: string, lane: DemoMatrixLane): P
   const roots = [
     path.join(projectDir, "projects", lane.showSlug, "sample-episode"),
     path.join(projectDir, "exports"),
-    path.join(projectDir, ".predit", "decisions"),
+    path.join(projectDir, BRANDING.cacheDir, "decisions"),
   ];
   const paths: string[] = [];
 

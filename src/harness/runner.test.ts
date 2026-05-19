@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { readCheckpoint, readSampleCheckpoint, readState } from "../checkpoints/index.js";
+import { BRANDING } from "../branding.js";
 import { readCostLog } from "../cost/tracker.js";
 import { readDecisionLog, recordDecision, type DecisionEntry } from "../decisions/index.js";
 import { loadPipeline } from "../pipelines/load.js";
@@ -1049,7 +1050,7 @@ describe("Runner", () => {
 
     expect(result.status).toBe("failed");
     expect(output.stdout()).toContain('"event":"final_review_failed"');
-    expect(output.stdout()).toContain('"cta":"predit approve --force <reason>"');
+    expect(output.stdout()).toContain(`"cta":"${BRANDING.primaryCli} approve --force <reason>"`);
     await expect(readFile(path.join(root, "projects", "show", "episode", "renders", "final-failed.mp4"), "utf8")).resolves.toBe(
       "failed render",
     );

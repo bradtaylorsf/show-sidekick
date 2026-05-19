@@ -3,8 +3,9 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { BRANDING, LEGACY_BRANDING } from "../branding.js";
 import { InvalidResourceNameError, InvalidShowEpisodeError, ProjectRootNotFoundError } from "./errors.js";
-import { findProjectRoot, parseShowEpisode, projectPaths, resolve } from "./project.js";
+import { findProjectRoot, migrateLegacyProjectCache, parseShowEpisode, projectPaths, resolve } from "./project.js";
 
 let scratchDirs: string[] = [];
 
@@ -14,8 +15,8 @@ async function scratchProject(markRoot = true): Promise<string> {
   await mkdir(root, { recursive: true });
 
   if (markRoot) {
-    await writeFile(path.join(root, "CLAUDE.md"), "# project\n", "utf8");
-    await mkdir(path.join(root, ".predit"), { recursive: true });
+    await writeFile(path.join(root, "AGENTS.md"), "# project\n", "utf8");
+    await mkdir(path.join(root, BRANDING.cacheDir), { recursive: true });
   }
 
   return root;
@@ -41,9 +42,16 @@ describe("project paths", () => {
     expect(findProjectRoot(child)).toBe(root);
   });
 
-  it("recognizes a shared scaffold before the gitignored .predit cache is restored", async () => {
+  it("recognizes the public project root marker and cache", async () => {
     const root = await scratchProject(false);
-    await writeFile(path.join(root, "CLAUDE.md"), "# project\n", "utf8");
+    await writeFile(path.join(root, "AGENTS.md"), "# agents\n", "utf8");
+    await mkdir(path.join(root, BRANDING.cacheDir), { recursive: true });
+
+    expect(findProjectRoot(root)).toBe(root);
+  });
+
+  it("recognizes a shared scaffold before the gitignored cache is restored", async () => {
+    const root = await scratchProject(false);
     await writeFile(path.join(root, "AGENTS.md"), "# agents\n", "utf8");
     await writeFile(path.join(root, ".env.example"), "OPENAI_API_KEY=\n", "utf8");
 
@@ -54,7 +62,7 @@ describe("project paths", () => {
     const root = await scratchProject(false);
 
     expect(() => findProjectRoot(root)).toThrow(ProjectRootNotFoundError);
-    expect(() => findProjectRoot(root)).toThrow("predit init");
+    expect(() => findProjectRoot(root)).toThrow(`${BRANDING.primaryCli} init`);
   });
 
   it("returns absolute project paths", async () => {
@@ -65,7 +73,7 @@ describe("project paths", () => {
       pipelines: path.join(root, "pipelines"),
       playbooks: path.join(root, "playbooks"),
       skills: path.join(root, "skills"),
-      predit: path.join(root, ".predit"),
+      cache: path.join(root, BRANDING.cacheDir),
       projects: path.join(root, "projects"),
       musicLibrary: path.join(root, "music_library"),
     });
@@ -74,7 +82,7 @@ describe("project paths", () => {
   it("resolves local overrides before cached resources", async () => {
     const root = await scratchProject();
     const local = path.join(root, "pipelines");
-    const cache = path.join(root, ".predit", "pipelines");
+    const cache = path.join(root, BRANDING.cacheDir, "pipelines");
     await mkdir(local, { recursive: true });
     await mkdir(cache, { recursive: true });
     await writeFile(path.join(local, "music-video.yaml"), "local: true\n", "utf8");
@@ -85,7 +93,7 @@ describe("project paths", () => {
 
   it("falls back to cached resources", async () => {
     const root = await scratchProject();
-    const cache = path.join(root, ".predit", "skills");
+    const cache = path.join(root, BRANDING.cacheDir, "skills");
     await mkdir(cache, { recursive: true });
     await writeFile(path.join(cache, "director.md"), "# director\n", "utf8");
 
@@ -123,5 +131,16 @@ describe("project paths", () => {
 
     expect(() => resolve("shows", "../../etc/passwd", root)).toThrow(InvalidResourceNameError);
     expect(() => resolve("pipelines", "..", root)).toThrow(InvalidResourceNameError);
+  });
+
+  it("migrates a legacy cache to the public cache directory", async () => {
+    const root = await scratchProject(false);
+    await writeFile(path.join(root, "AGENTS.md"), "# project\n", "utf8");
+    await mkdir(path.join(root, LEGACY_BRANDING.cacheDir, "pipelines"), { recursive: true });
+    await writeFile(path.join(root, LEGACY_BRANDING.cacheDir, "pipelines", "demo.yaml"), "legacy: true\n", "utf8");
+
+    await expect(migrateLegacyProjectCache(root)).resolves.toBe("migrated");
+    expect(resolve("pipelines", "demo", root)).toBe(path.join(root, BRANDING.cacheDir, "pipelines", "demo.yaml"));
+    expect(findProjectRoot(root)).toBe(root);
   });
 });

@@ -2,6 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { BRANDING } from "../branding.js";
 import { getUploadCount, quotaFilePath, recordUpload, shouldWarn } from "./host-quota.js";
 
 let tempDirs: string[] = [];
@@ -46,7 +47,7 @@ describe("host quota tracking", () => {
 
   it("prunes entries older than seven days", async () => {
     const root = await tempDir();
-    await mkdir(join(root, ".predit"), { recursive: true });
+    await mkdir(join(root, BRANDING.cacheDir), { recursive: true });
     await writeFile(
       quotaFilePath(root),
       `${JSON.stringify({

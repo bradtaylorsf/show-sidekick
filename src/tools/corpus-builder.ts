@@ -151,7 +151,7 @@ const corpusBuilder = defineTool({
     const inputDir = resolveProjectReadPath(input.dir, ctx.projectRoot);
     const outputPath = resolveProjectPath(input.output_path, ctx.projectRoot);
     const files = await enumerateCorpusFiles(inputDir, input.glob);
-    const frameDir = join(dirname(outputPath), ".predit-corpus-frames");
+    const frameDir = join(dirname(outputPath), ".show-sidekick-corpus-frames");
     const embedder = await selectClipEmbeddingTool(ctx);
 
     const index = await buildCorpusIndex(files, async (file) => {

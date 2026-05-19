@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { publicCacheDir } from "../paths/project.js";
 
 type QuotaStore = Record<string, Record<string, number>>;
 
@@ -50,7 +51,7 @@ export function shouldWarn(provider: string, count: number): boolean {
 }
 
 export function quotaFilePath(projectRoot: string): string {
-  return join(projectRoot, ".predit", "host-quota.json");
+  return join(publicCacheDir(projectRoot), "host-quota.json");
 }
 
 function normalizeOptions(options: Date | QuotaOptions): Required<QuotaOptions> | QuotaOptions {

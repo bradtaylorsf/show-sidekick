@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/proposal-packet",
+  "$id": "show-sidekick://artifacts/proposal-packet",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -9,7 +9,7 @@
       "minItems": 3,
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/concept-option",
+        "$id": "show-sidekick://artifacts/concept-option",
         "type": "object",
         "additionalProperties": false,
         "properties": {
@@ -32,7 +32,7 @@
     },
     "production_plan": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "predit://artifacts/production-plan",
+      "$id": "show-sidekick://artifacts/production-plan",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -78,7 +78,7 @@
     },
     "delivery_promise": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "predit://artifacts/delivery-promise",
+      "$id": "show-sidekick://artifacts/delivery-promise",
       "type": "object",
       "additionalProperties": false,
       "properties": {

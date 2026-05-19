@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
+import { BRANDING } from "../branding.js";
 import { defineTool } from "../registry/index.js";
 import { errorWithInstallHint } from "../tool-support/errors.js";
 import { resolveProjectPath } from "../tool-support/paths.js";
@@ -57,7 +58,10 @@ async function runFile(binary: string, args: string[]): Promise<{ stdout: string
   return new Promise((resolve, reject) => {
     execFile(binary, args, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
-        const message = process.platform === "darwin" ? `${stderr.trim() || error.message}\nmacOS requires Screen Recording permission for the terminal running predit.` : stderr.trim() || error.message;
+        const message =
+          process.platform === "darwin"
+            ? `${stderr.trim() || error.message}\nmacOS requires Screen Recording permission for the terminal running ${BRANDING.primaryCli}.`
+            : stderr.trim() || error.message;
         reject(errorWithInstallHint(new Error(message), INSTALL));
         return;
       }

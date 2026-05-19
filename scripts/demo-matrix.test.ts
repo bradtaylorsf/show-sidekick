@@ -299,7 +299,7 @@ describe("demo matrix runner", () => {
 });
 
 async function testTempRoot(): Promise<string> {
-  const dir = path.join(tmpdir(), `predit-demo-matrix-test-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const dir = path.join(tmpdir(), `show-sidekick-demo-matrix-test-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   await mkdir(dir, { recursive: true });
   scratchDirs.push(dir);
   return dir;
@@ -432,7 +432,7 @@ function verifyInput(
     pipeline: "music-video",
     target: "music-video/sample-episode",
     projectDir: root,
-    cli: { command: "predit", baseArgs: [] },
+    cli: { command: "showkick", baseArgs: [] },
     runCommand: options.runCommand ?? (async (command, args, callOptions) => successfulCommand(command, args, callOptions.cwd)),
     now: () => new Date("2026-05-15T12:00:00.000Z"),
     probeMedia: async () => probeResult(options.probeDurationS),
@@ -483,7 +483,7 @@ async function writeVerificationWorkspace(
 ): Promise<void> {
   const showDir = path.join(root, "shows", "music-video");
   const episodeDir = path.join(showDir, "episodes");
-  const pipelineDir = path.join(root, ".predit", "pipelines");
+  const pipelineDir = path.join(root, ".show-sidekick", "pipelines");
   const projectDir = path.join(root, "projects", "music-video", "sample-episode");
   await mkdir(episodeDir, { recursive: true });
   await mkdir(pipelineDir, { recursive: true });

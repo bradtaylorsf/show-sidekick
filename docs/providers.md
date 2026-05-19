@@ -11,7 +11,7 @@ This catalog is generated from the tool registry. Regenerate it after changing a
 pnpm run docs:providers
 ```
 
-Compatibility note: some current hosting and local-model adapters still document legacy `PREDIT_*` environment variables where those names are the active registry contract. Keep using the names listed here until replacement aliases ship.
+Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_*` environment prefix. Legacy `PREDIT_*` names from pre-public projects are rejected with migration guidance.
 
 ## audio_energy
 
@@ -153,8 +153,8 @@ Compatibility note: some current hosting and local-model adapters still document
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
 | `catbox_host` | production | api | catbox | none | free temporary/public image hosting for image-to-video inputs; catbox has an about 50 uploads/day soft limit | $0 / call |
-| `r2_host` | production | api | r2 | `PREDIT_R2_BUCKET`, `PREDIT_R2_ACCOUNT_ID`, `PREDIT_R2_ACCESS_KEY_ID`, `PREDIT_R2_SECRET_ACCESS_KEY`, `PREDIT_R2_PUBLIC_BASE_URL` | Cloudflare R2-backed image hosting with a public bucket or custom domain | $0 / call |
-| `s3_host` | production | api | s3 | `PREDIT_S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | S3-backed image hosting with an env-var configured bucket | $0 / call |
+| `r2_host` | production | api | r2 | `SHOW_SIDEKICK_R2_BUCKET`, `SHOW_SIDEKICK_R2_ACCOUNT_ID`, `SHOW_SIDEKICK_R2_ACCESS_KEY_ID`, `SHOW_SIDEKICK_R2_SECRET_ACCESS_KEY`, `SHOW_SIDEKICK_R2_PUBLIC_BASE_URL` | Cloudflare R2-backed image hosting with a public bucket or custom domain | $0 / call |
+| `s3_host` | production | api | s3 | `SHOW_SIDEKICK_S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | S3-backed image hosting with an env-var configured bucket | $0 / call |
 | `image_hosting` | beta | library | show-sidekick | none | Compatibility alias for selecting a concrete image hosting provider. | not declared |
 
 ## image_to_video

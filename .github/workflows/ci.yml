@@ -72,11 +72,5 @@ jobs:
       - name: Framework smoke E2E
         run: pnpm run test:smoke
 
-      # Launch gates legitimately fail until the SR-1/SR-2/SR-3 public rename
-      # lands (package still named "predit", .predit/PREDIT_ refs, no showkick
-      # bin). Keep this visible in CI but non-blocking so unrelated PRs are not
-      # red. Hard publish-blocking is enforced in release.yml. Remove
-      # continue-on-error once the public rename ships.
       - name: Launch gates
         run: pnpm release:check
-        continue-on-error: true

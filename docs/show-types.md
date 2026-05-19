@@ -51,8 +51,8 @@ pnpm show-types:check
 Run the catalog-driven matrix from the harness checkout before publishing. It creates fresh temp user projects outside the repo, runs one representative sample for each runnable lane in the selected mode, and writes `show-types-matrix-report.json` plus `show-types-matrix-report.md` in the matrix work directory.
 
 ```bash
-pnpm show-types:matrix -- --zero-key
-pnpm show-types:matrix -- --paid-demo
+pnpm show-types:matrix --zero-key
+pnpm show-types:matrix --paid-demo
 ```
 
 The per-lane status values are `not-run`, `unsupported`, `setup-missing`, `build-failed`, `export-failed`, and `verified`. Unsupported lanes remain documented so operators can see which public show types still need a runnable sample path.

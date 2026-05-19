@@ -89,7 +89,7 @@ export const heroTitleFixture = {
 
 export const terminalSceneFixture = {
   title: "Compose diagnostics",
-  prompt: "predit$",
+  prompt: "showkick$",
   lines: ["load edit_decisions.json", "validate assets", "render runtime=remotion"],
   cursor: true,
   theme: sharedTheme,

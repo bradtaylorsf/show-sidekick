@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "predit://artifacts/publish_log",
+  "$id": "show-sidekick://artifacts/publish_log",
   "type": "object",
   "additionalProperties": true,
   "properties": {
@@ -8,7 +8,7 @@
       "type": "array",
       "items": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "predit://artifacts/publish_log.output",
+        "$id": "show-sidekick://artifacts/publish_log.output",
         "type": "object",
         "additionalProperties": false,
         "properties": {

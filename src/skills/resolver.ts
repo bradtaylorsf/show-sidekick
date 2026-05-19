@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { preferredCacheDir } from "../paths/project.js";
 import type { LoadedShow } from "../shows/load.js";
 
 export type SkillKind = "director" | "meta" | "agent";
@@ -68,6 +69,7 @@ export async function resolveSkill(
 
 function skillCandidates(kind: SkillKind, name: string, ctx: ResolveSkillContext): SkillCandidate[] {
   const projectRoot = path.resolve(ctx.projectRoot);
+  const cacheDir = preferredCacheDir(projectRoot);
 
   if (kind === "director") {
     if (!ctx.pipeline) {
@@ -83,11 +85,11 @@ function skillCandidates(kind: SkillKind, name: string, ctx: ResolveSkillContext
         tier: "project",
       },
       {
-        path: path.join(projectRoot, ".predit", "skills", "pipelines", pipelineDirectory, fileName),
+        path: path.join(cacheDir, "skills", "pipelines", pipelineDirectory, fileName),
         tier: "bundled-pipeline",
       },
       {
-        path: path.join(projectRoot, ".predit", "skills", "pipelines", "_shared", fileName),
+        path: path.join(cacheDir, "skills", "pipelines", "_shared", fileName),
         tier: "bundled-shared",
       },
     ];
@@ -102,7 +104,7 @@ function skillCandidates(kind: SkillKind, name: string, ctx: ResolveSkillContext
       tier: "project",
     },
     {
-      path: path.join(projectRoot, ".predit", "skills", directoryName, fileName),
+      path: path.join(cacheDir, "skills", directoryName, fileName),
       tier: "bundled",
     },
   ];

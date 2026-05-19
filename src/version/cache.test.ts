@@ -1,16 +1,17 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { compareVersions, readCacheVersion, writeCacheVersion } from "./cache.js";
+import { BRANDING, LEGACY_BRANDING } from "../branding.js";
+import { compareVersions, readCacheVersion, versionFile, writeCacheVersion } from "./cache.js";
 
 let scratchDirs: string[] = [];
 
 async function scratchProject(): Promise<string> {
   const root = path.join(tmpdir(), `predit-cache-${randomUUID()}`);
   scratchDirs.push(root);
-  await mkdir(path.join(root, ".predit"), { recursive: true });
+  await mkdir(path.join(root, BRANDING.cacheDir), { recursive: true });
   return root;
 }
 
@@ -20,7 +21,7 @@ afterEach(async () => {
 });
 
 describe("cache version metadata", () => {
-  it("round-trips .predit/version.json", async () => {
+  it("round-trips public cache version metadata", async () => {
     const root = await scratchProject();
 
     await writeCacheVersion(root, {
@@ -34,6 +35,29 @@ describe("cache version metadata", () => {
       bundled_checksum: "abc123",
       locked_at: "2026-05-14T00:00:00.000Z",
     });
+  });
+
+  it("reads legacy cache version metadata before migration", async () => {
+    const root = path.join(tmpdir(), `predit-cache-${randomUUID()}`);
+    scratchDirs.push(root);
+    await mkdir(path.join(root, LEGACY_BRANDING.cacheDir), { recursive: true });
+    await writeFile(
+      path.join(root, LEGACY_BRANDING.cacheDir, BRANDING.cacheVersionFileName),
+      `${JSON.stringify({
+        harness_version: "1.2.3",
+        bundled_checksum: "legacy",
+        locked_at: "2026-05-14T00:00:00.000Z",
+      })}\n`,
+      "utf8",
+    );
+
+    await expect(readCacheVersion(root)).resolves.toMatchObject({ bundled_checksum: "legacy" });
+  });
+
+  it("exposes the public version file path", async () => {
+    const root = await scratchProject();
+
+    expect(versionFile(root)).toBe(path.join(root, BRANDING.cacheDir, BRANDING.cacheVersionFileName));
   });
 
   it("returns null when version.json is missing", async () => {
