@@ -98,6 +98,7 @@ pnpm show-types:matrix -- --paid-demo
 - [Show types](docs/show-types.md)
 - [Troubleshooting](docs/quickstart.md#troubleshooting)
 - [Contributing](CONTRIBUTING.md)
+- [Release checklist](docs/release-checklist.md)
 - [Release notes](CHANGELOG.md)
 - [Specs](specs/)
 

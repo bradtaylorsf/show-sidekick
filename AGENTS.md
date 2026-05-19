@@ -10,7 +10,7 @@ A show-first AI pre-production harness for video. Each show owns its pipeline, l
 
 ## Alpha Loop orchestration
 
-This repo is initialized for Alpha Loop. `.alpha-loop.yaml` is the loop config, and `IMPLEMENTATION.md` is structured for `alpha-loop run --epic <N>`.
+This repo is initialized for Alpha Loop. `.alpha-loop.yaml` is the loop config. Current work is planned and sequenced in GitHub issues: use the epic body and ordered sub-issue checklists as the source of truth for loop runs.
 
 Default loop roles:
 

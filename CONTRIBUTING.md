@@ -106,3 +106,7 @@ pnpm run docs:providers:check
 ```
 
 Reference the GitHub issue, explain user-visible behavior, list test results, and call out any spec changes. Breaking changes to `show.yaml`, `episode.yaml`, pipeline manifests, tool registry shape, or checkpoint schemas need a migration note.
+
+## Releasing
+
+Maintainers should use the [public release checklist](docs/release-checklist.md) for ownership setup, launch verification, support triage, and rollback steps before publishing.
