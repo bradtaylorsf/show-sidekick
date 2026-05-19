@@ -35,6 +35,8 @@ DEMO_ROOT=/tmp/show-sidekick-demo
 cd "$HARNESS"
 pnpm install
 pnpm build
+pnpm show-types:check
+pnpm show-types:matrix -- --zero-key
 
 mkdir -p "$DEMO_ROOT"
 cd "$DEMO_ROOT"
@@ -51,6 +53,7 @@ Expected local outputs:
 - Render: `projects/animated-explainer/sample-episode/renders/sample-preview.mp4`
 - Premiere package: `exports/animated-explainer__sample-episode.premiere/`
 - EDL package: `exports/animated-explainer__sample-episode.edl/`
+- Show-type reports: `show-types-matrix-report.json` and `show-types-matrix-report.md` in the matrix work directory.
 
 ## Provider Setup Without Storing Credentials In The Repo
 
@@ -105,7 +108,7 @@ Current expected green paths:
 
 ## Demo Readiness Inventory
 
-`src/pipelines/demo-inventory.ts` is the canonical inventory for bundled pipeline demo readiness. Update it in the same change as any bundled manifest or starter binding change.
+`src/pipelines/demo-inventory.ts` is the canonical inventory for bundled pipeline demo readiness. [Show Types](show-types.md) is the public catalog and validation-lane source of truth that maps this pipeline inventory to starter lanes. Update both in the same change as any bundled manifest or starter binding change.
 
 ### Classifications
 

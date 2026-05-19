@@ -81,7 +81,15 @@ Before any later command that may spend provider credits, stop and ask me for ap
 
 ## What Show Sidekick Can Make
 
-See [docs/show-types.md](docs/show-types.md) for the show type catalog. The initial catalog includes animated explainers, music videos, news songs, product or workflow demos, cinematic trailers, talking-head/avatar pieces, hybrid source-and-generated videos, localization dubs, and clip factories.
+See [docs/show-types.md](docs/show-types.md) for the show type catalog. It separates reusable pipeline show types from bundled starter shows, including branded starters such as The Chaos FM, WW2 Diary, Product Demo, Last Rev, Rave Queen, and AI Workflow Demo.
+
+Maintainers can validate the catalog without publishing:
+
+```bash
+pnpm show-types:check
+pnpm show-types:matrix -- --zero-key
+pnpm show-types:matrix -- --paid-demo
+```
 
 ## Docs
 
