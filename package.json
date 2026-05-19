@@ -4,7 +4,19 @@
   "description": "AI pre-production for video — build the rough cut, finish in your NLE.",
   "type": "module",
   "bin": {
-    "predit": "./dist/cli/index.js"
+    "predit": "dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "bundled",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -17,6 +29,7 @@
     "lint": "node scripts/lint.ts",
     "format": "node scripts/format.ts",
     "prepare": "node scripts/install-husky.mjs",
+    "prepublishOnly": "pnpm build",
     "test": "vitest run",
     "test:smoke": "vitest run tests/smoke/framework-smoke.test.ts tests/smoke/starter-sample.test.ts",
     "test:watch": "vitest",
@@ -27,7 +40,13 @@
     "audit:l3v-drift": "node scripts/audit-l3v-drift.ts",
     "demo-matrix": "node --import tsx/esm scripts/demo-matrix.ts",
     "docs:providers": "node --import tsx/esm scripts/generate-providers-doc.ts",
-    "docs:providers:check": "node --import tsx/esm scripts/generate-providers-doc.ts --check"
+    "docs:providers:check": "node --import tsx/esm scripts/generate-providers-doc.ts --check",
+    "show-types:check": "node --import tsx/esm scripts/show-types-check.ts",
+    "show-types:matrix": "node --import tsx/esm scripts/show-types-matrix.ts",
+    "changeset": "pnpm dlx @changesets/cli",
+    "changeset:status": "pnpm dlx @changesets/cli status --since=origin/main",
+    "changeset:version": "pnpm dlx @changesets/cli version",
+    "changeset:publish": "pnpm build && npm publish --provenance --access public"
   },
   "dependencies": {
     "commander": "^12.1.0",

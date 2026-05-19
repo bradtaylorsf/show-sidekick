@@ -3,9 +3,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  classifyShowTypeLaneStatus,
   discoverDemoMatrixLanes,
+  discoverShowTypeMatrixLanes,
   parseDemoMatrixArgs,
   runDemoMatrix,
+  type DemoMatrixLaneResult,
 } from "./demo-matrix.ts";
 import { parseLastEvent, type SpawnCommand, type SpawnResult } from "./lib/spawn-cli.ts";
 import { verifyLane, type LaneVerification, type VerifyLaneInput } from "./lib/verify-render.ts";
@@ -25,9 +28,11 @@ describe("demo matrix runner", () => {
       keepWorkdir: true,
       json: true,
       cliPath: undefined,
+      laneSource: "starters",
     });
 
     expect(parseDemoMatrixArgs(["--zero-key"]).mode).toBe("zero-key");
+    expect(parseDemoMatrixArgs(["--from-show-types"]).laneSource).toBe("show-types");
     expect(() => parseDemoMatrixArgs(["--zero-key", "--paid-demo"])).toThrow("--zero-key and --paid-demo");
   });
 
@@ -44,6 +49,63 @@ describe("demo matrix runner", () => {
       mode: "zero-key",
     });
     expect(zeroKey.map((lane) => lane.slug)).toEqual(["animated-explainer", "music-video"]);
+  });
+
+  it("discovers runnable show-type catalog lanes by stable lane ID", async () => {
+    const lanes = await discoverShowTypeMatrixLanes({
+      repoRoot: process.cwd(),
+      mode: "zero-key",
+      only: ["pipeline:animated-explainer", "pipeline:animation"],
+    });
+
+    expect(lanes).toEqual([
+      expect.objectContaining({
+        slug: "pipeline:animated-explainer",
+        laneId: "pipeline:animated-explainer",
+        starterSlug: "animated-explainer",
+        pipeline: "animated-explainer",
+        target: "animated-explainer/sample-episode",
+      }),
+    ]);
+  });
+
+  it("classifies show-type matrix statuses for operator reports", () => {
+    expect(classifyShowTypeLaneStatus({ selected: false, runnable: false })).toBe("not-run");
+    expect(classifyShowTypeLaneStatus({ selected: true, runnable: false })).toBe("unsupported");
+    expect(
+      classifyShowTypeLaneStatus({
+        selected: true,
+        runnable: true,
+        result: laneResult({
+          status: "completed",
+          verification: {
+            export_results: [
+              { target: "edl", status: "completed" },
+              { target: "premiere", status: "completed" },
+            ],
+          },
+        }),
+      }),
+    ).toBe("verified");
+    expect(
+      classifyShowTypeLaneStatus({
+        selected: true,
+        runnable: true,
+        result: laneResult({
+          status: "verification_failed",
+          verification: {
+            export_results: [{ target: "edl", status: "failed", error: "no timeline" }],
+          },
+        }),
+      }),
+    ).toBe("export-failed");
+    expect(
+      classifyShowTypeLaneStatus({
+        selected: true,
+        runnable: true,
+        result: laneResult({ status: "failed", command: "node cli init --starter news-song", error: "OPENAI_API_KEY missing" }),
+      }),
+    ).toBe("setup-missing");
   });
 
   it("runs selected paid-demo lanes through init and build commands", async () => {
@@ -319,6 +381,41 @@ function passedVerification(input: VerifyLaneInput): LaneVerification {
     artifact_presence: [],
     export_results: [],
     errors: [],
+  };
+}
+
+function laneResult(input: {
+  readonly status: string;
+  readonly command?: string;
+  readonly error?: string;
+  readonly verification?: Partial<LaneVerification>;
+}): DemoMatrixLaneResult {
+  return {
+    slug: "pipeline:animated-explainer",
+    pipeline: "animated-explainer",
+    target: "animated-explainer/sample-episode",
+    project_dir: "/tmp/show-types",
+    command: input.command ?? "node cli build animated-explainer/sample-episode",
+    exit_code: input.status === "completed" ? 0 : 1,
+    status: input.status,
+    artifact_paths: [],
+    duration_ms: 1,
+    error: input.error,
+    verification:
+      input.verification === undefined
+        ? undefined
+        : ({
+            status: "failed",
+            slug: "pipeline:animated-explainer",
+            pipeline: "animated-explainer",
+            target: "animated-explainer/sample-episode",
+            project_dir: "/tmp/show-types",
+            generated_at: "2026-05-15T12:00:00.000Z",
+            artifact_presence: [],
+            export_results: [],
+            errors: [],
+            ...input.verification,
+          } satisfies LaneVerification),
   };
 }
 
