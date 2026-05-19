@@ -1,6 +1,6 @@
 # Demo Matrix
 
-`pnpm demo-matrix` is a harness-maintainer check for bundled starter sample builds. It creates fresh user projects under a temp directory outside the harness repo, runs the local or installed `predit` CLI, initializes starter shows, executes `predit build <show>/sample-episode --sample`, and verifies the completed artifacts before reporting a lane as completed.
+`pnpm demo-matrix` is a harness-maintainer check for bundled starter sample builds. It creates fresh user projects under a temp directory outside the harness repo, runs the local or installed Show Sidekick CLI, initializes starter shows, executes `showkick build <show>/sample-episode --sample`, and verifies the completed artifacts before reporting a lane as completed.
 
 It is a starter smoke matrix, not full manifest coverage. Lanes come from `bundled/starters/`, so non-starter bundled manifests such as `hybrid`, `talking-head`, `clip-factory`, and `character-animation` need the agent-led benchmark plan in [Full Demo Benchmark Plan](full-demo-benchmark.md).
 
@@ -14,7 +14,7 @@ pnpm demo-matrix --paid-demo --json
 ```
 
 - `--zero-key` runs starters whose `sample_support` includes `zero-key`. This is the default mode.
-- `--paid-demo` runs starters whose `sample_support` includes `paid` and passes `--provider-profile paid-demo` to `predit build`.
+- `--paid-demo` runs starters whose `sample_support` includes `paid` and passes `--provider-profile paid-demo` to `showkick build`.
 - `--only <slug>` restricts the matrix to one or more starter slugs.
 - `--keep-workdir` keeps the temp user projects for inspection.
 - `--json` emits NDJSON events: `matrix_started`, `lane_completed`, and `matrix_finished`.

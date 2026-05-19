@@ -2,7 +2,7 @@
 
 ## Why this is a first-class subsystem
 
-For music-led content (music videos, trailers, news-songs), the precision of audio-to-visual alignment is `predit`'s most important creative quality. The audio subsystem owns this. Pipelines compose its primitives; they never reimplement detection or alignment logic.
+For music-led content (music videos, trailers, news-songs), the precision of audio-to-visual alignment is Show Sidekick's most important creative quality. The audio subsystem owns this. Pipelines compose its primitives; they never reimplement detection or alignment logic.
 
 For narration-led content, the same primitives align scenes to VO structure (word timestamps, segment boundaries, deliberate pauses).
 
@@ -95,7 +95,7 @@ Scene-facing artifacts (`script`, `scene_plan`, and `edit_decisions`) may carry 
 Pure functions over the data model. Each is independently usable; pipelines compose them.
 
 ```ts
-import * as audio from 'predit/audio';
+import * as audio from 'show-sidekick/audio';
 
 const track = await audio.load('music_library/midnight-train/track.mp3');
 
@@ -150,7 +150,7 @@ For audio-led pipelines, building the cuesheet is its own stage (`cuesheet` in t
 - Reusable artifact — re-running scene planning doesn't re-transcribe or re-detect beats.
 - Cacheable — `projects/<show>/<episode>/cuesheet.json` persists across runs.
 
-For track + lyrics episodes, `predit cuesheet <show>/<episode>` writes the full timing set: `cuesheet.json`, `audio_energy.json`, and `lyrics_aligned.json`. The lyric alignment is built from canonical episode lyrics and transcript words, then `lyrics_alignment_overrides.json` is applied if present.
+For track + lyrics episodes, `showkick cuesheet <show>/<episode>` writes the full timing set: `cuesheet.json`, `audio_energy.json`, and `lyrics_aligned.json`. The lyric alignment is built from canonical episode lyrics and transcript words, then `lyrics_alignment_overrides.json` is applied if present.
 
 **`cuesheet` stage vs `audio_sync: build` attribute.** The `cuesheet` stage is one *implementation* of `audio_sync: build`. A pipeline may instead build the cuesheet inside its `script` or `scene_plan` stage by setting that stage's `audio_sync: build`. Only one stage per pipeline may declare `audio_sync: build` (see `specs/05-pipelines.md` → validation rules). The canonical `cuesheet` stage is the recommended pattern; embedding the build into another stage is a workflow optimization that some pipelines may choose.
 

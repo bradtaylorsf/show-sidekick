@@ -26,7 +26,7 @@ Apply when:
 
 ## Runtime choice (Remotion vs HyperFrames vs FFmpeg)
 
-predit separates creative grammar (`renderer_family`) from technical
+Show Sidekick separates creative grammar (`renderer_family`) from technical
 engine (`render_runtime`). Both are locked at proposal and carried through
 `edit_decisions` unchanged. Silent runtime swaps at compose time are a
 contract violation.
@@ -34,7 +34,7 @@ contract violation.
 ### HARD RULE — present both runtimes, don't silently default
 
 When both Remotion AND HyperFrames are available on the machine (check
-`predit doctor --json` or the registry availability for `remotion`,
+`showkick doctor --json` or the registry availability for `remotion`,
 `hyperframes`, and `ffmpeg`), the agent MUST present both options to the user
 before locking `render_runtime`. The decision matrix below is the agent's input
 for the conversation, NOT a license to silently pick the "default" entry. See
@@ -43,7 +43,7 @@ the full contract.
 
 Concretely, at the proposal stage:
 
-1. Query registry availability (or `predit doctor --json`) to find which
+1. Query registry availability (or `showkick doctor --json`) to find which
    runtimes are available on this machine.
 2. If both Remotion and HyperFrames are available, present both to the
    user with: one-line description tailored to the brief, one-line
@@ -61,9 +61,9 @@ when both were available is a CRITICAL reviewer finding.
 | Existing React scene stack (text_card, stat_card, chart, caption overlay) | **remotion** | `bundled/skills/core/remotion.md` |
 | Word-level caption burn / karaoke captions | **remotion** | `bundled/skills/core/remotion.md` |
 | Avatar / lip-sync / presenter | **remotion** | `bundled/skills/core/remotion.md` |
-| Kinetic typography, HTML/GSAP-native motion, product promo, launch reel | **hyperframes** | `bundled/skills/core/hyperframes.md` + `.predit/skills/agents/hyperframes.md` |
-| Website → video, UI-driven composition | **hyperframes** | `.predit/skills/agents/website-to-hyperframes/SKILL.md` |
-| Registry block needed (data-chart, grain-overlay, shader transitions, etc.) | **hyperframes** | `.predit/skills/agents/hyperframes-registry/SKILL.md` |
+| Kinetic typography, HTML/GSAP-native motion, product promo, launch reel | **hyperframes** | `bundled/skills/core/hyperframes.md` + `.show-sidekick/skills/agents/hyperframes.md` |
+| Website → video, UI-driven composition | **hyperframes** | `.show-sidekick/skills/agents/website-to-hyperframes/SKILL.md` |
+| Registry block needed (data-chart, grain-overlay, shader transitions, etc.) | **hyperframes** | `.show-sidekick/skills/agents/hyperframes-registry/SKILL.md` |
 | Pure concat / trim of source clips, no composition needed | **ffmpeg** | `bundled/skills/core/ffmpeg.md` |
 | Selected runtime is unavailable | **escalate** - do not substitute silently | `specs/15-announce-and-escalate.md` -> Escalate Blockers |
 
@@ -74,25 +74,25 @@ decision matrix and the list of features that stay Remotion-only in Phase 1.
 
 | Animation need | Recommended runtime | Read first |
 |---|---|---|
-| Simple fade / slide / scale / spring | Remotion primitives (no plugin) | `.predit/skills/agents/remotion` |
-| Two-state spring with physics | Remotion `spring()` | `.predit/skills/agents/remotion` |
-| Multi-step sequence with offsets | Remotion `Sequence` + `interpolate()` **or** GSAP timeline | `.predit/skills/agents/remotion` + optionally `.predit/skills/agents/gsap-timeline` |
-| Per-word text reveal synced to narration | Remotion `interpolate` driven by word-level transcript (existing `CaptionOverlay` pattern) | `.predit/skills/agents/remotion` |
-| Per-character kinetic typography (SplitText style) | GSAP SplitText inside Remotion | `.predit/skills/agents/gsap-plugins` (SplitText), `.predit/skills/agents/gsap-react` |
-| SVG shape morph between two paths | GSAP MorphSVG inside Remotion | `.predit/skills/agents/gsap-plugins` (MorphSVG) |
-| Curved camera / object motion along a custom path | GSAP MotionPath inside Remotion | `.predit/skills/agents/gsap-plugins` (MotionPath) |
-| SVG line drawing / stroke reveal | GSAP DrawSVG | `.predit/skills/agents/gsap-plugins` (DrawSVG) |
-| Bespoke bezier / elastic / stutter easing | GSAP CustomEase / EasePack / CustomWiggle | `.predit/skills/agents/gsap-plugins` |
-| Layout-to-layout transition (FLIP) | GSAP Flip inside Remotion | `.predit/skills/agents/gsap-plugins` (Flip) |
-| Disney's 12 animation principles for UI motion | framer-motion + Lottie | `.predit/skills/agents/framer-motion`, `.predit/skills/agents/lottie-bodymovin` |
-| Lottie export from After Effects / Figma | Lottie | `.predit/skills/agents/lottie-bodymovin` |
-| Synthetic terminal / CLI demo | Remotion TerminalScene | `.predit/skills/agents/synthetic-screen-recording` |
-| Mathematical / scientific visualization | Manim | `.predit/skills/agents/manim-composer`, `.predit/skills/agents/manimce-best-practices` |
-| D3 data-driven visualization | D3 | `.predit/skills/agents/d3-viz` |
+| Simple fade / slide / scale / spring | Remotion primitives (no plugin) | `.show-sidekick/skills/agents/remotion` |
+| Two-state spring with physics | Remotion `spring()` | `.show-sidekick/skills/agents/remotion` |
+| Multi-step sequence with offsets | Remotion `Sequence` + `interpolate()` **or** GSAP timeline | `.show-sidekick/skills/agents/remotion` + optionally `.show-sidekick/skills/agents/gsap-timeline` |
+| Per-word text reveal synced to narration | Remotion `interpolate` driven by word-level transcript (existing `CaptionOverlay` pattern) | `.show-sidekick/skills/agents/remotion` |
+| Per-character kinetic typography (SplitText style) | GSAP SplitText inside Remotion | `.show-sidekick/skills/agents/gsap-plugins` (SplitText), `.show-sidekick/skills/agents/gsap-react` |
+| SVG shape morph between two paths | GSAP MorphSVG inside Remotion | `.show-sidekick/skills/agents/gsap-plugins` (MorphSVG) |
+| Curved camera / object motion along a custom path | GSAP MotionPath inside Remotion | `.show-sidekick/skills/agents/gsap-plugins` (MotionPath) |
+| SVG line drawing / stroke reveal | GSAP DrawSVG | `.show-sidekick/skills/agents/gsap-plugins` (DrawSVG) |
+| Bespoke bezier / elastic / stutter easing | GSAP CustomEase / EasePack / CustomWiggle | `.show-sidekick/skills/agents/gsap-plugins` |
+| Layout-to-layout transition (FLIP) | GSAP Flip inside Remotion | `.show-sidekick/skills/agents/gsap-plugins` (Flip) |
+| Disney's 12 animation principles for UI motion | framer-motion + Lottie | `.show-sidekick/skills/agents/framer-motion`, `.show-sidekick/skills/agents/lottie-bodymovin` |
+| Lottie export from After Effects / Figma | Lottie | `.show-sidekick/skills/agents/lottie-bodymovin` |
+| Synthetic terminal / CLI demo | Remotion TerminalScene | `.show-sidekick/skills/agents/synthetic-screen-recording` |
+| Mathematical / scientific visualization | Manim | `.show-sidekick/skills/agents/manim-composer`, `.show-sidekick/skills/agents/manimce-best-practices` |
+| D3 data-driven visualization | D3 | `.show-sidekick/skills/agents/d3-viz` |
 | Data chart (bar/line/pie/KPI) | Remotion built-in chart components | `bundled/skills/core/remotion.md` |
-| HyperFrames composition (any motion) | HyperFrames + GSAP (mandatory) | `.predit/skills/agents/hyperframes` + `.predit/skills/agents/gsap-core`, `.predit/skills/agents/gsap-timeline` |
-| HyperFrames composition CLI work (lint/validate/render) | HyperFrames CLI | `.predit/skills/agents/hyperframes-cli` |
-| HyperFrames registry block install (`hyperframes add ...`) | HyperFrames registry | `.predit/skills/agents/hyperframes-registry` |
+| HyperFrames composition (any motion) | HyperFrames + GSAP (mandatory) | `.show-sidekick/skills/agents/hyperframes` + `.show-sidekick/skills/agents/gsap-core`, `.show-sidekick/skills/agents/gsap-timeline` |
+| HyperFrames composition CLI work (lint/validate/render) | HyperFrames CLI | `.show-sidekick/skills/agents/hyperframes-cli` |
+| HyperFrames registry block install (`hyperframes add ...`) | HyperFrames registry | `.show-sidekick/skills/agents/hyperframes-registry` |
 
 ## The "keep it simple" bias
 
@@ -127,7 +127,7 @@ const t = frame / durationInFrames;
 const easedValue = easeFn(t);
 ```
 
-For the full breakdown, read `.predit/skills/agents/gsap-react/SKILL.md`.
+For the full breakdown, read `.show-sidekick/skills/agents/gsap-react/SKILL.md`.
 
 ## Check against the pipeline's stage director
 

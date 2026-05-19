@@ -17,12 +17,12 @@ const outputSchema = z.object({
 const colorGrade = defineTool({
   name: "color_grade",
   capability: "color_grade",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "capability discovery for applying LUTs and simple color transforms to media",
   supports: ["lut", "contrast", "saturation", "provider-selection"],

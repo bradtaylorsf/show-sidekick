@@ -128,7 +128,7 @@ Compatibility aliases may ship as thin tool modules that spread a canonical tool
 
 Routing across providers for a capability (TTS, image, video, music, capture) is `registry.select(cap, prefs?)`. The agent introspects providers via `registry.byCapability('<capability>')` and picks via `select()` or its own logic.
 
-Some capabilities also expose a `predit` provider-selection marker tool for discovery when no concrete provider is bundled yet, or when a manifest needs a stable capability entry. Marker tools use `supports: ['provider-selection']` and throw a clear error if executed directly. When concrete providers exist for the same capability, `registry.select()` ignores the marker and ranks only executable providers.
+Some capabilities also expose a Show Sidekick provider-selection marker tool for discovery when no concrete provider is bundled yet, or when a manifest needs a stable capability entry. Marker tools use `supports: ['provider-selection']` and throw a clear error if executed directly. When concrete providers exist for the same capability, `registry.select()` ignores the marker and ranks only executable providers.
 
 Runner preflight treats marker tools as presence-only entries. It may validate
 that the marker is registered and that `isAvailable()` reports true, but it
@@ -138,9 +138,9 @@ agent or runner selects the real provider for the stage.
 
 ## Setup UX
 
-- `predit setup <tool>` reads the tool's setup metadata and shells out to the tool's own login/install commands. For `cli-login` tools whose binary is already installed, setup may run the login refresh command directly instead of repeating the install step. `predit setup runtimes` is a built-in setup alias for installing the rich composition runtimes `remotion` and `hyperframes` as project-local dev dependencies, including the Remotion CLI and aligned support packages.
-- `predit ls tools --json` includes each tool's `install` string so agents can offer exact setup commands instead of paraphrasing registry metadata.
-- `predit` never collects, stores, or transmits credentials. CLI tools own their own auth (e.g. `higgsfield auth login` keeps a token in the CLI's own config dir; API tools rely on env vars in the user's shell).
+- `showkick setup <tool>` reads the tool's setup metadata and shells out to the tool's own login/install commands. For `cli-login` tools whose binary is already installed, setup may run the login refresh command directly instead of repeating the install step. `showkick setup runtimes` is a built-in setup alias for installing the rich composition runtimes `remotion` and `hyperframes` as project-local dev dependencies, including the Remotion CLI and aligned support packages.
+- `showkick ls tools --json` includes each tool's `install` string so agents can offer exact setup commands instead of paraphrasing registry metadata.
+- Show Sidekick never collects, stores, or transmits credentials. CLI tools own their own auth (e.g. `higgsfield auth login` keeps a token in the CLI's own config dir; API tools rely on env vars in the user's shell).
 - The provider menu groups setup offers by 1-minute fixes (env var or `cli-login`), 5-minute installs, and complex setups (GPU, model downloads).
 
 ## Provider profiles

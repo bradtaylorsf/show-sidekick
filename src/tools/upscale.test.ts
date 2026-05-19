@@ -16,7 +16,7 @@ describe("upscale", () => {
   it("registers the upscale capability marker", async () => {
     expect(upscale.name).toBe("upscale");
     expect(upscale.capability).toBe("upscale");
-    expect(upscale.integration).toMatchObject({ kind: "library", package: "predit" });
+    expect(upscale.integration).toMatchObject({ kind: "library", package: "show-sidekick" });
     await expect(upscale.isAvailable()).resolves.toEqual({ available: true });
   });
 

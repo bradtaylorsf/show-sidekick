@@ -16,7 +16,7 @@ describe("face_restore", () => {
   it("registers the face restore capability marker", async () => {
     expect(faceRestore.name).toBe("face_restore");
     expect(faceRestore.capability).toBe("face_restore");
-    expect(faceRestore.integration).toMatchObject({ kind: "library", package: "predit" });
+    expect(faceRestore.integration).toMatchObject({ kind: "library", package: "show-sidekick" });
     await expect(faceRestore.isAvailable()).resolves.toEqual({ available: true });
   });
 

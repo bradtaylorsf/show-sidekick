@@ -16,7 +16,7 @@ describe("bg_remove", () => {
   it("registers the background removal capability marker", async () => {
     expect(bgRemove.name).toBe("bg_remove");
     expect(bgRemove.capability).toBe("bg_remove");
-    expect(bgRemove.integration).toMatchObject({ kind: "library", package: "predit" });
+    expect(bgRemove.integration).toMatchObject({ kind: "library", package: "show-sidekick" });
     await expect(bgRemove.isAvailable()).resolves.toEqual({ available: true });
   });
 

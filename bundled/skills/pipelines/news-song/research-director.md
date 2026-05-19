@@ -29,4 +29,4 @@ Check that the artifact matches the stage intent, names unresolved risks, and ke
 ## Success Criteria
 
 - The artifact matches `schemas/artifacts/research_brief.schema.json`.
-- The handoff does not refer to sibling repositories, private migration folders, or harness-private project folders.
+- The handoff does not refer to private source folders, untracked build artifacts, or harness-private project folders.

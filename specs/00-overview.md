@@ -1,6 +1,6 @@
 # 00 — Overview
 
-## What predit is
+## What Show Sidekick is
 
 A show-first AI pre-production harness for video. The agent reads instructions (pipeline manifests, stage director skills, vendor knowledge skills) and drives the production stage by stage. The output is a rendered rough cut plus an editor handoff (EDL, Premiere XML, or CapCut draft) so a human editor can finish in their NLE of choice.
 
@@ -31,18 +31,18 @@ For narration-led content (diaries, documentaries, explainers), voiceover is the
 
 ## Pre-production, not full post
 
-`predit`'s job ends at "a rough cut you'd be happy to ship as draft + an editor handoff." A human editor finishes in Premiere, CapCut, or DaVinci. This boundary keeps `predit`'s scope tight and gives the output a credible home in existing professional workflows.
+Show Sidekick's job ends at "a rough cut you'd be happy to ship as draft + an editor handoff." A human editor finishes in Premiere, CapCut, or DaVinci. This boundary keeps Show Sidekick's scope tight and gives the output a credible home in existing professional workflows.
 
 ## Harness vs user project
 
-`predit` is installed as a CLI. Users run it inside their own folder — a *user project* that contains only their shows, characters, brand assets, and runtime workspace. The harness ships bundled pipelines, playbooks, skills, schemas, and starter shows; the user project owns the actual content. See [`10-installation-and-user-projects.md`](10-installation-and-user-projects.md) for the resolution rules.
+Show Sidekick is installed as a CLI. Users run it inside their own folder — a *user project* that contains only their shows, characters, brand assets, and runtime workspace. The harness ships bundled pipelines, playbooks, skills, schemas, and starter shows; the user project owns the actual content. See [`10-installation-and-user-projects.md`](10-installation-and-user-projects.md) for the resolution rules.
 
 ## Layer map
 
 The system has three instruction layers:
 
 1. **Tool layer** (`src/tools/`) — what exists, availability, cost, integration kind.
-2. **Pipeline / skill layer** (`pipelines/`, `skills/pipelines/`) — how `predit` wants those tools used in a given workflow.
+2. **Pipeline / skill layer** (`pipelines/`, `skills/pipelines/`) — how Show Sidekick wants those tools used in a given workflow.
 3. **Vendor knowledge layer** (`skills/agents/`) — provider-specific prompt engineering, parameter tuning.
 
 Reading order for the agent: discover tools → read the relevant pipeline + director skill → read the vendor skill before crafting prompts.

@@ -31,12 +31,12 @@ export function createVisualQaResult(findings: VisualQaOutput["findings"] = []):
 const visualQa = defineTool({
   name: "visual_qa",
   capability: "visual_qa",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "agent-driven visual inspection of sampled render or source frames",
   supports: ["sampled-frame-review", "final-review", "criteria-driven-inspection"],

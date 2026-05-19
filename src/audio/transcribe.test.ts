@@ -265,9 +265,9 @@ function transcriberMarker(): Tool<ToolCall, { segments: Segment[] }> {
   return defineTool({
     name: "transcriber",
     capability: "transcriber",
-    provider: "predit",
+    provider: "show-sidekick",
     status: "beta",
-    integration: { kind: "library", package: "predit", install: "pnpm add predit" },
+    integration: { kind: "library", package: "show-sidekick", install: "npm install show-sidekick" },
     best_for: "marker",
     supports: ["provider-selection"],
     input: toolInput,

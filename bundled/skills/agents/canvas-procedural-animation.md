@@ -8,13 +8,13 @@ epic: 8
 issue: 79
 ---
 
-## predit Usage Contract
+## Show Sidekick Usage Contract
 
 - Read this skill before calling any tool that lists it in `agent_skills`.
-- Route execution through the predit registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
+- Route execution through the Show Sidekick registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
 - Announce paid or externally visible generation before running it, and log provider/model decisions when they affect output.
 - Keep this skill aligned with `bundled/templates/user-project/AGENTS.md`, `specs/06-tool-registry.md`, `specs/08-skills.md`.
-- The source body below is normalized for predit paths and terminology while preserving the original operational details.
+- The source body below is normalized for Show Sidekick paths and terminology while preserving the original operational details.
 
 # Canvas Procedural Animation
 

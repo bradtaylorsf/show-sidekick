@@ -8,13 +8,13 @@ epic: 8
 issue: 80
 ---
 
-## predit Usage Contract
+## Show Sidekick Usage Contract
 
 - Read this skill before calling any tool that lists it in `agent_skills`.
-- Route execution through the predit registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
+- Route execution through the Show Sidekick registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
 - Announce paid or externally visible generation before running it, and log provider/model decisions when they affect output.
 - Keep this skill aligned with `bundled/templates/user-project/AGENTS.md`, `specs/06-tool-registry.md`, `specs/08-skills.md`.
-- The source body below is normalized for predit paths and terminology while preserving the original operational details.
+- The source body below is normalized for Show Sidekick paths and terminology while preserving the original operational details.
 
 ## Model Identity
 
@@ -38,7 +38,7 @@ CSS transitions during render, unclamped interpolation, variable playbackRate wi
 
 # Remotion — Toolkit Extensions
 
-> **Core Remotion knowledge** lives in `.predit/skills/agents/remotion-best-practices/` (synced from the official [remotion-dev/skills](https://github.com/remotion-dev/skills) repo). This file covers **toolkit-specific** patterns only.
+> **Core Remotion knowledge** lives in `.show-sidekick/skills/agents/remotion-best-practices/` (synced from the official [remotion-dev/skills](https://github.com/remotion-dev/skills) repo). This file covers **toolkit-specific** patterns only.
 
 ## Shared Components
 
@@ -190,4 +190,4 @@ If this skill is missing information or could be improved:
   1. Update this skill with improvements
   2. Create a PR to github.com/digitalsamba/claude-code-video-toolkit
 
-Just say "improve this skill" and I'll guide you through updating `.predit/skills/agents/remotion.md`.
+Just say "improve this skill" and I'll guide you through updating `.show-sidekick/skills/agents/remotion.md`.

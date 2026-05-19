@@ -1,92 +1,97 @@
-# predit
+# Show Sidekick
 
-Show-first AI pre-production for video: build the rough cut, then finish in Premiere, DaVinci, CapCut, or any NLE that reads EDL/XML.
+Show Sidekick helps you turn an idea into a video rough cut and an editor handoff that can be finished in Premiere, DaVinci, CapCut, or any NLE that reads EDL/XML.
 
-**Status:** v0.1.0 public-flip candidate. The CLI, bundled starters, registry, runner, and NLE handoff formats are in active alpha; provider availability depends on the tools configured on your machine.
+**Status:** v0.1.0 public release candidate. The CLI, bundled starters, registry, runner, and NLE export formats are in active alpha; paid provider availability depends on your local keys and logins.
 
-## Install
+## What It Does
+
+- Creates a project with agent-readable instructions, starter shows, pipelines, and provider setup hints.
+- Gives Codex, Claude Code, and similar agents a clear production contract in `AGENTS.md`.
+- Builds a free first sample from the `animated-explainer` starter before any paid provider is required.
+- Tracks approvals, checkpoints, cost estimates, and generated assets under the project workspace.
+- Exports a Premiere package today, with DaVinci, CapCut, and EDL handoff paths in the CLI surface.
+
+## Requirements
+
+- Node.js 22 or newer
+- npm, included with Node
+- Git
+- FFmpeg and ffprobe on `PATH`
+- Optional: Python and uv for specialized local tools, not for the first no-key video
+
+Show Sidekick does not store credentials. Paid providers use your environment variables, local `.env`, or provider CLI login.
+
+## Quickstart
+
+Run these commands in the folder where you want your video project:
 
 ```bash
-pnpm add -g predit
+npx -y show-sidekick@latest init --starter animated-explainer --git
+showkick doctor --profile paid-demo
+showkick build animated-explainer/sample-episode --sample
+showkick export animated-explainer/sample-episode --target premiere
 ```
 
-Requirements: Node 22+, pnpm 9+, and `ffmpeg` for local media work.
+The first build uses the bundled starter and can run without API keys. The export writes an editor handoff under `exports/`.
 
-## 60-Second Quickstart
+## No-Key Starter
+
+The fastest free path is the `animated-explainer` starter. It renders a short narrated motion-graphics sample from local starter inputs and uses local/free capabilities where available. It is meant to prove the project works before you add paid image, voice, music, or video providers.
+
+Free/no-key work includes project scaffolding, preflight checks, bundled starter files, local composition, and public/no-key sources exposed by the registry. Work that may spend provider credits includes paid image generation, premium TTS, music generation, video generation, avatar video, and hosted model APIs.
+
+Agents must ask before paid generation. They should state the provider, model or tool, why it is needed, whether it is a sample or full run, and the rough cost before continuing.
+
+## Paid Provider Upgrade
+
+After the no-key sample works, add provider keys to the generated `.env` file or export them in your shell. Then run:
 
 ```bash
-mkdir my-shows
-cd my-shows
-predit init --starter animated-explainer --git
-# optional: add paid provider keys to the generated .env
-predit doctor --profile paid-demo
-predit build animated-explainer/sample-episode --sample
-predit export animated-explainer/sample-episode --target premiere
+showkick doctor --profile paid-demo
+showkick ls tools --json
 ```
 
-For an agent-guided blank project, run `predit init` and give Codex, Claude, or another agent this prompt:
+Use [docs/providers.md](docs/providers.md) to see which env vars or CLI logins unlock each provider. Keep `.env` private; commit `.env.example` only.
+
+## Agent Prompt
+
+Paste this into Codex, Claude Code, or another local coding agent:
 
 ```text
-Read AGENTS.md and .predit/skills/meta/onboarding.md. Ask me what I do, suggest three personalized no-key first-video ideas, then render a 30-second animated predit explainer.
+Help me set up Show Sidekick and make my first no-key video.
+
+First, detect whether I am on macOS or Windows. Check Node 22+, npm, Git, FFmpeg, and ffprobe without changing my machine. Also check Python and uv, but treat them as optional tool runtimes, not blockers for the first no-key video.
+
+If a system prerequisite is missing, explain what it is for and ask before installing it. On macOS, prefer the official Node installer or Homebrew only after I approve. On Windows, prefer the official Node installer or winget only after I approve. Do not install Python, uv, FFmpeg, Git, Node, npm, Homebrew, winget packages, or provider CLIs without asking first.
+
+Initialize the project with:
+npx -y show-sidekick@latest init --starter animated-explainer --git
+
+Before any paid work, run:
+showkick doctor --profile paid-demo
+showkick ls tools --json
+
+For the first artifact, do not spend provider credits. Read AGENTS.md and .show-sidekick/skills/meta/onboarding.md, ask what I do, suggest three personalized no-key video ideas, choose the strongest one if I ask you to proceed, then run:
+showkick build animated-explainer/sample-episode --sample
+showkick export animated-explainer/sample-episode --target premiere
+
+Before any later command that may spend provider credits, stop and ask me for approval with the likely provider, model, purpose, and rough cost.
 ```
 
-The scaffolded `AGENTS.md` tells the agent to run `predit doctor --profile paid-demo`, ask what you do, use safe session context to suggest three first-video ideas, render a free narrated animated explainer before paid generation, and export an editor handoff. The full walkthrough is in [docs/quickstart.md](docs/quickstart.md), including provider setup, sample outputs, and troubleshooting.
+## What Show Sidekick Can Make
 
-## Features
-
-- Show-first model: each show owns its brand, characters, defaults, ingest rules, and episode workspace.
-- Audio-led pipelines: music videos, trailers, and news songs snap visual timing to beats, sections, and climax points.
-- Starter shows: bundled templates scaffold show folders and sample fixtures; `animated-explainer` includes a zero-key narrated Remotion first-video sample with a voiceover cuesheet for editor export.
-- NLE handoff: Premiere XML, DaVinci XML, CapCut draft packages, and CMX 3600 EDL.
-- Registry-driven tools: concrete integrations live in `src/tools/` and are selected by capability, availability, cost, and runtime.
-- Integrated runner: checkpoints, approvals, resume state, first paid-call approval, and cost budget enforcement.
-- Agent-readable production layer: pipeline manifests and director skills stay in Markdown/YAML instead of hard-coded orchestration.
-
-## CLI Surface
-
-`predit --help` lists the current command surface:
-
-| Area | Commands |
-|---|---|
-| Project lifecycle | `init`, `doctor`, `update` |
-| Create | `new show`, `new episode`, `new pipeline`, `new playbook` |
-| Build / run | `build`, `cuesheet`, `resume`, `status`, `approve`, `revise` |
-| Inspect | `ls`, `ls decisions <show>/<episode>`, `show` |
-| Export / ingest | `export`, `import`, `watch` |
-| Tooling | `setup <tool>`, `setup runtimes`, `tools <name>` |
-
-Global flags: `--json`, `--dry-run`, `--verbose`, `--no-color`, `--config <path>`.
-
-Common flows:
-
-- `predit init --starter animated-explainer --git` scaffolds a user project, initializes git, writes `.env.example` and gitignored `.env`, and clones the animated-explainer starter into `shows/animated-explainer/`.
-- `predit init` scaffolds a blank project with agent instructions, bundled pipeline cache, Codex/Claude skill mirrors, first-run next steps, and project-local Remotion/HyperFrames dependencies when npm is available. Use `--no-setup-runtimes` to skip the install.
-- The scaffolded `.gitignore` keeps generated workspaces, renders, exports, local media, `.predit/`, and `.env` out of git while leaving shows, pipelines, playbooks, skills, and `.env.example` shareable.
-- Shared project clones restore the gitignored `.predit/` cache automatically before commands run, using the locally installed harness version.
-- Commands load `.env`, `.env.<command>`, and `.env.local` from the project root; shell environment variables win over file values.
-- `predit doctor --profile paid-demo` checks OpenAI GPT Image 2 stills, OpenAI and ElevenLabs TTS, Higgsfield clips, ffmpeg, and ffprobe readiness without spending provider credits.
-- `predit setup runtimes` can be rerun later to repair or add Remotion, the Remotion CLI, aligned support deps, and HyperFrames as project-local dev dependencies when they were skipped or unavailable at init.
-- `predit new show <slug> --from <starter>` clones a starter-backed show; `predit new show <slug> --pipelines <pipeline>` creates a custom show bound to existing manifests.
-- `predit new pipeline <slug>` creates `pipelines/<slug>.yaml` plus `skills/pipelines/<slug>/idea-director.md`.
-- `predit update --check` verifies the local `.predit/` cache against the installed harness without writing.
-- `predit build <show>/<episode> --sample` runs a short sample pass through the integrated Runner.
-- `predit status <show>/<episode>` reports current stage, checkpoint status, costs, and the latest decision.
-- `predit export <show>/<episode> --target premiere|davinci|capcut|edl` writes an editor handoff package under `exports/`; pass `--overwrite` to replace an existing package.
-- `predit import <path> --as <show>/<episode>` and `predit watch` turn watched drops into episode YAML.
-- `predit ls starters` lists bundled starter shows, fixture sizes, pipelines, and expected sample durations.
+See [docs/show-types.md](docs/show-types.md) for the show type catalog. The initial catalog includes animated explainers, music videos, news songs, product or workflow demos, cinematic trailers, talking-head/avatar pieces, hybrid source-and-generated videos, localization dubs, and clip factories.
 
 ## Docs
 
-- [specs/](specs/) - design specs and implementation contract
-- [AGENTS.md](AGENTS.md) - harness contributor contract for agents working in this repo
-- [CONTRIBUTING.md](CONTRIBUTING.md) - development setup and extension guide
-- [docs/quickstart.md](docs/quickstart.md) - first rendered sample from a fresh machine
-- [docs/demo-readiness.md](docs/demo-readiness.md) - maintainer demo readiness and green paths
-- [docs/demo-matrix.md](docs/demo-matrix.md) - starter-backed demo matrix usage
-- [docs/full-demo-benchmark.md](docs/full-demo-benchmark.md) - agent-led full benchmark plan across demo types and runtimes
-- [docs/providers.md](docs/providers.md) - generated provider catalog from the registry
-- [CHANGELOG.md](CHANGELOG.md) - release notes
-- [LICENSE](LICENSE) - Apache-2.0
+- [Quickstart](docs/quickstart.md)
+- [Providers](docs/providers.md)
+- [Show types](docs/show-types.md)
+- [Troubleshooting](docs/quickstart.md#troubleshooting)
+- [Contributing](CONTRIBUTING.md)
+- [Release notes](CHANGELOG.md)
+- [Specs](specs/)
 
 ## License
 

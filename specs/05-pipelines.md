@@ -2,7 +2,7 @@
 
 ## Where pipelines live
 
-Pipelines are bundled with the harness and cached locally inside the user project at `.predit/pipelines/`. Users may override any pipeline by placing a same-named file at `<project>/pipelines/<slug>.yaml` — the resolver checks the local path first, then falls back to the cache. See [`10-installation-and-user-projects.md`](10-installation-and-user-projects.md).
+Pipelines are bundled with the harness and cached locally inside the user project at `.show-sidekick/pipelines/`. Users may override any pipeline by placing a same-named file at `<project>/pipelines/<slug>.yaml` — the resolver checks the local path first, then falls back to the cache. See [`10-installation-and-user-projects.md`](10-installation-and-user-projects.md).
 
 A pipeline is *referenced* from a show via the `show.pipelines: { <name>: { ... } }` map (see [`04-shows-and-episodes.md`](04-shows-and-episodes.md) → "Pipeline binding"). A show may reference multiple pipelines. The harness rejects an episode that names a pipeline the show doesn't declare in its `pipelines` map.
 
@@ -10,7 +10,7 @@ Bundled demo-readiness slugs are governed by `src/pipelines/demo-inventory.ts` a
 
 ## Manifest schema
 
-Pipelines are declarative YAML manifests at `pipelines/<slug>.yaml` (or the bundled equivalent in `.predit/pipelines/<slug>.yaml`). They describe the workflow; how-to lives in stage director skills (Markdown).
+Pipelines are declarative YAML manifests at `pipelines/<slug>.yaml` (or the bundled equivalent in `.show-sidekick/pipelines/<slug>.yaml`). They describe the workflow; how-to lives in stage director skills (Markdown).
 
 ```yaml
 slug: music-video
@@ -143,7 +143,7 @@ export:
 | `review_focus` | Reviewer hints — what to scrutinize |
 | `success_criteria` | Predicates on the produced artifact |
 | `human_approval` | `required` (always prompt) / `optional` (prompt in interactive, skip in non-interactive) / `never` |
-| `human_approval_default` | Source-compatible boolean default preserved from migrated manifests; `human_approval` is the normalized predit policy |
+| `human_approval_default` | Source-compatible boolean default preserved from migrated manifests; `human_approval` is the normalized Show Sidekick policy |
 | `checkpoint_required` | Whether the source pipeline requires a checkpoint at this stage |
 | `audio_sync` | `build` (build the cuesheet here) / `required` (must exist before this stage) / `none` |
 | `sample_mode_supported` | Whether `--sample` is honored at this stage |
@@ -184,7 +184,7 @@ The manifest schema enforces these structural rules:
 
 ## Tool-name compatibility
 
-Migrated manifests may preserve source-harness tool names when those names are part of the pipeline contract. predit registers compatibility names such as `scene_detect`, `tts_selector`, `image_selector`, `video_selector`, `web_search`, and `hyperframes_compose` so manifests do not silently drift from their source semantics. Selector entries are registry markers: concrete execution still routes through `registry.select(<capability>)` or a provider-specific tool.
+Migrated manifests may preserve source-harness tool names when those names are part of the pipeline contract. Show Sidekick registers compatibility names such as `scene_detect`, `tts_selector`, `image_selector`, `video_selector`, `web_search`, and `hyperframes_compose` so manifests do not silently drift from their source semantics. Selector entries are registry markers: concrete execution still routes through `registry.select(<capability>)` or a provider-specific tool.
 
 ## `metadata` block (open passthrough)
 
@@ -222,7 +222,7 @@ sample:
 
 Sample scope varies by pipeline: music-video samples are 10-18s (intro + first 4 verse lines); news-song samples 15-20s (no-caption PS2 preview); cinematic samples 10-15s (hook + one motion beat).
 
-`sample_support` declares how `predit build <show>/<episode> --sample` may run:
+`sample_support` declares how `showkick build <show>/<episode> --sample` may run:
 
 - `zero-key`: deterministic local starter sample, no provider credentials.
 - `paid`: provider-backed sample through the Runner using a configured provider profile.
@@ -283,7 +283,7 @@ Behaviors:
 - Stage transitions are deterministic: load → run → checkpoint → check approval → advance.
 - Stages call the agent through a strict interface — agent gets the full context (brief, prior artifacts, registry summary, cuesheet if relevant) and returns the canonical artifact.
 - Checkpoints write `projects/<show>/<episode>/state.json` and `projects/<show>/<episode>/checkpoints/<stage>.json`.
-- Human approval is an inline prompt in interactive mode; in `--non-interactive`, the harness exits with `awaiting_human` and waits for `predit approve` or `predit revise`.
+- Human approval is an inline prompt in interactive mode; in `--non-interactive`, the harness exits with `awaiting_human` and waits for `showkick approve` or `showkick revise`.
 - Sample mode is a flag threaded into the stage context; stages honoring `sample_mode_supported: true` reduce scope, asset counts, and cost.
 - The runner ensures `audio_sync: build` stages complete before any `audio_sync: required` stage runs.
 

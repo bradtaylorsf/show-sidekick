@@ -26,5 +26,5 @@
 
 - **Bun**: faster, but Node 22's native TS strip plus the broader maturity on platform APIs (`child_process` edge cases, signal handling) outweighs the speed win for a CLI workload.
 - **Deno**: would force npm-compat shims for Commander, Zod, and yaml. Not worth it.
-- **tsup / esbuild**: useful when shipping a bundled CLI binary; `tsc` is fine for a Node-only `predit` binary. Revisit if we ever ship single-file binaries.
+- **tsup / esbuild**: useful when shipping a bundled CLI binary; `tsc` is fine for a Node-only Show Sidekick binary. Revisit if we ever ship single-file binaries.
 - **yargs / cac**: Commander has the broadest mindshare; that matters because LLM agents writing subcommands will fall back on common patterns.

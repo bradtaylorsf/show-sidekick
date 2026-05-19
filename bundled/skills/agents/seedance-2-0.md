@@ -1,6 +1,6 @@
 ---
 name: "seedance-2-0"
-description: "Generate cinematic clips with ByteDance Seedance 2.0 — the preferred premium video model in predit when a paid gateway is configured. Use when: (1) producing trailers, teasers, hype edits, or premium cinematic clips, (2) needing native synchronized audio (speech, SFX, ambience) in a single pass, (3) needing multi-shot cuts inside one generation, (4) needing director-level camera control, (5) needing lip-sync from quoted dialogue in the prompt, (6) needing reference-conditioned generation with up to 9 images + 3 video clips + 3 audio clips, (7) wanting consistent character identity across shots. Accessible via fal.ai (`seedance_video` tool), HeyGen (Video Agent / Avatar Shots), Replicate, Runway (Enterprise, non-US), Freepik, BytePlus ModelArk, Higgsfield, Pollo, and other aggregators."
+description: "Generate cinematic clips with ByteDance Seedance 2.0 — the preferred premium video model in Show Sidekick when a paid gateway is configured. Use when: (1) producing trailers, teasers, hype edits, or premium cinematic clips, (2) needing native synchronized audio (speech, SFX, ambience) in a single pass, (3) needing multi-shot cuts inside one generation, (4) needing director-level camera control, (5) needing lip-sync from quoted dialogue in the prompt, (6) needing reference-conditioned generation with up to 9 images + 3 video clips + 3 audio clips, (7) wanting consistent character identity across shots. Accessible via fal.ai (`seedance_video` tool), HeyGen (Video Agent / Avatar Shots), Replicate, Runway (Enterprise, non-US), Freepik, BytePlus ModelArk, Higgsfield, Pollo, and other aggregators."
 applies_to: "agents"
 agent_skill: true
 critical: true
@@ -8,13 +8,13 @@ epic: 8
 issue: 73
 ---
 
-## predit Usage Contract
+## Show Sidekick Usage Contract
 
 - Read this skill before calling any tool that lists it in `agent_skills`.
-- Route execution through the predit registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
+- Route execution through the Show Sidekick registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
 - Announce paid or externally visible generation before running it, and log provider/model decisions when they affect output.
 - Keep this skill aligned with `bundled/templates/user-project/AGENTS.md`, `specs/06-tool-registry.md`, `specs/08-skills.md`.
-- The source body below is normalized for predit paths and terminology while preserving the original operational details.
+- The source body below is normalized for Show Sidekick paths and terminology while preserving the original operational details.
 
 ## Model Identity
 
@@ -38,9 +38,9 @@ Do not route complex camera, lip-sync, native-audio, or multi-shot work to cheap
 
 # Seedance 2.0 (ByteDance)
 
-Seedance 2.0 is the ByteDance Seed team's unified multimodal video+audio model (released Feb 2026, globally available via partner APIs April 2026). It is the **preferred premium default** for cinematic, trailer, teaser, and motion-led work inside predit whenever any supporting gateway is configured. predit wraps four gateways directly (`seedance_video` → fal.ai, `seedance_replicate` → Replicate, `runway_video` with `model="seedance_2.0"` → Runway, `higgsfield_video` with `model="seedance_2.0"` → Higgsfield); BytePlus / Freepik / HeyGen-Video-Agent wrappers are on the roadmap. The scoring engine deduplicates by `provider="seedance"` so whichever gateway the user has configured wins automatically — agents should pass `preferred_provider="seedance"` to `video_selector` (or let the scorer pick) rather than routing to a specific gateway by name.
+Seedance 2.0 is the ByteDance Seed team's unified multimodal video+audio model (released Feb 2026, globally available via partner APIs April 2026). It is the **preferred premium default** for cinematic, trailer, teaser, and motion-led work inside Show Sidekick whenever any supporting gateway is configured. Show Sidekick wraps four gateways directly (`seedance_video` → fal.ai, `seedance_replicate` → Replicate, `runway_video` with `model="seedance_2.0"` → Runway, `higgsfield_video` with `model="seedance_2.0"` → Higgsfield); BytePlus / Freepik / HeyGen-Video-Agent wrappers are on the roadmap. The scoring engine deduplicates by `provider="seedance"` so whichever gateway the user has configured wins automatically — agents should pass `preferred_provider="seedance"` to `video_selector` (or let the scorer pick) rather than routing to a specific gateway by name.
 
-## Why it is the predit premium default
+## Why it is the Show Sidekick premium default
 
 | Capability | Seedance 2.0 | Notes |
 |---|---|---|
@@ -58,9 +58,9 @@ Switch away only for a specific reason: strict budget (use the `fast` variant or
 
 ## Provider surfaces
 
-| Surface | Env | predit tool | Status | Notes |
+| Surface | Env | Show Sidekick tool | Status | Notes |
 |---|---|---|---|---|
-| **fal.ai** (primary) | `FAL_KEY` | `seedance_video` | ✅ wrapped | Model IDs below. Supports T2V, I2V, reference-to-video; `standard` and `fast` variants. Default in predit. |
+| **fal.ai** (primary) | `FAL_KEY` | `seedance_video` | ✅ wrapped | Model IDs below. Supports T2V, I2V, reference-to-video; `standard` and `fast` variants. Default in Show Sidekick. |
 | **Replicate** | `REPLICATE_API_TOKEN` | `seedance_replicate` | ✅ wrapped | `bytedance/seedance-2.0` + `bytedance/seedance-2.0-fast`. Standard Replicate prediction API. |
 | **Runway** | `RUNWAY_API_KEY` | `runway_video` (model: `seedance_2.0`) | ✅ wrapped | Third-party Seedance 2.0 model inside Runway. **Unlimited/Enterprise plans, non-US only**. Selected via `model` param. |
 | **Higgsfield** | `HIGGSFIELD_API_KEY` + `_SECRET` | `higgsfield_video` (model: `seedance_2.0`) | ✅ wrapped | Seedance 2.0 is the default model on this tool. Emphasis on character identity + long-form chaining. |
@@ -83,12 +83,12 @@ bytedance/seedance-2.0/fast/reference-to-video
 Pricing (fal.ai, 720p): standard $0.3034 / s (T2V), $0.3024 / s (I2V). Fast $0.2419 / s across endpoints.
 The `fast` variant trades some camera/motion fidelity for latency and cost — do **not** route slow-mo, multi-shot, or dolly-heavy prompts to `fast` on the first try.
 
-## Calling Seedance 2.0 inside predit
+## Calling Seedance 2.0 inside Show Sidekick
 
 Always go through `video_selector` with `preferred_provider="seedance"` (or let the scoring engine pick it):
 
 ```python
-from predit registry import registry
+from Show Sidekick registry import registry
 registry.ensure_discovered()
 selector = registry.get("video_selector")
 result = selector.execute({
@@ -285,7 +285,7 @@ Shot 3 (extreme close-up, rack focus): hero's eyes open, wind whipping.
 4. **Extend and add shots** — move to multi-shot or longer duration only after a single-shot version is clean.
 5. **Keep a per-clip README** with prompt + seed + variant for every shot that makes the cut, so the compose stage can re-render consistent retakes.
 
-## Integration notes for predit pipelines
+## Integration notes for Show Sidekick pipelines
 
 - **Cinematic pipeline:** Seedance 2.0 is the default video model. Use 21:9 for hero, multi-shot for montage beats, reference-to-video when the brief has a visual bible.
 - **Animated explainer:** Use Seedance 2.0 for the establishing / mood clips only; most shots should stay in Remotion. Don't replace Remotion motion graphics with Seedance — different tool, different job.

@@ -2,18 +2,18 @@
 
 ## Why this is a first-class feature
 
-`predit` produces a rough cut. The output is good enough to ship as draft but is designed to be finished in a real NLE. Exporting cleanly to Premiere, CapCut, or DaVinci — with timed cuts, linked assets, and caption tracks — is what makes `predit` a real pre-production tool instead of a closed render pipeline.
+Show Sidekick produces a rough cut. The output is good enough to ship as draft but is designed to be finished in a real NLE. Exporting cleanly to Premiere, CapCut, or DaVinci — with timed cuts, linked assets, and caption tracks — is what makes Show Sidekick a real pre-production tool instead of a closed render pipeline.
 
 ## CLI surface
 
 ```bash
-predit export <show>/<episode> --target premiere     # Premiere XML + linked assets
-predit export <show>/<episode> --target capcut       # CapCut draft format
-predit export <show>/<episode> --target davinci      # DaVinci Resolve XML
-predit export <show>/<episode> --format edl          # raw EDL (CMX 3600)
-predit export <show>/<episode> --target premiere --asset-link-mode copy
-predit export <show>/<episode> --target premiere --out handoffs
-predit export <show>/<episode> --target premiere --overwrite
+showkick export <show>/<episode> --target premiere     # Premiere XML + linked assets
+showkick export <show>/<episode> --target capcut       # CapCut draft format
+showkick export <show>/<episode> --target davinci      # DaVinci Resolve XML
+showkick export <show>/<episode> --format edl          # raw EDL (CMX 3600)
+showkick export <show>/<episode> --target premiere --asset-link-mode copy
+showkick export <show>/<episode> --target premiere --out handoffs
+showkick export <show>/<episode> --target premiere --overwrite
 ```
 
 ## Source artifacts
@@ -58,7 +58,7 @@ export:
   default_target: capcut
 ```
 
-`predit export --target X` validates against `supported_targets` and refuses if the target is unsupported (with a clear message).
+`showkick export --target X` validates against `supported_targets` and refuses if the target is unsupported (with a clear message).
 
 ## Asset linkage
 

@@ -47,7 +47,7 @@ describe("init command", () => {
     expect(setupRuntimes).toHaveBeenCalledWith(projectRoot);
     await expect(readFile(path.join(projectRoot, "CLAUDE.md"), "utf8")).resolves.toContain("AGENTS.md");
     await expect(readFile(path.join(projectRoot, "AGENTS.md"), "utf8")).resolves.toContain("user project");
-    await expect(readFile(path.join(projectRoot, ".gitignore"), "utf8")).resolves.toContain(".predit/");
+    await expect(readFile(path.join(projectRoot, ".gitignore"), "utf8")).resolves.toContain(".show-sidekick/");
     await expect(readFile(path.join(projectRoot, ".gitignore"), "utf8")).resolves.toContain("exports/");
     await expect(readFile(path.join(projectRoot, ".env.example"), "utf8")).resolves.toContain("OPENAI_API_KEY=");
     await expect(readFile(path.join(projectRoot, ".env"), "utf8")).resolves.toContain("OPENAI_API_KEY=");
@@ -88,7 +88,7 @@ describe("init command", () => {
     const { io } = captureIo();
     await expect(
       createInitHandler(io, { bundledRoot: () => bundledRoot, cwd: () => projectRoot })(command({})),
-    ).rejects.toThrow("predit update");
+    ).rejects.toThrow("showkick update");
   });
 
   it("runs git initialization commands in order when --git is set", async () => {
@@ -110,7 +110,7 @@ describe("init command", () => {
       setupRuntimes: vi.fn(async () => undefined),
     })(command({ git: true }));
 
-    expect(calls).toEqual([["init"], ["add", "."], ["commit", "-m", "Initial predit project scaffold."]]);
+    expect(calls).toEqual([["init"], ["add", "."], ["commit", "-m", "Initial Show Sidekick project scaffold."]]);
   });
 
   it("installs rich composition runtimes during init by default", async () => {
@@ -175,13 +175,13 @@ describe("init command", () => {
       setupRuntimes: vi.fn(async () => undefined),
     })(command({}));
 
-    expect(output().stdout).toContain("predit doctor --profile paid-demo");
+    expect(output().stdout).toContain("showkick doctor --profile paid-demo");
     expect(output().stdout).toContain("installed Remotion/HyperFrames");
     expect(output().stdout).toContain("edit .env with any provider keys");
-    expect(output().stdout).toContain("predit ls starters");
-    expect(output().stdout).toContain("predit new show first-video --from animated-explainer");
-    expect(output().stdout).toContain("Read AGENTS.md and .predit/skills/meta/onboarding.md");
-    expect(output().stdout).toContain("30-second animated predit explainer");
+    expect(output().stdout).toContain("showkick ls starters");
+    expect(output().stdout).toContain("showkick new show first-video --from animated-explainer");
+    expect(output().stdout).toContain("Read AGENTS.md and .show-sidekick/skills/meta/onboarding.md");
+    expect(output().stdout).toContain("30-second animated Show Sidekick explainer");
   });
 
   it("clones a requested starter and normalizes show.yaml to the starter slug", async () => {
@@ -270,7 +270,11 @@ async function writeFakeBundled(root: string): Promise<void> {
   await mkdir(path.join(root, "templates", "user-project"), { recursive: true });
   await writeFile(path.join(root, "templates", "user-project", "CLAUDE.md"), "# test\nRead AGENTS.md\n", "utf8");
   await writeFile(path.join(root, "templates", "user-project", "AGENTS.md"), "# test user project\n", "utf8");
-  await writeFile(path.join(root, "templates", "user-project", ".gitignore"), ".predit/\nprojects/\nexports/\n.env\n", "utf8");
+  await writeFile(
+    path.join(root, "templates", "user-project", ".gitignore"),
+    ".show-sidekick/\nprojects/\nexports/\n.env\n",
+    "utf8",
+  );
   await writeFile(
     path.join(root, "templates", "user-project", ".env.example"),
     "OPENAI_API_KEY=\nELEVENLABS_API_KEY=\n",

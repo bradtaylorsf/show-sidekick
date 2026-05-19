@@ -35,11 +35,11 @@ For repeatable agent runs, fill the generated `.env` in the benchmark project wi
 From a fresh user project:
 
 ```bash
-predit init
-predit doctor --profile paid-demo --json
+showkick init
+showkick doctor --profile paid-demo --json
 ```
 
-The benchmark can continue only when doctor reports `ok` for Higgsfield binary/login, OpenAI, ElevenLabs, ffmpeg, and ffprobe. `predit init` installs Remotion and HyperFrames by default when npm is available; rerun `predit setup runtimes` before Remotion or HyperFrames lanes only if runtime setup was skipped, failed, or needs repair.
+The benchmark can continue only when doctor reports `ok` for Higgsfield binary/login, OpenAI, ElevenLabs, ffmpeg, and ffprobe. `showkick init` installs Remotion and HyperFrames by default when npm is available; rerun `showkick setup runtimes` before Remotion or HyperFrames lanes only if runtime setup was skipped, failed, or needs repair.
 
 ## Suites
 
@@ -60,13 +60,13 @@ Run these one at a time in a user project so failures are easy to inspect and pr
 
 | Demo | Pipeline | Starter / setup | Primary coverage |
 |---|---|---|---|
-| Personalized no-key animated explainer | `animated-explainer` | `predit new show first-video --from animated-explainer`; ask what the user does; rewrite `script.txt` into four safe context-aware narrated scene lines | Agent onboarding, local TTS, zero-key procedural Remotion renderer, script personalization, cuesheet, export path |
-| Provider scratch explainer | `animated-explainer` | `predit new show explainer --from animated-explainer` | OpenAI GPT Image 2 still frames, ElevenLabs narration, Higgsfield Seedance clips, configured runtime render when available |
-| Audio-led supplied-track video | `music-video` or `news-song` | `predit new show audio-demo --from music-video` or `--from news-song` | Audio master clock, lyric-first sample planning, GPT Image 2 prompt packet, beat-synced edit, exports |
-| Hosted / talking-head follow-up | `talking-head` | `predit new show host-demo --pipelines talking-head` | Voiceover master clock, captions, support cards, Remotion-oriented runtime choice |
-| Screen / workflow walkthrough | `screen-demo` | `predit new show workflow --from ai-workflow-demo` | Synthetic terminal, UI demo structure, Remotion or HyperFrames proposal discussion |
-| Mixed source + generated support | `hybrid` | `predit new show hybrid-demo --pipelines hybrid` plus a local source clip | Source media review, generated inserts, overlay density, runtime selection |
-| Cinematic image-to-video trailer | `cinematic` | `predit new show trailer --from cinematic-trailer` | Reference image, motion-led promise, Higgsfield clip generation |
+| Personalized no-key animated explainer | `animated-explainer` | `showkick new show first-video --from animated-explainer`; ask what the user does; rewrite `script.txt` into four safe context-aware narrated scene lines | Agent onboarding, local TTS, zero-key procedural Remotion renderer, script personalization, cuesheet, export path |
+| Provider scratch explainer | `animated-explainer` | `showkick new show explainer --from animated-explainer` | OpenAI GPT Image 2 still frames, ElevenLabs narration, Higgsfield Seedance clips, configured runtime render when available |
+| Audio-led supplied-track video | `music-video` or `news-song` | `showkick new show audio-demo --from music-video` or `--from news-song` | Audio master clock, lyric-first sample planning, GPT Image 2 prompt packet, beat-synced edit, exports |
+| Hosted / talking-head follow-up | `talking-head` | `showkick new show host-demo --pipelines talking-head` | Voiceover master clock, captions, support cards, Remotion-oriented runtime choice |
+| Screen / workflow walkthrough | `screen-demo` | `showkick new show workflow --from ai-workflow-demo` | Synthetic terminal, UI demo structure, Remotion or HyperFrames proposal discussion |
+| Mixed source + generated support | `hybrid` | `showkick new show hybrid-demo --pipelines hybrid` plus a local source clip | Source media review, generated inserts, overlay density, runtime selection |
+| Cinematic image-to-video trailer | `cinematic` | `showkick new show trailer --from cinematic-trailer` | Reference image, motion-led promise, Higgsfield clip generation |
 
 ### Suite 3: Manifest Coverage Sweep
 
@@ -93,16 +93,16 @@ Paid-demo samples create multiple generated motion clips from script beats. They
 For Remotion:
 
 1. Choose a brief that needs captions, charts, support cards, presenter/avatar, or typed React scenes.
-2. Read `.predit/skills/meta/animation-runtime-selector.md` and `.predit/skills/core/remotion.md`.
-3. Confirm `remotion` availability through `predit ls tools --json`; if unavailable, ask to run `predit setup runtimes`.
+2. Read `.show-sidekick/skills/meta/animation-runtime-selector.md` and `.show-sidekick/skills/core/remotion.md`.
+3. Confirm `remotion` availability through `showkick ls tools --json`; if unavailable, ask to run `showkick setup runtimes`.
 4. Require the agent to log a `render_runtime_selection` decision with Remotion selected.
 5. Verify the resulting render report has `runtime_used: remotion` and caption/style validation steps when applicable.
 
 For HyperFrames:
 
 1. Choose a brief that needs kinetic typography, product-promo HTML/CSS motion, website-to-video, or GSAP-heavy sequences.
-2. Read `.predit/skills/meta/animation-runtime-selector.md` and `.predit/skills/core/hyperframes.md`.
-3. Confirm `npx --no-install hyperframes --version` and `npx hyperframes doctor`; if unavailable, ask to run `predit setup runtimes`.
+2. Read `.show-sidekick/skills/meta/animation-runtime-selector.md` and `.show-sidekick/skills/core/hyperframes.md`.
+3. Confirm `npx --no-install hyperframes --version` and `npx hyperframes doctor`; if unavailable, ask to run `showkick setup runtimes`.
 4. Require lint and validate before render.
 5. Verify the render report includes HyperFrames validation steps and `runtime_used: hyperframes`.
 
@@ -113,9 +113,9 @@ If both runtimes are available, the agent must present both options and wait for
 Give this to Codex or Claude inside the fresh user project:
 
 ```text
-Read AGENTS.md, then read .predit/skills/meta/onboarding.md and .predit/skills/meta/animation-runtime-selector.md.
+Read AGENTS.md, then read .show-sidekick/skills/meta/onboarding.md and .show-sidekick/skills/meta/animation-runtime-selector.md.
 
-Run `predit doctor --profile paid-demo --json` and summarize provider readiness. Do not spend credits until I approve.
+Run `showkick doctor --profile paid-demo --json` and summarize provider readiness. Do not spend credits until I approve.
 
 Create one benchmark sample for: <demo name>. Use pipeline <pipeline>. Keep it to sample scope. If this is the personalized no-key animated explainer, ask what the user does, use only safe context from this project/session, offer three ideas, write four short narrated scene lines to the starter script file, and do not use paid providers. Log every issue, confusing message, failed tool call, output path, and workaround in projects/<show>/<episode>/notes.md.
 

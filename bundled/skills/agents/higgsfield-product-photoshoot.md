@@ -8,10 +8,10 @@ epic: 8
 issue: 81
 ---
 
-## predit Usage Contract
+## Show Sidekick Usage Contract
 
 - Read this skill before calling any tool that lists it in `agent_skills`.
-- Route execution through the predit registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
+- Route execution through the Show Sidekick registry or CLI workflow; do not bypass the harness with ad-hoc tool scripts.
 - Announce paid or externally visible generation before running it, and log provider/model decisions when they affect output.
 - Keep this skill aligned with `bundled/templates/user-project/AGENTS.md`, `specs/06-tool-registry.md`, `specs/08-skills.md`.
 
@@ -28,7 +28,7 @@ This companion skill is distilled from the mirrored Higgsfield generation skill 
 
 ## Required Cross-Reads
 
-- `bundled/.predit/skills/agents/higgsfield-generate.md`
-- `bundled/.predit/skills/agents/higgsfield-generate/references/model-catalog.md`
-- `bundled/.predit/skills/agents/higgsfield-generate/references/media-inputs.md`
-- `bundled/.predit/skills/agents/higgsfield-generate/references/prompt-engineering.md`
+- `bundled/.show-sidekick/skills/agents/higgsfield-generate.md`
+- `bundled/.show-sidekick/skills/agents/higgsfield-generate/references/model-catalog.md`
+- `bundled/.show-sidekick/skills/agents/higgsfield-generate/references/media-inputs.md`
+- `bundled/.show-sidekick/skills/agents/higgsfield-generate/references/prompt-engineering.md`

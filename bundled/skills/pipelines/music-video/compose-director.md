@@ -13,7 +13,7 @@ Use this stage after edit decisions are approved. Render the music-video sample 
 
 ## HyperFrames Preference
 
-HyperFrames intro animation > Higgsfield text-to-video for opening title cards. Read `.predit/skills/core/hyperframes.md` before HyperFrames work.
+HyperFrames intro animation > Higgsfield text-to-video for opening title cards. Read `.show-sidekick/skills/core/hyperframes.md` before HyperFrames work.
 
 ## Runtime Lock
 

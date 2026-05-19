@@ -15,12 +15,12 @@ const outputSchema = z.object({
 const faceRestore = defineTool({
   name: "face_restore",
   capability: "face_restore",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "capability discovery for restoring degraded or low-quality face imagery",
   supports: ["face-restoration", "portrait-repair", "provider-selection"],

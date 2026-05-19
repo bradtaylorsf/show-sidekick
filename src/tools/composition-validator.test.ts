@@ -13,7 +13,7 @@ describe("composition_validator", () => {
   it("registers the composition validation capability", () => {
     expect(compositionValidator.name).toBe("composition_validator");
     expect(compositionValidator.capability).toBe("composition_validation");
-    expect(compositionValidator.integration).toMatchObject({ kind: "library", package: "predit" });
+    expect(compositionValidator.integration).toMatchObject({ kind: "library", package: "show-sidekick" });
   });
 
   it("passes when cuts cover the full duration without gaps", () => {

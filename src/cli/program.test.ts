@@ -213,7 +213,7 @@ describe("createProgram", () => {
 
     await program.parseAsync(["node", "predit", "init", "--no-setup-runtimes"], { from: "node" });
 
-    expect(output().stdout).toContain("init: scaffolded predit project at");
+    expect(output().stdout).toContain("init: scaffolded Show Sidekick project at");
     await expect(access(path.join(root, ".predit", "version.json"))).resolves.toBeUndefined();
   });
 

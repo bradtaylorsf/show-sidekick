@@ -1,6 +1,6 @@
 # Demo Readiness
 
-This guide is for reviewers and coding agents validating `predit` as a CLI-first harness. Default to the CLI/user-project model unless you are deliberately maintaining the harness internals.
+This guide is for reviewers and coding agents validating Show Sidekick as a CLI-first harness. Default to the CLI/user-project model unless you are deliberately maintaining the harness internals.
 
 ## Operating Models
 
@@ -14,23 +14,23 @@ pnpm demo-matrix --paid-demo --keep-workdir
 
 This model is allowed for harness development, but it is not how reviewers should judge the product experience.
 
-The CLI/user-project model runs `predit` from a separate folder owned by the show operator. The harness provides the CLI and the `.predit/` bundled cache; the user project owns `shows/`, `projects/`, renders, exports, and local overrides. Reviewers and agents should use this model for demos:
+The CLI/user-project model runs Show Sidekick from a separate folder owned by the show operator. The harness provides the CLI and the `.show-sidekick/` bundled cache; the user project owns `shows/`, `projects/`, renders, exports, and local overrides. Reviewers and agents should use this model for demos:
 
 ```bash
-predit init --starter animated-explainer
-predit build animated-explainer/sample-episode --sample
-predit export animated-explainer/sample-episode --target premiere
+showkick init --starter animated-explainer
+showkick build animated-explainer/sample-episode --sample
+showkick export animated-explainer/sample-episode --target premiere
 ```
 
-Do not require operators to work inside the harness repo. Do not edit `.predit/` inside the user project; refresh it with `predit update` or override resources in project-local `pipelines/`, `playbooks/`, or `skills/`.
+Do not require operators to work inside the harness repo. Do not edit `.show-sidekick/` inside the user project; refresh it with `showkick update` or override resources in project-local `pipelines/`, `playbooks/`, or `skills/`.
 
 ## Local Development Without Publishing
 
 Use this path when validating local harness changes before publishing a package. The CLI is built once in the harness repo, then invoked by absolute `dist` path from a separate user project.
 
 ```bash
-HARNESS=/absolute/path/to/predit            # your harness checkout
-DEMO_ROOT=/tmp/predit-demo
+HARNESS=/absolute/path/to/show-sidekick            # your harness checkout
+DEMO_ROOT=/tmp/show-sidekick-demo
 
 cd "$HARNESS"
 pnpm install
@@ -56,7 +56,7 @@ Expected local outputs:
 
 The zero-key `animated-explainer` sample can run without provider credentials. Its renderer turns the starter script lines into narrated procedural Remotion motion-graphics scenes and writes the voiceover cuesheet needed for export, so agent-guided onboarding can personalize the first artifact before any paid calls. Paid demo lanes use the `paid-demo` provider profile described in [Provider Profiles](provider-profiles.md).
 
-Use environment variables and provider CLIs. Do not store credentials in `show.yaml`, `episode.yaml`, `.predit/`, starter files, committed docs, or generated artifacts.
+Use environment variables and provider CLIs. Do not store credentials in `show.yaml`, `episode.yaml`, `.show-sidekick/`, starter files, committed docs, or generated artifacts.
 
 ```bash
 export OPENAI_API_KEY="sk-..."
@@ -69,7 +69,7 @@ node "$HARNESS/dist/cli/index.js" doctor --profile paid-demo
 node "$HARNESS/dist/cli/index.js" build news-song/sample-episode --sample --provider-profile paid-demo
 ```
 
-In user projects, the same keys can live in the generated, gitignored `.env`; `.env.example` is the committed blank setup map. `predit` loads `.env`, `.env.<command>`, and `.env.local` before `doctor`, `build`, and other commands, while preserving any values already exported in the shell.
+In user projects, the same keys can live in the generated, gitignored `.env`; `.env.example` is the committed blank setup map. Show Sidekick loads `.env`, `.env.<command>`, and `.env.local` before `doctor`, `build`, and other commands, while preserving any values already exported in the shell.
 
 Provider expectations for `paid-demo`:
 
@@ -87,7 +87,7 @@ The paid-demo sample dispatcher now honors the configured runtime when it is ins
 Current expected green paths:
 
 - `pnpm demo-matrix --zero-key --only animated-explainer --keep-workdir`
-- `pnpm demo-matrix --paid-demo --keep-workdir` after `predit doctor --profile paid-demo` is green for Higgsfield, OpenAI, ElevenLabs, ffmpeg, and ffprobe.
+- `pnpm demo-matrix --paid-demo --keep-workdir` after `showkick doctor --profile paid-demo` is green for Higgsfield, OpenAI, ElevenLabs, ffmpeg, and ffprobe.
 
 | Starter | Default Pipeline | sample_support | Expected Status | Notes |
 |---|---|---|---|---|
@@ -153,7 +153,7 @@ The maintainer demo matrix is starter-driven, not manifest-driven. It reads `bun
 
 ## Baseline Comparison
 
-Use [Baseline Comparison Report](baseline-comparison.md) when comparing `predit` demo outputs against a reference baseline from equivalent inputs. The template is filled from `demo-matrix-verification.json`, the demo matrix NDJSON events, generated stage artifacts, and manual notes from the baseline run.
+Use [Baseline Comparison Report](baseline-comparison.md) when comparing Show Sidekick demo outputs against a reference baseline from equivalent inputs. The template is filled from `demo-matrix-verification.json`, the demo matrix NDJSON events, generated stage artifacts, and manual notes from the baseline run.
 
 The Ain't No Crowns reference is a [TheChaosFM](../bundled/starters/thechaosfm/README.md) show benchmark. It is not a default-pipeline benchmark and must not be used to judge every `news-song` or bundled default lane.
 

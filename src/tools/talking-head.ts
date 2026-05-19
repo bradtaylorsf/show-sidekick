@@ -18,12 +18,12 @@ const outputSchema = z.object({
 const talkingHead = defineTool({
   name: "talking_head",
   capability: "talking_head",
-  provider: "predit",
+  provider: "show-sidekick",
   status: "beta",
   integration: {
     kind: "library",
-    package: "predit",
-    install: "pnpm add predit",
+    package: "show-sidekick",
+    install: "npm install show-sidekick",
   },
   best_for: "capability discovery for avatar presenter generation from script, voice, and avatar selection",
   supports: ["avatar-presenter", "script-to-video", "provider-selection"],

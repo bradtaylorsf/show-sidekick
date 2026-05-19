@@ -115,12 +115,12 @@ Stop when:
 
 ## Reference materials
 
-- `.predit/skills/meta/announce-and-escalate.md`
-- `.predit/skills/meta/reviewer.md`
-- `.predit/skills/meta/sample-first.md`
-- `.predit/skills/core/hyperframes.md`
-- `.predit/skills/agents/higgsfield-generate.md`
-- `.predit/skills/agents/playwright-recording.md`
+- `.show-sidekick/skills/meta/announce-and-escalate.md`
+- `.show-sidekick/skills/meta/reviewer.md`
+- `.show-sidekick/skills/meta/sample-first.md`
+- `.show-sidekick/skills/core/hyperframes.md`
+- `.show-sidekick/skills/agents/higgsfield-generate.md`
+- `.show-sidekick/skills/agents/playwright-recording.md`
 
 ## Output Contract
 

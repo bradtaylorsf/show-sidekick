@@ -19,7 +19,7 @@ News screenshots are real, not generated. Mixing these creates fake-news content
 
 ## Real Capture Rule
 
-Use `.predit/skills/agents/playwright-recording.md` before capture. Never synthesize or redesign an article page with image generation, HTML mocks, generated screenshots, or fake publisher layouts. If the real page is blocked, ugly, paywalled, partially loaded, or behind an interstitial, capture what is served or flag it for replacement.
+Use `.show-sidekick/skills/agents/playwright-recording.md` before capture. Never synthesize or redesign an article page with image generation, HTML mocks, generated screenshots, or fake publisher layouts. If the real page is blocked, ugly, paywalled, partially loaded, or behind an interstitial, capture what is served or flag it for replacement.
 
 ## How to capture source screenshots
 
