@@ -2,6 +2,8 @@
 
 This guide is for reviewers and coding agents validating Show Sidekick as a CLI-first harness. Default to the CLI/user-project model unless you are deliberately maintaining the harness internals.
 
+For the final human-owned npm and website launch steps, use the [release checklist](release-checklist.md).
+
 ## Operating Models
 
 The legacy in-repo model runs from the harness checkout. Maintainers use it for source edits, schema tests, and matrix automation:

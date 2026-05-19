@@ -27,6 +27,7 @@ music_library/
 .migration/
 
 # Alpha-loop ephemeral data (not shared)
+.alpha-loop/learnings/
 .alpha-loop/sessions/
 .alpha-loop/auth/
 .alpha-loop/traces/

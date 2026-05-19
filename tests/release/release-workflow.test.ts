@@ -43,6 +43,7 @@ describe("release workflow", () => {
 
     expect(workflowText).toContain("no-release");
     expect(workflowText).toContain("pnpm changeset:status");
+    expect(workflowText).toContain("pnpm release:check");
     expect(workflowText).toContain("fetch-depth: 0");
   });
 
@@ -61,6 +62,7 @@ describe("release workflow", () => {
         "changeset:status": "pnpm dlx @changesets/cli status --since=origin/main",
         "changeset:version": "pnpm dlx @changesets/cli version",
         "changeset:publish": "pnpm build && npm publish --provenance --access public",
+        "release:smoke:pack": "pnpm build && SHOW_SIDEKICK_PACKED_TARBALL_SMOKE=1 vitest run tests/release/packed-tarball-smoke.test.ts",
         prepublishOnly: "pnpm build",
       }),
     );

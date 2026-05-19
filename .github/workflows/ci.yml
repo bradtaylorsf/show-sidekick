@@ -72,6 +72,9 @@ jobs:
       - name: Framework smoke E2E
         run: pnpm run test:smoke
 
+      - name: Launch gates
+        run: pnpm release:check
+
       - name: Coverage drift audit
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

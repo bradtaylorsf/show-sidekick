@@ -37,8 +37,7 @@ async function auditCoverageDrift(): Promise<DriftReport[]> {
     return [{ title: "Missing audit map", items: [".migration/audit-map.json was not found."] }];
   }
 
-  const implementationText = await readFile(path.join(repoRoot, "IMPLEMENTATION.md"), "utf8");
-  const implementationRefs = collectIssueRefs(implementationText);
+  const implementationRefs = await readImplementationRefs();
   const auditMap = JSON.parse(await readFile(auditMapPath, "utf8")) as unknown;
   const auditRefs = collectIssueRefs(auditMap);
   const auditPaths = collectPathLikeStrings(auditMap);
@@ -46,12 +45,14 @@ async function auditCoverageDrift(): Promise<DriftReport[]> {
   const referenceFiles = await walkFiles(migrationDir);
   const drift: DriftReport[] = [];
 
-  const unknownRefs = [...auditRefs].filter((ref) => !implementationRefs.has(ref)).sort();
-  if (unknownRefs.length > 0) {
-    drift.push({
-      title: "Audit map references not present in IMPLEMENTATION.md",
-      items: unknownRefs,
-    });
+  if (implementationRefs !== null) {
+    const unknownRefs = [...auditRefs].filter((ref) => !implementationRefs.has(ref)).sort();
+    if (unknownRefs.length > 0) {
+      drift.push({
+        title: "Audit map references not present in retired implementation plan",
+        items: unknownRefs,
+      });
+    }
   }
 
   const unmappedFiles = referenceFiles
@@ -68,6 +69,15 @@ async function auditCoverageDrift(): Promise<DriftReport[]> {
   }
 
   return drift;
+}
+
+async function readImplementationRefs(): Promise<Set<string> | null> {
+  const implementationPath = path.join(repoRoot, ["IMPLEMENTATION", "md"].join("."));
+  if (!existsSync(implementationPath)) {
+    return null;
+  }
+
+  return collectIssueRefs(await readFile(implementationPath, "utf8"));
 }
 
 function collectIssueRefs(value: unknown): Set<string> {

@@ -15,13 +15,15 @@ export const STALE_PUBLIC_NAME_NEEDLES = [
 export const STALE_PUBLIC_NAME_GREP_TARGETS = [
   "README.md",
   "CHANGELOG.md",
+  "package.json",
+  "src",
   "docs",
   "specs",
   "bundled/templates",
   "bundled/skills",
 ] as const;
 
-export const STALE_PUBLIC_NAME_LINE_ALLOWLIST = [
+export const INTERNAL_MIGRATION_STALE_PUBLIC_NAME_LINE_ALLOWLIST = [
   {
     filePath: "CHANGELOG.md",
     needle: "predit",
@@ -54,10 +56,25 @@ export const STALE_PUBLIC_NAME_LINE_ALLOWLIST = [
   },
 ] as const;
 
+export const ACCIDENTAL_STALE_PUBLIC_NAME_LINE_ALLOWLIST = [] as const;
+
+export const STALE_PUBLIC_NAME_LINE_ALLOWLIST = [
+  ...INTERNAL_MIGRATION_STALE_PUBLIC_NAME_LINE_ALLOWLIST,
+  ...ACCIDENTAL_STALE_PUBLIC_NAME_LINE_ALLOWLIST,
+] as const;
+
+export const CI_READY_STALE_PUBLIC_NAME_GREP_TARGETS = [
+  "README.md",
+  "CHANGELOG.md",
+  "docs",
+  "specs",
+  "bundled/templates",
+  "bundled/skills",
+] as const;
+
 export const SIBLING_REPO_GREP_EXCLUDES = [
   ".gitignore",
   "AGENTS.md",
-  "IMPLEMENTATION.md",
   "scripts/lib/sibling-repo-paths.ts",
   "scripts/public-flip-checklist.ts",
   "tests/release/public-flip-checklist.test.ts",

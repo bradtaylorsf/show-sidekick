@@ -2,6 +2,8 @@
 
 This guide gets a fresh project to a free 30-second animated explainer sample and an editor handoff.
 
+Maintainers preparing a public npm release should use the [release checklist](release-checklist.md) after validating this user path.
+
 ## Non-Technical Path
 
 Use this path when an agent is helping you.
