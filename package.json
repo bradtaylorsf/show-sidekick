@@ -1,6 +1,6 @@
 {
   "name": "show-sidekick",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Show-first AI pre-production for video — build the rough cut, finish in your NLE.",
   "type": "module",
   "bin": {
