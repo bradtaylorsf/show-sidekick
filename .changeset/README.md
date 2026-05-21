@@ -1,6 +1,6 @@
 # Changesets
 
-Show Sidekick uses Changesets for release PRs, changelog updates, tags, GitHub Releases, and npm publishing.
+Show Sidekick uses Changesets for release PRs, changelog updates, and npm publishing. The release workflow creates or updates the GitHub Release after it confirms the version is live on npm, then adds the show-type validation report link.
 
 Normal user-facing PRs must include a changeset:
 

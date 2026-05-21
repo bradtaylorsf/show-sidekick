@@ -117,21 +117,61 @@ jobs:
           commit: "chore: version packages"
           version: pnpm changeset:version
           publish: pnpm changeset:publish
-          createGithubReleases: true
+          createGithubReleases: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Link show type report from GitHub Release
-        if: steps.changesets.outputs.published == 'true'
+      - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          set -euo pipefail
+
           VERSION="$(node -p "require('./package.json').version")"
+          PREVIOUS_VERSION="$(git show HEAD^:package.json 2>/dev/null | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => { try { console.log(JSON.parse(input).version ?? ''); } catch { console.log(''); } });" || true)"
+
+          if [ "$PREVIOUS_VERSION" = "$VERSION" ]; then
+            echo "package.json version did not change in this commit; skipping GitHub Release creation."
+            exit 0
+          fi
+
+          if ! PUBLISHED_VERSION="$(npm view "show-sidekick@$VERSION" version --json 2>/dev/null | tr -d '"')"; then
+            echo "npm has not published show-sidekick@$VERSION yet; skipping GitHub Release creation."
+            exit 0
+          fi
+          if [ "$PUBLISHED_VERSION" != "$VERSION" ]; then
+            echo "npm has not published show-sidekick@$VERSION yet; skipping GitHub Release creation."
+            exit 0
+          fi
+
           TAG="v$VERSION"
-          gh release view "$TAG" --json body --jq .body > /tmp/release-notes.md
+          NOTES_FILE="/tmp/release-notes.md"
+          awk -v version="$VERSION" '
+            $0 == "## " version || $0 == "## [" version "]" || index($0, "## [" version "] - ") == 1 {
+              in_section = 1;
+              next;
+            }
+            in_section && /^## / {
+              exit;
+            }
+            in_section {
+              print;
+            }
+          ' CHANGELOG.md > "$NOTES_FILE"
+
+          if [ ! -s "$NOTES_FILE" ]; then
+            echo "Release $VERSION." > "$NOTES_FILE"
+          fi
+
           {
             echo ""
             echo "Show-type validation report: $RUN_URL (artifact: show-type-validation-report)"
-          } >> /tmp/release-notes.md
-          gh release edit "$TAG" --notes-file /tmp/release-notes.md
+            echo "npm package: https://www.npmjs.com/package/show-sidekick/v/$VERSION"
+          } >> "$NOTES_FILE"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TAG" --notes-file "$NOTES_FILE"
+          else
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes-file "$NOTES_FILE"
+          fi

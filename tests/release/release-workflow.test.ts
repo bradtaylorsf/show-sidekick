@@ -36,7 +36,13 @@ describe("release workflow", () => {
     expect(runText).toContain("pnpm pack --pack-destination /tmp/show-sidekick-pack");
     expect(runText).toContain("npm publish --dry-run --provenance --access public");
     expect(workflowText).toContain("publish: pnpm changeset:publish");
+    expect(workflowText).toContain("createGithubReleases: false");
+    expect(runText).toContain("package.json version did not change in this commit; skipping GitHub Release creation.");
+    expect(runText).toContain("npm view \"show-sidekick@$VERSION\" version --json");
+    expect(runText).toContain("gh release create \"$TAG\" --target \"$GITHUB_SHA\"");
+    expect(runText).toContain("gh release edit \"$TAG\" --title \"$TAG\"");
     expect(runText).toContain("show-type-validation-report");
+    expect(workflowText).not.toContain("steps.changesets.outputs.published == 'true'");
   });
 
   it("requires changesets or an explicit no-release label in PR CI", async () => {
