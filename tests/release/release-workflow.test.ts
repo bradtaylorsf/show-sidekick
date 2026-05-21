@@ -36,8 +36,11 @@ describe("release workflow", () => {
     expect(runText).toContain("pnpm pack --pack-destination /tmp/show-sidekick-pack");
     expect(runText).toContain("show-sidekick@$VERSION is already published; skipping npm publish dry-run");
     expect(runText).toContain("npm publish --dry-run --provenance --access public");
+    expect(runText).toContain('find .changeset -maxdepth 1 -type f -name "*.md" ! -name README.md');
+    expect(runText).toContain("run_changesets=$RUN_CHANGESETS");
     expect(workflowText).toContain("publish: pnpm changeset:publish");
     expect(workflowText).toContain("createGithubReleases: false");
+    expect(workflowText).toContain("if: steps.release-mode.outputs.run_changesets == 'true'");
     expect(runText).toContain("Changesets created or updated a version PR in this run; skipping GitHub Release creation.");
     expect(runText).toContain("Latest package.json change did not bump the version; skipping GitHub Release creation.");
     expect(runText).toContain("npm has not exposed show-sidekick@$VERSION yet; retrying");

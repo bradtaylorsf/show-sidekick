@@ -118,8 +118,35 @@ jobs:
       - name: Launch gates
         run: pnpm release:check
 
+      - name: Detect release mode
+        id: release-mode
+        run: |
+          set -euo pipefail
+
+          VERSION="$(node -p "require('./package.json').version")"
+          HAS_CHANGESETS=false
+          if find .changeset -maxdepth 1 -type f -name "*.md" ! -name README.md | grep -q .; then
+            HAS_CHANGESETS=true
+          fi
+
+          VERSION_PUBLISHED=false
+          if npm view "show-sidekick@$VERSION" version --json >/dev/null 2>&1; then
+            VERSION_PUBLISHED=true
+          fi
+
+          RUN_CHANGESETS=false
+          if [ "$HAS_CHANGESETS" = "true" ] || [ "$VERSION_PUBLISHED" != "true" ]; then
+            RUN_CHANGESETS=true
+          fi
+
+          echo "has_changesets=$HAS_CHANGESETS" >> "$GITHUB_OUTPUT"
+          echo "version_published=$VERSION_PUBLISHED" >> "$GITHUB_OUTPUT"
+          echo "run_changesets=$RUN_CHANGESETS" >> "$GITHUB_OUTPUT"
+          echo "release mode: version=$VERSION has_changesets=$HAS_CHANGESETS version_published=$VERSION_PUBLISHED run_changesets=$RUN_CHANGESETS"
+
       - name: Create release PR or publish
         id: changesets
+        if: steps.release-mode.outputs.run_changesets == 'true'
         uses: changesets/action@v1
         with:
           title: "chore: version packages"
