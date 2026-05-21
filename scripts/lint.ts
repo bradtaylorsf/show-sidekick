@@ -15,6 +15,7 @@ const ignoredSegments = new Set([
   "dist",
   "node_modules",
   "projects",
+  "release-artifacts",
 ]);
 
 function main(): void {
