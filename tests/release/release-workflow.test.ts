@@ -10,14 +10,16 @@ describe("release workflow", () => {
     const workflowText = await readFile(path.join(repoRoot, ".github", "workflows", "release.yml"), "utf8");
     const workflow = YAML.parse(workflowText) as {
       permissions: Record<string, string>;
-      jobs: { release: { steps: Array<{ uses?: string; run?: string; with?: Record<string, unknown> }> } };
+      jobs: { release: { steps: Array<{ name?: string; uses?: string; run?: string; with?: Record<string, unknown> }> } };
     };
     const steps = workflow.jobs.release.steps;
+    const nodeSetup = steps.find((step) => step.name === "Set up Node");
     const runText = steps.flatMap((step) => (step.run === undefined ? [] : [step.run])).join("\n");
     const usesText = steps.flatMap((step) => (step.uses === undefined ? [] : [step.uses])).join("\n");
 
     expect(workflow.permissions["id-token"]).toBe("write");
     expect(workflow.permissions.contents).toBe("write");
+    expect(nodeSetup?.with?.["node-version"]).toBe(24);
     expect(workflowText).not.toMatch(/NPM_TOKEN|NODE_AUTH_TOKEN/);
     expect(workflowText).toContain("show-sidekick");
     expect(usesText).toContain("changesets/action@v1");
