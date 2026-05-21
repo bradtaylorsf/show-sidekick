@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+### Patch Changes
+
+- 03d3140: Create GitHub Releases explicitly after trusted npm publishing succeeds.
+- 7dda197: Skip the npm publish dry run when the current package version is already published, while keeping the tarball pack check active.
+
 ## 0.1.1
 
 ### Patch Changes
