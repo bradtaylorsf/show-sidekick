@@ -34,6 +34,7 @@ describe("release workflow", () => {
     expect(runText).toContain("pnpm run test:smoke");
     expect(runText).toContain("pnpm release:check");
     expect(runText).toContain("pnpm pack --pack-destination /tmp/show-sidekick-pack");
+    expect(runText).toContain("show-sidekick@$VERSION is already published; skipping npm publish dry-run");
     expect(runText).toContain("npm publish --dry-run --provenance --access public");
     expect(workflowText).toContain("publish: pnpm changeset:publish");
     expect(workflowText).toContain("createGithubReleases: false");
