@@ -3,6 +3,10 @@
   "version": "0.1.1",
   "description": "Show-first AI pre-production for video — build the rough cut, finish in your NLE.",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bradtaylorsf/show-sidekick.git"
+  },
   "bin": {
     "showkick": "./dist/cli/index.js",
     "show-sidekick": "./dist/cli/index.js",
