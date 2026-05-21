@@ -1,6 +1,6 @@
 ---
 name: "news-song-executive-producer"
-description: "Orchestrate Brad's news-song workflow with source-vs-lyric-art governance, PS2 sample-first defaults, and audio-led timing."
+description: "Orchestrate news-song production with source-vs-lyric-art governance, PS2 sample-first defaults, and audio-led timing."
 applies_to: "pipelines/news-song"
 role: "executive-producer"
 ---

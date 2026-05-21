@@ -10,14 +10,14 @@ import { createProgram } from "../program.js";
 let scratchDirs: string[] = [];
 const originalCwd = process.cwd();
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
-const ingestWatchFixture = path.join(repoRoot, "bundled/fixtures/ingest-watch/thechaosfm-news/pilot");
+const ingestWatchFixture = path.join(repoRoot, "bundled/fixtures/ingest-watch/news-song-drops/pilot");
 
 async function scratchProject(options: { template?: boolean } = {}): Promise<string> {
   const root = path.join(tmpdir(), `predit-import-${randomUUID()}`);
   scratchDirs.push(root);
   await mkdir(path.join(root, ".predit"), { recursive: true });
   await writeFile(path.join(root, "CLAUDE.md"), "# project\n", "utf8");
-  await writeShow(root, "thechaosfm", options);
+  await writeShow(root, "news-lab", options);
   return root;
 }
 
@@ -34,22 +34,22 @@ describe("import command", () => {
     process.chdir(root);
     const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "import", dropDir, "--as", "thechaosfm/pilot"], {
+    await program.parseAsync(["node", "predit", "import", dropDir, "--as", "news-lab/pilot"], {
       from: "node",
     });
 
     expect(output().stdout).toContain("import: wrote");
-    const episodePath = path.join(root, "shows", "thechaosfm", "episodes", "pilot.yaml");
+    const episodePath = path.join(root, "shows", "news-lab", "episodes", "pilot.yaml");
     const episode = parseYaml(await readFile(episodePath, "utf8")) as Record<string, unknown>;
     expect(episode).toMatchObject({
       slug: "pilot",
       title: "Pilot",
       pipeline: "news-song",
       inputs: {
-        track: "music_library/thechaosfm-news/pilot/track.mp3",
-        lyrics: "music_library/thechaosfm-news/pilot/lyrics.txt",
-        sources: "music_library/thechaosfm-news/pilot/sources.yaml",
-        reference: "music_library/thechaosfm-news/pilot/reference.mp4",
+        track: "music_library/news-song-drops/pilot/track.mp3",
+        lyrics: "music_library/news-song-drops/pilot/lyrics.txt",
+        sources: "music_library/news-song-drops/pilot/sources.yaml",
+        reference: "music_library/news-song-drops/pilot/reference.mp4",
       },
       cast: [],
       tags: ["news-song"],
@@ -58,7 +58,7 @@ describe("import command", () => {
 
   it("uses ingest episode templates to preserve pipeline-specific input keys", async () => {
     const root = await scratchProject({ template: true });
-    const dropDir = path.join(root, "music_library", "thechaosfm-news", "pilot");
+    const dropDir = path.join(root, "music_library", "news-song-drops", "pilot");
     await mkdir(dropDir, { recursive: true });
     await writeFile(path.join(dropDir, "track.mp3"), "audio", "utf8");
     await writeFile(path.join(dropDir, "narration.txt"), "voiceover", "utf8");
@@ -66,29 +66,29 @@ describe("import command", () => {
     process.chdir(root);
     const { program } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "import", dropDir, "--as", "thechaosfm/pilot"], {
+    await program.parseAsync(["node", "predit", "import", dropDir, "--as", "news-lab/pilot"], {
       from: "node",
     });
 
-    const episodePath = path.join(root, "shows", "thechaosfm", "episodes", "pilot.yaml");
+    const episodePath = path.join(root, "shows", "news-lab", "episodes", "pilot.yaml");
     const episode = parseYaml(await readFile(episodePath, "utf8")) as Record<string, unknown>;
     expect(episode.inputs).toMatchObject({
-      track: "music_library/thechaosfm-news/pilot/track.mp3",
-      narration: "music_library/thechaosfm-news/pilot/narration.txt",
-      reference_image: "music_library/thechaosfm-news/pilot/reference.jpg",
+      track: "music_library/news-song-drops/pilot/track.mp3",
+      narration: "music_library/news-song-drops/pilot/narration.txt",
+      reference_image: "music_library/news-song-drops/pilot/reference.jpg",
     });
   });
 
   it("refuses to overwrite an existing episode", async () => {
     const root = await scratchProject();
     const dropDir = await writeDropFixture(root);
-    await mkdir(path.join(root, "shows", "thechaosfm", "episodes"), { recursive: true });
-    await writeFile(path.join(root, "shows", "thechaosfm", "episodes", "pilot.yaml"), "slug: pilot\n", "utf8");
+    await mkdir(path.join(root, "shows", "news-lab", "episodes"), { recursive: true });
+    await writeFile(path.join(root, "shows", "news-lab", "episodes", "pilot.yaml"), "slug: pilot\n", "utf8");
     process.chdir(root);
     const { program } = captureProgram();
 
     await expect(
-      program.parseAsync(["node", "predit", "import", dropDir, "--as", "thechaosfm/pilot"], { from: "node" }),
+      program.parseAsync(["node", "predit", "import", dropDir, "--as", "news-lab/pilot"], { from: "node" }),
     ).rejects.toThrow("refuses to clobber existing episode");
   });
 
@@ -101,7 +101,7 @@ describe("import command", () => {
     const { program } = captureProgram();
 
     await expect(
-      program.parseAsync(["node", "predit", "import", dropDir, "--as", "thechaosfm/pilot"], { from: "node" }),
+      program.parseAsync(["node", "predit", "import", dropDir, "--as", "news-lab/pilot"], { from: "node" }),
     ).rejects.toThrow("no ingest.watch[] entry");
   });
 
@@ -122,7 +122,7 @@ describe("import command", () => {
     process.chdir(root);
     const { program, output } = captureProgram();
 
-    await program.parseAsync(["node", "predit", "--json", "import", dropDir, "--as", "thechaosfm/pilot"], {
+    await program.parseAsync(["node", "predit", "--json", "import", dropDir, "--as", "news-lab/pilot"], {
       from: "node",
     });
 
@@ -136,15 +136,15 @@ describe("import command", () => {
     };
     expect(event).toEqual({
       event: "episode_imported",
-      show: "thechaosfm",
+      show: "news-lab",
       episode: "pilot",
       pipeline: "news-song",
-      path: await realpath(path.join(root, "shows", "thechaosfm", "episodes", "pilot.yaml")),
+      path: await realpath(path.join(root, "shows", "news-lab", "episodes", "pilot.yaml")),
       inputs: {
-        track: "music_library/thechaosfm-news/pilot/track.mp3",
-        lyrics: "music_library/thechaosfm-news/pilot/lyrics.txt",
-        reference: "music_library/thechaosfm-news/pilot/reference.mp4",
-        sources: "music_library/thechaosfm-news/pilot/sources.yaml",
+        track: "music_library/news-song-drops/pilot/track.mp3",
+        lyrics: "music_library/news-song-drops/pilot/lyrics.txt",
+        reference: "music_library/news-song-drops/pilot/reference.mp4",
+        sources: "music_library/news-song-drops/pilot/sources.yaml",
       },
     });
   });
@@ -185,14 +185,14 @@ async function writeShow(root: string, slug: string, options: { template?: boole
     path.join(showDir, "show.yaml"),
     [
       `slug: ${slug}`,
-      'display_name: "The Chaos FM"',
+      'display_name: "News Lab"',
       "created: 2026-05-12",
       "pipelines:",
       "  news-song: {}",
       "defaults:",
       "  pipeline: news-song",
       ...ingestLines,
-      "    - path: ../../music_library/thechaosfm-news",
+      "    - path: ../../music_library/news-song-drops",
       '      match: "**/track.mp3"',
       "      pipeline: news-song",
       "      slug_from: parent_dir",
@@ -210,9 +210,9 @@ async function writeShow(root: string, slug: string, options: { template?: boole
         "created: 2026-05-12",
         "pipeline: news-song",
         "inputs:",
-        "  track: shows/thechaosfm/inputs/sample-episode/track.mp3",
-        "  narration: shows/thechaosfm/inputs/sample-episode/narration.txt",
-        "  reference_image: shows/thechaosfm/inputs/sample-episode/reference.jpg",
+        "  track: shows/news-lab/inputs/sample-episode/track.mp3",
+        "  narration: shows/news-lab/inputs/sample-episode/narration.txt",
+        "  reference_image: shows/news-lab/inputs/sample-episode/reference.jpg",
         "cast: []",
         "tags: [template]",
         "",
@@ -223,7 +223,7 @@ async function writeShow(root: string, slug: string, options: { template?: boole
 }
 
 async function writeDropFixture(root: string): Promise<string> {
-  const dropDir = path.join(root, "music_library", "thechaosfm-news", "pilot");
+  const dropDir = path.join(root, "music_library", "news-song-drops", "pilot");
   await mkdir(path.dirname(dropDir), { recursive: true });
   await cp(ingestWatchFixture, dropDir, { recursive: true });
   return dropDir;

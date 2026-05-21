@@ -1,0 +1,17 @@
+slug: sample-episode
+title: Sample Daily News Brief
+created: 2026-05-14
+pipeline: daily-news
+playbook: news-broadcast
+runtime: ffmpeg
+aspect: 16:9
+budget_usd: 0.5
+inputs:
+  headline_brief: shows/daily-news-brief/inputs/sample-episode/headline-brief.txt
+  sources: shows/daily-news-brief/inputs/sample-episode/sources.yaml
+  narration_notes: shows/daily-news-brief/inputs/sample-episode/narration-notes.txt
+cast: []
+tags:
+  - daily-news-brief
+  - sample
+  - news

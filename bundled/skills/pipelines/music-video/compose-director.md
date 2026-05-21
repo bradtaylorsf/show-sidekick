@@ -33,7 +33,7 @@ Use the approved runtime from the decision log and edit decisions. silent runtim
 2. Render the sample or full video with registry-backed `video_compose`.
 3. Run ffprobe or runtime validation and confirm render drift is within `drift_tolerance_frames`.
 4. Spot-check title cards, masks, captions, white flashes, and hero motion.
-5. Compare against Brad's reference music-video as the visual benchmark.
+5. Compare against the approved beat-synced lyric-video treatment as the visual benchmark.
 
 ## Quality Gate
 

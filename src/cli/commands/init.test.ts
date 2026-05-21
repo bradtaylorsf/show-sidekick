@@ -199,9 +199,9 @@ describe("init command", () => {
       setupRuntimes: vi.fn(async () => undefined),
     })(command({}));
 
-    expect(output().stdout).toContain(`${BRANDING.primaryCli} doctor --profile paid-demo`);
+    expect(output().stdout).toContain(`${BRANDING.primaryCli} doctor`);
     expect(output().stdout).toContain("installed Remotion/HyperFrames");
-    expect(output().stdout).toContain("edit .env with any provider keys");
+    expect(output().stdout).toContain(`paid upgrade: edit .env, then run ${BRANDING.primaryCli} doctor --profile paid-demo`);
     expect(output().stdout).toContain(`${BRANDING.primaryCli} ls starters`);
     expect(output().stdout).toContain(`${BRANDING.primaryCli} new show first-video --from animated-explainer`);
     expect(output().stdout).toContain(`Read AGENTS.md and ${BRANDING.cacheDir}/skills/meta/onboarding.md`);

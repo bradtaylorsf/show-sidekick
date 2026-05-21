@@ -1,6 +1,6 @@
 slug: music-video
 display_name: Music Video
-description: "Audio-led vertical music-video pipeline for lyric-timed, beat-aligned shorts with source review, RAG Shelf Sprint governance, generated assets, and HyperFrames-aware compose."
+description: "Audio-led vertical music-video pipeline for lyric-timed, beat-aligned shorts with source review, sample-first governance, generated assets, and HyperFrames-aware compose."
 status: production
 master_clock: audio
 stage_order: manifest
@@ -35,10 +35,9 @@ required_skills:
   - agents/higgsfield-generate
 compatible_playbooks:
   recommended:
-    - news-song
+    - beat-synced-lyric-video
     - playful-hip-hop-explainer
   also_works:
-    - thechaosfm-gta-political
     - clean-professional
   custom_allowed: true
 orchestration:
@@ -54,7 +53,7 @@ sample:
   hint: "Use the bundled track and lyrics to create a 15-20s zero-key sample rough cut."
 metadata:
   starter_sample_dispatcher: zero-key
-  visual_benchmark: "Brad's reference music-video"
+  visual_benchmark: "approved beat-synced lyric-video treatment"
 export:
   supported_targets: [ premiere, davinci, capcut, edl ]
   default_target: premiere
@@ -288,7 +287,7 @@ stages:
     review_focus:
       - HyperFrames intro animation is preferred over Higgsfield text-to-video for opening title cards
       - Runtime matches the locked decision
-      - Final render matches Brad's reference music-video benchmark
+      - Final render matches the approved beat-synced lyric-video benchmark
     success_criteria:
       - Schema-valid render_report artifact
       - Output files exist and pass ffprobe validation

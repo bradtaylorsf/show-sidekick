@@ -1,5 +1,5 @@
 slug: sample-episode
-title: Personalized No-Key Show Sidekick Explainer
+title: Personalized No-Key Explainer Sample
 created: 2026-05-14
 pipeline: animated-explainer
 playbook: flat-motion-graphics
@@ -11,8 +11,7 @@ inputs:
   reference_image: shows/animated-explainer/inputs/sample-episode/reference.jpg
   duration_s: 30
   notes: |
-    Thirty-second personalized no-key explainer built from a short script.
-    The zero-key dispatcher renders animated cards with local narration and Remotion when available.
+    Thirty-second personalized no-key explainer built from a short script. Render animated cards with local narration and Remotion when available.
 cast: []
 tags:
   - animated-explainer

@@ -782,7 +782,7 @@ describe("bundled pipeline manifests", () => {
     expect(manifest.compatible_playbooks?.recommended).toContain("news-song");
     expect(manifest.defaults?.drift_tolerance_frames).toBe(1);
     expect(manifest.compatible_playbooks?.also_works).toEqual(
-      expect.arrayContaining(["news-song-protest", "thechaosfm-gta-political"]),
+      expect.arrayContaining(["news-song-protest", "ps2-dystopian-news-rap"]),
     );
     expect(manifest.metadata).toMatchObject({
       content_modes: {
@@ -1046,7 +1046,7 @@ describe("bundled pipeline manifests", () => {
       { label: "OpenMontage", pattern: /openmontage/iu },
       { label: "predit-showcase", pattern: /predit-showcase/u },
       { label: "harness worktree path", pattern: /\.worktrees\/issue-\d+/u },
-      { label: "absolute harness path", pattern: /\/Users\/bradtaylor\/Documents\/GitHub\/predit/u },
+      { label: "absolute harness path", pattern: /\/Users\/[^/]+\/Documents\/GitHub\/predit/u },
     ];
     const violations: string[] = [];
 

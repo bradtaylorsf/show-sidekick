@@ -1,0 +1,23 @@
+title: "bash - screen demo"
+prompt: "$"
+accentColor: "#22D3EE"
+capture_mode: synthetic_terminal
+steps:
+  - kind: pause
+    seconds: 2.0
+  - kind: cmd
+    text: "showkick init --starter screen-demo"
+    typeSpeed: 0.04
+    holdSeconds: 0.4
+  - kind: out
+    text: "starter ready"
+    holdSeconds: 0.8
+  - kind: cmd
+    text: "showkick build screen-demo/sample-episode --sample"
+    typeSpeed: 0.035
+    holdSeconds: 0.4
+  - kind: out
+    text: "done: editor handoff prepared"
+    holdSeconds: 1.0
+  - kind: pause
+    seconds: 2.5

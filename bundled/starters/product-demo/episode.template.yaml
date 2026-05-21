@@ -13,4 +13,5 @@ inputs:
 cast: []
 tags:
   - product-demo
+  - sample
   - visual-led

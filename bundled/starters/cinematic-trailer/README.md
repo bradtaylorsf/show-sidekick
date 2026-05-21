@@ -5,7 +5,7 @@ Audio-led cinematic trailer starter for short dramatic rough cuts from a referen
 - Starter: `cinematic-trailer`
 - Pipeline slug: `cinematic`
 - Playbook: `clean-professional`
-- Fixture size: generated from `inputs/sample-episode/`
+- Fixture size: 1602 bytes
 - Expected sample duration: 15 seconds
 - Sample inputs: `reference.jpg`
 

@@ -4,22 +4,27 @@ This guide gets a fresh project to a free 30-second animated explainer sample an
 
 Maintainers preparing a public npm release should use the [release checklist](release-checklist.md) after validating this user path.
 
+For terminology, see [Concepts](concepts.md). For copy-paste agent workflows, see the [Prompt Library](prompt-library.md).
+
 ## Non-Technical Path
 
 Use this path when an agent is helping you.
 
-1. Create or open the folder where you want your video project.
-2. Paste the agent prompt from the README.
+1. Paste the setup prompt from the README into your coding agent.
+2. Let the agent ask for a project folder name.
 3. Let the agent check Node 22+, npm, Git, FFmpeg, and ffprobe.
 4. If something is missing, the agent must ask before installing it.
 5. Python and uv are optional tool runtimes. They are not required for the first no-key video.
-6. After setup, the agent initializes the project and runs the starter sample without paid provider credits.
+6. After setup, the agent installs Show Sidekick globally, creates the project folder, initializes it, and runs the starter sample without paid provider credits.
 
 The agent should run:
 
 ```bash
-npx -y show-sidekick@latest init --starter animated-explainer --git
-showkick doctor --profile paid-demo
+npm install -g show-sidekick@latest
+mkdir my-first-video
+cd my-first-video
+showkick init --starter animated-explainer --git
+showkick doctor
 showkick build animated-explainer/sample-episode --sample
 showkick export animated-explainer/sample-episode --target premiere
 ```
@@ -45,9 +50,10 @@ Node must be 22 or newer. Python and uv may be missing unless you plan to use a 
 Create the project:
 
 ```bash
+npm install -g show-sidekick@latest
 mkdir my-shows
 cd my-shows
-npx -y show-sidekick@latest init --starter animated-explainer --git
+showkick init --starter animated-explainer --git
 ```
 
 The scaffold creates `AGENTS.md`, `CLAUDE.md`, `.env.example`, a gitignored `.env`, project folders, and a local `.show-sidekick/` bundled-content cache for agents to read. It also generates `.agents/skills/` and `.claude/skills/` mirrors for agent-native skill discovery.
@@ -57,7 +63,7 @@ The scaffold creates `AGENTS.md`, `CLAUDE.md`, `.env.example`, a gitignored `.en
 The `animated-explainer` starter can run before you configure provider keys:
 
 ```bash
-showkick doctor --profile paid-demo
+showkick doctor
 showkick build animated-explainer/sample-episode --sample
 showkick export animated-explainer/sample-episode --target premiere
 ```

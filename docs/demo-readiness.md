@@ -10,8 +10,8 @@ The legacy in-repo model runs from the harness checkout. Maintainers use it for 
 
 ```bash
 pnpm dev <args>
-pnpm demo-matrix --zero-key --keep-workdir
-pnpm demo-matrix --paid-demo --keep-workdir
+pnpm show-types:matrix --zero-key
+pnpm show-types:matrix --paid-demo
 ```
 
 This model is allowed for harness development, but it is not how reviewers should judge the product experience.
@@ -91,22 +91,27 @@ The paid-demo sample dispatcher now honors the configured runtime when it is ins
 
 Current expected green paths:
 
-- `pnpm demo-matrix --zero-key --only animated-explainer --keep-workdir`
-- `pnpm demo-matrix --paid-demo --keep-workdir` after `showkick doctor --profile paid-demo` is green for Higgsfield, OpenAI, ElevenLabs, ffmpeg, and ffprobe.
+- `pnpm show-types:matrix --zero-key`
+- `pnpm show-types:matrix --paid-demo` after `showkick doctor --profile paid-demo` is green for Higgsfield, OpenAI, ElevenLabs, ffmpeg, and ffprobe.
 
 | Starter | Default Pipeline | sample_support | Expected Status | Notes |
 |---|---|---|---|---|
 | `animated-explainer` | `animated-explainer` | `both` | Green for zero-key; included in paid-demo | Zero-key narrated Remotion first-video explainer and export path are the first validation lane. |
-| `music-video` | `music-video` | `both` | Green for zero-key; included in paid-demo | Audio-led multi-card idea reel remains available for track-oriented smoke tests. |
-| `ai-workflow-demo` | `screen-demo` | `paid` | Paid-demo only | Requires paid-demo provider setup; synthetic terminal fixture. |
+| `animation-short` | `animation` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
+| `avatar-spokesperson` | `avatar-spokesperson` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
+| `character-animation` | `character-animation` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
 | `cinematic-trailer` | `cinematic` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
-| `last-rev` | `screen-demo` | `paid` | Paid-demo only | Default lane is `screen-demo`; `talking-head` is also declared for follow-ups. |
+| `clip-factory` | `clip-factory` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
+| `daily-news-brief` | `daily-news` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
+| `documentary-montage` | `documentary-montage` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
+| `hybrid-source-video` | `hybrid` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
+| `localization-dub` | `localization-dub` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
+| `music-video` | `music-video` | `both` | Green for zero-key; included in paid-demo | Audio-led beat-synced lyric-video smoke lane. |
 | `news-song` | `news-song` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
-| `rave-queen` | `cinematic` | `paid` | Paid-demo only | Show starter on `cinematic`, not an `animation` default. |
-| `thechaosfm` | `news-song` | `paid` | Paid-demo only | Ain't No Crowns is a show benchmark, not a default-pipeline benchmark. |
-| `documentary` | `documentary-montage` | `unsupported` | Blocked | Needs sample-support metadata and a verified sample provider path. |
-| `product-demo` | `screen-demo` | `unsupported` | Blocked | Needs sample-support metadata and a verified sample provider path. |
-| `ww2-diary` | `cinematic` | `unsupported` | Blocked | Show starter only; not a bundled pipeline type. |
+| `podcast-repurpose` | `podcast-repurpose` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
+| `product-demo` | `screen-demo` | `unsupported` | Documented initializer | Extra generalized product/demo starter for the `screen-demo` pipeline. |
+| `screen-demo` | `screen-demo` | `paid` | Paid-demo only | Requires paid-demo provider setup; synthetic terminal fixture. |
+| `talking-head` | `talking-head` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
 
 ## Demo Readiness Inventory
 
@@ -117,7 +122,7 @@ Current expected green paths:
 - `core_default`: primary bundled lanes that default starters may target directly.
 - `seeded_extension`: shipped extension lanes that are valid starter targets but are not the first demo path.
 - `test_only`: harness test fixtures. These may ship as manifests but must never be used by a default starter.
-- `show_starter_only`: show concepts that may exist as starters/playbooks but must not be added as bundled pipeline manifest types.
+- `show_starter_only`: reserved for future inventory decisions; the current public seed catalog has no show-only personal concepts.
 
 ### Current Bundled Manifest Slugs
 
@@ -143,24 +148,21 @@ Test-only lane:
 
 - `framework-smoke`
 
-Show-starter-only concepts are denylisted in `SHOW_ONLY_DENYLIST`. Examples include `ww2-diary`, `thechaosfm`, `last-rev`, `rave-queen`, `gta-political`, and `aint-no-crowns`. These slugs may appear under `bundled/starters/`, playbooks, or demo briefs, but they must never appear as `bundled/pipelines/<slug>.yaml`.
+`SHOW_ONLY_DENYLIST` is currently empty because personal/branded concepts are not shipped as bundled starters or playbooks. If a future bespoke benchmark is kept for internal use, keep it outside the public seed catalog unless it is generalized and receives a real pipeline manifest or starter row.
 
 ### Runnable Demo Matrix
 
-The maintainer demo matrix is starter-driven, not manifest-driven. It reads `bundled/starters/*/show.yaml`, keeps only fixture-backed starters whose declared `sample_support` matches the selected mode, initializes each starter in a fresh user project, and runs `build --sample` there. Seeded extension manifests with `sample_support: unsupported` remain approved bundled manifests, but they are not runnable demo lanes until a starter brief and sample provider path are added.
+The maintainer demo matrix is starter-driven, not manifest-driven. It reads `bundled/starters/*/show.yaml`, keeps only fixture-backed starters whose declared `sample_support` matches the selected mode, initializes each starter in a fresh user project, and runs `build --sample` there. Seeded extension manifests with `sample_support: unsupported` remain approved bundled manifests and documented initializer lanes, but they are not runnable demo lanes until a sample provider path is added.
 
-### Show Starter Examples
+### Generalized Starter Coverage
 
-- `ww2-diary` is a starter on `cinematic` with the `news-broadcast` playbook.
-- `thechaosfm` is a branded starter on `news-song` with the `thechaosfm-gta-political` playbook; the show-level Ain't No Crowns benchmark metadata lives in the starter README.
-- `last-rev` is a starter that declares `screen-demo` for synthetic terminal walkthroughs and `talking-head` for hosted follow-ups.
-- `rave-queen` is a starter on `cinematic`; its README records why `animation` was rejected as the default binding.
+Every approved user-facing bundled pipeline has at least one generalized starter row in [Show Types](show-types.md). `product-demo` is an extra generalized starter on `screen-demo` for product and UI-tour use cases. Removed personal/branded starter slugs are breaking seed-catalog removals and intentionally have no compatibility aliases.
 
 ## Baseline Comparison
 
 Use [Baseline Comparison Report](baseline-comparison.md) when comparing Show Sidekick demo outputs against a reference baseline from equivalent inputs. The template is filled from `demo-matrix-verification.json`, the demo matrix NDJSON events, generated stage artifacts, and manual notes from the baseline run.
 
-The Ain't No Crowns reference is a [TheChaosFM](../bundled/starters/thechaosfm/README.md) show benchmark. It is not a default-pipeline benchmark and must not be used to judge every `news-song` or bundled default lane.
+Bespoke show benchmarks may still be compared with this template, but they are not default-pipeline quality gates. Public demo readiness is judged against the generalized starter matrix in [Show Types](show-types.md).
 
 ## Adding A Bundled Pipeline
 

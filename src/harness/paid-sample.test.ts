@@ -363,7 +363,7 @@ describe("paid sample dispatcher", () => {
     );
     expect(higgsfieldInputs[0]).toMatchObject({
       image_path: "projects/show/episode/assets/openai-sample.png",
-      prompt: expect.stringContaining("PS2/GTA political music-video shot"),
+      prompt: expect.stringContaining("retro PS2 political music-video shot"),
     });
     expect(videoComposeInputs[0]).toMatchObject({
       asset_manifest: {
@@ -377,7 +377,7 @@ describe("paid sample dispatcher", () => {
     });
     await expect(
       readFile(path.join(root, "projects", "show", "episode", "artifacts", "gpt_image2_full_prompts", "001_sample_1_1.txt"), "utf8"),
-    ).resolves.toContain("PS2/GTA political music video");
+    ).resolves.toContain("retro PS2 political music video");
     await expect(
       readFile(path.join(root, "projects", "show", "episode", "artifacts", "gpt_image2_full_prompts", "002_sample_1_2.txt"), "utf8"),
     ).resolves.toContain("Bankrupt the billionaires at dawn");
@@ -489,7 +489,7 @@ describe("paid sample dispatcher", () => {
     expect(imagePromptText).toContain("bright children's storybook aquarium");
     expect(motionPromptText).toContain("animation beat");
     expect(motionPromptText).toContain("bright children's storybook aquarium");
-    expect(`${imagePromptText}\n${motionPromptText}`).not.toMatch(/ChaosFM|PS2\/GTA|protest music-video|source-free lyric-art/u);
+    expect(`${imagePromptText}\n${motionPromptText}`).not.toMatch(/retro PS2 political music-video|protest music-video|source-free lyric-art/u);
   });
 
   it("blocks invalid source reference images before paid asset generation", async () => {

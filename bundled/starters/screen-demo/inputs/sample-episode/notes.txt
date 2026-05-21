@@ -1,0 +1,1 @@
+Fifteen-second screen-demo sample using synthetic_terminal mode instead of real screen capture.

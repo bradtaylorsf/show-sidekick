@@ -1,5 +1,0 @@
-The story begins with a quiet system most people never see.
-Every morning, a small queue decides what gets reviewed first.
-When the queue backs up, decisions slow and teams lose context.
-The fix is not louder alerts, but a clearer path through the work.
-In fifteen seconds, show the old bottleneck and the new signal.

@@ -46,7 +46,7 @@ Add these manual inputs:
 - Baseline media metadata and handoff package locations.
 - Reviewer side-by-side findings, with timestamps or artifact paths where possible.
 
-The Ain't No Crowns reference is a TheChaosFM show benchmark, not a default-pipeline benchmark. When using it, identify the benchmark as `show=thechaosfm`, `pipeline=news-song`, `playbook=thechaosfm-gta-political`.
+When comparing against a bespoke show benchmark, identify it separately from the generalized seed catalog by recording the starter or show slug, pipeline slug, playbook slug, and reference-media source. Bespoke benchmarks should not be treated as default-pipeline quality gates unless they have been promoted into the public starter matrix.
 
 ## Template
 

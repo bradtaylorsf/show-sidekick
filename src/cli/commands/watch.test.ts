@@ -11,7 +11,7 @@ import { createWatchHandler, type WatchFactory } from "./watch.js";
 let scratchDirs: string[] = [];
 const originalCwd = process.cwd();
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
-const ingestWatchFixture = path.join(repoRoot, "bundled/fixtures/ingest-watch/thechaosfm-news/pilot");
+const ingestWatchFixture = path.join(repoRoot, "bundled/fixtures/ingest-watch/news-song-drops/pilot");
 
 async function scratchProject(): Promise<string> {
   const root = path.join(tmpdir(), `predit-watch-${randomUUID()}`);
@@ -30,7 +30,7 @@ afterEach(async () => {
 describe("watch command", () => {
   it("prints a suggested import command for a matching drop", async () => {
     const root = await scratchProject();
-    await writeShow(root, "thechaosfm");
+    await writeShow(root, "news-lab");
     await writeDropFixture(root);
     process.chdir(root);
     const { io, output } = captureIo();
@@ -41,13 +41,13 @@ describe("watch command", () => {
     await createWatchHandler(io, { watch })(command({}));
 
     expect(output().stdout).toContain(
-      `${BRANDING.primaryCli} import music_library/thechaosfm-news/pilot/track.mp3 --as thechaosfm/pilot`,
+      `${BRANDING.primaryCli} import music_library/news-song-drops/pilot/track.mp3 --as news-lab/pilot`,
     );
   });
 
   it("emits a JSON event for a matching drop", async () => {
     const root = await scratchProject();
-    await writeShow(root, "thechaosfm");
+    await writeShow(root, "news-lab");
     await writeDropFixture(root);
     process.chdir(root);
     const { io, output } = captureIo();
@@ -66,10 +66,10 @@ describe("watch command", () => {
     };
     expect(event).toEqual({
       event: "drop_detected",
-      show: "thechaosfm",
+      show: "news-lab",
       pipeline: "news-song",
-      path: "music_library/thechaosfm-news/pilot/track.mp3",
-      suggested_command: `${BRANDING.primaryCli} import music_library/thechaosfm-news/pilot/track.mp3 --as thechaosfm/pilot`,
+      path: "music_library/news-song-drops/pilot/track.mp3",
+      suggested_command: `${BRANDING.primaryCli} import music_library/news-song-drops/pilot/track.mp3 --as news-lab/pilot`,
     });
   });
 
@@ -123,7 +123,7 @@ async function writeShow(root: string, slug: string, options: { ingest?: boolean
       : [
           "ingest:",
           "  watch:",
-          "    - path: ../../music_library/thechaosfm-news",
+          "    - path: ../../music_library/news-song-drops",
           '      match: "**/track.mp3"',
           "      pipeline: news-song",
           "      slug_from: parent_dir",
@@ -133,7 +133,7 @@ async function writeShow(root: string, slug: string, options: { ingest?: boolean
     path.join(showDir, "show.yaml"),
     [
       `slug: ${slug}`,
-      'display_name: "The Chaos FM"',
+      'display_name: "News Lab"',
       "created: 2026-05-12",
       "pipelines:",
       "  news-song: {}",
@@ -147,7 +147,7 @@ async function writeShow(root: string, slug: string, options: { ingest?: boolean
 }
 
 async function writeDropFixture(root: string): Promise<void> {
-  const dropDir = path.join(root, "music_library", "thechaosfm-news", "pilot");
+  const dropDir = path.join(root, "music_library", "news-song-drops", "pilot");
   await mkdir(path.dirname(dropDir), { recursive: true });
   await cp(ingestWatchFixture, dropDir, { recursive: true });
 }

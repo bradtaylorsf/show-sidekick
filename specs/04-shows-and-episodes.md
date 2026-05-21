@@ -40,9 +40,9 @@ shows/<show-slug>/
 ## `show.yaml`
 
 ```yaml
-slug: thechaosfm
-display_name: "The Chaos FM"
-description: "PS2-era political news rap + evergreen protest songs"
+slug: news-music-studio
+display_name: "News Music Studio"
+description: "Sourced news songs plus evergreen beat-synced music videos"
 created: 2026-05-12
 
 # Show-owned content — paths relative to show.yaml.
@@ -55,15 +55,15 @@ skills: ./skills/
 # defaults and layer under the playbook's defaults. Episode picks one of these
 # pipelines by name.
 pipelines:
-  news-song:                              # bi-weekly news rap episodes
+  news-song:                              # recurring sourced news-song episodes
     playbook: ps2-dystopian-news-rap
     runtime: hyperframes
     aspect: "16:9"
     budget_usd: 6
     provider_profile: paid-demo           # optional paid-provider default for this pipeline
     playbook_overrides: ./pipelines/news-song.playbook-overrides.yaml
-  music-video:                            # evergreen protest songs
-    playbook: thechaosfm-gta-political
+  music-video:                            # evergreen beat-synced songs
+    playbook: beat-synced-lyric-video
     runtime: hyperframes
     aspect: "16:9"
     budget_usd: 5
@@ -79,11 +79,11 @@ defaults:
 ingest:
   episode_template: ./episode.template.yaml
   watch:
-    - path: ../../music_library/thechaosfm-news
+    - path: ../../music_library/news-music-studio-news
       match: "**/track.mp3"
       pipeline: news-song
       slug_from: parent_dir              # parent_dir | filename | prompt
-    - path: ../../music_library/thechaosfm-songs
+    - path: ../../music_library/news-music-studio-songs
       match: "**/track.mp3"
       pipeline: music-video
       slug_from: parent_dir
@@ -123,10 +123,10 @@ provider_profile: paid-demo
 
 # Inputs the pipeline needs.
 inputs:
-  track: music_library/thechaosfm-news/2026-05-12-news-jam/track.mp3
-  reference: music_library/thechaosfm-news/reference-video.mp4
-  lyrics: music_library/thechaosfm-news/2026-05-12-news-jam/lyrics.txt
-  sources: music_library/thechaosfm-news/2026-05-12-news-jam/sources.yaml
+  track: music_library/news-music-studio-news/2026-05-12-news-jam/track.mp3
+  reference: music_library/news-music-studio-news/reference-video.mp4
+  lyrics: music_library/news-music-studio-news/2026-05-12-news-jam/lyrics.txt
+  sources: music_library/news-music-studio-news/2026-05-12-news-jam/sources.yaml
   notes: |
     Hook hits at 0:18. Two evidence beats around 0:42 and 1:55.
 
@@ -188,13 +188,13 @@ A show declares the pipelines it uses in `show.pipelines: { <name>: { ... } }`. 
 
 ```yaml
 # A YouTube channel publishing two formats under one brand.
-slug: thechaosfm
+slug: news-music-studio
 pipelines:
-  news-song:                        # bi-weekly news rap
+  news-song:                        # recurring sourced news song
     playbook: ps2-dystopian-news-rap
     aspect: "16:9"
-  music-video:                      # evergreen protest songs
-    playbook: thechaosfm-gta-political
+  music-video:                      # evergreen beat-synced songs
+    playbook: beat-synced-lyric-video
     aspect: "16:9"
 defaults:
   pipeline: news-song
@@ -202,7 +202,7 @@ defaults:
 
 ```yaml
 # A consulting brand publishing demos AND spokesperson videos.
-slug: last-rev
+slug: product-studio
 pipelines:
   screen-demo:
     playbook: clean-professional

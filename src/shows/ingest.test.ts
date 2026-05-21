@@ -38,24 +38,24 @@ describe("ingest helpers", () => {
 
   it("loads each show's configured watch entries with absolute roots", async () => {
     const root = await scratchProject();
-    await writeShow(root, "thechaosfm");
+    await writeShow(root, "news-lab");
 
     const entries = await loadAllShowIngest(root);
 
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
-      absolutePath: path.join(root, "music_library", "thechaosfm-news"),
-      show: expect.objectContaining({ slug: "thechaosfm" }),
+      absolutePath: path.join(root, "music_library", "news-song-drops"),
+      show: expect.objectContaining({ slug: "news-lab" }),
       watchEntry: expect.objectContaining({ pipeline: "news-song" }),
     });
   });
 
   it("matches drops only when they are under the watched path and satisfy the matcher", async () => {
     const root = await scratchProject();
-    await writeShow(root, "thechaosfm");
+    await writeShow(root, "news-lab");
     const entries = await loadAllShowIngest(root);
-    const track = path.join(root, "music_library", "thechaosfm-news", "pilot", "track.mp3");
-    const backup = path.join(root, "music_library", "thechaosfm-news", "pilot", "track.mp3.bak");
+    const track = path.join(root, "music_library", "news-song-drops", "pilot", "track.mp3");
+    const backup = path.join(root, "music_library", "news-song-drops", "pilot", "track.mp3.bak");
     const outside = path.join(root, "music_library", "other", "pilot", "track.mp3");
 
     expect(matchDropToWatch(track, entries)?.watchEntry.pipeline).toBe("news-song");
@@ -65,8 +65,8 @@ describe("ingest helpers", () => {
 
   it("resolves a dropped folder to the matching file inside it", async () => {
     const root = await scratchProject();
-    await writeShow(root, "thechaosfm");
-    const dropDir = path.join(root, "music_library", "thechaosfm-news", "pilot");
+    await writeShow(root, "news-lab");
+    const dropDir = path.join(root, "music_library", "news-song-drops", "pilot");
     await mkdir(dropDir, { recursive: true });
     await writeFile(path.join(dropDir, "track.mp3"), "audio", "utf8");
     await writeFile(path.join(dropDir, "track.mp3.bak"), "backup", "utf8");
@@ -94,8 +94,8 @@ describe("ingest helpers", () => {
 
   it("derives inputs from the matched file and sibling fixture files", async () => {
     const root = await scratchProject();
-    await writeShow(root, "thechaosfm");
-    const dropDir = path.join(root, "music_library", "thechaosfm-news", "pilot");
+    await writeShow(root, "news-lab");
+    const dropDir = path.join(root, "music_library", "news-song-drops", "pilot");
     await mkdir(dropDir, { recursive: true });
     await writeFile(path.join(dropDir, "track.mp3"), "audio", "utf8");
     await writeFile(path.join(dropDir, "lyrics.txt"), "lyrics", "utf8");
@@ -106,10 +106,10 @@ describe("ingest helpers", () => {
 
     expect(match).not.toBeNull();
     await expect(deriveInputs(match!.matchedFilePath, match!)).resolves.toEqual({
-      track: "music_library/thechaosfm-news/pilot/track.mp3",
-      lyrics: "music_library/thechaosfm-news/pilot/lyrics.txt",
-      reference: "music_library/thechaosfm-news/pilot/reference.mov",
-      sources: "music_library/thechaosfm-news/pilot/sources.yaml",
+      track: "music_library/news-song-drops/pilot/track.mp3",
+      lyrics: "music_library/news-song-drops/pilot/lyrics.txt",
+      reference: "music_library/news-song-drops/pilot/reference.mov",
+      sources: "music_library/news-song-drops/pilot/sources.yaml",
     });
   });
 });
@@ -121,7 +121,7 @@ async function writeShow(root: string, slug: string): Promise<void> {
     path.join(showDir, "show.yaml"),
     [
       `slug: ${slug}`,
-      'display_name: "The Chaos FM"',
+      'display_name: "News Lab"',
       "created: 2026-05-12",
       "pipelines:",
       "  news-song: {}",
@@ -129,7 +129,7 @@ async function writeShow(root: string, slug: string): Promise<void> {
       "  pipeline: news-song",
       "ingest:",
       "  watch:",
-      "    - path: ../../music_library/thechaosfm-news",
+      "    - path: ../../music_library/news-song-drops",
       '      match: "**/track.mp3"',
       "      pipeline: news-song",
       "      slug_from: parent_dir",

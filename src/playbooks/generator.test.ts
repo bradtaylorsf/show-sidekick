@@ -13,6 +13,7 @@ const bundledPlaybooksDir = fileURLToPath(new URL("../../bundled/playbooks/", im
 const schemaPath = fileURLToPath(new URL("../../bundled/schemas/styles/playbook.schema.json", import.meta.url));
 
 const starterPlaybooks = [
+  "beat-synced-lyric-video.yaml",
   "clean-professional.yaml",
   "flat-motion-graphics.yaml",
   "minimalist-diagram.yaml",
@@ -22,7 +23,6 @@ const starterPlaybooks = [
   "news-song.yaml",
   "playful-hip-hop-explainer.yaml",
   "ps2-dystopian-news-rap.yaml",
-  "thechaosfm-gta-political.yaml",
 ];
 
 describe("playbook generator", () => {

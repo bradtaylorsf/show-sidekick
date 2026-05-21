@@ -5,7 +5,7 @@ required_sections:
   - file: executive-producer.md
     section: "## Mandatory locked decisions"
   - file: executive-producer.md
-    section: "## Validated patterns from named productions"
+    section: "## Validated production patterns"
   - file: executive-producer.md
     section: "## When to stop and check with the human"
   - file: executive-producer.md
@@ -22,7 +22,7 @@ required_phrases:
   - file: executive-producer.md
     phrase: "Per-section accent color"
   - file: executive-producer.md
-    phrase: "Beat-drop hype tags between sections — name them after the actual concept (RAG, AGENTIC SEARCH, GRAPH DB), NOT generic VERSE 1/2/3"
+    phrase: "Beat-drop hype tags between sections — name them after the actual concept, NOT generic VERSE 1/2/3"
   - file: executive-producer.md
     phrase: "White-flash transitions at major beat drops"
   - file: executive-producer.md
@@ -88,7 +88,7 @@ required_modules:
   - file: executive-producer.md
     module: "Per-section accent color"
   - file: executive-producer.md
-    module: "Beat-drop hype tags between sections — name them after the actual concept (RAG, AGENTIC SEARCH, GRAPH DB), NOT generic VERSE 1/2/3"
+    module: "Beat-drop hype tags between sections — name them after the actual concept, NOT generic VERSE 1/2/3"
   - file: executive-producer.md
     module: "White-flash transitions at major beat drops"
   - file: executive-producer.md

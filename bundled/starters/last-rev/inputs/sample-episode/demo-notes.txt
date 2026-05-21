@@ -1,3 +1,0 @@
-Demo a short revenue-operations cleanup: inspect a stale pipeline dashboard, identify the blocked follow-up, and show the next action in a synthetic terminal view.
-
-Keep the visual treatment clean, professional, and screen-first with one callout per beat.

@@ -303,7 +303,7 @@ describe("bundled Batch 8.B Layer 3 agent skills", () => {
       [
         ["Open", "Montage"].join(""),
         "\\.\\.\\/" + ["Open", "Montage"].join(""),
-        "\\/Users\\/bradtaylor",
+        "\\/Users\\/[^/]+",
         "C:\\\\Users",
         "C:\\/Users",
         "\\.predit\\/\\.predit",

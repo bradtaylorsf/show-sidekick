@@ -8,7 +8,7 @@ characters: ./characters/
 skills: ./skills/
 pipelines:
   music-video:
-    playbook: news-song
+    playbook: beat-synced-lyric-video
     runtime: ffmpeg
     aspect: 9:16
     budget_usd: 0.5
@@ -23,5 +23,5 @@ ingest:
       pipeline: music-video
       slug_from: parent_dir
 starter:
-  fixture_size_bytes: 120213
+  fixture_size_bytes: 120212
   expected_sample_duration_s: 15

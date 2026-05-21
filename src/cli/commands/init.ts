@@ -305,23 +305,23 @@ function emitInitialized(io: CliIo, options: InitOptions, event: InitEvent): voi
   const nextSteps = event.starter
     ? [
         "next:",
-        "  edit .env with any provider keys you want to use",
-        `  ${BRANDING.primaryCli} doctor --profile paid-demo`,
+        `  ${BRANDING.primaryCli} doctor`,
         ...(event.setup_runtimes
           ? []
           : [`  ${BRANDING.primaryCli} setup runtimes  # optional: install Remotion + HyperFrames locally`]),
         `  ${BRANDING.primaryCli} build ${event.starter}/sample-episode --sample`,
         `  ${BRANDING.primaryCli} export ${event.starter}/sample-episode --target premiere`,
+        `  paid upgrade: edit .env, then run ${BRANDING.primaryCli} doctor --profile paid-demo`,
       ]
     : [
         "next:",
-        "  edit .env with any provider keys you want to use",
-        `  ${BRANDING.primaryCli} doctor --profile paid-demo`,
+        `  ${BRANDING.primaryCli} doctor`,
         ...(event.setup_runtimes
           ? []
           : [`  ${BRANDING.primaryCli} setup runtimes  # optional: install Remotion + HyperFrames locally`]),
         `  ${BRANDING.primaryCli} ls starters`,
         `  ${BRANDING.primaryCli} new show first-video --from animated-explainer`,
+        `  paid upgrade: edit .env, then run ${BRANDING.primaryCli} doctor --profile paid-demo`,
       ];
   const agentPrompt = [
     `agent prompt: "Read AGENTS.md and ${BRANDING.cacheDir}/skills/meta/onboarding.md. Ask me what I do and what I want to make, suggest three personalized no-key first-video ideas, then render a 30-second animated ${BRANDING.productDisplayName} explainer with local TTS and Remotion when available."`,

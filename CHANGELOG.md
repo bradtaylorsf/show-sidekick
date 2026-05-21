@@ -26,7 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Reviewer and audit flow for final review, force approvals, decision logging, and cost/status reporting.
 - NLE exporters for Premiere XML, DaVinci XML, CapCut draft packages, and CMX 3600 EDL.
 - `import` and `watch` flows for turning watched media drops into episode YAML.
-- Nine bundled starter shows with zero-key sample fixtures: music-video, news-song, thechaosfm, cinematic-trailer, animated-explainer, documentary, product-demo, ww2-diary, and ai-workflow-demo.
+- Generalized bundled starter shows with fixture-backed sample projects across music videos, news songs, cinematic trailers, animated explainers, screen demos, product demos, documentary montages, and source-led repurposing workflows.
 - Registry-driven tool selection with generated provider documentation and CI freshness checks.
 - Zero-key sample render path for bundled starters and framework smoke validation.
 - Public release verification with `pnpm release:check` and `pnpm release:check:full`.

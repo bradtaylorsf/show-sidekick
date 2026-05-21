@@ -24,11 +24,44 @@ Show Sidekick does not store credentials. Paid providers use your environment va
 
 ## Quickstart
 
-Run these commands in the folder where you want your video project:
+The simplest shape is: install the CLI globally once, create an empty folder for each video project, then run `showkick init` inside that folder. `showkick init` writes the project scaffold into the current directory.
+
+### Option 1: Paste This Into Your Coding Agent
+
+Use this with Codex, Claude Code, Cursor, or another local coding agent:
+
+```text
+Help me set up Show Sidekick in a fresh project folder and make my first no-key video.
+
+Ask me what folder name to use. If I do not care, use show-sidekick-first-video. Check Node 22+, npm, Git, FFmpeg, and ffprobe without changing my machine. Also check Python and uv, but treat them as optional tool runtimes, not blockers for the first no-key video.
+
+If a system prerequisite is missing, explain what it is for and ask before installing it. On macOS, prefer the official Node installer or Homebrew only after I approve. On Windows, prefer the official Node installer or winget only after I approve. Do not install Python, uv, FFmpeg, Git, Node, npm, Homebrew, winget packages, or provider CLIs without asking first.
+
+Once Node and npm are available, install or update Show Sidekick globally:
+npm install -g show-sidekick@latest
+showkick --version
+
+Create the project folder, cd into it, then initialize Show Sidekick:
+mkdir -p <folder-name>
+cd <folder-name>
+showkick init --starter animated-explainer --git
+
+For the first artifact, do not spend provider credits. Read AGENTS.md and .show-sidekick/skills/meta/onboarding.md, ask what I do, suggest three personalized no-key video ideas, choose the strongest one if I ask you to proceed, then run:
+showkick doctor
+showkick build animated-explainer/sample-episode --sample
+showkick export animated-explainer/sample-episode --target premiere
+
+Before any later command that may spend provider credits, stop and ask me for approval with the likely provider, model or tool, purpose, sample/full-run scope, and rough cost.
+```
+
+### Option 2: Run It Yourself
 
 ```bash
-npx -y show-sidekick@latest init --starter animated-explainer --git
-showkick doctor --profile paid-demo
+npm install -g show-sidekick@latest
+mkdir my-first-video
+cd my-first-video
+showkick init --starter animated-explainer --git
+showkick doctor
 showkick build animated-explainer/sample-episode --sample
 showkick export animated-explainer/sample-episode --target premiere
 ```
@@ -54,34 +87,26 @@ showkick ls tools --json
 
 Use [docs/providers.md](docs/providers.md) to see which env vars or CLI logins unlock each provider. Keep `.env` private; commit `.env.example` only.
 
-## Agent Prompt
+## Core Ideas
 
-Paste this into Codex, Claude Code, or another local coding agent:
+- **Project:** the folder where `showkick init` ran. It owns your shows, generated projects, exports, `.env`, and local overrides.
+- **Show:** a reusable video series or channel identity. A show owns brand, characters, pipeline defaults, and episodes.
+- **Episode:** one concrete video output inside a show. Build and export commands target `show/episode`.
+- **Pipeline:** the production workflow, such as `animated-explainer`, `music-video`, `screen-demo`, or `documentary-montage`.
+- **Playbook:** the creative/style treatment layered onto a pipeline.
+- **Starter:** a complete example show you can clone to begin quickly.
+- **Tools:** provider and local capabilities the harness can call, such as renderers, image generation, TTS, transcription, FFmpeg, and stock search.
+- **Decisions:** the audit log of choices about providers, models, runtime, budget, approvals, and substitutions.
 
-```text
-Help me set up Show Sidekick and make my first no-key video.
+See [docs/concepts.md](docs/concepts.md) for the full glossary and command map.
 
-First, detect whether I am on macOS or Windows. Check Node 22+, npm, Git, FFmpeg, and ffprobe without changing my machine. Also check Python and uv, but treat them as optional tool runtimes, not blockers for the first no-key video.
+## Prompt-First Workflows
 
-If a system prerequisite is missing, explain what it is for and ask before installing it. On macOS, prefer the official Node installer or Homebrew only after I approve. On Windows, prefer the official Node installer or winget only after I approve. Do not install Python, uv, FFmpeg, Git, Node, npm, Homebrew, winget packages, or provider CLIs without asking first.
-
-Initialize the project with:
-npx -y show-sidekick@latest init --starter animated-explainer --git
-
-Before any paid work, run:
-showkick doctor --profile paid-demo
-showkick ls tools --json
-
-For the first artifact, do not spend provider credits. Read AGENTS.md and .show-sidekick/skills/meta/onboarding.md, ask what I do, suggest three personalized no-key video ideas, choose the strongest one if I ask you to proceed, then run:
-showkick build animated-explainer/sample-episode --sample
-showkick export animated-explainer/sample-episode --target premiere
-
-Before any later command that may spend provider credits, stop and ask me for approval with the likely provider, model, purpose, and rough cost.
-```
+You do not have to memorize the CLI. Use [docs/prompt-library.md](docs/prompt-library.md) for copy-paste prompts that ask an agent to set up a project, create a show, add an episode, create a pipeline, write a playbook, inspect tools, build, export, resume, approve, revise, import drops, and update the local cache.
 
 ## What Show Sidekick Can Make
 
-See [docs/show-types.md](docs/show-types.md) for the show type catalog. It separates reusable pipeline show types from bundled starter shows, including branded starters such as The Chaos FM, WW2 Diary, Product Demo, Last Rev, Rave Queen, and AI Workflow Demo.
+See [docs/show-types.md](docs/show-types.md) for the show type catalog. It separates reusable pipeline show types from complete generalized starters such as animated explainers, music videos, news songs, screen demos, product demos, cinematic trailers, documentary montages, and source-led repurposing workflows.
 
 Maintainers can validate the catalog without publishing:
 
@@ -94,6 +119,8 @@ pnpm show-types:matrix --paid-demo
 ## Docs
 
 - [Quickstart](docs/quickstart.md)
+- [Concepts](docs/concepts.md)
+- [Prompt library](docs/prompt-library.md)
 - [Providers](docs/providers.md)
 - [Show types](docs/show-types.md)
 - [Troubleshooting](docs/quickstart.md#troubleshooting)

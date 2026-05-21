@@ -1,0 +1,18 @@
+# Copy this file to episodes/<slug>.yaml and replace the title, inputs, and notes.
+slug: new-screen-demo
+title: New Screen Demo
+created: 2026-05-14
+pipeline: screen-demo
+playbook: clean-professional
+runtime: remotion
+aspect: 16:9
+budget_usd: 0.5
+inputs:
+  terminal_steps: shows/screen-demo/inputs/sample-episode/terminal-steps.yaml
+  narration: shows/screen-demo/inputs/sample-episode/narration.txt
+  notes: shows/screen-demo/inputs/sample-episode/notes.txt
+cast: []
+tags:
+  - screen-demo
+  - sample
+  - synthetic-terminal

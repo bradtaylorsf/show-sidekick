@@ -144,25 +144,28 @@ The website prompt for non-technical users should be safe to paste into Codex, C
 ```text
 Help me set up Show Sidekick and make my first no-key video.
 
-First, identify whether I am on macOS or Windows. Check system prerequisites without changing my machine: Node 22+, npm, Git, and FFmpeg. Also check whether Python and uv are installed, but treat them as optional tool runtimes, not blockers for the first no-key video.
+Ask me what folder name to use. If I do not care, use show-sidekick-first-video. Check system prerequisites without changing my machine: Node 22+, npm, Git, FFmpeg, and ffprobe. Also check whether Python and uv are installed, but treat them as optional tool runtimes, not blockers for the first no-key video.
 
 If a system prerequisite is missing, explain what it is for and ask before installing it. On macOS, prefer the official Node installer or Homebrew only after I approve. On Windows, prefer the official Node installer or winget only after I approve. Do not install Python, uv, FFmpeg, Git, Node, npm, Homebrew, winget packages, or any provider CLI without asking first.
 
-After system preflight is clear, initialize the project with:
+Once Node and npm are available, install or update Show Sidekick globally:
 
-npx -y show-sidekick@latest init --starter animated-explainer --git
+npm install -g show-sidekick@latest
+showkick --version
 
-Then run project preflight before any paid work:
+Create the project folder, cd into it, then initialize Show Sidekick:
 
-showkick doctor --profile paid-demo
-showkick ls tools --json
+mkdir -p <folder-name>
+cd <folder-name>
+showkick init --starter animated-explainer --git
 
 For the first artifact, do not use paid provider credits. Read AGENTS.md and .show-sidekick/skills/meta/onboarding.md, ask what I do, suggest three personalized no-key video ideas, choose the strongest one if I ask you to proceed, run:
 
+showkick doctor
 showkick build animated-explainer/sample-episode --sample
 showkick export animated-explainer/sample-episode --target premiere
 
-Before any later command that may spend provider credits, stop and ask me for approval with the likely provider, model, purpose, and rough cost.
+Before any later command that may spend provider credits, stop and ask me for approval with the likely provider, model or tool, purpose, sample/full-run scope, and rough cost.
 ```
 
 ### 5b. Personalized zero-key first video

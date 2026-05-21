@@ -22,10 +22,19 @@ Show Sidekick is installed as a CLI. The user runs the CLI inside their **own** 
 Global install:
 
 ```bash
-npm install -g show-sidekick
+npm install -g show-sidekick@latest
 ```
 
-Per-project install (no global pollution):
+The public quickstart should prefer global install plus a fresh project folder:
+
+```bash
+npm install -g show-sidekick@latest
+mkdir my-first-video
+cd my-first-video
+showkick init --starter animated-explainer --git
+```
+
+One-off execution without installing the global command remains possible for testing, but it does not leave `showkick` installed globally:
 
 ```bash
 npx -y show-sidekick@latest init

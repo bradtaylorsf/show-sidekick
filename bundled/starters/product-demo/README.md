@@ -5,8 +5,8 @@ Visual-led product demo starter for short screen-first rough cuts.
 - Starter: `product-demo`
 - Pipeline slug: `screen-demo`
 - Playbook: `clean-professional`
-- Fixture size: generated from `inputs/sample-episode/`
+- Fixture size: 1834 bytes
 - Expected sample duration: 15 seconds
 - Sample inputs: `screenshot.jpg` and `notes.txt`
 
-The sample episode is pre-filled for `showkick init --starter product-demo` and uses project-relative input paths under `shows/product-demo/inputs/sample-episode/`.
+This starter currently provides fixture-backed setup and catalog coverage; sample rendering remains unsupported until the pipeline has a verified sample path.

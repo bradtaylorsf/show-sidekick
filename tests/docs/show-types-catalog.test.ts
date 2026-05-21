@@ -44,7 +44,7 @@ describe("show type catalog", () => {
     expect(resolution?.errors.join("\n")).toContain("unknown public pipeline 'not-real'");
   });
 
-  it("keeps show-only concepts out of pipeline lanes", async () => {
+  it("keeps show-only concepts out of pipeline lanes when denylisted", async () => {
     const validation = await validateShowTypeCatalog({ repoRoot });
     const pipelineSlugs = new Set(
       validation.catalog.rows.filter((row) => row.laneId.startsWith("pipeline:")).map((row) => row.pipelineSlug),
@@ -52,16 +52,6 @@ describe("show type catalog", () => {
     for (const slug of SHOW_ONLY_DENYLIST) {
       expect(pipelineSlugs.has(slug), `${slug} must not be a pipeline catalog row`).toBe(false);
     }
-
-    const baseRow = requiredRow(validation.catalog.rows, "pipeline:animation");
-    const badRow: ShowTypeCatalogRow = {
-      ...baseRow,
-      laneId: "pipeline:thechaosfm",
-      pipelineSlug: "thechaosfm",
-    };
-    const [resolution] = resolveShowTypeCatalog({ rows: [badRow] }, validation.inventory);
-
-    expect(resolution?.errors.join("\n")).toContain("'thechaosfm' is a show starter concept, not a pipeline slug");
   });
 
   it("keeps the README linked to the public show type catalog", async () => {

@@ -1,0 +1,4 @@
+sources:
+  - name: Example Publisher
+    url: https://example.com/news
+    note: Replace with real source URLs before building.

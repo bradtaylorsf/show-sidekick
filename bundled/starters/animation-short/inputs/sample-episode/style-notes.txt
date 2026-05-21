@@ -1,0 +1,1 @@
+Use flat geometric motion, strong contrast, and one reusable motion rule per scene. Avoid character rigging in this starter.
