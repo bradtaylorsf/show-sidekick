@@ -7,6 +7,10 @@
     "type": "git",
     "url": "git+https://github.com/bradtaylorsf/show-sidekick.git"
   },
+  "homepage": "https://github.com/bradtaylorsf/show-sidekick#readme",
+  "bugs": {
+    "url": "https://github.com/bradtaylorsf/show-sidekick/issues"
+  },
   "bin": {
     "showkick": "./dist/cli/index.js",
     "show-sidekick": "./dist/cli/index.js",
