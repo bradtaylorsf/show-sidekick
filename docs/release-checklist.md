@@ -23,7 +23,7 @@ This is the human-owned release playbook for maintainers. Automation lives in [`
 - Run `pnpm release:check` from a clean checkout after the package has been built.
 - Run `npm publish --dry-run --provenance --access public`.
 - Publish through the Changesets release workflow and confirm the npm package shows provenance.
-- Create or verify the GitHub Release, including the show-type validation report link.
+- Verify the workflow-created GitHub Release, including the npm package link and the show-type validation report artifact link.
 - Verify the website install prompt uses the published `show-sidekick` version and the `showkick` binary.
 
 ## Rollback
