@@ -38,9 +38,11 @@ describe("release workflow", () => {
     expect(runText).toContain("npm publish --dry-run --provenance --access public");
     expect(workflowText).toContain("publish: pnpm changeset:publish");
     expect(workflowText).toContain("createGithubReleases: false");
-    expect(runText).toContain("package.json version did not change in this commit; skipping GitHub Release creation.");
+    expect(runText).toContain("Changesets created or updated a version PR in this run; skipping GitHub Release creation.");
+    expect(runText).toContain("Latest package.json change did not bump the version; skipping GitHub Release creation.");
+    expect(runText).toContain("npm has not exposed show-sidekick@$VERSION yet; retrying");
     expect(runText).toContain("npm view \"show-sidekick@$VERSION\" version --json");
-    expect(runText).toContain("gh release create \"$TAG\" --target \"$GITHUB_SHA\"");
+    expect(runText).toContain("gh release create \"$TAG\" --target \"$VERSION_COMMIT\"");
     expect(runText).toContain("gh release edit \"$TAG\" --title \"$TAG\"");
     expect(runText).toContain("show-type-validation-report");
     expect(workflowText).not.toContain("steps.changesets.outputs.published == 'true'");

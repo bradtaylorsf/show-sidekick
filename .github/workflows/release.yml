@@ -137,24 +137,50 @@ jobs:
         run: |
           set -euo pipefail
 
+          read_package_version() {
+            node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => { try { console.log(JSON.parse(input).version ?? ''); } catch { console.log(''); } });"
+          }
+
+          if ! git diff --quiet -- package.json CHANGELOG.md .changeset; then
+            echo "Changesets created or updated a version PR in this run; skipping GitHub Release creation."
+            exit 0
+          fi
+
           VERSION="$(node -p "require('./package.json').version")"
-          PREVIOUS_VERSION="$(git show HEAD^:package.json 2>/dev/null | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => { try { console.log(JSON.parse(input).version ?? ''); } catch { console.log(''); } });" || true)"
+          VERSION_COMMIT="$(git log -n 1 --format=%H -- package.json)"
+          PREVIOUS_VERSION="$(git show "$VERSION_COMMIT^:package.json" 2>/dev/null | read_package_version || true)"
 
           if [ "$PREVIOUS_VERSION" = "$VERSION" ]; then
-            echo "package.json version did not change in this commit; skipping GitHub Release creation."
-            exit 0
-          fi
-
-          if ! PUBLISHED_VERSION="$(npm view "show-sidekick@$VERSION" version --json 2>/dev/null | tr -d '"')"; then
-            echo "npm has not published show-sidekick@$VERSION yet; skipping GitHub Release creation."
-            exit 0
-          fi
-          if [ "$PUBLISHED_VERSION" != "$VERSION" ]; then
-            echo "npm has not published show-sidekick@$VERSION yet; skipping GitHub Release creation."
+            echo "Latest package.json change did not bump the version; skipping GitHub Release creation."
             exit 0
           fi
 
           TAG="v$VERSION"
+          RELEASE_EXISTS=0
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            RELEASE_EXISTS=1
+            if [ "$VERSION_COMMIT" != "$GITHUB_SHA" ]; then
+              echo "$TAG already exists and this run did not bump package.json; skipping GitHub Release update."
+              exit 0
+            fi
+          fi
+
+          PUBLISHED_VERSION=""
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            PUBLISHED_VERSION="$(npm view "show-sidekick@$VERSION" version --json 2>/dev/null | tr -d '"' || true)"
+            if [ "$PUBLISHED_VERSION" = "$VERSION" ]; then
+              break
+            fi
+
+            echo "npm has not exposed show-sidekick@$VERSION yet; retrying ($attempt/12)."
+            sleep 10
+          done
+
+          if [ "$PUBLISHED_VERSION" != "$VERSION" ]; then
+            echo "::error::npm did not expose show-sidekick@$VERSION in time; skipping GitHub Release creation would leave the release incomplete."
+            exit 1
+          fi
+
           NOTES_FILE="/tmp/release-notes.md"
           awk -v version="$VERSION" '
             $0 == "## " version || $0 == "## [" version "]" || index($0, "## [" version "] - ") == 1 {
@@ -179,8 +205,8 @@ jobs:
             echo "npm package: https://www.npmjs.com/package/show-sidekick/v/$VERSION"
           } >> "$NOTES_FILE"
 
-          if gh release view "$TAG" >/dev/null 2>&1; then
+          if [ "$RELEASE_EXISTS" = "1" ]; then
             gh release edit "$TAG" --title "$TAG" --notes-file "$NOTES_FILE"
           else
-            gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes-file "$NOTES_FILE"
+            gh release create "$TAG" --target "$VERSION_COMMIT" --title "$TAG" --notes-file "$NOTES_FILE"
           fi
