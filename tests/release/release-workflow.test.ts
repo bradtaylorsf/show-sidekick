@@ -43,6 +43,7 @@ describe("release workflow", () => {
     expect(workflowText).toContain("if: steps.release-mode.outputs.run_changesets == 'true'");
     expect(runText).toContain("Changesets created or updated a version PR in this run; skipping GitHub Release creation.");
     expect(runText).toContain("Latest package.json change did not bump the version; skipping GitHub Release creation.");
+    expect(runText).toContain("Create this historical GitHub Release manually so the tag can target the package commit exactly.");
     expect(runText).toContain("npm has not exposed show-sidekick@$VERSION yet; retrying");
     expect(runText).toContain("npm view \"show-sidekick@$VERSION\" version --json");
     expect(runText).toContain("gh release create \"$TAG\" --target \"$VERSION_COMMIT\"");
