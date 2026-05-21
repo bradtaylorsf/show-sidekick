@@ -102,8 +102,17 @@ jobs:
 
       - name: Package dry run
         run: |
+          set -euo pipefail
+
           mkdir -p /tmp/show-sidekick-pack
           pnpm pack --pack-destination /tmp/show-sidekick-pack
+
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "show-sidekick@$VERSION" version --json >/dev/null 2>&1; then
+            echo "show-sidekick@$VERSION is already published; skipping npm publish dry-run until the Changesets version PR bumps package.json."
+            exit 0
+          fi
+
           npm publish --dry-run --provenance --access public
 
       - name: Launch gates
