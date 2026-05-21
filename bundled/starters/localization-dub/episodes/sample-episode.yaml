@@ -1,0 +1,18 @@
+slug: sample-episode
+title: Sample Localization Dub
+created: 2026-05-14
+pipeline: localization-dub
+playbook: clean-professional
+runtime: ffmpeg
+aspect: 16:9
+budget_usd: 0.5
+inputs:
+  source_video: shows/localization-dub/inputs/sample-episode/source-video.txt
+  transcript: shows/localization-dub/inputs/sample-episode/transcript.txt
+  target_locales: shows/localization-dub/inputs/sample-episode/target-locales.yaml
+  voice_notes: shows/localization-dub/inputs/sample-episode/voice-notes.txt
+cast: []
+tags:
+  - localization-dub
+  - sample
+  - localization

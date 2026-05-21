@@ -26,7 +26,7 @@ For each episode, the agent works through the pipeline's stages. At every stage:
 Pipelines + playbooks + show defaults compose to express any show type. The agent reads the resolved configuration and adapts:
 
 - A **music video** pipeline tells the agent to build a cuesheet, snap scenes to downbeats, and align the climax shot to the chorus.
-- A **WWII diary** pipeline tells the agent to use VO as master clock, pace scenes to 4-8 second sepia stills, and call into the cinematic asset library.
+- A **historical diary** pipeline tells the agent to use VO as master clock, pace scenes to 4-8 second archival stills, and call into the cinematic asset library.
 - A **product demo** pipeline tells the agent to drive Remotion scenes around captured screen recordings, with a talking-head avatar overlay.
 - A **news-song** pipeline tells the agent to interleave PS2-era generated visuals with real source screenshots from a `sources.yaml` file.
 

@@ -1,6 +1,6 @@
 ---
 name: "music-video-executive-producer"
-description: "Orchestrate RAG Shelf Sprint style music-video production with locked audio timing, sample-first governance, and reference-aware visual patterns."
+description: "Orchestrate beat-synced music-video production with locked audio timing, sample-first governance, and reference-aware visual patterns."
 applies_to: "pipelines/music-video"
 role: "executive-producer"
 ---
@@ -8,7 +8,7 @@ role: "executive-producer"
 
 ## When To Use
 
-You are the EP for audio-led vertical music videos, especially Brad's RAG Shelf Sprint style: beat-driven, concept-tagged, lyric-timed, visually benchmarked, and governed by sample-first cost control.
+You are the EP for audio-led vertical music videos: beat-driven, concept-tagged, lyric-timed, visually benchmarked, and governed by sample-first cost control.
 
 ## Pipeline state machine
 
@@ -24,7 +24,7 @@ state:
     lyrics: null
     whisper_model: "medium.en"
     whisper_retry_model: "large-v3"
-    visual_benchmark: "Brad's reference music-video"
+    visual_benchmark: "approved beat-synced lyric-video treatment"
     runtime: hyperframes
     sample_first: null
     section_accent_colors: {}
@@ -52,17 +52,17 @@ state:
 - Beat-drop hype tag placement is `1.5-2 sec` before first vocal.
 - Runtime changes require approval; silent runtime swap is a CRITICAL governance violation.
 
-## Validated patterns from named productions
+## Validated production patterns
 
-These are validated RAG Shelf Sprint patterns and should be treated as defaults unless the user explicitly changes the visual benchmark.
+These are reusable beat-synced music-video patterns and should be treated as defaults unless the user explicitly changes the visual benchmark.
 
 ### Per-section accent color
 
 Per-section accent color — one color per character/concept.
 
-### Beat-drop hype tags between sections — name them after the actual concept (RAG, AGENTIC SEARCH, GRAPH DB), NOT generic VERSE 1/2/3
+### Beat-drop hype tags between sections — name them after the actual concept, NOT generic VERSE 1/2/3
 
-Beat-drop hype tags between sections — name them after the actual concept (RAG, AGENTIC SEARCH, GRAPH DB), NOT generic VERSE 1/2/3.
+Beat-drop hype tags between sections — name them after the actual concept, NOT generic VERSE 1/2/3.
 
 ### White-flash transitions at major beat drops
 

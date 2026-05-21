@@ -646,7 +646,7 @@ async function buildScenePlan(ctx: StageContext): Promise<unknown> {
       scene_anchor: beat.title,
       hero_moment: index === 0 && subIndex === 0,
       description: ps2SceneDescription(beat.body, subIndex),
-      shot_intent: "Turn the lyric into a beat-locked PS2/GTA political music-video shot.",
+      shot_intent: "Turn the lyric into a beat-locked retro PS2 political music-video shot.",
       information_role: index === 0 ? "hook setup" : index === beats.length - 1 ? "takeaway" : "explanatory beat",
       texture_keywords: [
         "PS2-era low-poly geometry",
@@ -1376,7 +1376,7 @@ function ps2SceneDescription(body: string, variant: number): string {
       ? "low-poly workers and creators building AI tools from apartment desks while old-money towers flicker in the background"
       : "CRT market-panic screens, gated penthouse silhouettes, and open-source neon code spilling through locked doors";
 
-  return `${body}. The ChaosFM PS2/GTA political music-video lyric-art shot: ${motif}, compressed textures, visible polygon edges, vertex lighting, CRT scanlines, VHS tape noise, foggy render distance, no fake article pages, no readable invented logos.`;
+  return `${body}. Retro PS2 political music-video lyric-art shot: ${motif}, compressed textures, visible polygon edges, vertex lighting, CRT scanlines, VHS tape noise, foggy render distance, no fake article pages, no readable invented logos.`;
 }
 
 function beatForSceneSlug(slug: string, beats: readonly SampleBeat[]): SampleBeat | undefined {
@@ -1539,7 +1539,7 @@ function readableSlug(value: string): string {
 function lyricArtImagePrompt(ctx: StageContext, beat?: SampleBeat): string {
   return [
     `Use case: stylized-concept.`,
-    `Asset type: ${aspect(ctx)} keyframe for a PS2/GTA political music video.`,
+    `Asset type: ${aspect(ctx)} keyframe for a retro PS2 political music video.`,
     `Primary request: ${beat?.body ?? `Create a source-free lyric-art start frame for ${ctx.episode.title}.`}`,
     beat?.sourceLine === undefined ? undefined : `Lyric beat being visualized, not printed in the image: ${beat.sourceLine}`,
     "Source policy: source-free protest music video; no fake article pages, fake screenshots, fake publisher mastheads, fake agency pages, captions, subtitles, watermarks, or invented readable logos.",
@@ -1555,7 +1555,7 @@ function lyricArtMotionPrompt(ctx: StageContext, beat?: SampleBeat): string {
   const subject = beat === undefined ? "the supplied keyframe" : `"${beat.title}"`;
   return [
     "Image-to-video clip. Use the supplied keyframe as the first frame, composition lock, lighting lock, and style lock.",
-    `Animate ${subject} as a short ${rendererFamily(ctx)} PS2/GTA political music-video shot.`,
+    `Animate ${subject} as a short ${rendererFamily(ctx)} retro PS2 political music-video shot.`,
     "Use one continuous shot with handheld drift, subtle rain, CRT flicker, neon reflections, low-poly character or crowd motion, VHS artifacts, and a tense push-in or parallax move.",
     "Do not add captions, new readable text, fake news pages, real logos, gore, face morphing, or major composition changes.",
   ].join(" ");

@@ -12,8 +12,9 @@ inputs:
   reference_image: shows/animated-explainer/inputs/sample-episode/reference.jpg
   duration_s: 30
   notes: |
-    Replace with explainer goal, audience context, visual metaphor, and callout priorities.
+    Thirty-second personalized no-key explainer built from a short script. Render animated cards with local narration and Remotion when available.
 cast: []
 tags:
   - animated-explainer
+  - sample
   - visual-led

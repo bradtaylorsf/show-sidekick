@@ -1,0 +1,27 @@
+slug: character-animation
+display_name: Character Animation
+description: General character-animation starter for recurring-cast design, rig planning, and action-led shorts.
+created: 2026-05-14
+sample_support: unsupported
+brand: ./brand/
+characters: ./characters/
+skills: ./skills/
+pipelines:
+  character-animation:
+    playbook: flat-motion-graphics
+    runtime: remotion
+    aspect: 16:9
+    budget_usd: 0.75
+defaults:
+  pipeline: character-animation
+  language: en
+ingest:
+  episode_template: ./episode.template.yaml
+  watch:
+    - path: ./inputs/
+      match: "**/character-spec.txt"
+      pipeline: character-animation
+      slug_from: parent_dir
+starter:
+  fixture_size_bytes: 345
+  expected_sample_duration_s: 10

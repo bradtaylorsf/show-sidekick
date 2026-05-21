@@ -57,14 +57,7 @@ export const BUNDLED_MANIFEST_INVENTORY_SLUGS = [
   "framework-smoke",
 ] as const;
 
-export const SHOW_ONLY_DENYLIST = [
-  "ww2-diary",
-  "thechaosfm",
-  "last-rev",
-  "rave-queen",
-  "gta-political",
-  "aint-no-crowns",
-] as const;
+export const SHOW_ONLY_DENYLIST = [] as const;
 
 const inventory = new Map<string, DemoReadinessInventoryEntry>(
   Object.entries(DEMO_READINESS_INVENTORY),

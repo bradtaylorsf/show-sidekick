@@ -25,7 +25,7 @@ Sample-first is not optional for any production estimated > $0.50 or > 15 min.
 1. Write a brief with title, audience, platform, tone, duration, hook, and key points.
 2. Identify one accent color per major character or concept.
 3. Name concept sections with actual terms, not generic verse labels.
-4. State how Brad's reference music-video acts as the visual benchmark.
+4. State how the approved beat-synced lyric-video treatment acts as the visual benchmark.
 5. Record when the sample-first gate must happen and whether any flagged lyric phrase windows need manual correction before scripting.
 
 ## Quality Gate

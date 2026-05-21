@@ -1,0 +1,27 @@
+slug: daily-news-brief
+display_name: Daily News Brief
+description: General daily-news starter for sourced headline recaps and recurring topical briefs.
+created: 2026-05-14
+sample_support: unsupported
+brand: ./brand/
+characters: ./characters/
+skills: ./skills/
+pipelines:
+  daily-news:
+    playbook: news-broadcast
+    runtime: ffmpeg
+    aspect: 16:9
+    budget_usd: 0.5
+defaults:
+  pipeline: daily-news
+  language: en
+ingest:
+  episode_template: ./episode.template.yaml
+  watch:
+    - path: ./inputs/
+      match: "**/headline-brief.txt"
+      pipeline: daily-news
+      slug_from: parent_dir
+starter:
+  fixture_size_bytes: 402
+  expected_sample_duration_s: 20

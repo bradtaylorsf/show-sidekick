@@ -1,0 +1,97 @@
+identity:
+  name: "Beat-Synced Lyric Video"
+  category: motion-graphics
+  mood: energetic, musical, polished, responsive
+  pace: rapid
+  best_for: "Music-led videos where lyrics, beat accents, typography, abstract visuals, and motion cues carry the edit without implying news sourcing or brand-specific lore."
+
+visual_language:
+  color_palette:
+    primary: ["#7C3AED", "#0EA5E9"]
+    accent: ["#F97316", "#22C55E"]
+    background: "#0B1020"
+    text: "#F8FAFC"
+    muted: "#1E293B"
+  composition: "vertical-first lyric and concept scenes with a strong center subject, caption-safe lower third, and clean negative space for beat tags or title cards"
+  texture: "clean digital illustration, graphic overlays, light grain only when it supports the song mood"
+
+typography:
+  headings:
+    font: "Outfit"
+    weight: 900
+    tracking: "0.02em"
+  body:
+    font: "Outfit"
+    weight: 700
+    line_height: 1.08
+  scale_system: "perfect_fourth"
+  weight_matrix:
+    title: 900
+    heading: 800
+    body: 700
+    caption: 700
+
+motion:
+  transitions: [hard-cut, white-flash, motion-blur-whip, cross-fade]
+  animation_style: "beat-aware kinetic typography, motivated push-ins, quick parallax, and scene cuts snapped to phrase windows or downbeats"
+  pacing_rules:
+    min_scene_hold_seconds: 1.3
+    max_scene_hold_seconds: 5.0
+    text_card_hold_seconds: 1.5
+    stat_card_hold_seconds: 1.5
+    transition_duration_seconds: 0.18
+  entrance: "word and title elements enter on beats with clean scale or slide motion"
+  exit: "caption groups clear before the next phrase; scene exits favor hard cuts or fast motion blur"
+
+audio:
+  voice_style: "BYO vocals or instrumental track; vocals are part of the music, not narration"
+  music_mood: "song-driven; use transcription, beat detection, and section labels to drive visual timing"
+  music_volume: 1.0
+  sfx_style: "subtle white-flash or impact accents only on major musical beats"
+  ducking_threshold_db: 0
+
+asset_generation:
+  image_prompt_prefix: "vertical music-video illustration, beat-synced lyric concept art, bold composition, clean digital color, caption-safe lower third, "
+  image_negative_prompt: "fake news article, invented publisher page, readable logos, cluttered typography, photoreal celebrity portrait, low quality"
+  diagram_style: "simple graphic lyric diagrams over deep backgrounds, high contrast, few labels"
+  consistency_anchors:
+    - "Keep lyric scenes visually driven by the song mood, not by news-source conventions"
+    - "Leave the lower third safe for captions or lyric emphasis"
+    - "Use the same palette and type scale across title cards, captions, and concept scenes"
+    - "Scene changes must honor beat, section, or lyric phrase timing"
+
+overlays:
+  key_term:
+    bg: "#111827"
+    text: "#F8FAFC"
+    radius: 18
+    shadow: "0 10px 30px rgba(0,0,0,0.35)"
+  stat_card:
+    bg: "#1E293B"
+    border: "#0EA5E9"
+    radius: 8
+    shadow: "0 8px 24px rgba(0,0,0,0.28)"
+  code_block:
+    bg: "#0B1020"
+    text: "#F8FAFC"
+    highlight: "#F97316"
+
+quality_rules:
+  - "All visual timing must cite cuesheet, beat, section, or lyric phrase anchors."
+  - "No scene should exceed the pipeline max scene duration."
+  - "Do not imply journalistic sourcing unless the episode explicitly uses a sourced pipeline mode."
+  - "Text must be readable at 720p and clear before the next lyric phrase enters."
+  - "Generated imagery should support the song's metaphor or mood without printing long lyric passages in-frame."
+  - "Sample-first: prove the hook or chorus treatment before expanding to the full track."
+
+chart_palette:
+  - "#7C3AED"
+  - "#0EA5E9"
+  - "#F97316"
+  - "#22C55E"
+  - "#F8FAFC"
+
+color_rules:
+  harmony_type: "split-complementary"
+  contrast_validation: true
+  colorblind_safe: true

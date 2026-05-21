@@ -1,0 +1,17 @@
+slug: sample-episode
+title: Sample Clip Factory
+created: 2026-05-14
+pipeline: clip-factory
+playbook: clean-professional
+runtime: ffmpeg
+aspect: 9:16
+budget_usd: 0.5
+inputs:
+  source_video: shows/clip-factory/inputs/sample-episode/source-video.txt
+  clip_goals: shows/clip-factory/inputs/sample-episode/clip-goals.txt
+  platform_targets: shows/clip-factory/inputs/sample-episode/platform-targets.txt
+cast: []
+tags:
+  - clip-factory
+  - sample
+  - source-video

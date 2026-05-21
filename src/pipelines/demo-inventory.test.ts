@@ -52,14 +52,7 @@ describe("demo-readiness pipeline inventory", () => {
   });
 
   it("guards show-only concepts from becoming bundled pipeline types", () => {
-    expect(SHOW_ONLY_DENYLIST).toEqual([
-      "ww2-diary",
-      "thechaosfm",
-      "last-rev",
-      "rave-queen",
-      "gta-political",
-      "aint-no-crowns",
-    ]);
+    expect(SHOW_ONLY_DENYLIST).toEqual([]);
 
     const manifestSlugs = new Set(
       readdirSync(bundledPipelinesDir)

@@ -1,0 +1,27 @@
+slug: animation-short
+display_name: Animation Short
+description: General animation-first starter for kinetic type, motion graphics, and character-free narrative shorts.
+created: 2026-05-14
+sample_support: unsupported
+brand: ./brand/
+characters: ./characters/
+skills: ./skills/
+pipelines:
+  animation:
+    playbook: flat-motion-graphics
+    runtime: remotion
+    aspect: 16:9
+    budget_usd: 0.5
+defaults:
+  pipeline: animation
+  language: en
+ingest:
+  episode_template: ./episode.template.yaml
+  watch:
+    - path: ./inputs/
+      match: "**/script.txt"
+      pipeline: animation
+      slug_from: parent_dir
+starter:
+  fixture_size_bytes: 323
+  expected_sample_duration_s: 15

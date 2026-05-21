@@ -1,0 +1,27 @@
+slug: podcast-repurpose
+display_name: Podcast Repurpose
+description: General podcast repurposing starter for chapter-aware clips, captioned shorts, and excerpt reels.
+created: 2026-05-14
+sample_support: unsupported
+brand: ./brand/
+characters: ./characters/
+skills: ./skills/
+pipelines:
+  podcast-repurpose:
+    playbook: clean-professional
+    runtime: ffmpeg
+    aspect: 9:16
+    budget_usd: 0.5
+defaults:
+  pipeline: podcast-repurpose
+  language: en
+ingest:
+  episode_template: ./episode.template.yaml
+  watch:
+    - path: ./inputs/
+      match: "**/source-podcast.txt"
+      pipeline: podcast-repurpose
+      slug_from: parent_dir
+starter:
+  fixture_size_bytes: 325
+  expected_sample_duration_s: 20

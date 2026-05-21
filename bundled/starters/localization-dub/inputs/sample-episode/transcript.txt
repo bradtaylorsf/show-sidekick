@@ -1,0 +1,3 @@
+00:00 Welcome to the product update.
+00:04 Here is what changed.
+00:08 Here is the next action.

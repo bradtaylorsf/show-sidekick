@@ -1,3 +1,0 @@
-0:00 We start with a scripted terminal so the demo is deterministic.
-0:04 The repository appears as authored output, not a real screen capture.
-0:09 The sample build runs in synthetic terminal mode and prepares the handoff.

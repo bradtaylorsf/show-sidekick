@@ -1,0 +1,17 @@
+slug: sample-episode
+title: Sample Hybrid Source Video
+created: 2026-05-14
+pipeline: hybrid
+playbook: clean-professional
+runtime: remotion
+aspect: 16:9
+budget_usd: 0.5
+inputs:
+  source_media: shows/hybrid-source-video/inputs/sample-episode/source-media.txt
+  support_visual_brief: shows/hybrid-source-video/inputs/sample-episode/support-brief.txt
+  edit_goals: shows/hybrid-source-video/inputs/sample-episode/edit-goals.txt
+cast: []
+tags:
+  - hybrid-source-video
+  - sample
+  - source-video

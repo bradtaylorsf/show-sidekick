@@ -1,0 +1,19 @@
+# Copy this file to episodes/<slug>.yaml and replace the title, inputs, and notes.
+slug: new-animation-short
+title: New Animation Short
+created: 2026-05-14
+pipeline: animation
+playbook: flat-motion-graphics
+runtime: remotion
+aspect: 16:9
+budget_usd: 0.5
+inputs:
+  script: shows/animation-short/inputs/sample-episode/script.txt
+  style_notes: shows/animation-short/inputs/sample-episode/style-notes.txt
+  notes: |
+    Fifteen-second animation-first sample for a character-free motion system.
+cast: []
+tags:
+  - animation-short
+  - sample
+  - animation

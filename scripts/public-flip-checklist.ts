@@ -581,7 +581,8 @@ async function checkReadme(repoRoot: string): Promise<CheckResult> {
     "npm",
     "Git",
     "FFmpeg",
-    "npx -y show-sidekick@latest init --starter animated-explainer --git",
+    "npm install -g show-sidekick@latest",
+    "showkick init --starter animated-explainer --git",
     "showkick doctor --profile paid-demo",
     "showkick build animated-explainer/sample-episode --sample",
     "showkick export animated-explainer/sample-episode --target premiere",
@@ -642,7 +643,7 @@ async function checkBundledRunnableExample(
 }
 
 async function checkWatchImportFixture(repoRoot: string): Promise<CheckResult> {
-  const fixtureRoot = path.join(repoRoot, "bundled", "fixtures", "ingest-watch", "thechaosfm-news", "pilot");
+  const fixtureRoot = path.join(repoRoot, "bundled", "fixtures", "ingest-watch", "news-song-drops", "pilot");
   const requiredFiles = ["track.mp3", "lyrics.txt", "sources.yaml", "reference.mp4"];
   const missingFiles: string[] = [];
 

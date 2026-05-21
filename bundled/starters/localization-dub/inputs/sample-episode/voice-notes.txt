@@ -1,0 +1,1 @@
+Preserve timing and meaning. Keep translated lines speakable and subtitle-safe.

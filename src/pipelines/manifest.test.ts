@@ -169,20 +169,20 @@ describe("PipelineManifestSchema", () => {
     ).not.toThrow();
   });
 
-  it("accepts arbitrary metadata keys for The Chaos FM", () => {
+  it("accepts arbitrary metadata keys for brand-specific pipeline metadata", () => {
     const manifest = PipelineManifestSchema.parse({
-      slug: "thechaosfm",
+      slug: "news-music-studio",
       stages: [stage("idea"), stage("script"), stage("scene_plan"), stage("assets"), stage("edit"), stage("compose")],
       metadata: {
         brand: {
-          voice: "PS2-era political news rap",
+          voice: "source-backed musical commentary",
           content_mode: "sourced",
         },
       },
     });
 
     expect(manifest.metadata?.brand).toEqual({
-      voice: "PS2-era political news rap",
+      voice: "source-backed musical commentary",
       content_mode: "sourced",
     });
   });

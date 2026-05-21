@@ -20,7 +20,7 @@ Each section must cite `lyrics_aligned` phrase windows, cuesheet word timing, be
 ## Process
 
 1. Split the track into sections based on cuesheet sections, lyrics, and beat drops.
-2. Name sections after actual concepts such as RAG, AGENTIC SEARCH, GRAPH DB, not generic verse labels.
+2. Name sections after actual concepts from the song, not generic verse labels.
 3. Assign caption text only where word timestamps support it.
 4. Mark beat-drop hype tags and the first vocal entry.
 5. Record accent color and visual job per section.

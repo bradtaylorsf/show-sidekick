@@ -3,11 +3,11 @@ identity:
   category: motion-graphics
   mood: playful, energetic, character-driven, slightly chaotic in a controlled way
   pace: rapid
-  best_for: "Vertical 9:16 music videos for hip-hop / spoken-word songs about technical or educational topics. Saturday-morning-cartoon energy applied to graduate-level concepts. Originated from the RAG Shelf Sprint music video (2026-05-08)."
+  best_for: "Vertical 9:16 music videos for hip-hop / spoken-word songs about technical, educational, or social topics. Saturday-morning-cartoon energy applied to complex ideas."
 
 visual_language:
   color_palette:
-    primary: ["#FFD23F"]         # vibrant yellow — lead accent (RAG / Verse 1 in source song)
+    primary: ["#FFD23F"]         # vibrant yellow lead accent
     accent: ["#FF4938", "#3FE3D6"]   # red + cyan-mint — secondary section accents
     background: "#0B1020"        # deep navy-black
     text: "#F5F2E8"              # warm off-white
@@ -74,11 +74,11 @@ quality_rules:
   - "Scene duration hard cap: no visual scene may run longer than 5.0 seconds"
   - "Concept beats drive scene cuts: a sentence can contain multiple concepts, and each concept needs its own visual treatment"
   - "Instrumental / no-vocal gaps use fast-cut b-roll variations depicting the song's main concept from different angles"
-  - "Per-section accent color: yellow for RAG, red for Agent, cyan-mint for Graph (or song's equivalent character/concept palette)"
+  - "Per-section accent color: assign one recurring color to each major character, concept, or chorus section"
   - "UPPERCASE on emphasis words (technical terms, drops); normal case on connective text"
   - "Word-level caption pops use elastic.out, max 1.20 scale to avoid clipping the pill"
   - "Bottom 220px and top 110px masked solid background to hide Imagen text-rendering artifacts"
-  - "Beat-drop hype tags between sections (RAG, AGENTIC SEARCH, GRAPH DB pattern) — name them after the actual concept, not VERSE N"
+  - "Beat-drop hype tags between sections — name them after the actual concept, not VERSE N"
   - "White-flash transition (0.65 opacity, 0.06s in / 0.18s out) at major beat drops"
   - "Sample-first: build 10-18 sec preview before committing to full-song budget"
 

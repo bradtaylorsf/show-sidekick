@@ -155,6 +155,7 @@ const skillCopies = [
 ];
 
 const playbooks = [
+  "beat-synced-lyric-video.yaml",
   "clean-professional.yaml",
   "flat-motion-graphics.yaml",
   "minimalist-diagram.yaml",
@@ -164,7 +165,6 @@ const playbooks = [
   "news-song.yaml",
   "playful-hip-hop-explainer.yaml",
   "ps2-dystopian-news-rap.yaml",
-  "thechaosfm-gta-political.yaml",
 ];
 
 const creativeReferences = [
@@ -181,11 +181,6 @@ const rawCopies = [
       value
         .replace(/"\$id":\s*"[^"]+\/styles\/playbook"/u, '"$id": "predit/styles/playbook"')
         .replaceAll(sourceBrand, "predit"),
-  },
-  {
-    source: "docs/callouts_16x9.template.yaml",
-    target: "bundled/playbooks/callouts_16x9.template.yaml",
-    transform: normalizeRepoTerms,
   },
   ...playbooks.map((fileName) => ({
     source: `styles/${fileName}`,

@@ -10,8 +10,7 @@ inputs:
   track: shows/news-song/inputs/sample-episode/track.wav
   lyrics: shows/news-song/inputs/sample-episode/lyrics.txt
   notes: |
-    Fifteen-second synthesized pulse track with a headline-style hook.
-    Build as a short zero-key sample with clear source-card placeholders.
+    Fifteen-second synthesized pulse track with a headline-style hook. Build as a short paid sample with clear source-card placeholders or source-free lyric art.
 cast: []
 tags:
   - news-song

@@ -13,7 +13,7 @@ Use this stage after the script names lyric sections and timing anchors. Audio i
 
 ## Beat-Drop Planning
 
-Place hype tags `1.5-2 sec` before first vocal when the intro has room. Beat-drop hype tags between sections — name them after the actual concept (RAG, AGENTIC SEARCH, GRAPH DB), NOT generic VERSE 1/2/3.
+Place hype tags `1.5-2 sec` before first vocal when the intro has room. Beat-drop hype tags between sections — name them after the actual concept, NOT generic VERSE 1/2/3.
 
 White-flash transitions at major beat drops.
 

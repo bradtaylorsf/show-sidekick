@@ -75,7 +75,7 @@ describe("execution artifact schemas", () => {
       },
       render_runtime: "hyperframes",
       renderer_family: "screen-demo",
-      brand: { slug: "last-rev", name: "Last Rev" },
+      brand: { slug: "product-studio", name: "Product Studio" },
     });
 
     expect(decisions.audio?.music?.ducking).toMatchObject({ enabled: true });

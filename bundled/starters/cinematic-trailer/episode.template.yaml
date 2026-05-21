@@ -10,8 +10,9 @@ budget_usd: 0.75
 inputs:
   reference_image: shows/cinematic-trailer/inputs/sample-episode/reference.jpg
   notes: |
-    Replace with trailer premise, hero image, and motion beat.
+    Fifteen-second trailer sample built around a single reference image fixture. Use one title card, one motion beat, and a final tag.
 cast: []
 tags:
   - cinematic-trailer
-  - audio-led
+  - sample
+  - cinematic

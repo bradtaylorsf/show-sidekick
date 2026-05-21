@@ -4,9 +4,8 @@ Audio-led vertical music video starter for short beat-synced rough cuts.
 
 - Starter: `music-video`
 - Pipeline slug: `music-video`
-- Playbook: `news-song`
-- Runnable zero-key sample pipeline: `music-video`
-- Fixture size: generated from `inputs/sample-episode/`
+- Playbook: `beat-synced-lyric-video`
+- Fixture size: 120212 bytes
 - Expected sample duration: 15 seconds
 - Sample inputs: synthesized `track.wav` and `lyrics.txt`
 

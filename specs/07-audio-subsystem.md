@@ -138,7 +138,7 @@ Alternate backends are available via the registry (e.g. ElevenLabs Scribe for tr
 | Music video | `['section_start', 'downbeat']` — every scene starts on a downbeat at or after its section |
 | Trailer | `['beat', 'climax']` — scene durations ramp shorter approaching the climax |
 | News-song | `['section_start', 'beat']` — evidence scenes pinned to vocal phrases; b-roll on beats |
-| WWII diary / documentary / explainer | `['word']` — visuals change at meaningful word boundaries in the VO |
+| Diary / documentary / explainer | `['word']` — visuals change at meaningful word boundaries in the VO |
 
 These are defaults; any pipeline can override.
 

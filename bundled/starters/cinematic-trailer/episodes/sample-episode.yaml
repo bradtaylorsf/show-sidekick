@@ -9,10 +9,9 @@ budget_usd: 0.75
 inputs:
   reference_image: shows/cinematic-trailer/inputs/sample-episode/reference.jpg
   notes: |
-    Fifteen-second trailer sample built around a single reference image fixture.
-    Build as a zero-key sample with one title card, one motion beat, and a final tag.
+    Fifteen-second trailer sample built around a single reference image fixture. Use one title card, one motion beat, and a final tag.
 cast: []
 tags:
   - cinematic-trailer
   - sample
-  - audio-led
+  - cinematic

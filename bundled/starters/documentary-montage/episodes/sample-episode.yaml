@@ -1,0 +1,17 @@
+slug: sample-episode
+title: Sample Documentary Montage
+created: 2026-05-14
+pipeline: documentary-montage
+playbook: news-broadcast
+runtime: ffmpeg
+aspect: 16:9
+budget_usd: 0.75
+inputs:
+  topic_brief: shows/documentary-montage/inputs/sample-episode/topic-brief.txt
+  source_notes: shows/documentary-montage/inputs/sample-episode/source-notes.txt
+  reference_image: shows/documentary-montage/inputs/sample-episode/reference.jpg
+cast: []
+tags:
+  - documentary-montage
+  - sample
+  - documentary

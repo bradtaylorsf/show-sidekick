@@ -64,7 +64,7 @@ Run these one at a time in a user project so failures are easy to inspect and pr
 | Provider scratch explainer | `animated-explainer` | `showkick new show explainer --from animated-explainer` | OpenAI GPT Image 2 still frames, ElevenLabs narration, Higgsfield Seedance clips, configured runtime render when available |
 | Audio-led supplied-track video | `music-video` or `news-song` | `showkick new show audio-demo --from music-video` or `--from news-song` | Audio master clock, lyric-first sample planning, GPT Image 2 prompt packet, beat-synced edit, exports |
 | Hosted / talking-head follow-up | `talking-head` | `showkick new show host-demo --pipelines talking-head` | Voiceover master clock, captions, support cards, Remotion-oriented runtime choice |
-| Screen / workflow walkthrough | `screen-demo` | `showkick new show workflow --from ai-workflow-demo` | Synthetic terminal, UI demo structure, Remotion or HyperFrames proposal discussion |
+| Screen / workflow walkthrough | `screen-demo` | `showkick new show workflow --from screen-demo` | Synthetic terminal, UI demo structure, Remotion or HyperFrames proposal discussion |
 | Mixed source + generated support | `hybrid` | `showkick new show hybrid-demo --pipelines hybrid` plus a local source clip | Source media review, generated inserts, overlay density, runtime selection |
 | Cinematic image-to-video trailer | `cinematic` | `showkick new show trailer --from cinematic-trailer` | Reference image, motion-led promise, Higgsfield clip generation |
 

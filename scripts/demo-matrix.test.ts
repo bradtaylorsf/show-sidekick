@@ -40,7 +40,7 @@ describe("demo matrix runner", () => {
     const paid = await discoverDemoMatrixLanes({
       repoRoot: process.cwd(),
       mode: "paid-demo",
-      only: ["music-video", "news-song", "documentary"],
+      only: ["music-video", "news-song", "documentary-montage"],
     });
     expect(paid.map((lane) => lane.slug)).toEqual(["music-video", "news-song"]);
 

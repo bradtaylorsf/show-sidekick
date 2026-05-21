@@ -1,6 +1,6 @@
 slug: news-song
 display_name: News Song
-description: "Audio-led political news-song pipeline for Brad's primary workflow: lyric-timed music, real source screenshots when sourced, PS2-era generated lyric art, source flyout evidence, and HyperFrames-aware rough cuts."
+description: "Audio-led news-song pipeline for lyric-timed music, real source screenshots when sourced, generated lyric art, source flyout evidence, and HyperFrames-aware rough cuts."
 status: production
 master_clock: audio
 stage_order: manifest
@@ -40,7 +40,6 @@ compatible_playbooks:
     - news-song
   also_works:
     - news-song-protest
-    - thechaosfm-gta-political
     - ps2-dystopian-news-rap
   custom_allowed: true
 orchestration:

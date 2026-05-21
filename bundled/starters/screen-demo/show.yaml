@@ -1,0 +1,29 @@
+slug: screen-demo
+display_name: Screen Demo
+description: General screen-demo starter using a synthetic terminal fixture.
+created: 2026-05-14
+sample_support: paid
+brand: ./brand/
+characters: ./characters/
+skills: ./skills/
+pipelines:
+  screen-demo:
+    playbook: clean-professional
+    runtime: remotion
+    aspect: 16:9
+    budget_usd: 0.5
+    capture_mode: synthetic_terminal
+defaults:
+  pipeline: screen-demo
+  language: en
+  provider_profile: paid-demo
+ingest:
+  episode_template: ./episode.template.yaml
+  watch:
+    - path: ./inputs/
+      match: "**/terminal-steps.yaml"
+      pipeline: screen-demo
+      slug_from: parent_dir
+starter:
+  fixture_size_bytes: 847
+  expected_sample_duration_s: 15
