@@ -24,7 +24,7 @@ project: 0            # GitHub Project number (0 = no project board sync)
 agent: codex
 # model: ""            # Override default model (e.g., opus, sonnet, gpt-5.4)
 # review_model: ""     # Different model for review step (defaults to model)
-# agent_timeout: 1800  # Agent call timeout in seconds (default: 30 min)
+agent_timeout: 86400  # Agent call timeout in seconds (24h; v1.15.3 does not support 0 = unlimited)
 
 # === Workflow ===============================================================
 # Branch and label conventions for the loop.
