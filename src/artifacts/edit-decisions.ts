@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { RendererFamilySchema, RenderRuntimeSchema } from "./enums.js";
-import { TimingRefSchema, TimingSourceSchema } from "./scene-plan.js";
+import { SlideCalloutSchema, SlideHighlightSchema, SlideRectSchema, TimingRefSchema, TimingSourceSchema } from "./scene-plan.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -15,6 +15,23 @@ export const DuckingSchema = z.union([
   }),
 ]);
 
+export const SceneKindSchema = z.enum([
+  "video_clip",
+  "image",
+  "slide_scene",
+  "comparison",
+  "callout",
+  "text_card",
+  "stat_card",
+  "support_visual",
+]);
+
+export const CutMotionSchema = z.object({
+  type: z.enum(["push_in", "pull_out", "pan_left", "pan_right", "pan_up", "pan_down", "static"]).default("push_in"),
+  zoom_start: z.number().positive().optional(),
+  zoom_end: z.number().positive().optional(),
+});
+
 export const CutSchema = z.object({
   start_s: z.number().nonnegative(),
   end_s: z.number().nonnegative(),
@@ -24,6 +41,15 @@ export const CutSchema = z.object({
   start_ms: z.number().int().nonnegative().optional(),
   end_ms: z.number().int().nonnegative().optional(),
   asset_id: z.string(),
+  scene_id: z.string().optional(),
+  scene_kind: SceneKindSchema.optional(),
+  slide_id: z.string().optional(),
+  slide_ids: z.array(z.string()).default([]),
+  focus_rect: SlideRectSchema.optional(),
+  motion: CutMotionSchema.optional(),
+  highlights: z.array(SlideHighlightSchema).default([]),
+  callouts: z.array(SlideCalloutSchema).default([]),
+  caption: z.string().optional(),
   transition_in: z.string().optional(),
   transition_out: z.string().optional(),
   provider: z.string().optional(),
@@ -64,6 +90,7 @@ export const EditDecisionsSchema = z.object({
 });
 
 export type Ducking = z.infer<typeof DuckingSchema>;
+export type SceneKind = z.infer<typeof SceneKindSchema>;
 export type Cut = z.infer<typeof CutSchema>;
 export type EditDecisions = z.infer<typeof EditDecisionsSchema>;
 

@@ -95,6 +95,181 @@
           "hero_moment": {
             "type": "boolean"
           },
+          "slide_id": {
+            "type": "string"
+          },
+          "slide_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "treatment": {
+            "type": "string",
+            "enum": [
+              "slide_image",
+              "zoom_pan",
+              "highlight",
+              "callout",
+              "caption",
+              "support_visual"
+            ]
+          },
+          "focus_rect": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "show-sidekick://artifacts/slide-rect",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "width": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1
+              },
+              "height": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "width",
+              "height"
+            ]
+          },
+          "highlights": {
+            "type": "array",
+            "items": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "$id": "show-sidekick://artifacts/slide-highlight",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "rect": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$id": "show-sidekick://artifacts/slide-rect",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "x": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "y": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "width": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1
+                    },
+                    "height": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y",
+                    "width",
+                    "height"
+                  ]
+                },
+                "shape": {
+                  "type": "string",
+                  "enum": [
+                    "rect",
+                    "ellipse"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "rect"
+              ]
+            }
+          },
+          "callouts": {
+            "type": "array",
+            "items": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "$id": "show-sidekick://artifacts/slide-callout",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "target_rect": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$id": "show-sidekick://artifacts/slide-rect",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "x": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "y": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "width": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1
+                    },
+                    "height": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y",
+                    "width",
+                    "height"
+                  ]
+                },
+                "anchor": {
+                  "type": "string",
+                  "enum": [
+                    "top",
+                    "right",
+                    "bottom",
+                    "left"
+                  ]
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          },
+          "caption": {
+            "type": "string"
+          },
           "texture_keywords": {
             "type": "array",
             "items": {

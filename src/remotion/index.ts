@@ -19,6 +19,8 @@ import {
   PieChartPropsSchema,
   progress_bar,
   ProgressBarPropsSchema,
+  slide_scene,
+  SlideScenePropsSchema,
   stat_card,
   StatCardPropsSchema,
   terminal_scene,
@@ -33,6 +35,10 @@ import {
   ProviderChipOverlayPropsSchema,
   section_title,
   SectionTitleOverlayPropsSchema,
+  slide_callout,
+  SlideCalloutOverlayPropsSchema,
+  slide_highlight,
+  SlideHighlightOverlayPropsSchema,
   stat_reveal,
   StatRevealOverlayPropsSchema,
 } from "./overlays/index.js";
@@ -59,6 +65,7 @@ export const sceneCatalog = {
   line_chart: { component: line_chart, schema: LineChartPropsSchema },
   pie_chart: { component: pie_chart, schema: PieChartPropsSchema },
   progress_bar: { component: progress_bar, schema: ProgressBarPropsSchema },
+  slide_scene: { component: slide_scene, schema: SlideScenePropsSchema },
   stat_card: { component: stat_card, schema: StatCardPropsSchema },
   terminal_scene: { component: terminal_scene, schema: TerminalScenePropsSchema },
   text_card: { component: text_card, schema: TextCardPropsSchema },
@@ -68,6 +75,8 @@ export const overlayCatalog = {
   hero_title: { component: overlay_hero_title, schema: HeroTitleOverlayPropsSchema },
   provider_chip: { component: provider_chip, schema: ProviderChipOverlayPropsSchema },
   section_title: { component: section_title, schema: SectionTitleOverlayPropsSchema },
+  slide_callout: { component: slide_callout, schema: SlideCalloutOverlayPropsSchema },
+  slide_highlight: { component: slide_highlight, schema: SlideHighlightOverlayPropsSchema },
   stat_reveal: { component: stat_reveal, schema: StatRevealOverlayPropsSchema },
 } as const;
 

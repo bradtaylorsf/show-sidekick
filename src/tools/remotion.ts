@@ -7,13 +7,15 @@ import { z } from "zod";
 import {
   AssetManifestSchema,
   CuesheetSchema,
+  DeckManifestSchema,
   EditDecisionsSchema,
   PlaybookSchema,
   RenderReportSchema,
+  ScenePlanSchema,
   type RenderReport,
 } from "../artifacts/index.js";
 import { playbookToCssVariables } from "../compose/hyperframes-style-bridge.js";
-import { cuesheetToWords, validateCaptionFrameSync } from "../remotion/index.js";
+import { cuesheetToWords, SlideScenePropsSchema, validateCaptionFrameSync } from "../remotion/index.js";
 import { defineTool, type ToolAvailabilityContext } from "../registry/index.js";
 
 const require = createRequire(import.meta.url);
@@ -21,9 +23,13 @@ const require = createRequire(import.meta.url);
 export const RemotionComposeInputSchema = z.object({
   edit_decisions: EditDecisionsSchema,
   asset_manifest: AssetManifestSchema.optional(),
+  deck_manifest: DeckManifestSchema.optional(),
+  scene_plan: ScenePlanSchema.optional(),
   output_path: z.string().optional(),
   cuesheet: CuesheetSchema.optional(),
   playbook: PlaybookSchema.optional(),
+  planned_duration_s: z.number().positive().optional(),
+  expected_duration_s: z.number().positive().optional(),
   fps: z.number().positive().default(30),
   resolution: z
     .object({
@@ -34,6 +40,62 @@ export const RemotionComposeInputSchema = z.object({
 });
 
 export type RemotionComposeInput = z.infer<typeof RemotionComposeInputSchema>;
+export type RemotionSlideSceneTimelineProps = {
+  cutIndex: number;
+  startFrame: number;
+  durationFrames: number;
+  asset_id: string;
+  scene_id?: string;
+  props: z.output<typeof SlideScenePropsSchema>;
+};
+
+export function buildRemotionSlideSceneProps(params: RemotionComposeInput): RemotionSlideSceneTimelineProps[] {
+  const input = RemotionComposeInputSchema.parse(params);
+  const assets = new Map(input.asset_manifest?.assets.map((asset) => [asset.id, asset]) ?? []);
+  const slides = new Map(input.deck_manifest?.slides.map((slide) => [slide.id, slide]) ?? []);
+  const scenes = input.scene_plan?.scenes ?? [];
+  const resolution = input.resolution ?? { width: 1920, height: 1080 };
+
+  return input.edit_decisions.cuts.flatMap((cut, cutIndex) => {
+    const scene = sceneForCut(cut, scenes);
+    const slideId = cut.slide_id ?? cut.slide_ids[0] ?? scene?.slide_id ?? scene?.slide_ids[0];
+    const asset = assets.get(cut.asset_id);
+    const slide = slideId === undefined ? undefined : slides.get(slideId);
+    const imagePath = asset?.path ?? slide?.image_path;
+    const isSlideCut = cut.scene_kind === "slide_scene" || slideId !== undefined || scene?.treatment === "slide_image";
+
+    if (!isSlideCut || slideId === undefined || imagePath === undefined) {
+      return [];
+    }
+
+    const durationFrames = Math.max(1, Math.round((cut.end_s - cut.start_s) * input.fps));
+    const props = SlideScenePropsSchema.parse({
+      slide_id: slideId,
+      image_path: imagePath,
+      title: scene?.scene_anchor ?? slideId,
+      caption: cut.caption ?? scene?.caption,
+      focus_rect: cut.focus_rect ?? scene?.focus_rect,
+      motion: cut.motion ?? motionForScene(scene),
+      highlights: cut.highlights.length > 0 ? cut.highlights : scene?.highlights ?? [],
+      callouts: cut.callouts.length > 0 ? cut.callouts : scene?.callouts ?? [],
+      fps: input.fps,
+      duration_frames: durationFrames,
+      width: resolution.width,
+      height: resolution.height,
+    });
+
+    return [
+      {
+        cutIndex,
+        startFrame: Math.round(cut.start_s * input.fps),
+        durationFrames,
+        asset_id: cut.asset_id,
+        scene_id: cut.scene_id ?? scene?.slug,
+        props,
+      },
+    ];
+  });
+}
 
 export default defineTool({
   name: "remotion",
@@ -53,6 +115,12 @@ export default defineTool({
 
   async execute(params, ctx) {
     const parsed = RemotionComposeInputSchema.parse(params);
+    if (parsed.edit_decisions.render_runtime !== "remotion") {
+      throw new Error(
+        `remotion compose refuses runtime swap: edit_decisions.render_runtime must be remotion, found ${parsed.edit_decisions.render_runtime}`,
+      );
+    }
+
     const validationSteps: RenderReport["validation_steps"] = [];
 
     if (parsed.cuesheet) {
@@ -75,9 +143,20 @@ export default defineTool({
     }
 
     const duration = parsed.edit_decisions.cuts.reduce((max, cut) => Math.max(max, cut.end_s), 0);
+    const expectedDuration = parsed.expected_duration_s ?? parsed.planned_duration_s ?? duration;
+    const driftS = roundSeconds(Math.abs(duration - expectedDuration));
+    const driftToleranceS = 0.2;
+    const slideSceneCount = buildRemotionSlideSceneProps(parsed).length;
+    const verificationNotes = [
+      "Runtime locked to remotion from edit_decisions.",
+      parsed.cuesheet === undefined ? "No cuesheet supplied; captions/audio timing not embedded." : "Cuesheet supplied; captions and narration timing embedded.",
+      slideSceneCount > 0
+        ? `${slideSceneCount} slide scene(s) mapped to deck or asset imagery with motion props.`
+        : "No slide_scene cuts found; generic Remotion scene fallback used.",
+    ];
 
     if (parsed.asset_manifest !== undefined) {
-      const rendered = await renderWithRemotionCli(parsed, ctx.projectRoot, duration);
+      const rendered = await renderWithRemotionCli(parsed, ctx.projectRoot, duration, expectedDuration);
       validationSteps.push({
         name: "remotion_render",
         status: "pass",
@@ -86,6 +165,12 @@ export default defineTool({
 
       return RenderReportSchema.parse({
         ...rendered,
+        expected_duration_s: expectedDuration,
+        drift_s: driftS,
+        drift_frames: Math.round(driftS * parsed.fps),
+        drift_tolerance_s: driftToleranceS,
+        within_tolerance: driftS <= driftToleranceS,
+        verification_notes: verificationNotes,
         validation_steps: validationSteps,
       });
     }
@@ -98,16 +183,65 @@ export default defineTool({
       framerate: parsed.fps,
       runtime_used: "remotion",
       asset_count: parsed.edit_decisions.cuts.length,
+      expected_duration_s: expectedDuration,
+      drift_s: driftS,
+      drift_frames: Math.round(driftS * parsed.fps),
+      drift_tolerance_s: driftToleranceS,
+      within_tolerance: driftS <= driftToleranceS,
       warnings: [],
+      verification_notes: verificationNotes,
       validation_steps: validationSteps,
     });
   },
 });
 
+type RemotionCut = RemotionComposeInput["edit_decisions"]["cuts"][number];
+type RemotionScene = NonNullable<RemotionComposeInput["scene_plan"]>["scenes"][number];
+
+function sceneForCut(cut: RemotionCut, scenes: RemotionScene[]): RemotionScene | undefined {
+  if (cut.scene_id !== undefined) {
+    const exact = scenes.find((scene) => scene.slug === cut.scene_id);
+    if (exact !== undefined) {
+      return exact;
+    }
+  }
+
+  const slideId = cut.slide_id ?? cut.slide_ids[0];
+  if (slideId !== undefined) {
+    const bySlide = scenes.find((scene) => scene.slide_id === slideId || scene.slide_ids.includes(slideId));
+    if (bySlide !== undefined) {
+      return bySlide;
+    }
+  }
+
+  return undefined;
+}
+
+function motionForScene(
+  scene: RemotionScene | undefined,
+): { type: "push_in" | "pull_out" | "pan_left" | "pan_right" | "pan_up" | "pan_down" | "static"; zoom_start?: number; zoom_end?: number } {
+  const movement = scene?.shot_language.camera_movement;
+  if (movement === "pan_left" || movement === "pan_right" || movement === "push_in" || movement === "pull_out") {
+    return { type: movement };
+  }
+  if (movement === "tilt_up") {
+    return { type: "pan_up" };
+  }
+  if (movement === "tilt_down") {
+    return { type: "pan_down" };
+  }
+  if (scene?.treatment === "slide_image") {
+    return { type: "static", zoom_start: 1, zoom_end: 1 };
+  }
+
+  return { type: "push_in", zoom_start: 1, zoom_end: 1.08 };
+}
+
 async function renderWithRemotionCli(
   input: RemotionComposeInput,
   projectRoot: string,
   durationS: number,
+  expectedDurationS: number,
 ): Promise<Omit<RenderReport, "validation_steps">> {
   const outputPath = resolveAssetPath(input.output_path ?? "renders/remotion.mp4", projectRoot);
   const workspace = join(projectRoot, ".show-sidekick-work", `remotion-${Date.now()}`);
@@ -149,6 +283,15 @@ async function renderWithRemotionCli(
     runtime_used: "remotion",
     asset_count: input.asset_manifest?.assets.length ?? input.edit_decisions.cuts.length,
     warnings: [],
+    expected_duration_s: expectedDurationS,
+    drift_s: roundSeconds(Math.abs(durationS - expectedDurationS)),
+    drift_frames: Math.round(Math.abs(durationS - expectedDurationS) * input.fps),
+    drift_tolerance_s: 0.2,
+    within_tolerance: Math.abs(durationS - expectedDurationS) <= 0.2,
+    verification_notes: [
+      "Runtime locked to remotion from edit_decisions.",
+      input.cuesheet === undefined ? "No cuesheet supplied; captions/audio timing not embedded." : "Cuesheet supplied; captions and narration timing embedded.",
+    ],
   };
 }
 
@@ -160,7 +303,17 @@ function remotionEntrySource(
   media: RemotionMediaMap,
 ): string {
   const assets = new Map(input.asset_manifest?.assets.map((asset) => [asset.id, asset]) ?? []);
-  const audioPath = input.edit_decisions.audio?.music?.track_path;
+  const slideScenes = buildRemotionSlideSceneProps(input);
+  const slideScenesByCutIndex = new Map(slideScenes.map((scene) => [scene.cutIndex, scene]));
+  const captionWords = input.cuesheet === undefined
+    ? []
+    : cuesheetToWords(input.cuesheet).map((word, index) => ({
+        index,
+        text: word.text,
+        startFrame: Math.round(word.start_s * input.fps),
+        endFrame: Math.round(word.end_s * input.fps),
+      }));
+  const audioPath = input.edit_decisions.audio?.music?.track_path ?? input.cuesheet?.audio.path;
   const audioSource = audioPath ? mediaSrc(audioPath, projectRoot, media) : undefined;
   const props = {
     fps: input.fps,
@@ -168,11 +321,21 @@ function remotionEntrySource(
     cuts: input.edit_decisions.cuts.map((cut, index) => {
       const asset = assets.get(cut.asset_id);
       const source = asset?.path ? mediaSrc(asset.path, projectRoot, media) : undefined;
+      const slideScene = slideScenesByCutIndex.get(index);
       const card = starterCardCopy(asset?.prompt ?? cut.asset_id);
+      const slide =
+        slideScene === undefined
+          ? undefined
+          : {
+              ...slideScene.props,
+              imageSrc: mediaSrc(slideScene.props.image_path, projectRoot, media).src,
+              imageUsesStaticFile: mediaSrc(slideScene.props.image_path, projectRoot, media).useStaticFile,
+            };
       return {
         index,
         startFrame: Math.round(cut.start_s * input.fps),
         durationFrames: Math.max(1, Math.round((cut.end_s - cut.start_s) * input.fps)),
+        sceneKind: cut.scene_kind,
         src: source?.src,
         useStaticFile: source?.useStaticFile ?? false,
         kind: asset?.kind ?? "video",
@@ -180,8 +343,10 @@ function remotionEntrySource(
         eyebrow: card.eyebrow,
         title: card.title,
         body: card.body,
+        slide,
       };
     }),
+    captions: captionWords,
     audioSrc: audioSource?.src,
     audioUsesStaticFile: audioSource?.useStaticFile ?? false,
     width: resolution.width,
@@ -201,6 +366,9 @@ function mediaUrl(src, useStaticFile) {
 function Scene({ cut, total }) {
   const frame = useCurrentFrame();
   const progress = interpolate(frame, [0, Math.max(1, cut.durationFrames - 1)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  if (cut.slide) {
+    return <SlideDeckScene cut={cut} progress={progress} frame={frame} />;
+  }
   if (props.animationFirst) {
     return <AnimatedExplainerScene cut={cut} total={total} progress={progress} frame={frame} />;
   }
@@ -249,6 +417,122 @@ function Scene({ cut, total }) {
       }}>BEAT {cut.index + 1} / {total}</div>
     </AbsoluteFill>
   );
+}
+
+function SlideDeckScene({ cut, progress, frame }) {
+  const slide = cut.slide;
+  const imageSrc = mediaUrl(slide.imageSrc, slide.imageUsesStaticFile);
+  const motionType = slide.motion?.type || "push_in";
+  const zoomStart = slide.motion?.zoom_start || 1;
+  const zoomEnd = slide.motion?.zoom_end || 1.08;
+  const scale = motionType === "pull_out"
+    ? interpolate(progress, [0, 1], [zoomEnd, zoomStart], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    : motionType === "static"
+      ? zoomStart
+      : interpolate(progress, [0, 1], [zoomStart, zoomEnd], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const pan = panForSlideMotion(motionType, progress);
+  const fade = interpolate(frame, [0, 10, Math.max(12, cut.durationFrames - 10), cut.durationFrames], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: "#07111f", overflow: "hidden", fontFamily: "Inter, Arial, sans-serif" }}>
+      <div style={{
+        position: "absolute",
+        left: 84,
+        top: 48,
+        right: 84,
+        bottom: 116,
+        background: "#0f1d32",
+        border: "2px solid rgba(147,164,186,0.28)",
+        borderRadius: 8,
+        overflow: "hidden",
+        boxShadow: "0 22px 60px rgba(0,0,0,0.34)",
+      }}>
+        <Img src={imageSrc} style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          transform: "scale(" + scale + ") translate(" + pan.x + "%, " + pan.y + "%)",
+          transformOrigin: focusOrigin(slide.focus_rect),
+        }} />
+        {slide.highlights.map((highlight, index) => (
+          <div key={"highlight-" + index} style={{
+            position: "absolute",
+            left: (highlight.rect.x * 100) + "%",
+            top: (highlight.rect.y * 100) + "%",
+            width: (highlight.rect.width * 100) + "%",
+            height: (highlight.rect.height * 100) + "%",
+            border: "5px solid #f59e0b",
+            borderRadius: highlight.shape === "ellipse" ? "999px" : 8,
+            boxShadow: "0 0 0 9999px rgba(7,17,31,0.18)",
+            opacity: fade,
+          }} />
+        ))}
+        {slide.callouts.map((callout, index) => (
+          <div key={"callout-" + index} style={{
+            position: "absolute",
+            right: callout.anchor === "right" ? 28 : "auto",
+            left: callout.anchor === "left" ? 28 : callout.anchor === "top" || callout.anchor === "bottom" ? 92 + index * 420 : "auto",
+            top: callout.anchor === "top" ? 28 : callout.anchor === "bottom" ? "auto" : 76 + index * 92,
+            bottom: callout.anchor === "bottom" ? 28 : "auto",
+            maxWidth: 430,
+            background: "#2dd4bf",
+            color: "#07111f",
+            borderRadius: 8,
+            padding: "18px 22px",
+            fontSize: 25,
+            lineHeight: 1.15,
+            fontWeight: 850,
+            opacity: fade,
+          }}>{callout.text}</div>
+        ))}
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 84,
+        bottom: 46,
+        color: "#f8fafc",
+        fontSize: 34,
+        fontWeight: 850,
+        letterSpacing: 0,
+        opacity: fade,
+      }}>{slide.title || slide.slide_id}</div>
+      {slide.caption ? <div style={{
+        position: "absolute",
+        right: 84,
+        bottom: 46,
+        maxWidth: 760,
+        color: "#dbeafe",
+        fontSize: 26,
+        lineHeight: 1.18,
+        textAlign: "right",
+        opacity: fade,
+      }}>{slide.caption}</div> : null}
+    </AbsoluteFill>
+  );
+}
+
+function panForSlideMotion(type, progress) {
+  const amount = 2.8;
+  if (type === "pan_left") {
+    return { x: -amount * progress, y: 0 };
+  }
+  if (type === "pan_right") {
+    return { x: amount * progress, y: 0 };
+  }
+  if (type === "pan_up") {
+    return { x: 0, y: -amount * progress };
+  }
+  if (type === "pan_down") {
+    return { x: 0, y: amount * progress };
+  }
+  return { x: 0, y: 0 };
+}
+
+function focusOrigin(rect) {
+  if (!rect) {
+    return "50% 50%";
+  }
+  return Math.round((rect.x + rect.width / 2) * 100) + "% " + Math.round((rect.y + rect.height / 2) * 100) + "%";
 }
 
 const accents = ["#ffd666", "#3fdcff", "#ff67a6", "#7affa9"];
@@ -461,7 +745,42 @@ function ShowSidekickSample({ cuts, audioSrc }) {
         </Sequence>
       ))}
       {audioSrc ? <Audio src={mediaUrl(audioSrc, props.audioUsesStaticFile)} /> : null}
+      {props.captions.length > 0 ? <CaptionLayer /> : null}
     </AbsoluteFill>
+  );
+}
+
+function CaptionLayer() {
+  const frame = useCurrentFrame();
+  const active = props.captions.find((word, index) => {
+    const isLast = index === props.captions.length - 1;
+    return frame >= word.startFrame && (frame < word.endFrame || (isLast && frame <= word.endFrame));
+  });
+
+  if (!active) {
+    return null;
+  }
+
+  const nearby = props.captions
+    .filter((word) => Math.abs(word.index - active.index) <= 4)
+    .map((word) => word.text)
+    .join(" ");
+
+  return (
+    <div style={{
+      position: "absolute",
+      left: "16%",
+      right: "16%",
+      bottom: 26,
+      padding: "14px 20px",
+      background: "rgba(7, 17, 31, 0.78)",
+      color: "#f8fafc",
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: 29,
+      lineHeight: 1.18,
+      textAlign: "center",
+      textShadow: "0 2px 8px rgba(0,0,0,0.55)",
+    }}>{nearby}</div>
   );
 }
 
@@ -515,9 +834,12 @@ async function prepareRemotionMedia(
   publicDir: string,
 ): Promise<RemotionMediaMap> {
   const media = new Map<string, RemotionMediaSource>();
+  const slideSceneImagePaths = buildRemotionSlideSceneProps(input).map((scene) => scene.props.image_path);
   const values = [
     ...(input.asset_manifest?.assets.map((asset) => asset.path).filter(Boolean) ?? []),
     input.edit_decisions.audio?.music?.track_path,
+    input.cuesheet?.audio.path,
+    ...slideSceneImagePaths,
   ].filter((value): value is string => Boolean(value));
   const seen = new Set<string>();
 
@@ -586,6 +908,10 @@ function resolveAssetPath(value: string, projectRoot: string): string {
 
 function projectRelativePath(projectRoot: string, value: string): string {
   return isAbsolute(value) ? value.replace(resolve(projectRoot) + "/", "") : value;
+}
+
+function roundSeconds(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }
 
 function remotionAvailable(

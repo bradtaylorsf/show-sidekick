@@ -144,15 +144,27 @@ function scoreRepetition(scenes: UnknownRecord[], edit: SlideshowEditInput | und
 }
 
 function scoreDecorativeVisuals(scenes: UnknownRecord[]): SlideshowRiskDimension {
-  const count = scenes.filter((scene) => !hasPurpose(scene)).length;
+  const staticSlideCount = scenes.filter(isStaticSlidePlayback).length;
+  const count = Math.min(scenes.length, scenes.filter((scene) => !hasPurpose(scene)).length + staticSlideCount);
 
   return {
     score: roundScore((count / scenes.length) * 5),
-    reason: `${count} scenes have no stated purpose (no information_role or shot_intent)`,
+    reason:
+      staticSlideCount > 0
+        ? `static slideshow downgrade: ${staticSlideCount} slide scenes lack explanatory treatment or purpose`
+        : `${count} scenes have no stated purpose (no information_role or shot_intent)`,
   };
 }
 
 function scoreWeakMotion(scenes: UnknownRecord[]): SlideshowRiskDimension {
+  const staticSlideCount = scenes.filter(isStaticSlidePlayback).length;
+  if (staticSlideCount > 0) {
+    return {
+      score: roundScore((staticSlideCount / scenes.length) * 5),
+      reason: `static slideshow downgrade: ${staticSlideCount} slide scenes lack zoom, pan, highlight, callout, or support visual treatment`,
+    };
+  }
+
   const movingScenes = scenes.filter((scene) => {
     const movement = shotLanguageValue(scene, "camera_movement");
     return movement !== undefined && normalizeToken(movement) !== "static";
@@ -271,7 +283,7 @@ function editCuts(edit: SlideshowEditInput | undefined): UnknownRecord[] {
 }
 
 function layoutType(value: UnknownRecord): string | undefined {
-  const type = firstStringField(value, ["cut_type", "layout_type", "scene_type", "visual_type", "type"]);
+  const type = firstStringField(value, ["cut_type", "layout_type", "scene_type", "scene_kind", "visual_type", "type"]);
   if (type === undefined) {
     return undefined;
   }
@@ -287,6 +299,24 @@ function layoutType(value: UnknownRecord): string | undefined {
 function isTextOrStatCard(value: UnknownRecord): boolean {
   const type = layoutType(value);
   return type !== undefined && TEXT_CARD_TYPES.has(type);
+}
+
+function isStaticSlidePlayback(scene: UnknownRecord): boolean {
+  if (layoutType(scene) !== "slide_scene" && stringValue(scene.slide_id) === undefined && stringArray(scene.slide_ids).length === 0) {
+    return false;
+  }
+
+  const treatment = stringValue(scene.treatment);
+  const movement = shotLanguageValue(scene, "camera_movement");
+  const motion = isRecord(scene.motion) ? stringValue(scene.motion.type) : undefined;
+  const hasMotion = [movement, motion].some((value) => value !== undefined && !["static", "none"].includes(normalizeToken(value)));
+  const hasTreatment = treatment !== undefined && treatment !== "slide_image";
+  const hasHighlight = Array.isArray(scene.highlights) && scene.highlights.length > 0;
+  const hasCallout = Array.isArray(scene.callouts) && scene.callouts.length > 0;
+  const hasSupport = stringArray(scene.support_visuals).length > 0 || stringArray(scene.required_support_visuals).length > 0;
+  const hasFocus = isRecord(scene.focus_rect);
+
+  return !(hasMotion || hasTreatment || hasHighlight || hasCallout || hasSupport || hasFocus);
 }
 
 function hasPurpose(scene: UnknownRecord): boolean {
@@ -340,6 +370,10 @@ function normalizeToken(value: string): string {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
 }
 
 function isPresentString(value: string | undefined): value is string {

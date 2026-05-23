@@ -28,6 +28,7 @@ export const RenderReportSchema = z.object({
   runtime_used: RenderRuntimeSchema,
   asset_count: z.number().int().nonnegative(),
   warnings: z.array(z.string()).default([]),
+  verification_notes: z.array(z.string()).default([]),
   validation_steps: z
     .array(
       z.object({

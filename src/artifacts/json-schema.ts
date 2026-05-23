@@ -35,6 +35,34 @@ const timingRefJson = objectJson(
   },
   [],
 );
+const slideRectJson = objectJson(
+  "slide_rect",
+  {
+    x: { type: "number", minimum: 0, maximum: 1 },
+    y: { type: "number", minimum: 0, maximum: 1 },
+    width: { type: "number", exclusiveMinimum: 0, maximum: 1 },
+    height: { type: "number", exclusiveMinimum: 0, maximum: 1 },
+  },
+  ["x", "y", "width", "height"],
+);
+const slideHighlightJson = objectJson(
+  "slide_highlight",
+  {
+    rect: slideRectJson,
+    shape: { type: "string", enum: ["rect", "ellipse"] },
+    label: stringJson,
+  },
+  ["rect"],
+);
+const slideCalloutJson = objectJson(
+  "slide_callout",
+  {
+    text: stringJson,
+    target_rect: slideRectJson,
+    anchor: { type: "string", enum: ["top", "right", "bottom", "left"] },
+  },
+  ["text"],
+);
 
 function withMeta(id: string, schema: JsonSchema): JsonSchema {
   return {
@@ -430,6 +458,23 @@ export const EditDecisionsJsonSchema = objectJson(
           start_ms: nonNegativeIntegerJson,
           end_ms: nonNegativeIntegerJson,
           asset_id: stringJson,
+          scene_id: stringJson,
+          scene_kind: { type: "string", enum: ["video_clip", "image", "slide_scene", "comparison", "callout", "text_card", "stat_card", "support_visual"] },
+          slide_id: stringJson,
+          slide_ids: stringArrayJson,
+          focus_rect: slideRectJson,
+          motion: objectJson(
+            "edit_decisions.cut.motion",
+            {
+              type: { type: "string", enum: ["push_in", "pull_out", "pan_left", "pan_right", "pan_up", "pan_down", "static"] },
+              zoom_start: positiveNumberJson,
+              zoom_end: positiveNumberJson,
+            },
+            [],
+          ),
+          highlights: { type: "array", items: slideHighlightJson },
+          callouts: { type: "array", items: slideCalloutJson },
+          caption: stringJson,
           transition_in: stringJson,
           transition_out: stringJson,
           provider: stringJson,
@@ -551,6 +596,7 @@ export const RenderReportJsonSchema = objectJson(
     runtime_used: renderRuntimeJson,
     asset_count: nonNegativeIntegerJson,
     warnings: stringArrayJson,
+    verification_notes: stringArrayJson,
     validation_steps: {
       type: "array",
       items: objectJson(

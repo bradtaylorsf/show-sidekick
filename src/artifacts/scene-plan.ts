@@ -28,6 +28,34 @@ export const TimingRefSchema = z.object({
   climax_index: z.number().int().nonnegative().optional(),
 });
 
+export const SceneTreatmentSchema = z.enum([
+  "slide_image",
+  "zoom_pan",
+  "highlight",
+  "callout",
+  "caption",
+  "support_visual",
+]);
+
+export const SlideRectSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().positive().max(1),
+  height: z.number().positive().max(1),
+});
+
+export const SlideHighlightSchema = z.object({
+  rect: SlideRectSchema,
+  shape: z.enum(["rect", "ellipse"]).default("rect"),
+  label: z.string().optional(),
+});
+
+export const SlideCalloutSchema = z.object({
+  text: z.string(),
+  target_rect: SlideRectSchema.optional(),
+  anchor: z.enum(["top", "right", "bottom", "left"]).default("right"),
+});
+
 const TimingMetadataSchema = {
   timing_anchor: z.string().optional(),
   timing_source: TimingSourceSchema.optional(),
@@ -48,6 +76,13 @@ export const ScenePlanSchema = z.object({
         narrative_role: NarrativeRoleSchema,
         scene_anchor: z.string(),
         hero_moment: z.boolean().optional(),
+        slide_id: z.string().optional(),
+        slide_ids: z.array(z.string()).default([]),
+        treatment: SceneTreatmentSchema.optional(),
+        focus_rect: SlideRectSchema.optional(),
+        highlights: z.array(SlideHighlightSchema).default([]),
+        callouts: z.array(SlideCalloutSchema).default([]),
+        caption: z.string().optional(),
         texture_keywords: z.array(z.string()).default([]),
         character_actions: z
           .array(
@@ -74,4 +109,6 @@ export const ScenePlanSchema = z.object({
 
 export type ShotLanguage = z.infer<typeof ShotLanguageSchema>;
 export type TimingRef = z.infer<typeof TimingRefSchema>;
+export type SceneTreatment = z.infer<typeof SceneTreatmentSchema>;
+export type SlideRect = z.infer<typeof SlideRectSchema>;
 export type ScenePlan = z.infer<typeof ScenePlanSchema>;

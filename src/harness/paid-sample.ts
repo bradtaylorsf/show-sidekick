@@ -3,7 +3,9 @@ import path from "node:path";
 import type { CostEntry } from "../artifacts/cost-log.js";
 import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { RenderRuntime } from "../artifacts/enums.js";
+import { ScriptSchema, type Script } from "../artifacts/script.js";
 import type { Tool, ToolContext } from "../registry/index.js";
+import { readCheckpoint } from "../checkpoints/index.js";
 import { projectDir } from "../checkpoints/paths.js";
 import type { StageContext } from "./context.js";
 import type { Dispatcher } from "./dispatcher.js";
@@ -19,6 +21,7 @@ type PaidSampleState = {
   research_brief?: unknown;
   source_media_review?: unknown;
   proposal_packet?: unknown;
+  deck_manifest?: unknown;
   script?: unknown;
   cuesheet?: unknown;
   capture_manifest?: unknown;
@@ -32,6 +35,11 @@ type PaidSampleState = {
   imagePaths?: string[];
   clipPaths?: string[];
   narrationPath?: string;
+  narrationTool?: string;
+  narrationProvider?: string;
+  narrationModel?: string;
+  narrationVoice?: string;
+  narrationCostUsd?: number;
 };
 
 type SampleBeat = {
@@ -58,6 +66,7 @@ const STATE_ARTIFACT_KEYS = [
   "research_brief",
   "source_media_review",
   "proposal_packet",
+  "deck_manifest",
   "script",
   "cuesheet",
   "capture_manifest",
@@ -139,6 +148,20 @@ function hydrateStateFromPriorArtifacts(ctx: StageContext, state: PaidSampleStat
   state.imagePath ??= state.imagePaths[0];
   state.clipPath ??= state.clipPaths[0];
   state.narrationPath ??= assetPath(state.asset_manifest, "paid_sample_narration");
+  hydrateNarrationStateFromCuesheet(state);
+}
+
+function hydrateNarrationStateFromCuesheet(state: PaidSampleState): void {
+  const cuesheet = recordValue(state.cuesheet);
+  const voiceover = recordValue(cuesheet?.voiceover);
+  const audio = recordValue(cuesheet?.audio);
+
+  state.narrationPath ??= stringValue(voiceover?.audio_path) ?? stringValue(audio?.path);
+  state.narrationTool ??= stringValue(voiceover?.tool);
+  state.narrationProvider ??= stringValue(voiceover?.provider);
+  state.narrationModel ??= stringValue(voiceover?.model);
+  state.narrationVoice ??= stringValue(voiceover?.voice) ?? stringValue(voiceover?.voice_id) ?? stringValue(voiceover?.voice_name);
+  state.narrationCostUsd ??= numberValue(voiceover?.cost_usd);
 }
 
 function priorArtifact(ctx: StageContext, produces: (typeof STATE_ARTIFACT_KEYS)[number]): unknown {
@@ -175,7 +198,7 @@ async function artifactForStage(
       state.script ??= await buildScript(ctx);
       return state.script;
     case "cuesheet":
-      state.cuesheet ??= await buildCuesheet(ctx);
+      state.cuesheet ??= await buildCuesheet(ctx, state, costEntries, decisions, options);
       return state.cuesheet;
     case "capture_manifest":
       state.capture_manifest ??= await buildCaptureManifest(ctx);
@@ -257,6 +280,10 @@ function buildProposalPacket(ctx: StageContext): unknown {
 }
 
 async function buildScript(ctx: StageContext): Promise<unknown> {
+  if (isPresentationDemo(ctx)) {
+    return buildPresentationDemoScript(ctx);
+  }
+
   const beats = await sampleBeats(ctx);
   const duration = sampleDuration(ctx);
   const cuts = sampleBeatCuts(duration, beats);
@@ -278,7 +305,60 @@ async function buildScript(ctx: StageContext): Promise<unknown> {
   };
 }
 
-async function buildCuesheet(ctx: StageContext): Promise<unknown> {
+async function buildPresentationDemoScript(ctx: StageContext): Promise<unknown> {
+  const deck = recordValue(ctx.priorArtifacts.deck_manifest);
+  const slides = sortedDeckSlides(deck);
+  if (slides.length === 0) {
+    throw new Error("presentation-demo script requires deck_manifest.slides before drafting narration");
+  }
+
+  const operatorNotes = await operatorNotesText(ctx);
+  const slideSources = slides.map((slide, index) => slideNarrationSource(slide, operatorNotes, index));
+  const duration = sampleDuration(ctx);
+  const cuts = sampleBeatCuts(
+    duration,
+    slideSources.map((source, index) => ({
+      index,
+      title: stringValue(slides[index]?.id) ?? `slide-${index + 1}`,
+      body: source.text,
+      narration: source.text,
+    })),
+  );
+
+  return {
+    sections: slides.map((slide, index) => {
+      const slideId = stringValue(slide.id) ?? `slide-${String(index + 1).padStart(3, "0")}`;
+      const source = slideSources[index] ?? slideNarrationSource(slide, operatorNotes, index);
+
+      return {
+        slug: slideId,
+        role: scriptRole(index, slides.length),
+        start_s: cuts[index]?.start_s ?? 0,
+        end_s: cuts[index]?.end_s ?? duration,
+        narration: source.text,
+        dialogue: [],
+        enhancement_cues: [
+          "Voiceover source priority: pptx_notes > slide_text/OCR > operator > agent.",
+          `Selected ${source.vo_source} for ${slideId}.`,
+        ],
+        slide_ids: [slideId],
+        vo_source: source.vo_source,
+      };
+    }),
+  };
+}
+
+async function buildCuesheet(
+  ctx: StageContext,
+  state: PaidSampleState,
+  costEntries: CostEntry[],
+  decisions: DecisionEntry[],
+  options: PaidSampleDispatcherOptions,
+): Promise<unknown> {
+  if (isPresentationDemo(ctx)) {
+    return buildPresentationDemoCuesheet(ctx, state, costEntries, decisions, options);
+  }
+
   const duration = sampleDuration(ctx);
   const beats = lyricMusicMode(ctx) ? await sampleBeats(ctx) : undefined;
   const text = beats === undefined ? await narrationText(ctx) : beats.map((beat) => beat.narration).join(" ");
@@ -340,6 +420,220 @@ async function buildCuesheet(ctx: StageContext): Promise<unknown> {
     scene_anchors: [],
     ...(lyricsAligned === undefined ? {} : { lyrics_aligned: lyricsAligned }),
   };
+}
+
+async function buildPresentationDemoCuesheet(
+  ctx: StageContext,
+  state: PaidSampleState,
+  costEntries: CostEntry[],
+  decisions: DecisionEntry[],
+  options: PaidSampleDispatcherOptions,
+): Promise<unknown> {
+  await assertPresentationDemoScriptApproved(ctx, state);
+  const script = parseScriptArtifact(state.script);
+  const sections = script.sections.filter((section) => narrationForSection(section).length > 0);
+  if (sections.length === 0) {
+    throw new Error("presentation-demo cuesheet requires at least one narrated script section");
+  }
+
+  const text = sections.map(narrationForSection).join("\n\n");
+  const tts = await preferredTtsTool(ctx);
+  const voice = voiceInputForTool(ctx, tts);
+  const model = ttsModelForTool(tts);
+  const ttsInput = {
+    text,
+    ...voice.input,
+    format: ttsFormatForTool(tts),
+    model,
+  };
+  const ttsResult = await tts.execute(
+    ttsInput,
+    toolContext(ctx, {
+      reason: "Generate approved presentation-demo narration after script approval.",
+      model,
+      units: 1,
+    }),
+  );
+  const audio = recordValue(ttsResult);
+  const audioPath = await episodeMediaPath(ctx, stringValue(audio?.audio_path), "audio", "narration.mp3");
+  const costUsd = numberValue(audio?.cost_usd) ?? 0;
+  const resolvedModel = stringValue(audio?.model) ?? model;
+  const resolvedVoice = stringValue(audio?.voice) ?? voice.label;
+
+  state.narrationPath = audioPath;
+  state.narrationTool = tts.name;
+  state.narrationProvider = tts.provider;
+  state.narrationModel = resolvedModel;
+  state.narrationVoice = resolvedVoice;
+  state.narrationCostUsd = costUsd;
+
+  costEntries.push(costEntry(tts.name, tts.provider, resolvedModel, 1, costUsd));
+  decisions.push(
+    voiceDecision(ctx, tts, options, {
+      stage: "cuesheet",
+      voiceLabel: resolvedVoice,
+      voiceId: voice.voiceId,
+      voiceName: voice.voiceName,
+      model: resolvedModel,
+      costUsd,
+    }),
+  );
+
+  const duration = Math.max(...sections.map((section) => section.end_s), sampleDuration(ctx));
+  const segmentWords = sections.map((section) => wordsForSection(section));
+  const words = segmentWords.flat();
+
+  return {
+    audio: {
+      path: audioPath,
+      duration_s: duration,
+      sample_rate: 44100,
+      channels: 1,
+    },
+    master_clock: "voiceover",
+    transcription_confidence: { average: 1, low_confidence: false },
+    words,
+    segments: sections.map((section, index) => ({
+      start_s: section.start_s,
+      end_s: section.end_s,
+      text: narrationForSection(section),
+      words: segmentWords[index] ?? [],
+    })),
+    sections: sections.map((section) => ({
+      label: section.slug,
+      start_s: section.start_s,
+      end_s: section.end_s,
+      kind: "vocal" as const,
+      energy: 0.78,
+    })),
+    beats: [],
+    climax: [{ time_s: roundTime(duration * 0.75), type: "arrival", intensity: 0.8, source: "agent" }],
+    scene_anchors: sections.map((section) => ({
+      scene_id: section.slug,
+      start_s: section.start_s,
+      end_s: section.end_s,
+      snapped_to: "word" as const,
+      slide_ids: section.slide_ids,
+      source: { section: section.slug },
+    })),
+    voiceover: {
+      audio_path: audioPath,
+      provider: tts.provider,
+      tool: tts.name,
+      voice_id: voice.voiceId,
+      voice_name: voice.voiceName,
+      voice: resolvedVoice,
+      model: resolvedModel,
+      cost_usd: roundUsd(costUsd),
+      source_script_sections: sections.map((section) => section.slug),
+    },
+  };
+}
+
+function isPresentationDemo(ctx: StageContext): boolean {
+  return ctx.pipeline.slug === "presentation-demo";
+}
+
+function sortedDeckSlides(deck: Record<string, unknown> | undefined): Record<string, unknown>[] {
+  const slides = deck?.slides;
+  if (!Array.isArray(slides)) {
+    return [];
+  }
+
+  return slides
+    .map(recordValue)
+    .filter((slide): slide is Record<string, unknown> => slide !== undefined)
+    .sort((left, right) => (numberValue(left.order) ?? 0) - (numberValue(right.order) ?? 0));
+}
+
+function slideNarrationSource(
+  slide: Record<string, unknown>,
+  operatorNotes: string | undefined,
+  index: number,
+): { text: string; vo_source: "pptx_notes" | "slide_text" | "ocr" | "operator" | "agent" } {
+  const speakerNotes = trimmedString(slide.speaker_notes);
+  const notesSource = stringValue(slide.notes_source);
+  if (speakerNotes !== undefined && notesSource === "pptx_notes") {
+    return { text: speakerNotes, vo_source: "pptx_notes" };
+  }
+
+  const slideText = trimmedString(slide.text);
+  if (slideText !== undefined) {
+    return {
+      text: slideText,
+      vo_source: stringValue(slide.text_source) === "ocr" ? "ocr" : "slide_text",
+    };
+  }
+
+  if (speakerNotes !== undefined && notesSource === "operator") {
+    return { text: speakerNotes, vo_source: "operator" };
+  }
+
+  if (operatorNotes !== undefined) {
+    const line = meaningfulTextLines(operatorNotes)[index] ?? operatorNotes;
+    return { text: line, vo_source: "operator" };
+  }
+
+  const slideId = stringValue(slide.id) ?? `slide ${index + 1}`;
+  return {
+    text: `Bridge ${slideId} into the approved presentation-demo narration without adding unsupported claims.`,
+    vo_source: "agent",
+  };
+}
+
+function trimmedString(value: unknown): string | undefined {
+  const trimmed = stringValue(value)?.trim();
+  return trimmed === undefined || trimmed.length === 0 ? undefined : trimmed;
+}
+
+async function operatorNotesText(ctx: StageContext): Promise<string | undefined> {
+  return (await textInput(ctx, "operator_notes")) ?? (await textInput(ctx, "notes"));
+}
+
+async function assertPresentationDemoScriptApproved(ctx: StageContext, state: PaidSampleState): Promise<void> {
+  if (state.script === undefined) {
+    throw new Error("presentation-demo cuesheet requires an approved script artifact before TTS generation");
+  }
+
+  let checkpointStatus: string | undefined;
+  try {
+    checkpointStatus = (await readCheckpoint(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug, "script")).status;
+  } catch {
+    throw new Error("presentation-demo cuesheet requires a completed script checkpoint before TTS generation");
+  }
+
+  if (checkpointStatus !== "completed") {
+    throw new Error(
+      `presentation-demo cuesheet requires script checkpoint status completed before TTS generation; found ${checkpointStatus}`,
+    );
+  }
+}
+
+function parseScriptArtifact(value: unknown): Script {
+  const parsed = ScriptSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new Error(`presentation-demo cuesheet requires a schema-valid approved script: ${parsed.error.message}`);
+  }
+
+  return parsed.data;
+}
+
+function narrationForSection(section: Script["sections"][number]): string {
+  const dialogue = section.dialogue.map((line) => line.line).join(" ");
+  return (section.narration ?? dialogue).replace(/\s+/gu, " ").trim();
+}
+
+function wordsForSection(section: Script["sections"][number]): Array<{ text: string; start_s: number; end_s: number; confidence: number }> {
+  const words = narrationForSection(section).match(/[A-Za-z0-9']+/gu) ?? [];
+  const duration = Math.max(0.001, section.end_s - section.start_s);
+  const wordDuration = duration / Math.max(1, words.length);
+
+  return words.map((word, index) => ({
+    text: word,
+    start_s: roundTime(section.start_s + index * wordDuration),
+    end_s: roundTime(Math.min(section.end_s, section.start_s + (index + 1) * wordDuration)),
+    confidence: 1,
+  }));
 }
 
 async function buildSourceMediaReview(ctx: StageContext): Promise<unknown> {
@@ -595,6 +889,10 @@ async function buildCaptureManifest(ctx: StageContext): Promise<unknown> {
 }
 
 async function buildScenePlan(ctx: StageContext): Promise<unknown> {
+  if (isPresentationDemo(ctx)) {
+    return buildPresentationDemoScenePlan(ctx);
+  }
+
   const duration = sampleDuration(ctx);
   const beats = await sampleBeats(ctx);
   const cuts = sampleBeatCuts(duration, beats);
@@ -680,6 +978,119 @@ async function buildScenePlan(ctx: StageContext): Promise<unknown> {
   return { scenes };
 }
 
+function buildPresentationDemoScenePlan(ctx: StageContext): unknown {
+  const deck = recordValue(ctx.priorArtifacts.deck_manifest);
+  const slides = sortedDeckSlides(deck);
+  if (slides.length === 0) {
+    throw new Error("presentation-demo scene_plan requires deck_manifest.slides");
+  }
+
+  const script = parseScriptArtifact(ctx.priorArtifacts.script);
+  const cuesheet = recordValue(ctx.priorArtifacts.cuesheet);
+  const anchors = presentationDemoSceneAnchors(script, cuesheet);
+  const slidesById = new Map(
+    slides.map((slide, index) => [stringValue(slide.id) ?? `slide-${String(index + 1).padStart(3, "0")}`, slide]),
+  );
+
+  return {
+    scenes: anchors.map((anchor, index) => {
+      const slideId = anchor.slideIds[0] ?? `slide-${String(index + 1).padStart(3, "0")}`;
+      const slide = slidesById.get(slideId) ?? slides[index % slides.length];
+      const resolvedSlideId = stringValue(slide?.id) ?? slideId;
+      const treatment = index % 3 === 0 ? "zoom_pan" : index % 3 === 1 ? "highlight" : "callout";
+      const caption = anchor.caption ?? stringValue(slide?.text) ?? resolvedSlideId;
+
+      return {
+        slug: anchor.sceneId,
+        order: index,
+        start_s: anchor.startS,
+        end_s: anchor.endS,
+        narrative_role: scriptRole(index, anchors.length),
+        scene_anchor: `${resolvedSlideId} voiceover`,
+        hero_moment: index === 0,
+        slide_id: resolvedSlideId,
+        slide_ids: [resolvedSlideId],
+        treatment,
+        focus_rect: focusRectForSlide(index),
+        highlights: [
+          {
+            rect: highlightRectForSlide(index),
+            shape: index % 2 === 0 ? "rect" : "ellipse",
+            label: "deck evidence",
+          },
+        ],
+        callouts: [
+          {
+            text: shortCallout(caption),
+            target_rect: highlightRectForSlide(index),
+            anchor: index % 2 === 0 ? "right" : "left",
+          },
+        ],
+        caption,
+        description: `Animate ${resolvedSlideId} with ${treatment.replace("_", " ")} treatment tied to the approved voiceover.`,
+        shot_intent: "Turn the source slide into an animated explainer beat with readable text and narration-aligned emphasis.",
+        information_role: index === 0 ? "hook setup" : index === anchors.length - 1 ? "takeaway" : "explanatory beat",
+        texture_keywords: ["deck-source", "presentation-demo", "motion-led", treatment],
+        character_actions: [],
+        shot_language: {
+          shot_size: "MS",
+          camera_movement: index % 2 === 0 ? "push_in" : "pan_right",
+          lighting_key: "soft",
+          lens_mm: 35,
+          depth_of_field: "deep",
+          color_temperature: "daylight",
+        },
+        required_assets: [
+          {
+            id: slideAssetId(resolvedSlideId),
+            source: "supplied",
+            notes: `Deck screenshot for ${resolvedSlideId}; compose must animate it instead of exporting a static slide.`,
+          },
+        ],
+      };
+    }),
+  };
+}
+
+function presentationDemoSceneAnchors(
+  script: Script,
+  cuesheet: Record<string, unknown> | undefined,
+): Array<{ sceneId: string; startS: number; endS: number; slideIds: string[]; caption?: string }> {
+  const rawAnchors = cuesheet?.scene_anchors;
+  const anchors = Array.isArray(rawAnchors)
+    ? rawAnchors.map(recordValue).filter((anchor): anchor is Record<string, unknown> => anchor !== undefined)
+    : [];
+
+  if (anchors.length > 0) {
+    return anchors.map((anchor, index) => {
+      const section = script.sections.find((candidate) => candidate.slug === stringValue(anchor.scene_id)) ?? script.sections[index];
+      const slideIds = Array.isArray(anchor.slide_ids)
+        ? anchor.slide_ids.filter((value): value is string => typeof value === "string" && value.length > 0)
+        : section?.slide_ids ?? [];
+
+      return {
+        sceneId: stringValue(anchor.scene_id) ?? section?.slug ?? `slide-scene-${index + 1}`,
+        startS: numberValue(anchor.start_s) ?? section?.start_s ?? 0,
+        endS: numberValue(anchor.end_s) ?? section?.end_s ?? sampleDurationFallback(index, script.sections.length),
+        slideIds,
+        caption: section === undefined ? undefined : narrationForSection(section),
+      };
+    });
+  }
+
+  return script.sections.map((section, index) => ({
+    sceneId: section.slug,
+    startS: section.start_s,
+    endS: section.end_s,
+    slideIds: section.slide_ids,
+    caption: narrationForSection(section),
+  }));
+}
+
+function sampleDurationFallback(index: number, count: number): number {
+  return index + 1 >= count ? Math.max(1, count) : index + 1;
+}
+
 async function buildAssets(
   ctx: StageContext,
   state: PaidSampleState,
@@ -687,6 +1098,10 @@ async function buildAssets(
   decisions: DecisionEntry[],
   options: PaidSampleDispatcherOptions,
 ): Promise<unknown> {
+  if (isPresentationDemo(ctx)) {
+    return buildPresentationDemoAssets(ctx, state);
+  }
+
   const imageTool = await toolFor(ctx, "openai_image", "image_generation");
   const videoTool = await toolFor(ctx, "higgsfield", "image_to_video");
   const beats = await sampleBeats(ctx);
@@ -779,33 +1194,50 @@ async function buildAssets(
   state.imagePath = imagePaths[0];
   state.clipPath = clipPaths[0];
 
-  if (ctx.pipeline.master_clock === "voiceover" || hasNarrationInput(ctx)) {
+  if (state.narrationPath === undefined && (ctx.pipeline.master_clock === "voiceover" || hasNarrationInput(ctx))) {
     const tts = await preferredTtsTool(ctx);
     const text = await narrationText(ctx);
+    const voice = voiceInputForTool(ctx, tts);
+    const model = ttsModelForTool(tts);
     const ttsResult = await tts.execute(
       {
         text,
-        voice_id: voiceId(ctx),
-        format: tts.name === "elevenlabs_tts" ? "mp3_44100_128" : "mp3",
+        ...voice.input,
+        format: ttsFormatForTool(tts),
+        model,
       },
       toolContext(ctx, {
         reason: "Generate narration audio for the paid-demo sample.",
-        model: tts.name === "elevenlabs_tts" ? "eleven_multilingual_v2" : "gpt-4o-mini-tts",
+        model,
         units: 1,
       }),
     );
     const audio = recordValue(ttsResult);
     state.narrationPath = await episodeMediaPath(ctx, stringValue(audio?.audio_path), "audio", "narration.mp3");
+    state.narrationTool = tts.name;
+    state.narrationProvider = tts.provider;
+    state.narrationModel = stringValue(audio?.model) ?? model;
+    state.narrationVoice = stringValue(audio?.voice) ?? voice.label;
+    state.narrationCostUsd = numberValue(audio?.cost_usd) ?? 0;
     costEntries.push(
       costEntry(
         tts.name,
         tts.provider,
-        stringValue(audio?.model) ?? (tts.name === "elevenlabs_tts" ? "eleven_multilingual_v2" : "gpt-4o-mini-tts"),
+        state.narrationModel,
         1,
-        numberValue(audio?.cost_usd) ?? 0,
+        state.narrationCostUsd,
       ),
     );
-    decisions.push(voiceDecision(ctx, tts, options));
+    decisions.push(
+      voiceDecision(ctx, tts, options, {
+        stage: "script",
+        voiceLabel: state.narrationVoice,
+        voiceId: voice.voiceId,
+        voiceName: voice.voiceName,
+        model: state.narrationModel,
+        costUsd: state.narrationCostUsd,
+      }),
+    );
   }
 
   decisions.push(
@@ -826,10 +1258,54 @@ async function buildAssets(
               id: "paid_sample_narration",
               kind: "audio",
               path: state.narrationPath,
-              provider: "elevenlabs",
-              model: "eleven_multilingual_v2",
+              provider: state.narrationProvider ?? "unknown",
+              model: state.narrationModel ?? "unknown",
               prompt: "Narration generated from episode script input.",
-              cost_usd: 0,
+              cost_usd: state.narrationCostUsd ?? 0,
+            },
+          ]),
+    ],
+  };
+}
+
+function buildPresentationDemoAssets(ctx: StageContext, state: PaidSampleState): unknown {
+  const deck = recordValue(state.deck_manifest ?? ctx.priorArtifacts.deck_manifest);
+  const slides = sortedDeckSlides(deck);
+  if (slides.length === 0) {
+    throw new Error("presentation-demo asset_manifest requires deck_manifest.slides");
+  }
+
+  const slideAssets = slides.map((slide, index) => {
+    const slideId = stringValue(slide.id) ?? `slide-${String(index + 1).padStart(3, "0")}`;
+    return {
+      id: slideAssetId(slideId),
+      kind: "image",
+      path: stringValue(slide.image_path) ?? `captures/slides/${slideId}.png`,
+      scene_ref: slideId,
+      provider: "deck_manifest",
+      model: stringValue(recordValue(deck?.extraction)?.screenshot_engine) ?? "deck-renderer",
+      prompt: `Source slide screenshot for ${slideId}; preserve readability and animate in compose.`,
+      cost_usd: 0,
+    };
+  });
+
+  state.imagePaths = slideAssets.map((asset) => asset.path);
+  state.imagePath = slideAssets[0]?.path;
+
+  return {
+    assets: [
+      ...slideAssets,
+      ...(state.narrationPath === undefined
+        ? []
+        : [
+            {
+              id: "paid_sample_narration",
+              kind: "audio",
+              path: state.narrationPath,
+              provider: state.narrationProvider ?? "unknown",
+              model: state.narrationModel ?? "unknown",
+              prompt: "Approved presentation-demo voiceover generated at cuesheet stage.",
+              cost_usd: state.narrationCostUsd ?? 0,
             },
           ]),
     ],
@@ -837,6 +1313,10 @@ async function buildAssets(
 }
 
 function buildEditDecisions(ctx: StageContext, state: PaidSampleState): unknown {
+  if (isPresentationDemo(ctx)) {
+    return buildPresentationDemoEditDecisions(ctx, state);
+  }
+
   const duration = sampleDuration(ctx);
   const clipPaths = state.clipPaths && state.clipPaths.length > 0 ? state.clipPaths : state.clipPath ? [state.clipPath] : [];
   const scenes = recordValue(state.scene_plan)?.scenes;
@@ -882,6 +1362,54 @@ function buildEditDecisions(ctx: StageContext, state: PaidSampleState): unknown 
   };
 }
 
+function buildPresentationDemoEditDecisions(ctx: StageContext, state: PaidSampleState): unknown {
+  const duration = sampleDuration(ctx);
+  const runtime = renderRuntime(ctx);
+  const scenes = recordArray(recordValue(state.scene_plan ?? ctx.priorArtifacts.scene_plan)?.scenes);
+  if (scenes.length === 0) {
+    throw new Error("presentation-demo edit_decisions requires scene_plan.scenes");
+  }
+
+  const cuts = scenes.map((scene, index) => {
+    const requiredAssets = recordArray(scene.required_assets);
+    const firstAsset = requiredAssets[0];
+    const slideId = stringValue(scene.slide_id) ?? stringArray(scene.slide_ids)[0] ?? `slide-${String(index + 1).padStart(3, "0")}`;
+
+    return {
+      start_s: numberValue(scene.start_s) ?? 0,
+      end_s: numberValue(scene.end_s) ?? duration,
+      asset_id: stringValue(firstAsset?.id) ?? slideAssetId(slideId),
+      scene_id: stringValue(scene.slug) ?? slideId,
+      scene_kind: "slide_scene",
+      slide_id: slideId,
+      slide_ids: [slideId],
+      focus_rect: recordValue(scene.focus_rect),
+      motion: cutMotionForScene(scene),
+      highlights: recordArray(scene.highlights),
+      callouts: recordArray(scene.callouts),
+      caption: stringValue(scene.caption),
+      transition_in: index === 0 ? "fade_in" : "match_cut",
+      transition_out: index === scenes.length - 1 ? "fade_out" : "cross_dissolve",
+      provider: runtime,
+    };
+  });
+
+  const narrationPath = state.narrationPath ?? stringValue(recordValue(recordValue(state.cuesheet)?.audio)?.path);
+
+  return {
+    cuts,
+    overlays: [],
+    subtitles: state.cuesheet === undefined ? undefined : { enabled: true, source: "cuesheet.words" },
+    audio: narrationPath === undefined ? undefined : { music: { track_path: narrationPath, ducking: false } },
+    render_runtime: runtime,
+    renderer_family: rendererFamily(ctx),
+    brand: {
+      slug: ctx.show.slug,
+      name: ctx.show.display_name,
+    },
+  };
+}
+
 async function buildRenderReport(
   ctx: StageContext,
   state: PaidSampleState,
@@ -890,8 +1418,9 @@ async function buildRenderReport(
   options: PaidSampleDispatcherOptions,
 ): Promise<unknown> {
   const runtime = renderRuntime(ctx);
-  const composeTool = runtime === "ffmpeg" ? await toolFor(ctx, "ffmpeg", "video_compose") : await toolFor(ctx, "video_compose", "video_compose");
+  const composeTool = await composeToolForRuntime(ctx, runtime);
   const outputPath = `projects/${ctx.show.slug}/${ctx.episode.slug}/renders/paid-sample.mp4`;
+  const expectedDuration = plannedComposeDuration(ctx, state);
   const composeInput =
     runtime === "ffmpeg"
       ? {
@@ -899,14 +1428,19 @@ async function buildRenderReport(
           asset_manifest: state.asset_manifest,
           edit_decisions: state.edit_decisions,
           output_path: outputPath,
+          expected_duration_s: expectedDuration,
         }
       : {
           asset_manifest: state.asset_manifest,
+          deck_manifest: state.deck_manifest,
           edit_decisions: state.edit_decisions,
+          scene_plan: state.scene_plan,
+          cuesheet: state.cuesheet,
           proposal_packet: state.proposal_packet,
           decision_log: [renderRuntimeDecision(ctx, "compose", options)],
           output_path: outputPath,
-          planned_duration_s: sampleDuration(ctx),
+          planned_duration_s: expectedDuration,
+          expected_duration_s: expectedDuration,
         };
   const renderResult = await composeTool.execute(
     composeInput,
@@ -947,16 +1481,31 @@ function normalizeRenderReport(ctx: StageContext, renderResult: unknown, state: 
   const record = recordValue(renderResult);
   const duration = sampleDuration(ctx);
   const [width, height] = resolution(ctx);
+  const actualDuration = numberValue(record?.duration_s) ?? duration;
+  const expectedDuration = numberValue(record?.expected_duration_s) ?? plannedComposeDuration(ctx, state);
+  const driftS = numberValue(record?.drift_s) ?? roundTime(Math.abs(actualDuration - expectedDuration));
+  const framerate = numberValue(record?.framerate) ?? 30;
 
   return {
     output_path: stringValue(record?.output_path) ?? `projects/${ctx.show.slug}/${ctx.episode.slug}/renders/paid-sample.mp4`,
     encoding_profile: stringValue(record?.encoding_profile) ?? "ffmpeg/h264-aac",
-    duration_s: numberValue(record?.duration_s) ?? duration,
+    duration_s: actualDuration,
+    expected_duration_s: expectedDuration,
+    drift_s: driftS,
+    drift_frames: numberValue(record?.drift_frames) ?? Math.round(driftS * framerate),
+    drift_tolerance_s: numberValue(record?.drift_tolerance_s) ?? 0.2,
+    within_tolerance: typeof record?.within_tolerance === "boolean" ? record.within_tolerance : driftS <= 0.2,
     resolution: recordValue(record?.resolution) ?? { width, height },
-    framerate: numberValue(record?.framerate) ?? 30,
-    runtime_used: renderRuntime(ctx),
+    framerate,
+    runtime_used: stringValue(record?.runtime_used) ?? renderRuntime(ctx),
     asset_count: numberValue(record?.asset_count) ?? assetCount(state.asset_manifest),
     warnings: Array.isArray(record?.warnings) ? record.warnings : [],
+    verification_notes: Array.isArray(record?.verification_notes)
+      ? record.verification_notes
+      : [
+          `Runtime ${renderRuntime(ctx)} confirmed against edit_decisions.render_runtime.`,
+          state.cuesheet === undefined ? "No cuesheet was available for caption/audio verification." : "Narration timing and captions were available to compose.",
+        ],
     validation_steps: Array.isArray(record?.validation_steps)
       ? record.validation_steps
       : [{ name: "paid-sample-compose", status: "pass", notes: "Render assembled through the paid sample dispatcher." }],
@@ -1017,13 +1566,100 @@ function finalReview(ctx: StageContext, renderReport: Record<string, unknown>, s
   };
 }
 
-async function preferredTtsTool(ctx: StageContext): Promise<Tool> {
-  const elevenLabs = ctx.registry.get("elevenlabs_tts");
-  if (elevenLabs !== undefined) {
-    return elevenLabs;
+async function composeToolForRuntime(ctx: StageContext, runtime: RenderRuntime): Promise<Tool> {
+  if (runtime === "ffmpeg") {
+    return toolFor(ctx, "ffmpeg", "video_compose");
+  }
+  if (runtime === "remotion") {
+    return toolFor(ctx, "remotion", "video_compose");
   }
 
-  return toolFor(ctx, "openai_tts", "tts");
+  return toolFor(ctx, "hyperframes", "video_compose");
+}
+
+function plannedComposeDuration(ctx: StageContext, state: PaidSampleState): number {
+  const cuts = recordArray(recordValue(state.edit_decisions)?.cuts);
+  const cutDuration = cuts.reduce((max, cut) => Math.max(max, numberValue(cut.end_s) ?? 0), 0);
+  if (cutDuration > 0) {
+    return roundTime(cutDuration);
+  }
+
+  const cuesheetAudio = recordValue(recordValue(state.cuesheet)?.audio);
+  const cueDuration = numberValue(cuesheetAudio?.duration_s);
+  return cueDuration === undefined ? sampleDuration(ctx) : roundTime(cueDuration);
+}
+
+async function preferredTtsTool(ctx: StageContext): Promise<Tool> {
+  return ctx.registry.select("tts", {
+    prefer: ttsPreferenceList(ctx),
+    context: { projectRoot: ctx.show.projectRoot },
+  });
+}
+
+function ttsPreferenceList(ctx: StageContext): string[] {
+  const configured = [stringInput(ctx, "tts_provider"), stringInput(ctx, "voice_provider")]
+    .map((value) => value?.trim())
+    .filter((value): value is string => value !== undefined && value.length > 0)
+    .map((value) => (value.endsWith("_tts") ? value : `${value}_tts`));
+
+  return [...configured, "elevenlabs_tts", "openai_tts", "google_tts", "piper_tts"];
+}
+
+function voiceInputForTool(
+  ctx: StageContext,
+  tool: Tool,
+): {
+  input: { voice_id?: string; voice_name?: string };
+  label: string;
+  voiceId?: string;
+  voiceName?: string;
+} {
+  const voiceIdInput = stringInput(ctx, "voice_id");
+  const voiceName = stringInput(ctx, "voice_name") ?? stringInput(ctx, "voice_preference");
+
+  if (voiceIdInput !== undefined) {
+    return { input: { voice_id: voiceIdInput }, label: voiceIdInput, voiceId: voiceIdInput, voiceName };
+  }
+
+  if (voiceName !== undefined && tool.name === "elevenlabs_tts") {
+    return { input: { voice_name: voiceName }, label: voiceName, voiceName };
+  }
+
+  const fallbackVoiceId =
+    tool.name === "openai_tts"
+      ? "alloy"
+      : tool.name === "google_tts"
+        ? "en-US-Chirp3-HD-Charon"
+        : tool.name === "piper_tts"
+          ? "en_US-lessac-medium"
+          : "21m00Tcm4TlvDq8ikWAM";
+
+  return {
+    input: { voice_id: fallbackVoiceId },
+    label: voiceName ?? fallbackVoiceId,
+    voiceId: fallbackVoiceId,
+    voiceName,
+  };
+}
+
+function ttsModelForTool(tool: Tool): string {
+  if (tool.name === "elevenlabs_tts") {
+    return "eleven_multilingual_v2";
+  }
+  if (tool.name === "openai_tts") {
+    return "gpt-4o-mini-tts";
+  }
+  if (tool.name === "google_tts") {
+    return "chirp3-hd";
+  }
+  if (tool.name === "piper_tts") {
+    return "en_US-lessac-medium";
+  }
+  return tool.name;
+}
+
+function ttsFormatForTool(tool: Tool): string {
+  return tool.name === "elevenlabs_tts" ? "mp3_44100_128" : "mp3";
 }
 
 async function toolFor(ctx: StageContext, name: string, capability: string): Promise<Tool> {
@@ -1412,6 +2048,54 @@ function clipAssetId(index: number): string {
   return index === 0 ? "paid_sample_clip" : `paid_sample_clip_${index + 1}`;
 }
 
+function slideAssetId(slideId: string): string {
+  return `deck_slide_${safeFileSlug(slideId)}`;
+}
+
+function focusRectForSlide(index: number): { x: number; y: number; width: number; height: number } {
+  const presets = [
+    { x: 0.08, y: 0.12, width: 0.46, height: 0.34 },
+    { x: 0.46, y: 0.18, width: 0.42, height: 0.32 },
+    { x: 0.2, y: 0.5, width: 0.56, height: 0.24 },
+  ];
+
+  return presets[index % presets.length] ?? presets[0];
+}
+
+function highlightRectForSlide(index: number): { x: number; y: number; width: number; height: number } {
+  const presets = [
+    { x: 0.1, y: 0.16, width: 0.42, height: 0.18 },
+    { x: 0.52, y: 0.2, width: 0.34, height: 0.22 },
+    { x: 0.22, y: 0.56, width: 0.52, height: 0.16 },
+  ];
+
+  return presets[index % presets.length] ?? presets[0];
+}
+
+function shortCallout(value: string): string {
+  const cleaned = value.replace(/\s+/gu, " ").trim();
+  return cleaned.length <= 48 ? cleaned : `${cleaned.slice(0, 45).trim()}...`;
+}
+
+function cutMotionForScene(scene: Record<string, unknown>): Record<string, unknown> {
+  const shotLanguage = recordValue(scene.shot_language);
+  const movement = stringValue(shotLanguage?.camera_movement);
+  if (movement === "pan_left" || movement === "pan_right" || movement === "push_in" || movement === "pull_out") {
+    return { type: movement, zoom_start: 1, zoom_end: movement === "pull_out" ? 1.08 : 1.1 };
+  }
+  if (movement === "tilt_up") {
+    return { type: "pan_up", zoom_start: 1, zoom_end: 1.08 };
+  }
+  if (movement === "tilt_down") {
+    return { type: "pan_down", zoom_start: 1, zoom_end: 1.08 };
+  }
+  if (stringValue(scene.treatment) === "slide_image") {
+    return { type: "static", zoom_start: 1, zoom_end: 1 };
+  }
+
+  return { type: "push_in", zoom_start: 1, zoom_end: 1.08 };
+}
+
 async function textInput(ctx: StageContext, key: string): Promise<string | undefined> {
   const value = ctx.episode.inputs[key];
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -1592,6 +2276,10 @@ function resolution(ctx: StageContext): [number, number] {
 
 function renderRuntime(ctx: StageContext): RenderRuntime {
   const configured = configuredRenderRuntime(ctx);
+  if (isPresentationDemo(ctx)) {
+    return configured === "ffmpeg" ? "remotion" : configured;
+  }
+
   if (runtimeAvailable(ctx, configured)) {
     return configured;
   }
@@ -1642,11 +2330,6 @@ function rendererFamily(ctx: StageContext): string {
 
 function higgsfieldDuration(ctx: StageContext): 5 | 10 {
   return sampleDuration(ctx) > 7 ? 10 : 5;
-}
-
-function voiceId(ctx: StageContext): string {
-  const value = ctx.episode.inputs.voice_id;
-  return typeof value === "string" && value.trim().length > 0 ? value : "21m00Tcm4TlvDq8ikWAM";
 }
 
 function assetCount(assetManifest: unknown): number {
@@ -1741,8 +2424,38 @@ function modelDecision(
   };
 }
 
-function voiceDecision(ctx: StageContext, tool: Tool, options: PaidSampleDispatcherOptions): DecisionEntry {
-  return decision(ctx, "script", "voice_selection", tool.name, `${tool.name} is the configured narration lane for the paid sample.`, options);
+function voiceDecision(
+  ctx: StageContext,
+  tool: Tool,
+  options: PaidSampleDispatcherOptions,
+  details: {
+    stage: string;
+    voiceLabel?: string;
+    voiceId?: string;
+    voiceName?: string;
+    model?: string;
+    costUsd?: number;
+  },
+): DecisionEntry {
+  const voiceParts = [
+    details.voiceId === undefined ? undefined : `voice_id=${details.voiceId}`,
+    details.voiceName === undefined ? undefined : `voice_name=${details.voiceName}`,
+    details.model === undefined ? undefined : `model=${details.model}`,
+    details.costUsd === undefined ? undefined : `cost_usd=${roundUsd(details.costUsd)}`,
+  ].filter((part): part is string => part !== undefined);
+
+  return {
+    ...decision(
+      ctx,
+      details.stage,
+      "voice_selection",
+      tool.name,
+      `${tool.name} (${tool.provider}) is the selected narration lane${voiceParts.length > 0 ? `; ${voiceParts.join(", ")}` : ""}.`,
+      options,
+    ),
+    scope: { capability: "tts", provider: tool.provider },
+    options_considered: ttsOptionsConsidered(ctx, tool, details),
+  };
 }
 
 function renderRuntimeDecision(ctx: StageContext, stage: string, options: PaidSampleDispatcherOptions): DecisionEntry {
@@ -1787,6 +2500,10 @@ function decision(
 
 function runtimeDecisionReason(ctx: StageContext, picked: RenderRuntime): string {
   const configured = configuredRenderRuntime(ctx);
+  if (isPresentationDemo(ctx)) {
+    return `Presentation-demo locks ${picked} for compose; do not silently swap runtimes after proposal/edit approval.`;
+  }
+
   if (picked === configured) {
     return `Use the configured ${picked} sample render runtime for editor handoff.`;
   }
@@ -1802,10 +2519,12 @@ function runtimeOptionsConsidered(ctx: StageContext, picked: RenderRuntime): Dec
     const rejected =
       runtime === picked
         ? null
+        : isPresentationDemo(ctx) && runtime === "ffmpeg"
+          ? "static slideshow/ffmpeg downgrade is not allowed for presentation-demo"
         : !available
           ? "runtime not available on this machine"
           : runtime === "ffmpeg" && motionLed
-          ? "rough-cut fallback; richer composition runtime was available"
+            ? "rough-cut fallback; richer composition runtime was available"
             : runtime === configured
               ? "configured runtime not selected"
               : "not selected for this sample";
@@ -1820,6 +2539,59 @@ function runtimeOptionsConsidered(ctx: StageContext, picked: RenderRuntime): Dec
             : null,
     };
   });
+}
+
+function ttsOptionsConsidered(
+  ctx: StageContext,
+  selected: Tool,
+  details: { voiceLabel?: string; voiceId?: string; voiceName?: string; model?: string; costUsd?: number },
+): DecisionEntry["options_considered"] {
+  const options = ctx.registry
+    .byCapability("tts")
+    .filter((tool) => !isProviderSelectionMarker(tool))
+    .map((tool) => {
+      const selectedTool = tool.name === selected.name;
+      const availability = ctx.registry.getAvailability(tool.name);
+      const rejected =
+        selectedTool
+          ? null
+          : availability?.available === false
+            ? `not configured: ${availability.reason}`
+            : "not selected by the configured voice/provider preference";
+
+      return {
+        label: tool.name,
+        rejected_because: rejected,
+        notes: selectedTool
+          ? [
+              details.voiceLabel === undefined ? undefined : `voice=${details.voiceLabel}`,
+              details.voiceId === undefined ? undefined : `voice_id=${details.voiceId}`,
+              details.voiceName === undefined ? undefined : `voice_name=${details.voiceName}`,
+              details.model === undefined ? undefined : `model=${details.model}`,
+              details.costUsd === undefined ? undefined : `cost_usd=${roundUsd(details.costUsd)}`,
+            ]
+              .filter((part): part is string => part !== undefined)
+              .join("; ")
+          : null,
+      };
+    });
+
+  if (options.length >= 2) {
+    return options;
+  }
+
+  return [
+    ...options,
+    {
+      label: "attach_existing_voiceover",
+      rejected_because: "this run is configured to generate approved narration through the TTS registry",
+      notes: null,
+    },
+  ];
+}
+
+function isProviderSelectionMarker(tool: Tool): boolean {
+  return tool.provider === "show-sidekick" && (tool.supports ?? []).includes("provider-selection");
 }
 
 function projectRelativePath(projectRoot: string, absolutePath: string): string {
@@ -1852,6 +2624,16 @@ function errorMessage(error: unknown): string {
 
 function recordValue(value: unknown): Record<string, unknown> | undefined {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+}
+
+function recordArray(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.map(recordValue).filter((record): record is Record<string, unknown> => record !== undefined)
+    : [];
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
 }
 
 function stringValue(value: unknown): string | undefined {
