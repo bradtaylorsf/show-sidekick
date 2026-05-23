@@ -37,6 +37,7 @@ export const RemotionComposeInputSchema = z.object({
       height: z.number().int().positive(),
     })
     .optional(),
+  debug_overlay: z.enum(["none", "beats", "all"]).default("none"),
 });
 
 export type RemotionComposeInput = z.infer<typeof RemotionComposeInputSchema>;
@@ -330,6 +331,7 @@ export function buildRemotionCompositionProps(
   audioUsesStaticFile: boolean;
   width: number;
   height: number;
+  showBeatCounter: boolean;
 } {
   const input = RemotionComposeInputSchema.parse(params);
   const assets = new Map(input.asset_manifest?.assets.map((asset) => [asset.id, asset]) ?? []);
@@ -345,6 +347,7 @@ export function buildRemotionCompositionProps(
   const audioPath = input.edit_decisions.audio?.music?.track_path ?? input.cuesheet?.audio.path;
   const audioSource = audioPath ? mediaSrc(audioPath, projectRoot, media) : undefined;
   const resolution = resolutionOverride ?? input.resolution ?? { width: 1920, height: 1080 };
+  const hasCaptionTrack = captionWords.length > 0;
 
   return {
     fps: input.fps,
@@ -377,6 +380,7 @@ export function buildRemotionCompositionProps(
         eyebrow: card.eyebrow,
         title: card.title,
         body: card.body,
+        showSceneCopy: !hasCaptionTrack || cut.caption === undefined,
         slide,
       };
     }),
@@ -385,6 +389,7 @@ export function buildRemotionCompositionProps(
     audioUsesStaticFile: audioSource?.useStaticFile ?? false,
     width: resolution.width,
     height: resolution.height,
+    showBeatCounter: input.debug_overlay === "beats" || input.debug_overlay === "all",
   };
 }
 
@@ -419,7 +424,7 @@ function Scene({ cut, total }) {
       <AbsoluteFill style={{
         background: "linear-gradient(90deg, rgba(6,10,24,0.78), rgba(6,10,24,0.18) 48%, rgba(6,10,24,0.72))",
       }} />
-      <div style={{
+      {cut.showSceneCopy ? <div style={{
         position: "absolute",
         left: 76,
         bottom: 70,
@@ -431,8 +436,8 @@ function Scene({ cut, total }) {
         lineHeight: 1.08,
         textShadow: "0 4px 18px rgba(0,0,0,0.5)",
         opacity: interpolate(frame, [0, 12, Math.max(18, cut.durationFrames - 10), cut.durationFrames], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
-      }}>{title}</div>
-      <div style={{
+      }}>{title}</div> : null}
+      {props.showBeatCounter ? <div style={{
         position: "absolute",
         right: 76,
         top: 64,
@@ -441,7 +446,7 @@ function Scene({ cut, total }) {
         fontSize: 24,
         letterSpacing: 0,
         fontWeight: 700,
-      }}>BEAT {cut.index + 1} / {total}</div>
+      }}>BEAT {cut.index + 1} / {total}</div> : null}
     </AbsoluteFill>
   );
 }
@@ -598,7 +603,7 @@ function AnimatedExplainerScene({ cut, total, progress, frame }) {
       }}>
         <div style={{ width: ((cut.index + progress) / total) * 100 + "%", height: "100%", background: accent }} />
       </div>
-      <div style={{
+      {props.showBeatCounter ? <div style={{
         position: "absolute",
         right: 72,
         top: 112,
@@ -606,42 +611,44 @@ function AnimatedExplainerScene({ cut, total, progress, frame }) {
         fontSize: 26,
         fontWeight: 800,
         letterSpacing: 0,
-      }}>BEAT {cut.index + 1} / {total}</div>
-      <div style={{
-        position: "absolute",
-        left: 72,
-        top: 136,
-        color: accent,
-        fontSize: 29,
-        fontWeight: 900,
-        letterSpacing: 0,
-        opacity: fade,
-        transform: "translateY(" + entrance + "px)",
-      }}>{cut.eyebrow}</div>
-      <div style={{
-        position: "absolute",
-        left: 72,
-        top: 198,
-        right: 72,
-        color: "white",
-        fontSize: titleSize,
-        lineHeight: 1.02,
-        fontWeight: 950,
-        opacity: fade,
-        transform: "translateY(" + entrance + "px)",
-      }}>{cut.title}</div>
-      <div style={{
-        position: "absolute",
-        left: 72,
-        right: 72,
-        top: 438,
-        color: "#edf5ff",
-        fontSize: bodySize,
-        lineHeight: 1.18,
-        fontWeight: 620,
-        opacity: fade,
-        transform: "translateY(" + (entrance * 0.7) + "px)",
-      }}>{cut.body}</div>
+      }}>BEAT {cut.index + 1} / {total}</div> : null}
+      {cut.showSceneCopy ? <>
+        <div style={{
+          position: "absolute",
+          left: 72,
+          top: 136,
+          color: accent,
+          fontSize: 29,
+          fontWeight: 900,
+          letterSpacing: 0,
+          opacity: fade,
+          transform: "translateY(" + entrance + "px)",
+        }}>{cut.eyebrow}</div>
+        <div style={{
+          position: "absolute",
+          left: 72,
+          top: 198,
+          right: 72,
+          color: "white",
+          fontSize: titleSize,
+          lineHeight: 1.02,
+          fontWeight: 950,
+          opacity: fade,
+          transform: "translateY(" + entrance + "px)",
+        }}>{cut.title}</div>
+        <div style={{
+          position: "absolute",
+          left: 72,
+          right: 72,
+          top: 438,
+          color: "#edf5ff",
+          fontSize: bodySize,
+          lineHeight: 1.18,
+          fontWeight: 620,
+          opacity: fade,
+          transform: "translateY(" + (entrance * 0.7) + "px)",
+        }}>{cut.body}</div>
+      </> : null}
       <MotionDiagram cut={cut} progress={progress} accent={accent} orbit={orbit} />
     </AbsoluteFill>
   );

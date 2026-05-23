@@ -21,6 +21,7 @@ Read the episode, show defaults, playbook, and all required prior artifacts decl
 2. Use only registry-backed tools or user-provided fixtures listed by the manifest.
 3. Keep sample mode small when `sample_mode_supported` is true.
 4. Write the artifact with clear paths, costs, assumptions, and handoff notes.
+5. Include show and episode brand context in every generated image or motion prompt: exact show display name, exact episode title, brand notes, allowed on-screen title text, and explicit bans on invented logos, trademarks, alternate titles, or altered numerals.
 
 ## Review Focus
 

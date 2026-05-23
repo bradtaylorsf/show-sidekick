@@ -12,6 +12,7 @@ const HIGGSFIELD_GENERATE_CREATE_URL = "https://api.higgsfield.ai/generate/creat
 const MODEL = "seedance_2_0";
 
 const durationSchema = z.union([z.literal(5), z.literal(10)]);
+const aspectRatioSchema = z.enum(["16:9", "9:16", "1:1"]);
 
 const inputSchema = z
   .object({
@@ -19,6 +20,7 @@ const inputSchema = z
     image_path: z.string().min(1).optional(),
     prompt: z.string().min(1),
     duration: durationSchema.default(5),
+    aspect_ratio: aspectRatioSchema.default("16:9"),
   })
   .superRefine((value, ctx) => {
     if (!value.image_url && !value.image_path) {
@@ -47,6 +49,7 @@ const wireRequestSchema = z.object({
       start_image: z.string(),
       prompt: z.string(),
       duration: durationSchema,
+      aspect_ratio: aspectRatioSchema.optional(),
     })
     .strict(),
 });
@@ -88,7 +91,7 @@ export default defineTool({
       model: MODEL,
       ...imageSource.cacheKey,
       duration: input.duration,
-      aspect_ratio: "16:9",
+      aspect_ratio: input.aspect_ratio,
     };
     const cached = await lookupClipCache(ctx, cacheKey);
     if (cached) {
@@ -173,6 +176,7 @@ function buildWireRequest(input: HiggsfieldInput, imageUrl: string): WireRequest
       start_image: imageUrl,
       prompt: input.prompt,
       duration: input.duration,
+      aspect_ratio: input.aspect_ratio,
     },
   };
 }
@@ -197,6 +201,8 @@ async function runHiggsfield(
       input.prompt,
       "--duration",
       String(input.duration),
+      "--aspect_ratio",
+      input.aspect_ratio,
       "--wait",
       "--json",
     ],

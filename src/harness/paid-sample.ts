@@ -1330,13 +1330,15 @@ async function buildAssets(
   const clipPaths: string[] = [];
 
   for (const beat of beats) {
-    const imagePromptText = imagePrompt(ctx, beat);
+    const imagePromptText = await imagePrompt(ctx, beat);
+    const motionPromptText = await motionPrompt(ctx, beat);
+    const targetAspect = providerAspectRatio(ctx);
     const imageModel = imageTool.name === "higgsfield_image" ? "gpt_image_2" : "gpt-image-2";
     const imageResult = await imageTool.execute(
       imageTool.name === "higgsfield_image"
         ? {
             prompt: imagePromptText,
-            aspect_ratio: aspect(ctx).startsWith("9:16") ? "9:16" : "16:9",
+            aspect_ratio: targetAspect,
             quality: "low",
             resolution: "2k",
           }
@@ -1363,8 +1365,18 @@ async function buildAssets(
 
     const videoInput =
       videoTool.provider === "higgsfield" || typeof image?.url !== "string"
-        ? { image_path: imagePath, prompt: motionPrompt(ctx, beat), duration: higgsfieldDuration(ctx) }
-        : { image_url: image.url, prompt: motionPrompt(ctx, beat), duration: higgsfieldDuration(ctx) };
+        ? {
+            image_path: imagePath,
+            prompt: motionPromptText,
+            duration: higgsfieldDuration(ctx),
+            aspect_ratio: targetAspect,
+          }
+        : {
+            image_url: image.url,
+            prompt: motionPromptText,
+            duration: higgsfieldDuration(ctx),
+            aspect_ratio: targetAspect,
+          };
     const videoResult = await videoTool.execute(
       videoInput,
       toolContext(ctx, {
@@ -1399,7 +1411,7 @@ async function buildAssets(
       scene_ref: `sample-${beat.index + 1}`,
       provider: videoTool.provider,
       model: "seedance_2_0",
-      prompt: motionPrompt(ctx, beat),
+      prompt: motionPromptText,
       cost_usd: numberValue(video?.cost_usd) ?? 0,
     });
 
@@ -2410,18 +2422,20 @@ function trimForNarration(value: string): string {
   return value.replace(/\s+/gu, " ").trim().slice(0, 700);
 }
 
-function imagePrompt(ctx: StageContext, beat?: SampleBeat): string {
+async function imagePrompt(ctx: StageContext, beat?: SampleBeat): Promise<string> {
   if (lyricMusicMode(ctx)) {
     return lyricArtImagePrompt(ctx, beat);
   }
 
   const pipelineLabel = readableSlug(ctx.pipeline.slug);
   const style = visualStyleDirection(ctx);
+  const brandContext = await brandContextForPrompt(ctx);
   return [
     `Use case: ${pipelineLabel}.`,
     `Asset type: ${aspect(ctx)} keyframe for a ${pipelineLabel} sample.`,
     `Primary request: Create a polished provider-backed start frame for ${ctx.episode.title}.`,
     `Pipeline: ${ctx.pipeline.slug}.`,
+    brandContext,
     beat === undefined ? undefined : `Scene beat: ${beat.title}. ${beat.body}`,
     style === undefined ? undefined : `Style direction: ${style}.`,
     `Aspect ratio: ${aspect(ctx)}.`,
@@ -2432,7 +2446,7 @@ function imagePrompt(ctx: StageContext, beat?: SampleBeat): string {
     .join(" ");
 }
 
-function motionPrompt(ctx: StageContext, beat?: SampleBeat): string {
+async function motionPrompt(ctx: StageContext, beat?: SampleBeat): Promise<string> {
   if (lyricMusicMode(ctx)) {
     return lyricArtMotionPrompt(ctx, beat);
   }
@@ -2440,13 +2454,70 @@ function motionPrompt(ctx: StageContext, beat?: SampleBeat): string {
   const pipelineLabel = readableSlug(ctx.pipeline.slug);
   const style = visualStyleDirection(ctx);
   const beatText = beat === undefined ? "the sample frame" : `"${beat.title}"`;
+  const brandContext = await brandContextForPrompt(ctx);
   return [
     `Animate ${beatText} as a short ${rendererFamily(ctx)} ${pipelineLabel} beat.`,
+    brandContext,
     style === undefined ? undefined : `Preserve this style: ${style}.`,
     "Use distinct subject motion, foreground/background parallax, motivated camera drift, and readable demo-safe pacing.",
+    "Do not add new readable text, logos, or brand names during motion generation.",
   ]
     .filter((part): part is string => typeof part === "string")
     .join(" ");
+}
+
+async function brandContextForPrompt(ctx: StageContext): Promise<string> {
+  const notes = await brandReferenceForPrompt(ctx);
+  const showTitle = ctx.show.display_name;
+  const exactTitle = showTitle.toUpperCase();
+  return [
+    `Brand context: Show title: "${showTitle}". Episode title: "${ctx.episode.title}".`,
+    ctx.show.description === undefined ? undefined : `Show description: ${trimForNarration(ctx.show.description)}.`,
+    notes === undefined ? undefined : `Brand notes: ${notes}`,
+    [
+      `On-screen text policy: If a show title pill is rendered, it must read exactly "${exactTitle}".`,
+      "Do not invent other brand names, logos, trademarks, title variants, or altered numerals.",
+      "If uncertain, render brand-neutral with no readable text.",
+    ].join(" "),
+  ]
+    .filter((part): part is string => typeof part === "string")
+    .join(" ");
+}
+
+async function brandReferenceForPrompt(ctx: StageContext): Promise<string | undefined> {
+  const inputNotes = await firstTextInput(ctx, ["brand_notes", "brand_context", "brand_guide"]);
+  if (inputNotes !== undefined) {
+    return trimForNarration(inputNotes);
+  }
+
+  const brandPath = ctx.show.brandPath ?? (typeof ctx.show.brand === "string" ? ctx.show.brand : undefined);
+  if (brandPath === undefined) {
+    return undefined;
+  }
+
+  for (const filename of ["brand.md", "brand.yaml", "brand.yml", "README.md", "style.md", "voice.md"]) {
+    try {
+      const contents = await readFile(path.join(brandPath, filename), "utf8");
+      if (contents.trim().length > 0) {
+        return trimForNarration(contents);
+      }
+    } catch {
+      // Brand folders are optional; absent files just mean there are no extra prompt notes.
+    }
+  }
+
+  return undefined;
+}
+
+async function firstTextInput(ctx: StageContext, keys: readonly string[]): Promise<string | undefined> {
+  for (const key of keys) {
+    const value = await textInput(ctx, key);
+    if (value !== undefined) {
+      return value;
+    }
+  }
+
+  return undefined;
 }
 
 function genericTextureKeywords(ctx: StageContext): string[] {
@@ -2533,11 +2604,39 @@ function aspect(ctx: StageContext): string {
 }
 
 function imageSize(ctx: StageContext): string {
-  return aspect(ctx).startsWith("9:16") ? "1024x1536" : "1536x1024";
+  const targetAspect = providerAspectRatio(ctx);
+  if (targetAspect === "9:16") {
+    return "1024x1792";
+  }
+  if (targetAspect === "1:1") {
+    return "1024x1024";
+  }
+
+  return "1792x1024";
 }
 
 function resolution(ctx: StageContext): [number, number] {
-  return aspect(ctx).startsWith("9:16") ? [1080, 1920] : [1920, 1080];
+  const targetAspect = providerAspectRatio(ctx);
+  if (targetAspect === "9:16") {
+    return [1080, 1920];
+  }
+  if (targetAspect === "1:1") {
+    return [1080, 1080];
+  }
+
+  return [1920, 1080];
+}
+
+function providerAspectRatio(ctx: StageContext): "16:9" | "9:16" | "1:1" {
+  const value = aspect(ctx);
+  if (value.startsWith("9:16")) {
+    return "9:16";
+  }
+  if (value.startsWith("1:1")) {
+    return "1:1";
+  }
+
+  return "16:9";
 }
 
 function renderRuntime(ctx: StageContext): RenderRuntime {

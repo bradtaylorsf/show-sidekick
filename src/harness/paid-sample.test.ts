@@ -582,7 +582,11 @@ describe("paid sample dispatcher", () => {
 
   it("uses available Remotion runtime and creates multiple generated motion clips from script beats", async () => {
     const root = await scratchProject();
-    const show = loadedShow(root, "remotion");
+    const show = {
+      ...loadedShow(root, "remotion"),
+      display_name: "First 48 Hours",
+      description: "Aging Sidekick hospital-discharge guidance.",
+    };
     const episode = {
       ...loadedEpisode(show, "remotion", [
         "Start with the contract: pipeline first.",
@@ -591,8 +595,11 @@ describe("paid sample dispatcher", () => {
         "Export the handoff: Premiere, EDL, logs.",
       ].join("\n")),
       aspect: "9:16",
+      title: "Hospital Discharge",
     };
     const pipeline = pipelineManifest();
+    const openAiInputs: unknown[] = [];
+    const higgsfieldInputs: unknown[] = [];
     const videoComposeInputs: unknown[] = [];
 
     const result = await Runner.run({
@@ -604,6 +611,8 @@ describe("paid sample dispatcher", () => {
       registry: new Registry({
         tools: paidSampleTools(root, {
           includeRemotionRuntime: true,
+          onOpenAiInput: (input) => openAiInputs.push(input),
+          onHiggsfieldInput: (input) => higgsfieldInputs.push(input),
           onVideoComposeInput: (input) => videoComposeInputs.push(input),
         }),
       }),
@@ -615,6 +624,20 @@ describe("paid sample dispatcher", () => {
     });
 
     expect(result.status).toBe("completed");
+    expect(openAiInputs).toHaveLength(2);
+    for (const input of openAiInputs) {
+      expect(input).toMatchObject({ size: "1024x1792" });
+      expect(promptFromInput(input)).toContain('Show title: "First 48 Hours"');
+      expect(promptFromInput(input)).toContain('Episode title: "Hospital Discharge"');
+      expect(promptFromInput(input)).toContain('exactly "FIRST 48 HOURS"');
+      expect(promptFromInput(input)).toContain("Do not invent other brand names");
+    }
+    expect(higgsfieldInputs).toHaveLength(2);
+    for (const input of higgsfieldInputs) {
+      expect(input).toMatchObject({ aspect_ratio: "9:16" });
+      expect(promptFromInput(input)).toContain('Show title: "First 48 Hours"');
+      expect(promptFromInput(input)).toContain("Do not add new readable text, logos, or brand names during motion generation.");
+    }
     await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
       artifact: {
         assets: expect.arrayContaining([

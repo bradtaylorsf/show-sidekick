@@ -160,7 +160,7 @@ describe("remotion tool", () => {
     ]);
   });
 
-  it("uses cut captions instead of provider prompts for generic scene copy and caption timing", () => {
+  it("uses cut captions instead of provider prompts and suppresses duplicate scene copy", () => {
     const narration = "They told you Mom is coming home tomorrow, and you do not feel ready.";
     const props = buildRemotionCompositionProps({
       fps: 30,
@@ -194,11 +194,27 @@ describe("remotion tool", () => {
     expect(props.height).toBe(1920);
     expect(props.cuts[0]).toMatchObject({
       label: narration,
-      body: narration,
       caption: narration,
+      showSceneCopy: false,
     });
+    expect(props.showBeatCounter).toBe(false);
     expect(props.captions.map((word) => word.text).join(" ")).toBe(narration);
     expect(JSON.stringify(props)).not.toContain("short explainer-teacher");
+  });
+
+  it("keeps the beat counter opt-in for debug renders", () => {
+    const props = buildRemotionCompositionProps({
+      fps: 30,
+      debug_overlay: "beats",
+      edit_decisions: {
+        cuts: [{ start_s: 0, end_s: 4, asset_id: "paid_sample_clip" }],
+        overlays: [],
+        render_runtime: "remotion",
+        renderer_family: "explainer-teacher",
+      },
+    });
+
+    expect(props.showBeatCounter).toBe(true);
   });
 
   it("refuses to compose when edit decisions lock another runtime", async () => {
