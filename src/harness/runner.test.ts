@@ -3,7 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { readCheckpoint, readSampleCheckpoint, readState } from "../checkpoints/index.js";
+import { readCheckpoint, readSampleCheckpoint, readState, writeCheckpoint } from "../checkpoints/index.js";
 import { BRANDING } from "../branding.js";
 import { readCostLog } from "../cost/tracker.js";
 import { readDecisionLog, recordDecision, type DecisionEntry } from "../decisions/index.js";
@@ -637,6 +637,60 @@ describe("Runner", () => {
       }),
     ).rejects.toThrow("audio_sync: required stage 'scene_plan' cannot run");
     expect(dispatched).toEqual([]);
+  });
+
+  it("reuses a completed checkpoint when --from starts at that stage", async () => {
+    const root = await scratchProject();
+    const sceneArtifact = { scenes: [scenePlanScene("intro", 0)] };
+    const pipeline = pipelineManifest([
+      stage("scene_plan", { produces: "scene_plan", human_approval: "required" }),
+      stage("assets", { produces: "asset_manifest", required_artifacts_in: ["scene_plan"] }),
+    ]);
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+    const dispatched: string[] = [];
+
+    await writeCheckpoint(root, "show", "episode", "scene_plan", {
+      stage: "scene_plan",
+      status: "completed",
+      timestamp: fixedNow().toISOString(),
+      artifact: sceneArtifact,
+      review_summary: {
+        decision: "pass",
+        rounds: 1,
+        critical: 0,
+        suggestions: 0,
+        nitpicks: 0,
+        findings: [],
+      },
+      cost_snapshot: {
+        stage_cost_usd: 0,
+        total_so_far_usd: 0,
+        budget_remaining_usd: 3,
+      },
+      tool_invocations: [],
+    });
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: async (ctx) => {
+        dispatched.push(ctx.stage.slug);
+        expect(ctx.priorArtifacts.scene_plan).toEqual(sceneArtifact);
+        return stageResult({ assets: [] }, 0);
+      },
+      reviewer: passReviewer,
+      runOptions: { sample: false, from: "scene_plan" },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(dispatched).toEqual(["assets"]);
   });
 
   it("prompts for required approval in interactive mode and continues after approve", async () => {

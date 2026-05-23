@@ -167,7 +167,7 @@ function registerCommands(program: Command, io: CliIo, options: RegisterCommandO
     .command("build <target>")
     .description("run a pipeline")
     .option("--sample", "run a 15-20s sample")
-    .option("--from <stage>", "start at a stage")
+    .option("--from <stage>", "start at a stage, reusing completed checkpoints")
     .option("--only <stage>", "run only one stage")
     .option("--to <stage>", "stop after a stage")
     .option("--budget <usd>", "set a budget in USD")

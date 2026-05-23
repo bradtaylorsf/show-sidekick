@@ -119,6 +119,51 @@ describe("paid sample dispatcher", () => {
     );
   });
 
+  it("uses Higgsfield still generation instead of code snippets when OpenAI images are unavailable", async () => {
+    const root = await scratchProject();
+    const show = loadedShow(root);
+    const episode = loadedEpisode(show);
+    const pipeline = pipelineManifest();
+    const codeSnippetInputs: unknown[] = [];
+    const higgsfieldImageInputs: unknown[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "paid-demo",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          includeCodeSnippet: true,
+          includeHiggsfieldImage: true,
+          includeOpenAiImage: false,
+          onCodeSnippetInput: (input) => codeSnippetInputs.push(input),
+          onHiggsfieldImageInput: (input) => higgsfieldImageInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", nonInteractive: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(codeSnippetInputs).toEqual([]);
+    expect(higgsfieldImageInputs[0]).toMatchObject({
+      prompt: expect.stringContaining("Asset type: 16:9 keyframe"),
+    });
+    await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
+      artifact: {
+        assets: expect.arrayContaining([
+          expect.objectContaining({ id: "paid_sample_image", provider: "higgsfield", model: "gpt_image_2" }),
+          expect.objectContaining({ id: "paid_sample_clip", provider: "higgsfield", model: "seedance_2_0" }),
+        ]),
+      },
+    });
+  });
+
   it("drafts presentation-demo scripts from deck slides with slide references and source priority", async () => {
     const root = await scratchProject();
     const show = presentationDemoShow(root);
@@ -1288,9 +1333,13 @@ function paidSampleTools(
   root: string,
   options: {
     higgsfieldCacheHit?: boolean;
+    includeCodeSnippet?: boolean;
     includeHiggsfieldImage?: boolean;
+    includeOpenAiImage?: boolean;
     includeRemotionRuntime?: boolean;
+    onCodeSnippetInput?: (input: unknown) => void;
     onFfmpegInput?: (input: unknown) => void;
+    onHiggsfieldImageInput?: (input: unknown) => void;
     onHiggsfieldInput?: (input: unknown) => void;
     onOpenAiInput?: (input: unknown) => void;
     onVideoComposeInput?: (input: unknown) => void;
@@ -1302,19 +1351,45 @@ function paidSampleTools(
   const clipPath = path.join(root, "fixtures", "clip.mp4");
 
   return [
+    ...(options.includeCodeSnippet
+      ? [
+          defineTool({
+            name: "code_snippet",
+            capability: "image_generation",
+            provider: "local",
+            status: "beta",
+            integration: { kind: "library", package: "fixture", install: "none" },
+            best_for: "code overlay fixture",
+            input: z.object({ code: z.string().min(1) }),
+            output: z.unknown(),
+            async isAvailable() {
+              return { available: true };
+            },
+            async execute(input) {
+              options.onCodeSnippetInput?.(input);
+              throw new Error("code_snippet should not be used for paid-sample motion frames");
+            },
+          }),
+        ]
+      : []),
     ...(options.includeHiggsfieldImage
       ? [
-          fixtureTool("higgsfield_image", "image_generation", "higgsfield", 0.04, async () => {
+          fixtureTool("higgsfield_image", "image_generation", "higgsfield", 0.04, async (input) => {
+            options.onHiggsfieldImageInput?.(input);
             await writeFixture(higgsfieldImagePath, "higgsfield-image");
             return { image_path: higgsfieldImagePath, provider: "higgsfield", model: "gpt_image_2", cost_usd: 0.04 };
           }),
         ]
       : []),
-    fixtureTool("openai_image", "image_generation", "openai", 0.04, async (input) => {
-      options.onOpenAiInput?.(input);
-      await writeFixture(imagePath, "image");
-      return { image_path: imagePath, provider: "openai", model: "gpt-image-2", cost_usd: 0.04 };
-    }),
+    ...(options.includeOpenAiImage === false
+      ? []
+      : [
+          fixtureTool("openai_image", "image_generation", "openai", 0.04, async (input) => {
+            options.onOpenAiInput?.(input);
+            await writeFixture(imagePath, "image");
+            return { image_path: imagePath, provider: "openai", model: "gpt-image-2", cost_usd: 0.04 };
+          }),
+        ]),
     fixtureTool("elevenlabs_tts", "tts", "elevenlabs", 0.0003, async () => {
       await writeFixture(audioPath, "audio");
       return { audio_path: audioPath, provider: "elevenlabs", model: "eleven_multilingual_v2", cost_usd: 0.0003 };

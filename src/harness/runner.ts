@@ -153,7 +153,14 @@ export class Runner {
       const existingStatus = checkpointStatuses.get(stage.slug);
       const queuedRevision = queuedRevisionForStage(state, stage.slug);
 
-      if (existingStatus === "awaiting_human" && shouldResume(opts.runOptions) && queuedRevision === undefined) {
+      if (existingStatus === "completed" && queuedRevision === undefined) {
+        const checkpoint = await readCheckpoint(opts.projectRoot, opts.show.slug, opts.episode.slug, stage.slug);
+        priorArtifacts = withStageArtifactAliases(priorArtifacts, stage, checkpoint.artifact);
+        index += 1;
+        continue;
+      }
+
+      if (existingStatus === "awaiting_human" && queuedRevision === undefined) {
         const checkpoint = await readCheckpoint(opts.projectRoot, opts.show.slug, opts.episode.slug, stage.slug);
         const gate = await handleApprovalGate({
           opts,

@@ -6,7 +6,7 @@ import { DeckManifestSchema, type DeckFileType } from "../artifacts/deck-manifes
 import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { RenderRuntime } from "../artifacts/enums.js";
 import { ScriptSchema, type Script } from "../artifacts/script.js";
-import type { Tool, ToolContext } from "../registry/index.js";
+import type { Capability, Tool, ToolContext } from "../registry/index.js";
 import { encodeRgbaPng } from "../media/png.js";
 import { readCheckpoint } from "../checkpoints/index.js";
 import { projectDir } from "../checkpoints/paths.js";
@@ -82,6 +82,8 @@ const STATE_ARTIFACT_KEYS = [
 
 const IMAGE_REFERENCE_EXTENSIONS = new Set([".gif", ".jpeg", ".jpg", ".png", ".webp"]);
 const TEXT_REFERENCE_EXTENSIONS = new Set([".csv", ".json", ".md", ".srt", ".tsv", ".txt", ".yaml", ".yml"]);
+const PAID_SAMPLE_IMAGE_TOOLS = ["openai_image", "higgsfield_image"] as const;
+const PAID_SAMPLE_VIDEO_TOOLS = ["higgsfield", "higgsfield_video"] as const;
 
 export class PaidSampleStageError extends Error {
   readonly lastArtifactPath?: string;
@@ -1269,8 +1271,16 @@ async function buildAssets(
     return buildPresentationDemoAssets(ctx, state);
   }
 
-  const imageTool = await toolFor(ctx, "openai_image", "image_generation");
-  const videoTool = await toolFor(ctx, "higgsfield", "image_to_video");
+  const imageTool = await paidSampleToolFor(ctx, {
+    role: "image generation provider",
+    capability: "image_generation",
+    names: PAID_SAMPLE_IMAGE_TOOLS,
+  });
+  const videoTool = await paidSampleToolFor(ctx, {
+    role: "motion provider",
+    capability: "image_to_video",
+    names: PAID_SAMPLE_VIDEO_TOOLS,
+  });
   const beats = await sampleBeats(ctx);
   const imageAssets: Array<Record<string, unknown>> = [];
   const clipAssets: Array<Record<string, unknown>> = [];
@@ -1310,7 +1320,7 @@ async function buildAssets(
     );
 
     const videoInput =
-      videoTool.name === "higgsfield" || typeof image?.url !== "string"
+      videoTool.provider === "higgsfield" || typeof image?.url !== "string"
         ? { image_path: imagePath, prompt: motionPrompt(ctx, beat), duration: higgsfieldDuration(ctx) }
         : { image_url: image.url, prompt: motionPrompt(ctx, beat), duration: higgsfieldDuration(ctx) };
     const videoResult = await videoTool.execute(
@@ -1327,7 +1337,7 @@ async function buildAssets(
     clipPaths.push(clipPath);
     const cacheHit = video?.cache_hit === true || numberValue(video?.cost_usd) === 0;
     costEntries.push(
-      costEntry("higgsfield", "higgsfield", "seedance_2_0", cacheHit ? 0 : 1, numberValue(video?.cost_usd) ?? 0, cacheHit),
+      costEntry(videoTool.name, videoTool.provider, "seedance_2_0", cacheHit ? 0 : 1, numberValue(video?.cost_usd) ?? 0, cacheHit),
     );
 
     imageAssets.push({
@@ -1345,7 +1355,7 @@ async function buildAssets(
       kind: "video",
       path: clipPath,
       scene_ref: `sample-${beat.index + 1}`,
-      provider: "higgsfield",
+      provider: videoTool.provider,
       model: "seedance_2_0",
       prompt: motionPrompt(ctx, beat),
       cost_usd: numberValue(video?.cost_usd) ?? 0,
@@ -1846,22 +1856,36 @@ function ttsFormatForTool(tool: Tool): string {
   return tool.name === "elevenlabs_tts" ? "mp3_44100_128" : "mp3";
 }
 
-async function toolFor(ctx: StageContext, name: string, capability: string): Promise<Tool> {
-  const named = ctx.registry.get(name);
-  if (named !== undefined) {
+async function paidSampleToolFor(
+  ctx: StageContext,
+  input: { role: string; capability: Capability; names: readonly string[] },
+): Promise<Tool> {
+  const unavailable: string[] = [];
+
+  for (const name of input.names) {
+    const tool = ctx.registry.get(name);
+    if (tool === undefined) {
+      unavailable.push(`${name}: not registered`);
+      continue;
+    }
+
+    if (tool.capability !== input.capability) {
+      unavailable.push(`${name}: registered as ${tool.capability}, expected ${input.capability}`);
+      continue;
+    }
+
     const cached = ctx.registry.getAvailability(name);
-    if (cached?.available === true) {
-      return named;
+    const availability = cached ?? (await tool.isAvailable({ projectRoot: ctx.show.projectRoot }));
+    if (availability.available) {
+      return tool;
     }
-    if (cached === undefined) {
-      const availability = await named.isAvailable({ projectRoot: ctx.show.projectRoot });
-      if (availability.available) {
-        return named;
-      }
-    }
+
+    unavailable.push(`${name}: ${availability.reason}`);
   }
 
-  return ctx.registry.select(capability, { prefer: [name], context: { projectRoot: ctx.show.projectRoot } });
+  throw new Error(
+    `no paid-sample ${input.role} available; expected one of ${input.names.join(", ")} for ${input.capability} (${unavailable.join("; ")})`,
+  );
 }
 
 function toolContext(

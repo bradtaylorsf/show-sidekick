@@ -69,6 +69,8 @@ showkick setup runtimes                    # install Remotion CLI stack + HyperF
 showkick tools <name>                      # tool detail (CLI vs API, env vars, cost)
 ```
 
+`--from`, `--only`, and `--to` slice the pipeline by stage slug. When a sliced run encounters an existing `completed` checkpoint for a planned stage, it reuses that checkpoint artifact and advances; when it encounters `awaiting_human`, it surfaces the approval gate instead of silently re-running the stage. Use `showkick revise <show>/<episode> "<note>"` to intentionally rerun a checkpointed creative stage.
+
 ## Global flags
 
 | Flag | Meaning |
