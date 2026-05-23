@@ -10,6 +10,7 @@ export * from "./cost-log.js";
 export * from "./cuesheet.js";
 export * from "./creative-json-schema.js";
 export * from "./json-schema.js";
+export * from "./deck-manifest.js";
 export * from "./decision-log.js";
 export * from "./edit-decisions.js";
 export * from "./end-tag-plan.js";

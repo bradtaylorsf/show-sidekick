@@ -25,6 +25,7 @@ describe("tool discovery", () => {
     expect(registry.get("transcript_fetcher")?.capability).toBe("transcript_fetch");
     expect(registry.get("clip_embedder")?.capability).toBe("clip_embedding");
     expect(registry.get("corpus_builder")?.capability).toBe("corpus_index");
+    expect(registry.get("deck_ingest")?.capability).toBe("deck_ingest");
     expect(registry.get("video_analyzer")?.capability).toBe("video_analysis");
     expect(registry.get("video_understand")?.capability).toBe("video_understanding");
     expect(registry.get("video_downloader")?.capability).toBe("video_download");

@@ -28,6 +28,7 @@ export const DEMO_READINESS_INVENTORY = {
   "music-video": { classification: "core_default", defaultStarterTarget: true },
   "news-song": { classification: "core_default", defaultStarterTarget: true },
   "podcast-repurpose": { classification: "seeded_extension", defaultStarterTarget: true },
+  "presentation-demo": { classification: "seeded_extension", defaultStarterTarget: true },
   "screen-demo": { classification: "core_default", defaultStarterTarget: true },
   "talking-head": { classification: "seeded_extension", defaultStarterTarget: true },
 } as const satisfies Record<string, DemoReadinessInventoryEntry>;
@@ -48,6 +49,7 @@ export const APPROVED_BUNDLED_PIPELINE_SLUGS = [
   "music-video",
   "news-song",
   "podcast-repurpose",
+  "presentation-demo",
   "screen-demo",
   "talking-head",
 ] as const;

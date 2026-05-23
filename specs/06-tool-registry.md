@@ -149,6 +149,14 @@ Provider profiles are named setup lanes that group concrete tools and preflight 
 
 Selecting a provider profile for a run records a `provider_profile_selection` decision with rejected alternatives, so reviewers can distinguish an intentional paid-provider lane from the zero-key or mixed setup paths.
 
+## Deck ingestion capability
+
+The `presentation-demo` pipeline uses registry-backed deck tooling. The first required capability is `deck_ingest`: accept a local `.pdf`, `.ppt`, `.pptx`, or direct downloadable URL, validate the source, copy or download it into a project-local working directory, and report source provenance, file type, byte size, sha256, page or slide count when known, and warnings.
+
+Deck ingestion must fail before any paid provider, TTS, image, video, or render call when the input is unsupported. Unsupported v1 inputs include non-deck file extensions and authenticated or non-downloadable Google Slides, Google Drive, Microsoft 365, OneDrive, SharePoint, and Office links. The failure reason should be explicit enough for the operator to export a PDF or PowerPoint file and retry.
+
+Downstream extraction work is represented by a separate deck extraction contract (`deck_manifest` in `schemas/artifacts/deck_manifest.schema.json`). A future `deck_extract` tool may render slide screenshots and extract text or speaker notes, but the registry boundary remains the same: source validation and local working-file normalization happen before extraction, generation, or rendering.
+
 ## Tool path policy
 
 Tools that read user-supplied source media may accept absolute paths outside the project root, so users can inspect or ingest media from locations such as `~/Videos` or `/tmp`.

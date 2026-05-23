@@ -20,4 +20,14 @@ describe("tool path helpers", () => {
     expect(resolveProjectWritePath("renders/out.mp4", "/project")).toBe("/project/renders/out.mp4");
     expect(() => resolveProjectWritePath("/tmp/out.mp4", "/project")).toThrow(/inside project root/);
   });
+
+  it("supports ingest-style absolute reads while preserving project-local writes", () => {
+    expect(resolveProjectReadPath("/Users/operator/Desktop/deck.pdf", "/project")).toBe(
+      "/Users/operator/Desktop/deck.pdf",
+    );
+    expect(resolveProjectWritePath("projects/show/episode/decks", "/project")).toBe(
+      "/project/projects/show/episode/decks",
+    );
+    expect(() => resolveProjectWritePath("/Users/operator/Desktop/decks", "/project")).toThrow(/inside project root/);
+  });
 });

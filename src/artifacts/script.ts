@@ -7,6 +7,8 @@ export const DialogueLineSchema = z.object({
   line: z.string(),
 });
 
+export const VoiceoverSourceSchema = z.enum(["pptx_notes", "slide_text", "ocr", "operator", "agent"]);
+
 export const ScriptSchema = z.object({
   sections: z.array(
     z.object({
@@ -22,9 +24,12 @@ export const ScriptSchema = z.object({
       narration: z.string().optional(),
       dialogue: z.array(DialogueLineSchema).default([]),
       enhancement_cues: z.array(z.string()).default([]),
+      slide_ids: z.array(z.string()).default([]),
+      vo_source: VoiceoverSourceSchema.optional(),
     }),
   ),
 });
 
 export type DialogueLine = z.infer<typeof DialogueLineSchema>;
+export type VoiceoverSource = z.infer<typeof VoiceoverSourceSchema>;
 export type Script = z.infer<typeof ScriptSchema>;

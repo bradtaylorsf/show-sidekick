@@ -100,6 +100,12 @@ Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_*` environment pr
 |---|---|---|---|---|---|---|
 | `corpus_builder` | beta | library | show-sidekick | none | indexing local clip and image directories for visual similarity search | not declared |
 
+## deck_ingest
+
+| name | status | integration | provider/binary | auth | best_for/blurb | cost |
+|---|---|---|---|---|---|---|
+| `deck_ingest` | beta | library | node:fs | none | validating PDF and PowerPoint deck sources and normalizing them into project-local working files | not declared |
+
 ## eye_enhance
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |

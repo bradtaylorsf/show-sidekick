@@ -1,0 +1,28 @@
+pipeline: presentation-demo
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline State Machine"
+  - file: executive-producer.md
+    section: "## Mandatory Locked Decisions"
+  - file: idea-director.md
+    section: "## Episode Inputs"
+  - file: capture-director.md
+    section: "## Deck Manifest Contract"
+required_phrases:
+  - file: executive-producer.md
+    phrase: "The deliverable is an animated explainer/demo video, not a static slideshow or slide export."
+  - file: idea-director.md
+    phrase: "Authenticated Google Slides, Drive, Microsoft 365, OneDrive, and SharePoint links are unsupported in v1"
+  - file: capture-director.md
+    phrase: "Produce `deck_manifest.json` as the canonical deck artifact."
+  - file: script-director.md
+    phrase: "Present the script for human approval before any TTS or paid generation."
+  - file: cuesheet-director.md
+    phrase: "`master_clock` is `voiceover`"
+  - file: compose-director.md
+    phrase: "Reject static slideshow playback as a failed compose outcome."
+required_modules:
+  - file: executive-producer.md
+    module: "Human Approval Gates"
+  - file: capture-director.md
+    module: "Deck Manifest Contract"

@@ -58,6 +58,7 @@ export const SceneAnchorSchema = z.object({
   start_s: z.number().nonnegative(),
   end_s: z.number().nonnegative(),
   snapped_to: z.enum(["section_start", "beat", "downbeat", "word", "climax", "manual"]),
+  slide_ids: z.array(z.string()).optional(),
   source: z.object({
     section: z.string().optional(),
     lyric_line_id: z.string().optional(),
