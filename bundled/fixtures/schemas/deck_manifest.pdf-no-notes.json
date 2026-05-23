@@ -1,0 +1,69 @@
+{
+  "source": {
+    "kind": "pdf",
+    "file_type": "pdf",
+    "source_path": "/Users/example/Desktop/presentation-demo.pdf",
+    "working_file_path": "projects/deck-show/pilot/deck/source.pdf",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "byte_size": 198144
+  },
+  "slides": [
+    {
+      "id": "slide-001",
+      "order": 1,
+      "image_path": "captures/slides/slide-001.png",
+      "image": {
+        "width": 1440,
+        "height": 810
+      },
+      "text": "Presentation demo turns source decks into motion-led rough cuts",
+      "text_source": "ocr",
+      "notes_source": "absent",
+      "warnings": ["No speaker notes are available for PDF sources."],
+      "source": {
+        "slide_number": 1
+      }
+    },
+    {
+      "id": "slide-002",
+      "order": 2,
+      "image_path": "captures/slides/slide-002.png",
+      "image": {
+        "width": 1440,
+        "height": 810
+      },
+      "text": "OCR text provides a fallback when native extraction is unavailable",
+      "text_source": "ocr",
+      "notes_source": "absent",
+      "warnings": ["OCR fallback used for slide text."],
+      "source": {
+        "slide_number": 2
+      }
+    },
+    {
+      "id": "slide-003",
+      "order": 3,
+      "image_path": "captures/slides/slide-003.png",
+      "image": {
+        "width": 1440,
+        "height": 810
+      },
+      "text": "Operator review resolves uncertain OCR and narration choices",
+      "text_source": "ocr",
+      "notes_source": "absent",
+      "warnings": ["OCR confidence should be reviewed before script approval."],
+      "source": {
+        "slide_number": 3
+      }
+    }
+  ],
+  "extraction": {
+    "text_engine": "pdf-ocr",
+    "screenshot_engine": "pdf-renderer",
+    "extracted_at": "2026-05-23T12:00:00.000Z",
+    "warnings": [
+      "PDF source did not include speaker notes; operator notes were absent.",
+      "Text was extracted with OCR fallback and requires review."
+    ]
+  }
+}

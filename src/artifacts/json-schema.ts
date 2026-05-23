@@ -238,6 +238,9 @@ export const CaptureManifestJsonSchema = objectJson(
   ["screenshots"],
 );
 
+// Cross-slide uniqueness and contiguous ordering are enforced by DeckManifestSchema's
+// Zod superRefine path. Draft 2020-12 JSON Schema cannot express those subfield
+// constraints without non-standard extensions, so this bundled schema stays portable.
 export const DeckManifestJsonSchema = objectJson(
   "deck_manifest",
   {

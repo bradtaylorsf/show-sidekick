@@ -114,7 +114,34 @@ describe("stage context", () => {
 
     await expect(loadPriorArtifacts(root, show, episode, pipeline)).resolves.toEqual({
       idea: { concept: "one" },
+      idea_artifact: { concept: "one" },
       script: { beats: 4 },
+      script_artifact: { beats: 4 },
+    });
+  });
+
+  it("loads completed checkpoints under stage slug and canonical artifact name", async () => {
+    const root = await scratchProject();
+    const show = loadedShow(root);
+    const episode = loadedEpisode(show);
+    const pipeline = {
+      ...pipelineManifest(),
+      slug: "presentation-demo",
+      stages: [
+        stage("capture", { produces: "deck_manifest", produces_artifacts: ["deck_manifest"] }),
+        stage("script", { produces: "script", required_artifacts_in: ["deck_manifest"] }),
+      ],
+    };
+    const deckManifest = {
+      source: { kind: "pptx", file_type: "pptx" },
+      slides: [{ id: "slide-001", image_path: "captures/slides/slide-001.png" }],
+    };
+
+    await writeCheckpoint(root, show.slug, episode.slug, "capture", checkpoint("capture", "completed", deckManifest));
+
+    await expect(loadPriorArtifacts(root, show, episode, pipeline)).resolves.toMatchObject({
+      capture: deckManifest,
+      deck_manifest: deckManifest,
     });
   });
 });
@@ -160,7 +187,7 @@ function pipelineManifest(): PipelineManifest {
   };
 }
 
-function stage(slug: string): Stage {
+function stage(slug: string, overrides: Partial<Stage> = {}): Stage {
   return {
     slug,
     skill: `pipelines/music-video/${slug}-director.md`,
@@ -174,6 +201,7 @@ function stage(slug: string): Stage {
     review_focus: [],
     success_criteria: [],
     human_approval: "optional",
+    ...overrides,
   };
 }
 

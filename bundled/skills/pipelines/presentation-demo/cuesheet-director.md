@@ -14,10 +14,11 @@ Build a schema-valid `cuesheet.json` where `master_clock` is `voiceover`.
 ## Workflow
 
 1. Confirm script approval before selecting a TTS provider.
-2. Record voice selection and provider choice in `decision_log`.
-3. Generate or attach narration through registry-backed TTS.
-4. Build segments, words when available, sections, and scene anchors.
-5. Carry `slide_ids` into scene anchors when voiceover timing maps to deck material.
+2. Human approval of the script is required before any TTS call.
+3. Record voice selection and provider choice in `decision_log`.
+4. Generate or attach narration through registry-backed TTS.
+5. Build segments, words when available, sections, and scene anchors.
+6. Carry `slide_ids` into scene anchors when voiceover timing maps to deck material.
 
 ## Quality Gate
 
