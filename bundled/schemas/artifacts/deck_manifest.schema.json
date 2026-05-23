@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "show-sidekick://artifacts/deck_manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "show-sidekick://artifacts/deck_manifest.source",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "pdf",
+            "ppt",
+            "pptx",
+            "url",
+            "unknown"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "slide_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "slides": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "show-sidekick://artifacts/deck_manifest.slide",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "screenshot_path": {
+            "type": "string"
+          },
+          "width": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "height": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "title": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "speaker_notes": {
+            "type": "string"
+          },
+          "provenance": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "show-sidekick://artifacts/deck_manifest.slide.provenance",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "source_page": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "extraction": {
+                "type": "string"
+              }
+            },
+            "required": []
+          }
+        },
+        "required": [
+          "id",
+          "index",
+          "screenshot_path"
+        ]
+      }
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "source",
+    "slide_count",
+    "slides"
+  ]
+}

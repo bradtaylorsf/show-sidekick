@@ -8,6 +8,7 @@ export const RENDERER_FAMILY = [
   "documentary-montage",
   "product-reveal",
   "screen-demo",
+  "presentation-demo",
   "presenter",
   "animation-first",
 ] as const;

@@ -1,0 +1,30 @@
+pipeline: presentation-demo
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline State Machine"
+  - file: executive-producer.md
+    section: "## Mandatory Locked Decisions"
+  - file: idea-director.md
+    section: "## Deck Demo Promise"
+  - file: scene-director.md
+    section: "## Scene Treatment Catalog"
+  - file: publish-director.md
+    section: "## Deck Handoff Package"
+required_phrases:
+  - file: executive-producer.md
+    phrase: "A silent runtime swap is a CRITICAL governance violation."
+  - file: capture-director.md
+    phrase: "Create `deck_manifest.json` with source provenance, stable slide IDs, slide indexes, screenshot paths, readable dimensions, slide text, and speaker notes when available."
+  - file: script-director.md
+    phrase: "Every script section must name the slide IDs it explains"
+  - file: edit-director.md
+    phrase: "scene_type: slide_image"
+  - file: compose-director.md
+    phrase: "A sequence of unchanged slide screenshots is a delivery-promise downgrade."
+  - file: publish-director.md
+    phrase: "premiere, davinci, capcut, and edl"
+required_modules:
+  - file: proposal-director.md
+    module: "Runtime Lock"
+  - file: compose-director.md
+    module: "Slide Motion Contract"

@@ -59,7 +59,7 @@ Expected local outputs:
 
 ## Provider Setup Without Storing Credentials In The Repo
 
-The zero-key `animated-explainer` sample can run without provider credentials. Its renderer turns the starter script lines into narrated procedural Remotion motion-graphics scenes and writes the voiceover cuesheet needed for export, so agent-guided onboarding can personalize the first artifact before any paid calls. Paid demo lanes use the `paid-demo` provider profile described in [Provider Profiles](provider-profiles.md).
+The zero-key `animated-explainer` and `presentation-demo` samples can run without provider credentials. Their renderers turn starter scripts or safe deck fixtures into narrated procedural Remotion scenes and write the voiceover cuesheet needed for export, so agent-guided onboarding can personalize the first artifact before any paid calls. Paid demo lanes use the `paid-demo` provider profile described in [Provider Profiles](provider-profiles.md).
 
 Use environment variables and provider CLIs. Do not store credentials in `show.yaml`, `episode.yaml`, `.show-sidekick/`, starter files, committed docs, or generated artifacts.
 
@@ -109,6 +109,7 @@ Current expected green paths:
 | `music-video` | `music-video` | `both` | Green for zero-key; included in paid-demo | Audio-led beat-synced lyric-video smoke lane. |
 | `news-song` | `news-song` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
 | `podcast-repurpose` | `podcast-repurpose` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
+| `presentation-demo` | `presentation-demo` | `zero-key` | Green for zero-key | Tiny safe deck fixture validates slide screenshots, slide-aware edit decisions, Remotion composition, and deck handoff metadata without paid providers. |
 | `product-demo` | `screen-demo` | `unsupported` | Documented initializer | Extra generalized product/demo starter for the `screen-demo` pipeline. |
 | `screen-demo` | `screen-demo` | `paid` | Paid-demo only | Requires paid-demo provider setup; synthetic terminal fixture. |
 | `talking-head` | `talking-head` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
@@ -141,6 +142,7 @@ Approved bundled manifest slugs:
 - `music-video`
 - `news-song`
 - `podcast-repurpose`
+- `presentation-demo`
 - `screen-demo`
 - `talking-head`
 
@@ -156,7 +158,7 @@ The maintainer demo matrix is starter-driven, not manifest-driven. It reads `bun
 
 ### Generalized Starter Coverage
 
-Every approved user-facing bundled pipeline has at least one generalized starter row in [Show Types](show-types.md). `product-demo` is an extra generalized starter on `screen-demo` for product and UI-tour use cases. Removed personal/branded starter slugs are breaking seed-catalog removals and intentionally have no compatibility aliases.
+Every approved user-facing bundled pipeline has at least one generalized starter row in [Show Types](show-types.md). `presentation-demo` ships as a zero-key deck fixture lane; authenticated online slide links and paid TTS remain documented full-run limitations rather than sample blockers. `product-demo` is an extra generalized starter on `screen-demo` for product and UI-tour use cases. Removed personal/branded starter slugs are breaking seed-catalog removals and intentionally have no compatibility aliases.
 
 ## Baseline Comparison
 

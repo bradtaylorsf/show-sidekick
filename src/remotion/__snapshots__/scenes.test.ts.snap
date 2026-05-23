@@ -1459,6 +1459,239 @@ exports[`remotion scene library > renders progress_bar against its fixture 1`] =
 }
 `;
 
+exports[`remotion scene library > renders slide_callout against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "slide_callout",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "slide_id": "slide-2",
+        "src": "projects/demo/episode/slides/slide-2.png",
+        "style": {
+          "height": "100%",
+          "objectFit": "contain",
+          "opacity": 0.46,
+          "width": "100%",
+        },
+      },
+      "type": "slide-background",
+    },
+    {
+      "children": [],
+      "props": {
+        "rect": {
+          "height": 0.16,
+          "width": 0.22,
+          "x": 0.14,
+          "y": 0.38,
+        },
+        "style": {
+          "borderColor": "#2dd4bf",
+          "borderRadius": 8,
+          "borderWidth": 5,
+        },
+      },
+      "type": "slide-highlight-anchor",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "role": "label",
+            "style": {
+              "color": "#2dd4bf",
+            },
+            "text": "Operator note",
+          },
+          "type": "text",
+        },
+        {
+          "children": [],
+          "props": {
+            "role": "body",
+            "style": {
+              "color": "#f8fafc",
+              "fontFamily": "Inter",
+              "fontSize": 34,
+              "lineHeight": 1.25,
+            },
+            "text": "Use callouts when the deck needs explanation beyond the printed slide text.",
+          },
+          "type": "text",
+        },
+      ],
+      "props": {
+        "style": {
+          "background": "#0f1d32",
+          "borderColor": "#2dd4bf",
+          "borderRadius": 8,
+          "borderWidth": 3,
+          "bottom": 108,
+          "left": 230,
+          "padding": 44,
+          "position": "absolute",
+          "width": 883,
+        },
+      },
+      "type": "callout-panel",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders slide_image against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "slide_image",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "alt": "Revenue Model",
+            "src": "projects/demo/episode/slides/slide-1.png",
+            "style": {
+              "height": "100%",
+              "objectFit": "contain",
+              "transform": "scale(1) translate(0px, 0px)",
+              "width": "100%",
+            },
+          },
+          "type": "slide-image",
+        },
+        {
+          "children": [],
+          "props": {
+            "label": "Key metric",
+            "rect": {
+              "height": 0.18,
+              "width": 0.28,
+              "x": 0.52,
+              "y": 0.28,
+            },
+            "style": {
+              "borderColor": "#a3e635",
+              "borderRadius": 6,
+              "borderWidth": 5,
+              "boxShadow": "0 0 28px #a3e635",
+            },
+          },
+          "type": "slide-highlight",
+        },
+        {
+          "children": [],
+          "props": {
+            "anchor_rect": {
+              "height": 0.18,
+              "width": 0.28,
+              "x": 0.52,
+              "y": 0.28,
+            },
+            "position": "bottom-right",
+            "style": {
+              "background": "#07111f",
+              "borderColor": "#2dd4bf",
+              "borderRadius": 8,
+              "borderWidth": 2,
+              "color": "#f8fafc",
+              "fontSize": 34,
+              "padding": 22,
+            },
+            "text": "This proof point carries the narration beat.",
+          },
+          "type": "slide-callout",
+        },
+      ],
+      "props": {
+        "image_path": "projects/demo/episode/slides/slide-1.png",
+        "slide_id": "slide-1",
+        "style": {
+          "background": "#0f1d32",
+          "borderColor": "rgba(147, 164, 186, 0.25)",
+          "borderRadius": 8,
+          "borderWidth": 2,
+          "height": 886,
+          "left": 106,
+          "overflow": "hidden",
+          "position": "absolute",
+          "top": 65,
+          "width": 1709,
+        },
+      },
+      "type": "slide-frame",
+    },
+    {
+      "children": [],
+      "props": {
+        "style": {
+          "background": "rgba(0, 0, 0, 0.72)",
+          "borderRadius": 8,
+          "bottom": 34,
+          "color": "#f8fafc",
+          "fontSize": 34,
+          "left": 307,
+          "padding": 18,
+          "position": "absolute",
+          "right": 307,
+        },
+        "text": "A slide-aware demo animates the deck instead of replaying it.",
+      },
+      "type": "caption",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
 exports[`remotion scene library > renders stat_card against its fixture 1`] = `
 {
   "children": [

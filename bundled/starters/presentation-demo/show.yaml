@@ -1,0 +1,30 @@
+slug: presentation-demo
+display_name: Presentation Demo
+description: General presentation-demo starter using a tiny safe deck fixture.
+created: 2026-05-22
+sample_support: zero-key
+brand: ./brand/
+characters: ./characters/
+skills: ./skills/
+pipelines:
+  presentation-demo:
+    playbook: flat-motion-graphics
+    runtime: remotion
+    aspect: 16:9
+    budget_usd: 0.5
+defaults:
+  pipeline: presentation-demo
+  language: en
+ingest:
+  episode_template: ./episode.template.yaml
+  watch:
+    - path: ./inputs/
+      match: "**/deck.pdf"
+      pipeline: presentation-demo
+      slug_from: parent_dir
+starter:
+  fixture_size_bytes: 1231
+  expected_sample_duration_s: 18
+  expected_aspect: "16:9"
+  supports_sample_modes:
+    - zero-key

@@ -78,6 +78,16 @@ const viewportJson = objectJson(
 
 const renderRuntimeJson = { type: "string", enum: RENDER_RUNTIME } as const satisfies JsonSchema;
 const rendererFamilyJson = { type: "string", enum: RENDERER_FAMILY } as const satisfies JsonSchema;
+const slideRectJson = objectJson(
+  "slide_rect",
+  {
+    x: nonNegativeNumberJson,
+    y: nonNegativeNumberJson,
+    width: positiveNumberJson,
+    height: positiveNumberJson,
+  },
+  ["x", "y", "width", "height"],
+);
 
 const audioEnergyWindowJson = objectJson(
   "audio_energy.window",
@@ -346,6 +356,128 @@ export const DecisionLogJsonSchema = withMeta("decision_log", {
   ),
 });
 
+export const DeckManifestJsonSchema = objectJson(
+  "deck_manifest",
+  {
+    source: objectJson(
+      "deck_manifest.source",
+      {
+        kind: { type: "string", enum: ["pdf", "ppt", "pptx", "url", "unknown"] },
+        path: stringJson,
+        url: stringJson,
+        title: stringJson,
+        sha256: stringJson,
+      },
+      ["kind"],
+    ),
+    slide_count: nonNegativeIntegerJson,
+    slides: {
+      type: "array",
+      items: objectJson(
+        "deck_manifest.slide",
+        {
+          id: stringJson,
+          index: nonNegativeIntegerJson,
+          screenshot_path: stringJson,
+          width: positiveNumberJson,
+          height: positiveNumberJson,
+          title: stringJson,
+          text: stringJson,
+          speaker_notes: stringJson,
+          provenance: objectJson(
+            "deck_manifest.slide.provenance",
+            {
+              source_page: { type: "integer", exclusiveMinimum: 0 },
+              extraction: stringJson,
+            },
+            [],
+          ),
+        },
+        ["id", "index", "screenshot_path"],
+      ),
+    },
+    generated_at: stringJson,
+    notes: stringArrayJson,
+  },
+  ["source", "slide_count", "slides"],
+);
+
+const slideTreatmentJson = objectJson(
+  "edit_decisions.slide_treatment",
+  {
+    scene_type: { type: "string", enum: ["slide_image", "slide_callout", "support_visual"] },
+    slide_id: stringJson,
+    motion: objectJson(
+      "edit_decisions.slide_motion",
+      {
+        kind: { type: "string", enum: ["static", "zoom_pan", "push_in", "pull_out", "pan", "support_visual"] },
+        from: slideRectJson,
+        to: slideRectJson,
+        start_zoom: positiveNumberJson,
+        end_zoom: positiveNumberJson,
+        pan_x: numberJson,
+        pan_y: numberJson,
+      },
+      [],
+    ),
+    highlights: {
+      type: "array",
+      items: objectJson(
+        "edit_decisions.slide_highlight",
+        {
+          id: stringJson,
+          rect: slideRectJson,
+          label: stringJson,
+          tone: { type: "string", enum: ["info", "warning", "success", "danger"] },
+          start_s: nonNegativeNumberJson,
+          end_s: nonNegativeNumberJson,
+        },
+        ["rect"],
+      ),
+    },
+    callouts: {
+      type: "array",
+      items: objectJson(
+        "edit_decisions.slide_callout",
+        {
+          id: stringJson,
+          text: stringJson,
+          anchor_rect: slideRectJson,
+          position: { type: "string", enum: ["top-left", "top-right", "bottom-left", "bottom-right", "center"] },
+          tone: { type: "string", enum: ["info", "warning", "success", "danger"] },
+          start_s: nonNegativeNumberJson,
+          end_s: nonNegativeNumberJson,
+        },
+        ["text"],
+      ),
+    },
+    caption: objectJson(
+      "edit_decisions.slide_caption",
+      {
+        text: stringJson,
+        start_s: nonNegativeNumberJson,
+        end_s: nonNegativeNumberJson,
+      },
+      ["text"],
+    ),
+    support_visuals: {
+      type: "array",
+      items: objectJson(
+        "edit_decisions.support_visual",
+        {
+          id: stringJson,
+          kind: stringJson,
+          asset_id: stringJson,
+          label: stringJson,
+          notes: stringJson,
+        },
+        [],
+      ),
+    },
+  },
+  [],
+);
+
 export const EditDecisionsJsonSchema = objectJson(
   "edit_decisions",
   {
@@ -362,6 +494,9 @@ export const EditDecisionsJsonSchema = objectJson(
           start_ms: nonNegativeIntegerJson,
           end_ms: nonNegativeIntegerJson,
           asset_id: stringJson,
+          scene_type: { type: "string", enum: ["slide_image", "slide_callout", "support_visual"] },
+          slide_id: stringJson,
+          treatment: slideTreatmentJson,
           transition_in: stringJson,
           transition_out: stringJson,
           provider: stringJson,
@@ -659,6 +794,7 @@ export const ArtifactJsonSchemas = {
   character_qa_report: CharacterQaReportJsonSchema,
   cost_log: CostLogJsonSchema,
   cuesheet: CuesheetJsonSchema,
+  deck_manifest: DeckManifestJsonSchema,
   decision_log: DecisionLogJsonSchema,
   edit_decisions: EditDecisionsJsonSchema,
   final_review: FinalReviewJsonSchema,

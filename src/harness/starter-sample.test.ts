@@ -139,6 +139,65 @@ describe("starter sample dispatcher", () => {
       ]),
     );
   });
+
+  it("produces deck and slide-aware edit artifacts for presentation-demo samples", async () => {
+    const root = await scratchRoot();
+    const scriptPath = path.join(root, "script.txt");
+    const deckPath = path.join(root, "deck.pdf");
+    await writeFile(scriptPath, "Hook: animate the deck.\nSlide flow: add callouts.\nNext: export the handoff.", "utf8");
+    await writeFile(deckPath, "%PDF-1.4\n%%EOF\n", "utf8");
+
+    const registry = new Registry({ tools: [fakeRemotion(root)] });
+    const dispatcher = createStarterSampleDispatcher();
+    const loadedShow = presentationShow(root);
+    const loadedEpisode = presentationEpisode(root, scriptPath, deckPath);
+    const deck = await dispatcher(
+      createStageContext({
+        show: loadedShow,
+        episode: loadedEpisode,
+        pipeline: presentationPipeline,
+        stage: stage("capture", "deck_manifest"),
+        playbook: undefined,
+        registry,
+        runOptions: { sample: true },
+      }),
+    );
+    const edit = await dispatcher(
+      createStageContext({
+        show: loadedShow,
+        episode: loadedEpisode,
+        pipeline: presentationPipeline,
+        stage: stage("edit", "edit_decisions"),
+        playbook: undefined,
+        registry,
+        runOptions: { sample: true },
+      }),
+    );
+
+    expect(deck.artifact).toMatchObject({
+      source: { kind: "pdf", path: "deck.pdf" },
+      slide_count: 4,
+      slides: expect.arrayContaining([
+        expect.objectContaining({ id: "sample_card_1", screenshot_path: "projects/deck-demo/sample-episode/assets/sample-card-1.png" }),
+      ]),
+    });
+    expect(edit.artifact).toMatchObject({
+      render_runtime: "remotion",
+      renderer_family: "presentation-demo",
+      subtitles: { enabled: true, source: "cuesheet.words" },
+      cuts: expect.arrayContaining([
+        expect.objectContaining({
+          scene_type: "slide_image",
+          slide_id: "sample_card_1",
+          treatment: expect.objectContaining({
+            scene_type: "slide_image",
+            motion: expect.objectContaining({ kind: "zoom_pan" }),
+            callouts: expect.arrayContaining([expect.objectContaining({ position: "bottom-right" })]),
+          }),
+        }),
+      ]),
+    });
+  });
 });
 
 const pipeline = PipelineManifestSchema.parse({
@@ -153,6 +212,28 @@ const pipeline = PipelineManifestSchema.parse({
       skill: "pipelines/explainer/compose-director.md",
       produces: "render_report",
       produces_artifacts: ["render_report", "final_review"],
+    },
+  ],
+});
+
+const presentationPipeline = PipelineManifestSchema.parse({
+  slug: "presentation-demo",
+  display_name: "Presentation Demo",
+  master_clock: "voiceover",
+  defaults: { render_runtime: "remotion", aspect: "16:9" },
+  sample: { duration_s_min: 12, duration_s_max: 30 },
+  stages: [
+    {
+      slug: "capture",
+      skill: "pipelines/presentation-demo/capture-director.md",
+      produces: "deck_manifest",
+      produces_artifacts: ["deck_manifest"],
+    },
+    {
+      slug: "edit",
+      skill: "pipelines/presentation-demo/edit-director.md",
+      produces: "edit_decisions",
+      produces_artifacts: ["edit_decisions"],
     },
   ],
 });
@@ -231,5 +312,35 @@ function episode(root: string, scriptPath: string, voicePath: string): LoadedEpi
     },
     cast: [],
     filePath: path.join(root, "shows", "first-video", "episodes", "sample-episode.yaml"),
+  };
+}
+
+function presentationShow(root: string): LoadedShow {
+  return {
+    slug: "deck-demo",
+    display_name: "Deck Demo",
+    created: new Date("2026-05-22T12:00:00.000Z"),
+    pipelines: { "presentation-demo": { runtime: "remotion", aspect: "16:9" } },
+    defaults: { pipeline: "presentation-demo" },
+    projectRoot: root,
+    rootDir: path.join(root, "shows", "deck-demo"),
+  };
+}
+
+function presentationEpisode(root: string, scriptPath: string, deckPath: string): LoadedEpisode {
+  return {
+    slug: "sample-episode",
+    title: "Sample Presentation Demo",
+    created: new Date("2026-05-22T12:00:00.000Z"),
+    pipeline: "presentation-demo",
+    runtime: "remotion",
+    aspect: "16:9",
+    inputs: {
+      deck: deckPath,
+      script: scriptPath,
+      duration_s: 18,
+    },
+    cast: [],
+    filePath: path.join(root, "shows", "deck-demo", "episodes", "sample-episode.yaml"),
   };
 }

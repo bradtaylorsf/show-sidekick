@@ -221,6 +221,54 @@ describe("scoreSlideshowRisk", () => {
       reason: "Not applicable for non-cinematic renderer_family",
     });
   });
+
+  it("flags presentation-demo slide images with no motion or callouts as a static slideshow downgrade", () => {
+    const result = scoreSlideshowRisk(
+      [
+        scene({ description: "opening deck slide", scene_type: "slide_image" }),
+        scene({ description: "proof deck slide", scene_type: "slide_image" }),
+      ],
+      {
+        cuts: [
+          { scene_type: "slide_image", slide_id: "slide-1", treatment: { motion: { kind: "static" } } },
+          { scene_type: "slide_image", slide_id: "slide-2", treatment: { motion: { kind: "static" } } },
+        ],
+      },
+      "presentation-demo",
+    );
+
+    expect(result.dimensions.weak_motion).toEqual({
+      score: 5,
+      reason: "2 slide scene(s) lack motion/callout/highlight treatment — static slideshow downgrade",
+    });
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        title: "weak_motion",
+        description: expect.stringContaining("static slideshow downgrade"),
+      }),
+    );
+  });
+
+  it("treats presentation-demo slide images with motion and callouts as motion-led", () => {
+    const result = scoreSlideshowRisk(
+      [
+        scene({ description: "opening deck slide", scene_type: "slide_image" }),
+        scene({ description: "proof deck slide", scene_type: "slide_image" }),
+      ],
+      {
+        cuts: [
+          { scene_type: "slide_image", slide_id: "slide-1", treatment: { motion: { kind: "zoom_pan" } } },
+          { scene_type: "slide_image", slide_id: "slide-2", treatment: { callouts: [{ text: "Read this first" }] } },
+        ],
+      },
+      "presentation-demo",
+    );
+
+    expect(result.dimensions.weak_motion).toEqual({
+      score: 0,
+      reason: "Slide scenes include zoom/pan, highlight, callout, caption, or support-visual treatment",
+    });
+  });
 });
 
 describe("detectEditRegression", () => {

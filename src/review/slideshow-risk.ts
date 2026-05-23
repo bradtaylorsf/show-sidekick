@@ -33,6 +33,7 @@ export type SlideshowEditInput = UnknownRecord & {
 };
 
 const TEXT_CARD_TYPES = new Set(["text_card", "stat_card"]);
+const SLIDE_TYPES = new Set(["slide_image", "slide_callout"]);
 const FLAG_THRESHOLD = 3.0;
 
 export function scoreSlideshowRisk(
@@ -49,7 +50,7 @@ export function scoreSlideshowRisk(
       : {
           repetition: scoreRepetition(scenes, resolvedEdit),
           decorative_visuals: scoreDecorativeVisuals(scenes),
-          weak_motion: scoreWeakMotion(scenes),
+          weak_motion: scoreWeakMotion(scenes, resolvedEdit),
           weak_shot_intent: scoreWeakShotIntent(scenes),
           typography_overreliance: scoreTypographyOverreliance(scenes, resolvedEdit),
           unsupported_cinematic_claims: scoreUnsupportedCinematicClaims(scenes, resolvedRendererFamily),
@@ -152,7 +153,19 @@ function scoreDecorativeVisuals(scenes: UnknownRecord[]): SlideshowRiskDimension
   };
 }
 
-function scoreWeakMotion(scenes: UnknownRecord[]): SlideshowRiskDimension {
+function scoreWeakMotion(scenes: UnknownRecord[], edit: SlideshowEditInput | undefined): SlideshowRiskDimension {
+  const slideRecords = slideSceneRecords(scenes, edit);
+  if (slideRecords.length > 0) {
+    const staticSlideCount = slideRecords.filter((scene) => !hasSlideMotionTreatment(scene)).length;
+    return {
+      score: roundScore((staticSlideCount / slideRecords.length) * 5),
+      reason:
+        staticSlideCount === 0
+          ? "Slide scenes include zoom/pan, highlight, callout, caption, or support-visual treatment"
+          : `${staticSlideCount} slide scene(s) lack motion/callout/highlight treatment — static slideshow downgrade`,
+    };
+  }
+
   const movingScenes = scenes.filter((scene) => {
     const movement = shotLanguageValue(scene, "camera_movement");
     return movement !== undefined && normalizeToken(movement) !== "static";
@@ -289,6 +302,30 @@ function isTextOrStatCard(value: UnknownRecord): boolean {
   return type !== undefined && TEXT_CARD_TYPES.has(type);
 }
 
+function slideSceneRecords(scenes: UnknownRecord[], edit: SlideshowEditInput | undefined): UnknownRecord[] {
+  const cuts = editCuts(edit);
+  const records = cuts.length > 0 ? cuts : scenes;
+  return records.filter(isSlideScene);
+}
+
+function isSlideScene(value: UnknownRecord): boolean {
+  const type = layoutType(value);
+  return type !== undefined && SLIDE_TYPES.has(type);
+}
+
+function hasSlideMotionTreatment(value: UnknownRecord): boolean {
+  const treatment = isRecord(value.treatment) ? value.treatment : value;
+  const motion = isRecord(treatment.motion) ? treatment.motion : undefined;
+  const motionKind = stringValue(motion?.kind);
+  return (
+    (motionKind !== undefined && normalizeToken(motionKind) !== "static") ||
+    nonEmptyArray(treatment.highlights) ||
+    nonEmptyArray(treatment.callouts) ||
+    nonEmptyArray(treatment.support_visuals) ||
+    treatment.caption !== undefined
+  );
+}
+
 function hasPurpose(scene: UnknownRecord): boolean {
   return (
     isPresentString(stringValue(scene.information_role)) ||
@@ -344,6 +381,10 @@ function stringValue(value: unknown): string | undefined {
 
 function isPresentString(value: string | undefined): value is string {
   return value !== undefined;
+}
+
+function nonEmptyArray(value: unknown): boolean {
+  return Array.isArray(value) && value.length > 0;
 }
 
 function isRecord(value: unknown): value is UnknownRecord {

@@ -1,6 +1,6 @@
-import { mkdir, rm, stat } from "node:fs/promises";
+import { mkdir, readFile, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import type { AssetManifest, PublishLog, PublishLogOutput } from "../artifacts/index.js";
+import type { AssetManifest, DeckManifest, PublishLog, PublishLogOutput } from "../artifacts/index.js";
 import { atomicWrite } from "../checkpoints/io.js";
 import type { Pipeline } from "../pipelines/index.js";
 import type { LoadedShow } from "../shows/index.js";
@@ -38,7 +38,15 @@ export type AssembleExportPackageResult = {
   timelinePath: string;
   readmePath: string;
   captionsPath: string;
+  deckAssetPaths: string[];
   publishLog: PublishLog;
+};
+
+type LinkedDeckAsset = {
+  role: "source_deck" | "slide_screenshot";
+  source_path: string;
+  package_path: string;
+  slide_id?: string;
 };
 
 export async function assembleExportPackage(
@@ -51,16 +59,26 @@ export async function assembleExportPackage(
   const packageDir = packageDirectory(options.projectRoot, options.outDir, options.showSlug, options.episodeSlug, target);
   const assetsDir = path.join(packageDir, "assets");
   const captionsDir = path.join(packageDir, "captions");
+  const deckDir = path.join(packageDir, "deck");
+  const metadataDir = path.join(packageDir, "metadata");
 
   await preparePackageDirectory(packageDir, options.overwrite === true);
   await mkdir(assetsDir, { recursive: true });
   await mkdir(captionsDir, { recursive: true });
+  await mkdir(metadataDir, { recursive: true });
 
+  const timelineAssets = timelineAssetsForExport(artifacts.assetManifest.assets, artifacts.deckManifest);
   const linkedAssets = await linkTimelineAssets({
     projectRoot: options.projectRoot,
     assetsDir,
     mode: assetLinkMode,
-    assets: artifacts.assetManifest.assets,
+    assets: timelineAssets,
+  });
+  const linkedDeckAssets = await linkDeckAssets({
+    projectRoot: options.projectRoot,
+    deckDir,
+    mode: assetLinkMode,
+    deckManifest: artifacts.deckManifest,
   });
   const audioTracks = await linkAudioTracks({
     projectRoot: options.projectRoot,
@@ -72,6 +90,10 @@ export async function assembleExportPackage(
   });
   const captionsPath = path.join(captionsDir, "word_timings.json");
   await atomicWrite(captionsPath, `${JSON.stringify(cuesheetWords(artifacts.cuesheet), null, 2)}\n`);
+  const metadataPaths = await writeHandoffMetadata({
+    metadataDir,
+    artifacts,
+  });
 
   const exporterOptions = {
     packageDir,
@@ -83,6 +105,15 @@ export async function assembleExportPackage(
     audioTracks,
   };
   const exported = await exportForTarget(target, exporterOptions);
+  if (artifacts.deckManifest !== undefined) {
+    await appendDeckReadme({
+      readmePath: exported.readmePath,
+      deckAssets: linkedDeckAssets,
+      metadataPaths,
+      captionsPath,
+      assetLinkMode,
+    });
+  }
   const publishLog = buildPublishLog({
     target,
     assetLinkMode,
@@ -94,10 +125,15 @@ export async function assembleExportPackage(
     readmePath: exported.readmePath,
     captionsPath,
     sourceManifestPath: artifacts.paths.asset_manifest,
+    deckManifestPath: metadataPaths.deck_manifest,
+    editDecisionsPath: metadataPaths.edit_decisions,
+    renderReportPath: metadataPaths.render_report,
     renderOutputPath: resolveAssetSourcePath(options.projectRoot, artifacts.renderReport.output_path),
     exportedAt: (options.now ?? new Date()).toISOString(),
     linkedAssetCount: linkedAssets.length,
     audioTrackCount: audioTracks.length,
+    deckAssetPaths: linkedDeckAssets.map((asset) => asset.package_path),
+    slideScreenshotCount: linkedDeckAssets.filter((asset) => asset.role === "slide_screenshot").length,
   });
 
   return {
@@ -107,6 +143,7 @@ export async function assembleExportPackage(
     timelinePath: exported.timelinePath,
     readmePath: exported.readmePath,
     captionsPath,
+    deckAssetPaths: linkedDeckAssets.map((asset) => asset.package_path),
     publishLog,
   };
 }

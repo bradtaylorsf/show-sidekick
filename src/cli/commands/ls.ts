@@ -41,6 +41,8 @@ const StarterMetadataSchema = z
   .object({
     fixture_size_bytes: z.number().int().nonnegative().optional(),
     expected_sample_duration_s: z.number().positive().optional(),
+    expected_aspect: z.string().optional(),
+    supports_sample_modes: z.array(z.enum(["zero-key", "paid-demo"])).optional(),
   })
   .default({});
 
@@ -175,6 +177,8 @@ async function listStarters(projectRoot: string): Promise<Row[]> {
         fixture_size: formatBytes(fixtureSizeBytes),
         fixture_size_bytes: fixtureSizeBytes,
         sample_duration_s: metadata.expected_sample_duration_s,
+        expected_aspect: metadata.expected_aspect,
+        supports_sample_modes: metadata.supports_sample_modes,
         sample_support: sampleSupport,
         sample_supported: sampleSupport !== "unsupported",
       };

@@ -1,0 +1,4 @@
+Hook: turn a short deck into a narrated product demo.
+Slide flow: preserve the original slides while adding motion, highlights, and callouts.
+Editor handoff: include source deck files, screenshots, captions, and edit decisions.
+Next: replace this fixture with your own deck and review the script before narration.

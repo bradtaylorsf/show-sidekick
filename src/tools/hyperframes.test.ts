@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ComposeBlockerError } from "../compose/blocker.js";
-import hyperframes, { type CommandResult } from "./hyperframes.js";
+import hyperframes, { buildHyperframesCompositionSpec, type CommandResult } from "./hyperframes.js";
 
 describe("hyperframes tool", () => {
   it("runs lint, validate, then render with npx hyperframes", async () => {
@@ -54,6 +54,60 @@ describe("hyperframes tool", () => {
     await expect(hyperframes.execute(input(), testContext(runCommand))).rejects.toBeInstanceOf(ComposeBlockerError);
 
     expect(runCommand.mock.calls.map((call) => call[1][1])).toEqual(["lint", "validate"]);
+  });
+
+  it("builds a deck-aware HyperFrames composition spec", () => {
+    const spec = buildHyperframesCompositionSpec({
+      output_path: "renders/deck.mp4",
+      deck_manifest: {
+        source: { kind: "pdf", path: "inputs/deck.pdf" },
+        slide_count: 1,
+        slides: [{ id: "slide-1", index: 0, screenshot_path: "slides/slide-1.png" }],
+      },
+      cuesheet: {
+        audio: { path: "audio/narration.wav", duration_s: 4, sample_rate: 48_000, channels: 1 },
+        master_clock: "voiceover",
+        words: [{ text: "Hello", start_s: 0, end_s: 0.3, confidence: 1 }],
+        segments: [{ start_s: 0, end_s: 4, text: "Hello", words: [{ text: "Hello", start_s: 0, end_s: 0.3, confidence: 1 }] }],
+        sections: [{ label: "voiceover", start_s: 0, end_s: 4, kind: "vocal", energy: 0.8 }],
+        beats: [],
+        climax: [],
+        scene_anchors: [],
+      },
+      edit_decisions: {
+        cuts: [
+          {
+            start_s: 0,
+            end_s: 4,
+            asset_id: "slide-1",
+            slide_id: "slide-1",
+            treatment: {
+              motion: { kind: "zoom_pan", start_zoom: 1, end_zoom: 1.06 },
+              callouts: [{ text: "Narrated slide callout." }],
+            },
+          },
+        ],
+        overlays: [],
+        render_runtime: "hyperframes",
+        renderer_family: "presentation-demo",
+      },
+    });
+
+    expect(spec).toMatchObject({
+      runtime: "hyperframes",
+      output_path: "renders/deck.mp4",
+      presentation: {
+        runtime: "hyperframes",
+        scenes: [
+          expect.objectContaining({
+            slide_id: "slide-1",
+            image_path: "slides/slide-1.png",
+            callouts: [expect.objectContaining({ text: "Narrated slide callout." })],
+          }),
+        ],
+      },
+      audio: { path: "audio/narration.wav", duration_s: 4 },
+    });
   });
 });
 

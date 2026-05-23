@@ -1,0 +1,1 @@
+Use the sample deck only as a public fixture. Keep the demo generalized, avoid private customer references, and show that the pipeline can animate a deck without turning it into a static slideshow.

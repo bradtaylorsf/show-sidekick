@@ -9,6 +9,8 @@ import {
   LineChartPropsSchema,
   PieChartPropsSchema,
   ProgressBarPropsSchema,
+  SlideCalloutPropsSchema,
+  SlideImagePropsSchema,
   StatCardPropsSchema,
   TerminalScenePropsSchema,
   TextCardPropsSchema,
@@ -156,6 +158,45 @@ export const progressBarFixture = {
   theme: sharedTheme,
 } satisfies z.input<typeof ProgressBarPropsSchema>;
 
+export const slideImageFixture = {
+  slide_id: "slide-1",
+  image_path: "projects/demo/episode/slides/slide-1.png",
+  title: "Revenue Model",
+  motion: {
+    kind: "zoom_pan",
+    start_zoom: 1,
+    end_zoom: 1.08,
+    pan_x: -0.02,
+    pan_y: -0.01,
+  },
+  highlights: [
+    {
+      rect: { x: 0.52, y: 0.28, width: 0.28, height: 0.18 },
+      label: "Key metric",
+      tone: "success",
+    },
+  ],
+  callouts: [
+    {
+      text: "This proof point carries the narration beat.",
+      anchor_rect: { x: 0.52, y: 0.28, width: 0.28, height: 0.18 },
+      position: "bottom-right",
+    },
+  ],
+  caption: "A slide-aware demo animates the deck instead of replaying it.",
+  theme: sharedTheme,
+} satisfies z.input<typeof SlideImagePropsSchema>;
+
+export const slideCalloutFixture = {
+  slide_id: "slide-2",
+  image_path: "projects/demo/episode/slides/slide-2.png",
+  label: "Operator note",
+  text: "Use callouts when the deck needs explanation beyond the printed slide text.",
+  anchor_rect: { x: 0.14, y: 0.38, width: 0.22, height: 0.16 },
+  tone: "info",
+  theme: sharedTheme,
+} satisfies z.input<typeof SlideCalloutPropsSchema>;
+
 export const sectionTitleOverlayFixture = {
   section: "03",
   title: "Validation Gate",
@@ -194,6 +235,8 @@ export const sceneFixtures = {
   line_chart: lineChartFixture,
   pie_chart: pieChartFixture,
   progress_bar: progressBarFixture,
+  slide_callout: slideCalloutFixture,
+  slide_image: slideImageFixture,
   stat_card: statCardFixture,
   terminal_scene: terminalSceneFixture,
   text_card: textCardFixture,

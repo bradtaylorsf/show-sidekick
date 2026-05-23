@@ -69,6 +69,324 @@
           "asset_id": {
             "type": "string"
           },
+          "scene_type": {
+            "type": "string",
+            "enum": [
+              "slide_image",
+              "slide_callout",
+              "support_visual"
+            ]
+          },
+          "slide_id": {
+            "type": "string"
+          },
+          "treatment": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "show-sidekick://artifacts/edit_decisions.slide_treatment",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "scene_type": {
+                "type": "string",
+                "enum": [
+                  "slide_image",
+                  "slide_callout",
+                  "support_visual"
+                ]
+              },
+              "slide_id": {
+                "type": "string"
+              },
+              "motion": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "$id": "show-sidekick://artifacts/edit_decisions.slide_motion",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "static",
+                      "zoom_pan",
+                      "push_in",
+                      "pull_out",
+                      "pan",
+                      "support_visual"
+                    ]
+                  },
+                  "from": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "$id": "show-sidekick://artifacts/slide_rect",
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "x": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "y": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "width": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "height": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y",
+                      "width",
+                      "height"
+                    ]
+                  },
+                  "to": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "$id": "show-sidekick://artifacts/slide_rect",
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "x": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "y": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "width": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "height": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y",
+                      "width",
+                      "height"
+                    ]
+                  },
+                  "start_zoom": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "end_zoom": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "pan_x": {
+                    "type": "number"
+                  },
+                  "pan_y": {
+                    "type": "number"
+                  }
+                },
+                "required": []
+              },
+              "highlights": {
+                "type": "array",
+                "items": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$id": "show-sidekick://artifacts/edit_decisions.slide_highlight",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "rect": {
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "$id": "show-sidekick://artifacts/slide_rect",
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "x": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "y": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "width": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "height": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y",
+                        "width",
+                        "height"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "tone": {
+                      "type": "string",
+                      "enum": [
+                        "info",
+                        "warning",
+                        "success",
+                        "danger"
+                      ]
+                    },
+                    "start_s": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "end_s": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "rect"
+                  ]
+                }
+              },
+              "callouts": {
+                "type": "array",
+                "items": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$id": "show-sidekick://artifacts/edit_decisions.slide_callout",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "anchor_rect": {
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "$id": "show-sidekick://artifacts/slide_rect",
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "x": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "y": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "width": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "height": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y",
+                        "width",
+                        "height"
+                      ]
+                    },
+                    "position": {
+                      "type": "string",
+                      "enum": [
+                        "top-left",
+                        "top-right",
+                        "bottom-left",
+                        "bottom-right",
+                        "center"
+                      ]
+                    },
+                    "tone": {
+                      "type": "string",
+                      "enum": [
+                        "info",
+                        "warning",
+                        "success",
+                        "danger"
+                      ]
+                    },
+                    "start_s": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "end_s": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "text"
+                  ]
+                }
+              },
+              "caption": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "$id": "show-sidekick://artifacts/edit_decisions.slide_caption",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  },
+                  "start_s": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "end_s": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              },
+              "support_visuals": {
+                "type": "array",
+                "items": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$id": "show-sidekick://artifacts/edit_decisions.support_visual",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "asset_id": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "notes": {
+                      "type": "string"
+                    }
+                  },
+                  "required": []
+                }
+              }
+            },
+            "required": []
+          },
           "transition_in": {
             "type": "string"
           },
@@ -131,6 +449,7 @@
         "documentary-montage",
         "product-reveal",
         "screen-demo",
+        "presentation-demo",
         "presenter",
         "animation-first"
       ]

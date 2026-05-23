@@ -1,0 +1,18 @@
+slug: sample-episode
+title: Sample Presentation Demo
+created: 2026-05-22
+pipeline: presentation-demo
+playbook: flat-motion-graphics
+runtime: remotion
+aspect: 16:9
+budget_usd: 0.5
+inputs:
+  deck: shows/presentation-demo/inputs/sample-episode/deck.pdf
+  script: shows/presentation-demo/inputs/sample-episode/script.txt
+  notes: shows/presentation-demo/inputs/sample-episode/notes.txt
+  duration_s: 18
+cast: []
+tags:
+  - presentation-demo
+  - sample
+  - deck

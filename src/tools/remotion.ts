@@ -7,11 +7,14 @@ import { z } from "zod";
 import {
   AssetManifestSchema,
   CuesheetSchema,
+  DeckManifestSchema,
   EditDecisionsSchema,
   PlaybookSchema,
   RenderReportSchema,
+  ScriptSchema,
   type RenderReport,
 } from "../artifacts/index.js";
+import { buildPresentationDemoComposition, assertComposeRuntime } from "../compose/presentation-demo.js";
 import { playbookToCssVariables } from "../compose/hyperframes-style-bridge.js";
 import { cuesheetToWords, validateCaptionFrameSync } from "../remotion/index.js";
 import { defineTool, type ToolAvailabilityContext } from "../registry/index.js";
@@ -21,8 +24,11 @@ const require = createRequire(import.meta.url);
 export const RemotionComposeInputSchema = z.object({
   edit_decisions: EditDecisionsSchema,
   asset_manifest: AssetManifestSchema.optional(),
+  deck_manifest: DeckManifestSchema.optional(),
   output_path: z.string().optional(),
   cuesheet: CuesheetSchema.optional(),
+  script: ScriptSchema.optional(),
+  scene_plan: z.unknown().optional(),
   playbook: PlaybookSchema.optional(),
   fps: z.number().positive().default(30),
   resolution: z
@@ -54,6 +60,22 @@ export default defineTool({
   async execute(params, ctx) {
     const parsed = RemotionComposeInputSchema.parse(params);
     const validationSteps: RenderReport["validation_steps"] = [];
+    assertComposeRuntime(parsed.edit_decisions, "remotion");
+
+    const presentation =
+      parsed.deck_manifest === undefined
+        ? undefined
+        : buildPresentationDemoComposition({
+            deck_manifest: parsed.deck_manifest,
+            edit_decisions: parsed.edit_decisions,
+            scene_plan: parsed.scene_plan,
+            script: parsed.script,
+            cuesheet: parsed.cuesheet,
+            output_path: parsed.output_path,
+            fps: parsed.fps,
+            resolution: parsed.resolution ?? { width: 1920, height: 1080 },
+            runtime: "remotion",
+          });
 
     if (parsed.cuesheet) {
       const words = cuesheetToWords(parsed.cuesheet);
@@ -74,7 +96,16 @@ export default defineTool({
       });
     }
 
-    const duration = parsed.edit_decisions.cuts.reduce((max, cut) => Math.max(max, cut.end_s), 0);
+    if (presentation !== undefined) {
+      validationSteps.push({
+        name: "presentation_demo_composition",
+        status: presentation.scenes.every(hasSlideMotionTreatment) ? "pass" : "warn",
+        notes: presentation.validation_notes.join(" "),
+      });
+    }
+
+    const duration = presentation?.duration_s ?? parsed.edit_decisions.cuts.reduce((max, cut) => Math.max(max, cut.end_s), 0);
+    const expectedDuration = presentation?.expected_duration_s ?? parsed.cuesheet?.audio.duration_s ?? duration;
 
     if (parsed.asset_manifest !== undefined) {
       const rendered = await renderWithRemotionCli(parsed, ctx.projectRoot, duration);
@@ -86,6 +117,11 @@ export default defineTool({
 
       return RenderReportSchema.parse({
         ...rendered,
+        expected_duration_s: expectedDuration,
+        drift_s: driftSeconds(rendered.duration_s, expectedDuration),
+        drift_frames: driftFrames(rendered.duration_s, expectedDuration, parsed.fps),
+        drift_tolerance_s: 1 / parsed.fps,
+        within_tolerance: driftFrames(rendered.duration_s, expectedDuration, parsed.fps) <= 1,
         validation_steps: validationSteps,
       });
     }
@@ -94,10 +130,15 @@ export default defineTool({
       output_path: parsed.output_path ?? "renders/remotion.mp4",
       encoding_profile: "remotion/default",
       duration_s: duration,
-      resolution: { width: 1920, height: 1080 },
+      expected_duration_s: expectedDuration,
+      drift_s: driftSeconds(duration, expectedDuration),
+      drift_frames: driftFrames(duration, expectedDuration, parsed.fps),
+      drift_tolerance_s: 1 / parsed.fps,
+      within_tolerance: driftFrames(duration, expectedDuration, parsed.fps) <= 1,
+      resolution: parsed.resolution ?? { width: 1920, height: 1080 },
       framerate: parsed.fps,
       runtime_used: "remotion",
-      asset_count: parsed.edit_decisions.cuts.length,
+      asset_count: presentation?.scenes.length ?? parsed.edit_decisions.cuts.length,
       warnings: [],
       validation_steps: validationSteps,
     });
@@ -160,11 +201,38 @@ function remotionEntrySource(
   media: RemotionMediaMap,
 ): string {
   const assets = new Map(input.asset_manifest?.assets.map((asset) => [asset.id, asset]) ?? []);
-  const audioPath = input.edit_decisions.audio?.music?.track_path;
+  const presentation =
+    input.deck_manifest === undefined
+      ? undefined
+      : buildPresentationDemoComposition({
+          deck_manifest: input.deck_manifest,
+          edit_decisions: input.edit_decisions,
+          scene_plan: input.scene_plan,
+          script: input.script,
+          cuesheet: input.cuesheet,
+          output_path: input.output_path,
+          fps: input.fps,
+          resolution,
+          runtime: "remotion",
+        });
+  const audioPath = input.cuesheet?.audio.path ?? input.edit_decisions.audio?.music?.track_path;
   const audioSource = audioPath ? mediaSrc(audioPath, projectRoot, media) : undefined;
   const props = {
     fps: input.fps,
     animationFirst: input.edit_decisions.renderer_family === "animation-first",
+    presentation: presentation
+      ? {
+          ...presentation,
+          scenes: presentation.scenes.map((scene) => {
+            const source = mediaSrc(scene.image_path, projectRoot, media);
+            return {
+              ...scene,
+              imageSrc: source.src,
+              imageUsesStaticFile: source.useStaticFile,
+            };
+          }),
+        }
+      : undefined,
     cuts: input.edit_decisions.cuts.map((cut, index) => {
       const asset = assets.get(cut.asset_id);
       const source = asset?.path ? mediaSrc(asset.path, projectRoot, media) : undefined;
@@ -249,6 +317,107 @@ function Scene({ cut, total }) {
       }}>BEAT {cut.index + 1} / {total}</div>
     </AbsoluteFill>
   );
+}
+
+function PresentationDemo({ presentation, audioSrc }) {
+  return (
+    <AbsoluteFill style={{ backgroundColor: "#07111f", overflow: "hidden" }}>
+      {presentation.scenes.map((scene) => (
+        <Sequence key={scene.id} from={scene.start_frame} durationInFrames={scene.duration_frames}>
+          <PresentationScene scene={scene} width={presentation.resolution.width} height={presentation.resolution.height} />
+        </Sequence>
+      ))}
+      {audioSrc ? <Audio src={mediaUrl(audioSrc, props.audioUsesStaticFile)} /> : null}
+    </AbsoluteFill>
+  );
+}
+
+function PresentationScene({ scene, width, height }) {
+  const frame = useCurrentFrame();
+  const progress = interpolate(frame, [0, Math.max(1, scene.duration_frames - 1)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const motion = scene.motion || {};
+  const kind = motion.kind || "zoom_pan";
+  const startZoom = motion.start_zoom || 1;
+  const endZoom = motion.end_zoom || (kind === "static" ? startZoom : 1.06);
+  const zoom = kind === "static" ? startZoom : interpolate(progress, [0, 1], [startZoom, endZoom], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const panX = kind === "static" ? 0 : Math.round((motion.pan_x || 0) * width * progress);
+  const panY = kind === "static" ? 0 : Math.round((motion.pan_y || 0) * height * progress);
+  const callout = scene.callouts[0];
+  const caption = scene.caption?.text || scene.narration;
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: "#07111f", overflow: "hidden", fontFamily: "Inter, Arial, sans-serif" }}>
+      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, #07111f, #10243d)" }} />
+      <div style={{
+        position: "absolute",
+        left: Math.round(width * 0.055),
+        top: Math.round(height * 0.06),
+        width: Math.round(width * 0.89),
+        height: Math.round(height * 0.8),
+        overflow: "hidden",
+        background: "#0b1020",
+        border: "2px solid rgba(147,164,186,0.32)",
+        borderRadius: 8,
+        boxShadow: "0 24px 80px rgba(0,0,0,0.35)",
+      }}>
+        <Img src={mediaUrl(scene.imageSrc, scene.imageUsesStaticFile)} style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          transform: "scale(" + zoom + ") translate(" + panX + "px, " + panY + "px)",
+        }} />
+        {scene.highlights.map((highlight, index) => <Highlight key={index} highlight={highlight} />)}
+      </div>
+      {callout ? <Callout callout={callout} /> : null}
+      {caption ? <div style={{
+        position: "absolute",
+        left: Math.round(width * 0.13),
+        right: Math.round(width * 0.13),
+        bottom: 36,
+        background: "rgba(0,0,0,0.72)",
+        color: "white",
+        fontSize: 34,
+        lineHeight: 1.2,
+        padding: "18px 24px",
+        borderRadius: 8,
+      }}>{caption}</div> : null}
+    </AbsoluteFill>
+  );
+}
+
+function Highlight({ highlight }) {
+  const color = highlight.tone === "success" ? "#a3e635" : highlight.tone === "warning" ? "#f59e0b" : highlight.tone === "danger" ? "#fb7185" : "#2dd4bf";
+  const rect = highlight.rect;
+  return <div style={{
+    position: "absolute",
+    left: (rect.x * 100) + "%",
+    top: (rect.y * 100) + "%",
+    width: (rect.width * 100) + "%",
+    height: (rect.height * 100) + "%",
+    border: "5px solid " + color,
+    borderRadius: 8,
+    boxShadow: "0 0 28px " + color,
+  }} />;
+}
+
+function Callout({ callout }) {
+  const color = callout.tone === "success" ? "#a3e635" : callout.tone === "warning" ? "#f59e0b" : callout.tone === "danger" ? "#fb7185" : "#2dd4bf";
+  const position = callout.position || "bottom-right";
+  const style = {
+    position: "absolute",
+    width: 520,
+    background: "rgba(7,17,31,0.94)",
+    color: "white",
+    border: "3px solid " + color,
+    borderRadius: 8,
+    padding: "26px 30px",
+    fontSize: 33,
+    lineHeight: 1.16,
+    boxShadow: "0 18px 52px rgba(0,0,0,0.38)",
+  };
+  if (position.includes("top")) style.top = 88; else style.bottom = 126;
+  if (position.includes("left")) style.left = 92; else style.right = 92;
+  return <div style={style}>{callout.text}</div>;
 }
 
 const accents = ["#ffd666", "#3fdcff", "#ff67a6", "#7affa9"];
@@ -453,6 +622,10 @@ function NextStep({ progress, accent }) {
 }
 
 function ShowSidekickSample({ cuts, audioSrc }) {
+  if (props.presentation) {
+    return <PresentationDemo presentation={props.presentation} audioSrc={audioSrc} />;
+  }
+
   return (
     <AbsoluteFill style={{ backgroundColor: "#0b1020" }}>
       {cuts.map((cut) => (
@@ -517,6 +690,8 @@ async function prepareRemotionMedia(
   const media = new Map<string, RemotionMediaSource>();
   const values = [
     ...(input.asset_manifest?.assets.map((asset) => asset.path).filter(Boolean) ?? []),
+    ...(input.deck_manifest?.slides.map((slide) => slide.screenshot_path).filter(Boolean) ?? []),
+    input.cuesheet?.audio.path,
     input.edit_decisions.audio?.music?.track_path,
   ].filter((value): value is string => Boolean(value));
   const seen = new Set<string>();
@@ -551,6 +726,24 @@ async function prepareRemotionMedia(
   }
 
   return media;
+}
+
+function hasSlideMotionTreatment(scene: { motion: { kind: string }; highlights: unknown[]; callouts: unknown[]; support_visuals: unknown[]; caption?: unknown }): boolean {
+  return (
+    scene.motion.kind !== "static" ||
+    scene.highlights.length > 0 ||
+    scene.callouts.length > 0 ||
+    scene.support_visuals.length > 0 ||
+    scene.caption !== undefined
+  );
+}
+
+function driftSeconds(actual: number, expected: number): number {
+  return Number(Math.abs(actual - expected).toFixed(3));
+}
+
+function driftFrames(actual: number, expected: number, fps: number): number {
+  return Number((driftSeconds(actual, expected) * fps).toFixed(3));
 }
 
 function runRemotion(cwd: string, args: string[]): Promise<void> {

@@ -21,6 +21,7 @@ type StarterSampleArtifactSet = {
   source_media_review: unknown;
   brief: unknown;
   proposal_packet: unknown;
+  deck_manifest: unknown;
   script: unknown;
   scene_plan: unknown;
   asset_manifest: unknown;
@@ -61,6 +62,30 @@ type StarterNarration = {
 type SampleCut = {
   start_s: number;
   end_s: number;
+  scene_type?: "slide_image";
+  slide_id?: string;
+  treatment?: {
+    scene_type: "slide_image";
+    slide_id: string;
+    motion: {
+      kind: "zoom_pan" | "push_in";
+      start_zoom: number;
+      end_zoom: number;
+      pan_x: number;
+      pan_y: number;
+    };
+    highlights: Array<{
+      rect: { x: number; y: number; width: number; height: number };
+      label: string;
+      tone: "info" | "success";
+    }>;
+    callouts: Array<{
+      text: string;
+      position: "bottom-right" | "top-right";
+      tone: "info";
+    }>;
+    caption: { text: string };
+  };
   asset_id: string;
   timing_anchor: string;
   timing_source: "lyric";
@@ -140,6 +165,7 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
   const audioPath = narration?.path ?? trackPath;
   const narrationPresent = narration !== undefined && narration.provider !== "ffmpeg-silence";
   const cuts = sampleCuts(durationS, cards);
+  const editCuts = presentationEditCuts(ctx, cards, cuts);
   const lyricsAligned = buildLyricsAligned({ cards, cuts });
   const audioEnergy = buildAudioEnergy({ durationS });
 
@@ -163,7 +189,8 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
   });
   const brief = buildBrief({ durationS, lyricText, cards });
   const script = buildScript({ durationS, cards, cuts });
-  const scenePlan = buildScenePlan({ cards, cuts });
+  const scenePlan = buildScenePlan({ cards, cuts: editCuts });
+  const deckManifest = buildDeckManifest({ ctx, cards });
   const assetManifest = {
     assets: cards.map((card) => ({
       id: card.id,
@@ -182,8 +209,9 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
     musicPresent: trackPath !== undefined,
   });
   const editDecisions = {
-    cuts,
+    cuts: editCuts,
     overlays: [],
+    subtitles: isPresentationDemo(ctx) ? { enabled: true, source: "cuesheet.words" } : undefined,
     audio: audioPath
       ? {
           music: {
@@ -192,7 +220,7 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
         }
       : undefined,
     render_runtime: runtime,
-    renderer_family: "animation-first",
+    renderer_family: isPresentationDemo(ctx) ? "presentation-demo" : "animation-first",
     brand: {
       slug: ctx.show.slug,
       name: ctx.show.display_name,
@@ -208,7 +236,9 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
     durationS,
     assetManifest,
     editDecisions,
-    cuts,
+    cuts: editCuts,
+    deckManifest: isPresentationDemo(ctx) ? deckManifest : undefined,
+    cuesheet,
     frameRelativePaths,
     heroFrameRelativePath,
     narrationPresent,
@@ -220,6 +250,7 @@ async function createStarterSampleArtifacts(ctx: StageContext): Promise<StarterS
     cuesheet,
     source_media_review: sourceMediaReview,
     brief,
+    deck_manifest: deckManifest,
     script,
     scene_plan: scenePlan,
     asset_manifest: assetManifest,
@@ -496,7 +527,7 @@ function buildProposalPacket(input: {
     ],
     production_plan: {
       render_runtime: input.runtime,
-      renderer_family: "animation-first",
+      renderer_family: isPresentationDemo(input.ctx) ? "presentation-demo" : "animation-first",
       audio_architecture: input.narrationPresent ? "single_narrator" : "no_narration",
       sample_required: true,
     },
@@ -505,6 +536,7 @@ function buildProposalPacket(input: {
       narration_present: input.narrationPresent,
       music_present: input.musicPresent,
       reference_driven: stringInput(input.ctx, "reference_image") !== undefined,
+      deck_driven: isPresentationDemo(input.ctx),
     },
     decision_log_ref: `projects/${input.ctx.show.slug}/${input.ctx.episode.slug}/decisions.json`,
   };
@@ -583,6 +615,9 @@ function buildScenePlan(input: { cards: StarterCard[]; cuts: SampleCut[] }): unk
         timing_ref: cut.timing_ref,
         start_ms: cut.start_ms,
         end_ms: cut.end_ms,
+        scene_type: cut.scene_type ?? "sample_card",
+        slide_id: cut.slide_id,
+        treatment: cut.treatment,
         narrative_role: scriptRole(index, input.cards.length),
         scene_anchor: index === 0 ? "opening script line" : index === input.cards.length - 1 ? "final action" : "idea beat",
         description:
@@ -614,6 +649,109 @@ function buildScenePlan(input: { cards: StarterCard[]; cuts: SampleCut[] }): unk
       };
     }),
   };
+}
+
+function buildDeckManifest(input: { ctx: StageContext; cards: StarterCard[] }): unknown {
+  const deckPath =
+    stringInput(input.ctx, "deck") ?? stringInput(input.ctx, "deck_pdf") ?? stringInput(input.ctx, "deck_pptx");
+  const sourcePath = deckPath === undefined ? undefined : mediaProjectPath(input.ctx.show.projectRoot, deckPath);
+
+  return {
+    source: {
+      kind: deckSourceKind(deckPath),
+      path: sourcePath,
+      title: input.ctx.episode.title,
+    },
+    slide_count: input.cards.length,
+    slides: input.cards.map((card) => ({
+      id: card.id,
+      index: card.index,
+      screenshot_path: card.relativePath,
+      width: SAMPLE_WIDTH,
+      height: SAMPLE_HEIGHT,
+      title: card.title,
+      text: [card.eyebrow, card.title, card.body].filter((value) => value.length > 0).join("\n"),
+      speaker_notes: cardNarration(card),
+      provenance: {
+        source_page: card.index + 1,
+        extraction: "starter-sample",
+      },
+    })),
+    generated_at: new Date().toISOString(),
+  };
+}
+
+function deckSourceKind(deckPath: string | undefined): "pdf" | "ppt" | "pptx" | "unknown" {
+  const extension = path.extname(deckPath ?? "").toLowerCase();
+  if (extension === ".pdf") {
+    return "pdf";
+  }
+  if (extension === ".ppt") {
+    return "ppt";
+  }
+  if (extension === ".pptx") {
+    return "pptx";
+  }
+  return "unknown";
+}
+
+function presentationEditCuts(ctx: StageContext, cards: readonly StarterCard[], cuts: SampleCut[]): SampleCut[] {
+  if (!isPresentationDemo(ctx)) {
+    return cuts;
+  }
+
+  return cuts.map((cut, index) => {
+    const card = cards[index] ?? cards[0];
+    const slideId = card?.id ?? cut.asset_id;
+    const calloutPosition = index % 2 === 0 ? "bottom-right" : "top-right";
+    const tone = index === cuts.length - 1 ? "success" : "info";
+
+    return {
+      ...cut,
+      scene_type: "slide_image",
+      slide_id: slideId,
+      treatment: {
+        scene_type: "slide_image",
+        slide_id: slideId,
+        motion:
+          index % 2 === 0
+            ? { kind: "zoom_pan", start_zoom: 1, end_zoom: 1.08, pan_x: 0.04, pan_y: -0.03 }
+            : { kind: "push_in", start_zoom: 1, end_zoom: 1.12, pan_x: -0.02, pan_y: 0.03 },
+        highlights: [
+          {
+            rect: { x: 0.12, y: 0.18, width: 0.46, height: 0.18 },
+            label: card?.title ?? `Slide ${index + 1}`,
+            tone,
+          },
+        ],
+        callouts: [
+          {
+            text: card?.body ?? card?.title ?? `Slide ${index + 1}`,
+            position: calloutPosition,
+            tone: "info",
+          },
+        ],
+        caption: { text: cardNarration(card ?? cards[0] ?? fallbackCard()) },
+      },
+    };
+  });
+}
+
+function fallbackCard(): StarterCard {
+  return {
+    id: "sample_card_1",
+    assetPath: "",
+    relativePath: "",
+    eyebrow: "SAMPLE",
+    title: "Sample slide",
+    body: "Sample narration",
+    index: 0,
+    accent: [255, 214, 102],
+  };
+}
+
+function isPresentationDemo(ctx: StageContext): boolean {
+  return ctx.pipeline.slug === "presentation-demo" || ctx.show.defaults.pipeline === "presentation-demo";
 }
 
 function buildFinalReview(input: {
@@ -841,6 +979,8 @@ async function renderStarterPreview(input: {
   assetManifest: unknown;
   editDecisions: unknown;
   cuts: SampleCut[];
+  deckManifest?: unknown;
+  cuesheet: unknown;
   frameRelativePaths: string[];
   heroFrameRelativePath: string;
   narrationPresent: boolean;
@@ -957,6 +1097,8 @@ async function renderStarterPreviewWithRemotion(input: {
   durationS: number;
   assetManifest: unknown;
   editDecisions: unknown;
+  deckManifest?: unknown;
+  cuesheet: unknown;
   frameRelativePaths: string[];
   heroFrameRelativePath: string;
   narrationPresent: boolean;
@@ -972,6 +1114,8 @@ async function renderStarterPreviewWithRemotion(input: {
     {
       edit_decisions: input.editDecisions,
       asset_manifest: input.assetManifest,
+      deck_manifest: input.deckManifest,
+      cuesheet: input.cuesheet,
       output_path: input.outputPath,
       fps: SAMPLE_FRAMERATE,
       resolution: { width: SAMPLE_WIDTH * 2, height: SAMPLE_HEIGHT * 2 },
@@ -1556,6 +1700,7 @@ function zeroCostEntry(ctx: StageContext): CostEntry {
 
 function stageDecisions(ctx: StageContext, artifacts: StarterSampleArtifactSet): DecisionEntry[] {
   const renderRuntime = artifacts.render_runtime;
+  const rendererFamily = isPresentationDemo(ctx) ? "presentation-demo" : "animation-first";
 
   if (ctx.stage.slug === "proposal") {
     return [
@@ -1572,11 +1717,26 @@ function stageDecisions(ctx: StageContext, artifacts: StarterSampleArtifactSet):
         `Use ${renderRuntime} for the zero-key first video based on installed runtime availability and motion requirements.`,
         runtimeOptions(renderRuntime),
       ),
-      decisionEntry(ctx, "proposal", "renderer_family_selection", "animation-first", "Use animated typography, procedural graphics, and scene-specific layouts instead of image-only assembly.", [
-        { label: "animation-first", rejected_because: null, notes: "Best match for a no-key Remotion explainer." },
-        { label: "explainer-data", rejected_because: "Too chart/data oriented for a broad first-run tutorial.", notes: null },
-        { label: "cinematic-trailer", rejected_because: "Would imply generated video providers that are not part of the no-key path.", notes: null },
-      ]),
+      decisionEntry(
+        ctx,
+        "proposal",
+        "renderer_family_selection",
+        rendererFamily,
+        isPresentationDemo(ctx)
+          ? "Use slide screenshots as primary visuals with zooms, highlights, callouts, captions, and narration timing."
+          : "Use animated typography, procedural graphics, and scene-specific layouts instead of image-only assembly.",
+        [
+          {
+            label: rendererFamily,
+            rejected_because: null,
+            notes: isPresentationDemo(ctx)
+              ? "Best match for a deck-driven explainer sample."
+              : "Best match for a no-key Remotion explainer.",
+          },
+          { label: "static-slideshow", rejected_because: "Would downgrade the delivery promise.", notes: null },
+          { label: "cinematic-trailer", rejected_because: "Would imply generated video providers that are not part of the no-key path.", notes: null },
+        ],
+      ),
       decisionEntry(ctx, "proposal", "playbook_selection", "flat-motion-graphics", "Use a clean motion-graphics style that renders locally and keeps onboarding text legible.", [
         { label: "flat-motion-graphics", rejected_because: null, notes: "Selected starter playbook." },
         { label: "playful-hip-hop-explainer", rejected_because: "More music-led than the voiceover onboarding path.", notes: null },

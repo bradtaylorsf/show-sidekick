@@ -1,0 +1,42 @@
+{
+  "source": {
+    "kind": "pdf",
+    "path": "inputs/sample-episode/deck.pdf",
+    "title": "Fixture Demo Deck"
+  },
+  "slide_count": 2,
+  "slides": [
+    {
+      "id": "slide-1",
+      "index": 0,
+      "screenshot_path": "projects/show/episode/deck/slides/slide-1.png",
+      "width": 1920,
+      "height": 1080,
+      "title": "Problem",
+      "text": "Teams already have presentation decks.",
+      "speaker_notes": "Open with the existing-deck premise.",
+      "provenance": {
+        "source_page": 1,
+        "extraction": "fixture"
+      }
+    },
+    {
+      "id": "slide-2",
+      "index": 1,
+      "screenshot_path": "projects/show/episode/deck/slides/slide-2.png",
+      "width": 1920,
+      "height": 1080,
+      "title": "Animated Demo",
+      "text": "Show Sidekick adds timing, callouts, captions, and motion.",
+      "speaker_notes": "Explain how motion turns the deck into a rough cut.",
+      "provenance": {
+        "source_page": 2,
+        "extraction": "fixture"
+      }
+    }
+  ],
+  "generated_at": "2026-05-21T12:00:00.000Z",
+  "notes": [
+    "Tiny public fixture deck manifest for schema round-trip tests."
+  ]
+}

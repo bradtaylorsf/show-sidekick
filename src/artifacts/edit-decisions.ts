@@ -15,6 +15,72 @@ export const DuckingSchema = z.union([
   }),
 ]);
 
+export const SlideRectSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().positive().max(1),
+  height: z.number().positive().max(1),
+});
+
+export const SlideTreatmentSchema = z.object({
+  scene_type: z.enum(["slide_image", "slide_callout", "support_visual"]).optional(),
+  slide_id: z.string().optional(),
+  motion: z
+    .object({
+      kind: z.enum(["static", "zoom_pan", "push_in", "pull_out", "pan", "support_visual"]).optional(),
+      from: SlideRectSchema.optional(),
+      to: SlideRectSchema.optional(),
+      start_zoom: z.number().positive().optional(),
+      end_zoom: z.number().positive().optional(),
+      pan_x: z.number().optional(),
+      pan_y: z.number().optional(),
+    })
+    .optional(),
+  highlights: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        rect: SlideRectSchema,
+        label: z.string().optional(),
+        tone: z.enum(["info", "warning", "success", "danger"]).optional(),
+        start_s: z.number().nonnegative().optional(),
+        end_s: z.number().nonnegative().optional(),
+      }),
+    )
+    .optional(),
+  callouts: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        text: z.string(),
+        anchor_rect: SlideRectSchema.optional(),
+        position: z.enum(["top-left", "top-right", "bottom-left", "bottom-right", "center"]).optional(),
+        tone: z.enum(["info", "warning", "success", "danger"]).optional(),
+        start_s: z.number().nonnegative().optional(),
+        end_s: z.number().nonnegative().optional(),
+      }),
+    )
+    .optional(),
+  caption: z
+    .object({
+      text: z.string(),
+      start_s: z.number().nonnegative().optional(),
+      end_s: z.number().nonnegative().optional(),
+    })
+    .optional(),
+  support_visuals: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        kind: z.string().optional(),
+        asset_id: z.string().optional(),
+        label: z.string().optional(),
+        notes: z.string().optional(),
+      }),
+    )
+    .optional(),
+});
+
 export const CutSchema = z.object({
   start_s: z.number().nonnegative(),
   end_s: z.number().nonnegative(),
@@ -24,6 +90,9 @@ export const CutSchema = z.object({
   start_ms: z.number().int().nonnegative().optional(),
   end_ms: z.number().int().nonnegative().optional(),
   asset_id: z.string(),
+  scene_type: z.enum(["slide_image", "slide_callout", "support_visual"]).optional(),
+  slide_id: z.string().optional(),
+  treatment: SlideTreatmentSchema.optional(),
   transition_in: z.string().optional(),
   transition_out: z.string().optional(),
   provider: z.string().optional(),
@@ -64,6 +133,8 @@ export const EditDecisionsSchema = z.object({
 });
 
 export type Ducking = z.infer<typeof DuckingSchema>;
+export type SlideRect = z.infer<typeof SlideRectSchema>;
+export type EditSlideTreatment = z.infer<typeof SlideTreatmentSchema>;
 export type Cut = z.infer<typeof CutSchema>;
 export type EditDecisions = z.infer<typeof EditDecisionsSchema>;
 
