@@ -1,0 +1,19 @@
+slug: sample-episode
+title: Sample Presentation Demo
+created: 2026-05-23
+pipeline: presentation-demo
+playbook: clean-professional
+runtime: remotion
+aspect: 16:9
+budget_usd: 2
+inputs:
+  deck_source: shows/presentation-demo/inputs/sample-episode/deck.pdf
+  operator_notes: shows/presentation-demo/inputs/sample-episode/operator-notes.txt
+  voice_preference: piper:en_US-lessac-medium
+  duration_s: 20
+  aspect: 16:9
+cast: []
+tags:
+  - presentation-demo
+  - sample
+  - deck-to-demo

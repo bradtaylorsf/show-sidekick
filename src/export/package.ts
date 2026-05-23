@@ -1,6 +1,6 @@
 import { mkdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import type { AssetManifest, PublishLog, PublishLogOutput } from "../artifacts/index.js";
+import type { AssetManifest, DeckManifest, PublishLog, PublishLogOutput } from "../artifacts/index.js";
 import { atomicWrite } from "../checkpoints/io.js";
 import type { Pipeline } from "../pipelines/index.js";
 import type { LoadedShow } from "../shows/index.js";
@@ -51,11 +51,21 @@ export async function assembleExportPackage(
   const packageDir = packageDirectory(options.projectRoot, options.outDir, options.showSlug, options.episodeSlug, target);
   const assetsDir = path.join(packageDir, "assets");
   const captionsDir = path.join(packageDir, "captions");
+  const metadataDir = path.join(packageDir, "metadata");
+  const rendersDir = path.join(packageDir, "renders");
 
   await preparePackageDirectory(packageDir, options.overwrite === true);
   await mkdir(assetsDir, { recursive: true });
   await mkdir(captionsDir, { recursive: true });
+  await mkdir(metadataDir, { recursive: true });
+  await mkdir(rendersDir, { recursive: true });
 
+  const renderedVideoPath = await linkRenderedVideo({
+    projectRoot: options.projectRoot,
+    rendersDir,
+    mode: assetLinkMode,
+    renderOutputPath: artifacts.renderReport.output_path,
+  });
   const linkedAssets = await linkTimelineAssets({
     projectRoot: options.projectRoot,
     assetsDir,
@@ -72,6 +82,19 @@ export async function assembleExportPackage(
   });
   const captionsPath = path.join(captionsDir, "word_timings.json");
   await atomicWrite(captionsPath, `${JSON.stringify(cuesheetWords(artifacts.cuesheet), null, 2)}\n`);
+  const handoffMetadata = await writeHandoffMetadata({
+    metadataDir,
+    editDecisions: artifacts.editDecisions,
+    cuesheet: artifacts.cuesheet,
+    assetManifest: artifacts.assetManifest,
+    renderReport: artifacts.renderReport,
+  });
+  const deckPackage = await packageDeckAssets({
+    projectRoot: options.projectRoot,
+    packageDir,
+    mode: assetLinkMode,
+    deckManifest: artifacts.deckManifest,
+  });
 
   const exporterOptions = {
     packageDir,
@@ -93,8 +116,11 @@ export async function assembleExportPackage(
     timelinePath: exported.timelinePath,
     readmePath: exported.readmePath,
     captionsPath,
+    handoffMetadata,
+    renderedVideoPath,
     sourceManifestPath: artifacts.paths.asset_manifest,
     renderOutputPath: resolveAssetSourcePath(options.projectRoot, artifacts.renderReport.output_path),
+    deckPackage,
     exportedAt: (options.now ?? new Date()).toISOString(),
     linkedAssetCount: linkedAssets.length,
     audioTrackCount: audioTracks.length,
@@ -196,6 +222,144 @@ async function linkTimelineAssets(options: {
   return linked;
 }
 
+async function linkRenderedVideo(options: {
+  projectRoot: string;
+  rendersDir: string;
+  mode: AssetLinkMode;
+  renderOutputPath: string;
+}): Promise<string> {
+  const source = resolveAssetSourcePath(options.projectRoot, options.renderOutputPath);
+  const destination = path.join(options.rendersDir, safeFileName(path.basename(source)) || "render.mp4");
+  return linkAsset(source, destination, options.mode);
+}
+
+type DeckPackage = {
+  deckManifestPath: string;
+  sourceDeckReferencePath: string;
+  sourceDeckPath?: string;
+  slideScreenshotsDir: string;
+  slideScreenshotPaths: string[];
+};
+
+type HandoffMetadataPackage = {
+  editDecisionsPath: string;
+  cuesheetPath: string;
+  assetManifestPath: string;
+  renderReportPath: string;
+};
+
+async function writeHandoffMetadata(options: {
+  metadataDir: string;
+  editDecisions: unknown;
+  cuesheet: unknown;
+  assetManifest: unknown;
+  renderReport: unknown;
+}): Promise<HandoffMetadataPackage> {
+  const editDecisionsPath = path.join(options.metadataDir, "edit_decisions.json");
+  const cuesheetPath = path.join(options.metadataDir, "cuesheet.json");
+  const assetManifestPath = path.join(options.metadataDir, "asset_manifest.json");
+  const renderReportPath = path.join(options.metadataDir, "render_report.json");
+
+  await Promise.all([
+    atomicWrite(editDecisionsPath, `${JSON.stringify(options.editDecisions, null, 2)}\n`),
+    atomicWrite(cuesheetPath, `${JSON.stringify(options.cuesheet, null, 2)}\n`),
+    atomicWrite(assetManifestPath, `${JSON.stringify(options.assetManifest, null, 2)}\n`),
+    atomicWrite(renderReportPath, `${JSON.stringify(options.renderReport, null, 2)}\n`),
+  ]);
+
+  return {
+    editDecisionsPath,
+    cuesheetPath,
+    assetManifestPath,
+    renderReportPath,
+  };
+}
+
+async function packageDeckAssets(options: {
+  projectRoot: string;
+  packageDir: string;
+  mode: AssetLinkMode;
+  deckManifest?: DeckManifest;
+}): Promise<DeckPackage | undefined> {
+  if (options.deckManifest === undefined) {
+    return undefined;
+  }
+
+  const sourceDir = path.join(options.packageDir, "source");
+  const slideScreenshotsDir = path.join(sourceDir, "slides");
+  await mkdir(slideScreenshotsDir, { recursive: true });
+
+  const deckManifestPath = path.join(sourceDir, "deck_manifest.json");
+  await atomicWrite(deckManifestPath, `${JSON.stringify(options.deckManifest, null, 2)}\n`);
+
+  const sourceDeckReferencePath = path.join(sourceDir, "source-deck-reference.txt");
+  await atomicWrite(sourceDeckReferencePath, deckSourceReferenceText(options.deckManifest));
+
+  const sourceDeckPath = await linkSourceDeck({
+    projectRoot: options.projectRoot,
+    sourceDir,
+    mode: options.mode,
+    deckManifest: options.deckManifest,
+  });
+  const slideScreenshotPaths: string[] = [];
+
+  for (const slide of options.deckManifest.slides) {
+    const source = resolveAssetSourcePath(options.projectRoot, slide.image_path);
+    const extension = path.extname(source) || ".png";
+    const destination = path.join(slideScreenshotsDir, `${safeFileName(slide.id)}${extension}`);
+    slideScreenshotPaths.push(await linkAsset(source, destination, options.mode));
+  }
+
+  return {
+    deckManifestPath,
+    sourceDeckReferencePath,
+    sourceDeckPath,
+    slideScreenshotsDir,
+    slideScreenshotPaths,
+  };
+}
+
+function deckSourceReferenceText(deckManifest: DeckManifest): string {
+  const source = deckManifest.source;
+  return [
+    `file_type: ${source.file_type}`,
+    `kind: ${source.kind}`,
+    source.source_path === undefined ? undefined : `source_path: ${source.source_path}`,
+    source.source_url === undefined ? undefined : `source_url: ${source.source_url}`,
+    source.working_file_path === undefined ? undefined : `working_file_path: ${source.working_file_path}`,
+    `sha256: ${source.sha256}`,
+    `byte_size: ${source.byte_size}`,
+    "",
+  ]
+    .filter((line): line is string => line !== undefined)
+    .join("\n");
+}
+
+async function linkSourceDeck(options: {
+  projectRoot: string;
+  sourceDir: string;
+  mode: AssetLinkMode;
+  deckManifest: DeckManifest;
+}): Promise<string | undefined> {
+  const sourceCandidates = [
+    options.deckManifest.source.working_file_path,
+    options.deckManifest.source.source_path,
+  ].filter((value): value is string => value !== undefined);
+
+  for (const candidate of sourceCandidates) {
+    const source = resolveAssetSourcePath(options.projectRoot, candidate);
+    if (!(await exists(source))) {
+      continue;
+    }
+
+    const sourceDeckDir = path.join(options.sourceDir, "deck");
+    const destination = path.join(sourceDeckDir, safeFileName(path.basename(source)) || `source.${options.deckManifest.source.file_type}`);
+    return linkAsset(source, destination, options.mode);
+  }
+
+  return undefined;
+}
+
 async function linkAudioTracks(options: {
   projectRoot: string;
   assetsDir: string;
@@ -281,8 +445,11 @@ function buildPublishLog(input: {
   timelinePath: string;
   readmePath: string;
   captionsPath: string;
+  handoffMetadata: HandoffMetadataPackage;
+  renderedVideoPath: string;
   sourceManifestPath: string;
   renderOutputPath: string;
+  deckPackage?: DeckPackage;
   exportedAt: string;
   linkedAssetCount: number;
   audioTrackCount: number;
@@ -305,11 +472,65 @@ function buildPublishLog(input: {
       platform: input.target,
     },
     {
+      path: input.handoffMetadata.editDecisionsPath,
+      kind: "edit_decisions",
+      platform: input.target,
+    },
+    {
+      path: input.handoffMetadata.renderReportPath,
+      kind: "render_report",
+      platform: input.target,
+    },
+    {
+      path: input.handoffMetadata.assetManifestPath,
+      kind: "asset_manifest",
+      platform: input.target,
+    },
+    {
+      path: input.handoffMetadata.cuesheetPath,
+      kind: "cuesheet",
+      platform: input.target,
+    },
+    {
+      path: input.renderedVideoPath,
+      kind: "rendered_video",
+      platform: input.target,
+    },
+    {
       path: input.readmePath,
       kind: "readme",
       platform: input.target,
     },
   ];
+
+  if (input.deckPackage !== undefined) {
+    outputs.push(
+      {
+        path: input.deckPackage.deckManifestPath,
+        kind: "deck_manifest",
+        platform: input.target,
+      },
+      {
+        path: input.deckPackage.sourceDeckReferencePath,
+        kind: "source_deck_reference",
+        platform: input.target,
+      },
+      {
+        path: input.deckPackage.slideScreenshotsDir,
+        kind: "slide_screenshots",
+        platform: input.target,
+        notes: `${input.deckPackage.slideScreenshotPaths.length} slide screenshot(s)`,
+      },
+    );
+
+    if (input.deckPackage.sourceDeckPath !== undefined) {
+      outputs.push({
+        path: input.deckPackage.sourceDeckPath,
+        kind: "source_deck",
+        platform: input.target,
+      });
+    }
+  }
 
   return {
     outputs,
@@ -317,14 +538,28 @@ function buildPublishLog(input: {
       exported_at: input.exportedAt,
       target: input.target,
       asset_link_mode: input.assetLinkMode,
+      asset_linkage_mode: input.assetLinkMode,
       show: input.show,
       episode: input.episode,
       pipeline: input.pipeline,
       package_path: input.packageDir,
       timeline_path: input.timelinePath,
+      captions_path: input.captionsPath,
+      edit_decisions_path: input.handoffMetadata.editDecisionsPath,
+      render_report_path: input.handoffMetadata.renderReportPath,
       render_output_path: input.renderOutputPath,
+      rendered_video_path: input.renderedVideoPath,
       linked_asset_count: input.linkedAssetCount,
       audio_track_count: input.audioTrackCount,
+      ...(input.deckPackage === undefined
+        ? {}
+        : {
+            deck_manifest_path: input.deckPackage.deckManifestPath,
+            deck_source_reference_path: input.deckPackage.sourceDeckReferencePath,
+            deck_source_path: input.deckPackage.sourceDeckPath,
+            deck_asset_link_mode: input.assetLinkMode,
+            deck_asset_paths: input.deckPackage.slideScreenshotPaths,
+          }),
     },
     source_manifest_path: input.sourceManifestPath,
     captions_path: input.captionsPath,

@@ -1,0 +1,65 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 6 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 640 360] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 129 >>
+stream
+BT
+/F1 24 Tf
+72 260 Td
+(Presentation Demo) Tj
+0 -44 Td
+/F1 14 Tf
+(A tiny public fixture deck for Show Sidekick validation.) Tj
+0 -28 Td
+(Slide 1: frame the idea and audience.) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 640 360] /Resources << /Font << /F1 4 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 126 >>
+stream
+BT
+/F1 24 Tf
+72 260 Td
+(Motion Handoff) Tj
+0 -44 Td
+/F1 14 Tf
+(Slide 2: animate highlights, callouts, and narration timing.) Tj
+0 -28 Td
+(Package the deck assets for editor finishing.) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Producer (Show Sidekick fixture) >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000125 00000 n 
+0000000249 00000 n 
+0000000319 00000 n 
+0000000500 00000 n 
+0000000624 00000 n 
+0000000802 00000 n 
+trailer
+<< /Root 1 0 R /Size 9 /Info 8 0 R >>
+startxref
+854
+%%EOF

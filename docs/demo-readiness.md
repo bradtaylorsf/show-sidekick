@@ -109,7 +109,7 @@ Current expected green paths:
 | `music-video` | `music-video` | `both` | Green for zero-key; included in paid-demo | Audio-led beat-synced lyric-video smoke lane. |
 | `news-song` | `news-song` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
 | `podcast-repurpose` | `podcast-repurpose` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
-| `presentation-demo` | none | `unsupported` | Pipeline-only contract | Deck-to-demo manifest and artifact contract are defined; starter and sample path land in the later presentation-demo batch. |
+| `presentation-demo` | `presentation-demo` | `paid` | Paid-demo only | Fixture-backed starter and deck handoff export verified; authenticated online deck links still need exported PDF/PPTX inputs. |
 | `product-demo` | `screen-demo` | `unsupported` | Documented initializer | Extra generalized product/demo starter for the `screen-demo` pipeline. |
 | `screen-demo` | `screen-demo` | `paid` | Paid-demo only | Requires paid-demo provider setup; synthetic terminal fixture. |
 | `talking-head` | `talking-head` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
@@ -158,7 +158,7 @@ The maintainer demo matrix is starter-driven, not manifest-driven. It reads `bun
 
 ### Generalized Starter Coverage
 
-Every approved user-facing bundled pipeline has at least one generalized starter row in [Show Types](show-types.md), except `presentation-demo`, which is intentionally pipeline-only until the starter and sample-render batch for the deck-to-demo epic lands. `product-demo` is an extra generalized starter on `screen-demo` for product and UI-tour use cases. Removed personal/branded starter slugs are breaking seed-catalog removals and intentionally have no compatibility aliases.
+Every approved user-facing bundled pipeline has at least one generalized starter row in [Show Types](show-types.md). `product-demo` is an extra generalized starter on `screen-demo` for product and UI-tour use cases. Removed personal/branded starter slugs are breaking seed-catalog removals and intentionally have no compatibility aliases.
 
 ## Baseline Comparison
 

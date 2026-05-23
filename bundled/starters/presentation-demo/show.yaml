@@ -1,0 +1,32 @@
+slug: presentation-demo
+display_name: Presentation Demo
+description: General deck-to-demo starter for turning a small PDF or PowerPoint into an animated explainer rough cut.
+created: 2026-05-23
+sample_support: paid
+brand: ./brand/
+characters: ./characters/
+skills: ./skills/
+pipelines:
+  presentation-demo:
+    playbook: clean-professional
+    runtime: remotion
+    aspect: 16:9
+    budget_usd: 2
+defaults:
+  pipeline: presentation-demo
+  language: en
+  provider_profile: paid-demo
+ingest:
+  episode_template: ./episode.template.yaml
+  watch:
+    - path: ./inputs/
+      match: "**/deck.{pdf,pptx,ppt}"
+      pipeline: presentation-demo
+      slug_from: parent_dir
+starter:
+  fixture_size_bytes: 1360
+  expected_sample_duration_s: 20
+  expected_aspect: 16:9
+  sample_modes:
+    zero_key: false
+    paid_demo: true

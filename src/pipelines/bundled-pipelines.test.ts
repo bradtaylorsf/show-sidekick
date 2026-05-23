@@ -959,7 +959,7 @@ describe("bundled pipeline manifests", () => {
     expect(manifest).toMatchObject({
       slug: "presentation-demo",
       status: "experimental",
-      sample_support: "unsupported",
+      sample_support: "paid",
       master_clock: "voiceover",
       stage_order: "manifest",
       defaults: {
