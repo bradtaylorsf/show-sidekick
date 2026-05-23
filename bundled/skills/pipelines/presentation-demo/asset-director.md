@@ -15,8 +15,9 @@ Produce `asset_manifest.json` for slide screenshots, narration-linked captions, 
 
 1. Treat slide screenshots from `deck_manifest` as source assets.
 2. Add support visuals only when the scene plan calls for clarification.
-3. Keep all assets traceable to `slide_ids`, VO sections, or explicit support-visual rationales.
-4. Preserve editable source paths for the export handoff.
+3. Reuse the approved cuesheet narration audio and timing; do not make a second TTS call in assets.
+4. Keep all assets traceable to `slide_ids`, VO sections, or explicit support-visual rationales.
+5. Preserve editable source paths for the export handoff.
 
 ## Quality Gate
 

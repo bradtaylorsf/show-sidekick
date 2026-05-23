@@ -15,7 +15,7 @@ Produce a schema-valid `script.json` with slide-aware voiceover sections.
 
 1. Read `brief` and `deck_manifest`.
 2. Build sections that reference `slide_ids`.
-3. Prefer `pptx_notes`, then operator notes, then slide text or OCR, then agent-authored bridge copy.
+3. Prefer `pptx_notes`, then slide text or OCR, then operator notes, then agent-authored bridge copy.
 4. Prefer pptx_notes as the voiceover source over slide text or OCR; preserve slide meaning and operator direction.
 5. Set `vo_source` to `pptx_notes`, `slide_text`, `ocr`, `operator`, or `agent`.
 6. Present the script for human approval before any TTS or paid generation.

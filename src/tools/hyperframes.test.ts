@@ -55,6 +55,24 @@ describe("hyperframes tool", () => {
 
     expect(runCommand.mock.calls.map((call) => call[1][1])).toEqual(["lint", "validate"]);
   });
+
+  it("refuses runtime swaps before invoking HyperFrames", async () => {
+    const runCommand = vi.fn(async (): Promise<CommandResult> => ({ stdout: "ok", stderr: "", exit_code: 0 }));
+
+    await expect(
+      hyperframes.execute(
+        {
+          ...input(),
+          edit_decisions: {
+            ...input().edit_decisions,
+            render_runtime: "remotion" as const,
+          },
+        },
+        testContext(runCommand),
+      ),
+    ).rejects.toThrow(/refuses runtime swap/u);
+    expect(runCommand).not.toHaveBeenCalled();
+  });
 });
 
 function input() {

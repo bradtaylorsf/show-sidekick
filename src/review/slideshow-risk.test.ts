@@ -221,6 +221,77 @@ describe("scoreSlideshowRisk", () => {
       reason: "Not applicable for non-cinematic renderer_family",
     });
   });
+
+  it("flags presentation-demo static slide playback as a downgrade", () => {
+    const result = scoreSlideshowRisk(
+      Array.from({ length: 4 }, (_, index) =>
+        scene({
+          description: `deck slide ${index + 1}`,
+          scene_kind: "slide_scene",
+          slide_id: `slide-00${index + 1}`,
+          information_role: "carry deck evidence",
+          shot_intent: "show the source slide",
+          shot_language: {
+            shot_size: ["CU", "WS", "MS", "EWS"][index],
+            camera_movement: "static",
+            lighting_key: "natural",
+          },
+        }),
+      ),
+      undefined,
+      "explainer-teacher",
+    );
+
+    expect(result.dimensions.decorative_visuals).toEqual(
+      expect.objectContaining({
+        score: 5,
+        reason: "static slideshow downgrade: 4 slide scenes lack explanatory treatment or purpose",
+      }),
+    );
+    expect(result.dimensions.weak_motion).toEqual(
+      expect.objectContaining({
+        score: 5,
+        reason: "static slideshow downgrade: 4 slide scenes lack zoom, pan, highlight, callout, or support visual treatment",
+      }),
+    );
+  });
+
+  it("does not flag slide scenes that include motion-led treatments", () => {
+    const result = scoreSlideshowRisk(
+      [
+        scene({
+          description: "slide one with push in",
+          scene_kind: "slide_scene",
+          slide_id: "slide-001",
+          treatment: "zoom_pan",
+          shot_language: { shot_size: "CU", camera_movement: "push_in", lighting_key: "soft" },
+        }),
+        scene({
+          description: "slide two with highlight",
+          scene_kind: "slide_scene",
+          slide_id: "slide-002",
+          treatment: "highlight",
+          highlights: [{ rect: { x: 0.1, y: 0.1, width: 0.4, height: 0.2 } }],
+          shot_language: { shot_size: "WS", camera_movement: "pan_right", lighting_key: "natural" },
+        }),
+        scene({
+          description: "slide three with callout",
+          scene_kind: "slide_scene",
+          slide_id: "slide-003",
+          treatment: "callout",
+          callouts: [{ text: "Narration-led callout" }],
+          shot_language: { shot_size: "MS", camera_movement: "pull_out", lighting_key: "hard" },
+        }),
+      ],
+      undefined,
+      "explainer-teacher",
+    );
+
+    expect(result.dimensions.decorative_visuals.score).toBe(0);
+    expect(result.dimensions.weak_motion.score).toBe(0);
+    expect(result.findings.map((finding) => finding.title)).not.toContain("decorative_visuals");
+    expect(result.findings.map((finding) => finding.title)).not.toContain("weak_motion");
+  });
 });
 
 describe("detectEditRegression", () => {

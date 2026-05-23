@@ -9,6 +9,7 @@ import {
   LineChartPropsSchema,
   PieChartPropsSchema,
   ProgressBarPropsSchema,
+  SlideScenePropsSchema,
   StatCardPropsSchema,
   TerminalScenePropsSchema,
   TextCardPropsSchema,
@@ -17,6 +18,8 @@ import {
   HeroTitleOverlayPropsSchema,
   ProviderChipOverlayPropsSchema,
   SectionTitleOverlayPropsSchema,
+  SlideCalloutOverlayPropsSchema,
+  SlideHighlightOverlayPropsSchema,
   StatRevealOverlayPropsSchema,
 } from "../overlays/index.js";
 
@@ -156,6 +159,30 @@ export const progressBarFixture = {
   theme: sharedTheme,
 } satisfies z.input<typeof ProgressBarPropsSchema>;
 
+export const slideSceneFixture = {
+  slide_id: "slide-001",
+  image_path: "captures/slides/slide-001.png",
+  title: "Deck source becomes motion",
+  caption: "Speaker notes drive the voiceover and timing.",
+  focus_rect: { x: 0.12, y: 0.18, width: 0.42, height: 0.34 },
+  motion: { type: "pan_right", zoom_start: 1, zoom_end: 1.09 },
+  highlights: [
+    {
+      rect: { x: 0.1, y: 0.16, width: 0.46, height: 0.2 },
+      shape: "rect",
+      label: "source evidence",
+    },
+  ],
+  callouts: [
+    {
+      text: "Review before TTS",
+      target_rect: { x: 0.58, y: 0.52, width: 0.28, height: 0.16 },
+      anchor: "right",
+    },
+  ],
+  theme: sharedTheme,
+} satisfies z.input<typeof SlideScenePropsSchema>;
+
 export const sectionTitleOverlayFixture = {
   section: "03",
   title: "Validation Gate",
@@ -184,6 +211,20 @@ export const providerChipOverlayFixture = {
   theme: sharedTheme,
 } satisfies z.input<typeof ProviderChipOverlayPropsSchema>;
 
+export const slideHighlightOverlayFixture = {
+  rect: { x: 0.14, y: 0.22, width: 0.38, height: 0.18 },
+  shape: "rect",
+  label: "approved slide reference",
+  theme: sharedTheme,
+} satisfies z.input<typeof SlideHighlightOverlayPropsSchema>;
+
+export const slideCalloutOverlayFixture = {
+  text: "Timing follows narration",
+  target_rect: { x: 0.56, y: 0.48, width: 0.24, height: 0.2 },
+  anchor: "right",
+  theme: sharedTheme,
+} satisfies z.input<typeof SlideCalloutOverlayPropsSchema>;
+
 export const sceneFixtures = {
   anime_scene: animeSceneFixture,
   bar_chart: barChartFixture,
@@ -194,6 +235,7 @@ export const sceneFixtures = {
   line_chart: lineChartFixture,
   pie_chart: pieChartFixture,
   progress_bar: progressBarFixture,
+  slide_scene: slideSceneFixture,
   stat_card: statCardFixture,
   terminal_scene: terminalSceneFixture,
   text_card: textCardFixture,
@@ -203,5 +245,7 @@ export const overlayFixtures = {
   hero_title: heroTitleOverlayFixture,
   provider_chip: providerChipOverlayFixture,
   section_title: sectionTitleOverlayFixture,
+  slide_callout: slideCalloutOverlayFixture,
+  slide_highlight: slideHighlightOverlayFixture,
   stat_reveal: statRevealOverlayFixture,
 };

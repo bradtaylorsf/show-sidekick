@@ -19,6 +19,8 @@ export const HyperframesComposeInputSchema = z.object({
   edit_decisions: EditDecisionsSchema,
   composition_spec_path: z.string().optional(),
   output_path: z.string().optional(),
+  planned_duration_s: z.number().positive().optional(),
+  expected_duration_s: z.number().positive().optional(),
 });
 
 export type HyperframesComposeInput = z.infer<typeof HyperframesComposeInputSchema>;
@@ -54,6 +56,12 @@ export default defineTool({
 
   async execute(params, ctx) {
     const parsed = HyperframesComposeInputSchema.parse(params);
+    if (parsed.edit_decisions.render_runtime !== "hyperframes") {
+      throw new Error(
+        `hyperframes compose refuses runtime swap: edit_decisions.render_runtime must be hyperframes, found ${parsed.edit_decisions.render_runtime}`,
+      );
+    }
+
     const hyperCtx = ctx as HyperframesContext;
     const tempDir = parsed.composition_spec_path ? undefined : await mkdtemp(join(tmpdir(), "show-sidekick-hyperframes-"));
     const specPath = parsed.composition_spec_path ?? join(tempDir as string, "composition.hyperframes.json");
@@ -159,16 +167,28 @@ function compositionSpec(params: HyperframesComposeInput): Record<string, unknow
 
 function reportFor(params: HyperframesComposeInput, validationSteps: RenderReport["validation_steps"]): RenderReport {
   const duration = params.edit_decisions.cuts.reduce((max, cut) => Math.max(max, cut.end_s), 0);
+  const expectedDuration = params.expected_duration_s ?? params.planned_duration_s ?? duration;
+  const driftS = roundSeconds(Math.abs(duration - expectedDuration));
+  const driftToleranceS = 0.2;
 
   return RenderReportSchema.parse({
     output_path: params.output_path ?? "renders/hyperframes.mp4",
     encoding_profile: "hyperframes/default",
     duration_s: duration,
+    expected_duration_s: expectedDuration,
+    drift_s: driftS,
+    drift_frames: Math.round(driftS * 30),
+    drift_tolerance_s: driftToleranceS,
+    within_tolerance: driftS <= driftToleranceS,
     resolution: { width: 1920, height: 1080 },
     framerate: 30,
     runtime_used: "hyperframes",
     asset_count: params.edit_decisions.cuts.length,
     warnings: [],
+    verification_notes: [
+      "Runtime locked to hyperframes from edit_decisions.",
+      "HyperFrames lint, validate, and render gates were requested before report completion.",
+    ],
     validation_steps: validationSteps,
   });
 }
@@ -176,4 +196,8 @@ function reportFor(params: HyperframesComposeInput, validationSteps: RenderRepor
 function excerpt(text: string, limit = 600): string {
   const normalized = text.trim().replace(/\s+/g, " ");
   return normalized.length > limit ? `${normalized.slice(0, limit)}...` : normalized;
+}
+
+function roundSeconds(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }

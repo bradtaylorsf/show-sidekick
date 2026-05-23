@@ -1200,6 +1200,125 @@ exports[`remotion scene library > renders overlay section_title against its fixt
 }
 `;
 
+exports[`remotion scene library > renders overlay slide_callout against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "slide_callout",
+        "overlay": true,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "style": {
+          "borderColor": "#2dd4bf",
+          "borderRadius": 8,
+          "borderWidth": 4,
+          "height": "20%",
+          "left": "56%",
+          "position": "absolute",
+          "top": "48%",
+          "width": "24%",
+        },
+      },
+      "type": "callout-target",
+    },
+    {
+      "children": [],
+      "props": {
+        "anchor": "right",
+        "style": {
+          "background": "#2dd4bf",
+          "borderRadius": 8,
+          "color": "#07111f",
+          "fontFamily": "Inter",
+          "fontSize": 28,
+          "fontWeight": 800,
+          "maxWidth": 440,
+          "padding": "20px 24px",
+          "position": "absolute",
+          "right": "5%",
+          "top": "36%",
+        },
+        "text": "Timing follows narration",
+      },
+      "type": "callout-bubble",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "transparent",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders overlay slide_highlight against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "slide_highlight",
+        "overlay": true,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [],
+      "props": {
+        "label": "approved slide reference",
+        "shape": "rect",
+        "style": {
+          "borderColor": "#f59e0b",
+          "borderRadius": "8px",
+          "borderWidth": 5,
+          "height": "18%",
+          "left": "14%",
+          "position": "absolute",
+          "top": "22%",
+          "width": "38%",
+        },
+      },
+      "type": "slide-highlight-overlay",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "transparent",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
 exports[`remotion scene library > renders overlay stat_reveal against its fixture 1`] = `
 {
   "children": [
@@ -1440,6 +1559,161 @@ exports[`remotion scene library > renders progress_bar against its fixture 1`] =
         "text": "Pre-compose checks passed; waiting on final runtime.",
       },
       "type": "text",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "#07111f",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
+exports[`remotion scene library > renders slide_scene against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "slide_scene",
+        "overlay": false,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "focus_rect": {
+              "height": 0.34,
+              "width": 0.42,
+              "x": 0.12,
+              "y": 0.18,
+            },
+            "src": "captures/slides/slide-001.png",
+            "style": {
+              "height": "100%",
+              "objectFit": "contain",
+              "transform": "scale(1) translate(0%, 0%)",
+              "transformOrigin": "33% 35%",
+              "width": "100%",
+            },
+          },
+          "type": "slide-image",
+        },
+        {
+          "children": [],
+          "props": {
+            "index": 0,
+            "label": "source evidence",
+            "shape": "rect",
+            "style": {
+              "borderColor": "#f59e0b",
+              "borderRadius": "8px",
+              "borderWidth": 4,
+              "boxShadow": "0 0 0 9999px rgba(7, 17, 31, 0.2)",
+              "height": "20%",
+              "left": "10%",
+              "position": "absolute",
+              "top": "16%",
+              "width": "46%",
+            },
+          },
+          "type": "slide-highlight",
+        },
+        {
+          "children": [],
+          "props": {
+            "anchor": "right",
+            "index": 0,
+            "style": {
+              "background": "#2dd4bf",
+              "borderRadius": 8,
+              "color": "#07111f",
+              "fontSize": 24,
+              "fontWeight": 800,
+              "maxWidth": 360,
+              "padding": "18px 22px",
+              "position": "absolute",
+              "right": 24,
+              "top": 80,
+            },
+            "target_rect": {
+              "height": 0.16,
+              "width": 0.28,
+              "x": 0.58,
+              "y": 0.52,
+            },
+            "text": "Review before TTS",
+          },
+          "type": "slide-callout",
+        },
+      ],
+      "props": {
+        "slide_id": "slide-001",
+        "style": {
+          "background": "#0f1d32",
+          "borderColor": "rgba(147, 164, 186, 0.25)",
+          "borderRadius": 8,
+          "borderWidth": 2,
+          "height": 885.5999999999999,
+          "left": 105.6,
+          "overflow": "hidden",
+          "position": "absolute",
+          "top": 59.4,
+          "width": 1708.8,
+        },
+      },
+      "type": "slide-frame",
+    },
+    {
+      "children": [],
+      "props": {
+        "role": "slide-title",
+        "style": {
+          "color": "#f8fafc",
+          "fontFamily": "Inter Tight",
+          "fontSize": 36,
+          "fontWeight": 800,
+          "left": 115.19999999999999,
+          "letterSpacing": 0,
+          "position": "absolute",
+          "top": 972,
+        },
+        "text": "Deck source becomes motion",
+      },
+      "type": "text",
+    },
+    {
+      "children": [],
+      "props": {
+        "style": {
+          "background": "rgba(7, 17, 31, 0.78)",
+          "bottom": 28,
+          "color": "#f8fafc",
+          "fontSize": 30,
+          "left": 345.59999999999997,
+          "lineHeight": 1.2,
+          "padding": "18px 24px",
+          "position": "absolute",
+          "right": 345.59999999999997,
+        },
+        "text": "Speaker notes drive the voiceover and timing.",
+      },
+      "type": "caption",
     },
   ],
   "props": {

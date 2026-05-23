@@ -320,11 +320,13 @@ describe("bundled Batch 8.B Layer 3 agent skills", () => {
 describe("presentation-demo pipeline skills", () => {
   it("preserves deck-to-demo governance phrases", async () => {
     await expectFileContains("pipelines/presentation-demo/script-director.md", [
+      "Prefer `pptx_notes`, then slide text or OCR, then operator notes, then agent-authored bridge copy.",
       "Prefer pptx_notes as the voiceover source over slide text or OCR; preserve slide meaning and operator direction.",
       "Present the script for human approval before any TTS or paid generation.",
     ]);
     await expectFileContains("pipelines/presentation-demo/cuesheet-director.md", [
       "Human approval of the script is required before any TTS call.",
+      "Select narration through the registry `tts_selector` capability only; do not execute a provider directly or shell around the registry.",
       "`master_clock` is `voiceover`",
     ]);
     await expectFileContains("pipelines/presentation-demo/scene-director.md", [
