@@ -2,7 +2,7 @@ slug: presentation-demo
 display_name: Presentation Demo
 description: "Voiceover-led deck-to-demo pipeline for turning PDFs, PowerPoint files, and direct deck downloads into animated explainer/demo rough cuts."
 status: experimental
-sample_support: unsupported
+sample_support: paid
 master_clock: voiceover
 stage_order: manifest
 default_checkpoint_policy: guided

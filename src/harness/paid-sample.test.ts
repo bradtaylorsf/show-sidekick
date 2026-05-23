@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -164,6 +165,51 @@ describe("paid sample dispatcher", () => {
         ],
       },
     });
+  });
+
+  it("captures a presentation-demo fixture deck into a manifest with slide screenshots", async () => {
+    const root = await scratchProject();
+    const show = presentationDemoShow(root);
+    const deckPath = path.join(root, "shows", "show", "inputs", "episode", "deck.pdf");
+    const episode = presentationDemoEpisode(show, { deck_source: "shows/show/inputs/episode/deck.pdf" });
+    const pipeline = presentationDemoPipeline([stage("capture", "deck_manifest")]);
+    await writeFixture(deckPath, "%PDF-1.7\n1 0 obj\n<< /Type /Pages /Count 2 >>\nendobj\n%%EOF\n");
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "presentation-demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: false, provider_profile: "paid-demo", nonInteractive: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    await expect(readCheckpoint(root, "show", "episode", "capture")).resolves.toMatchObject({
+      artifact: {
+        source: {
+          file_type: "pdf",
+          source_path: "shows/show/inputs/episode/deck.pdf",
+          working_file_path: "projects/show/episode/deck/source.pdf",
+          byte_size: expect.any(Number),
+        },
+        slides: [
+          expect.objectContaining({ id: "slide-001", image_path: "projects/show/episode/deck/slides/slide-001.png" }),
+          expect.objectContaining({ id: "slide-002", image_path: "projects/show/episode/deck/slides/slide-002.png" }),
+        ],
+        extraction: {
+          screenshot_engine: "paid-sample-fixture",
+          extracted_at: fixedNow().toISOString(),
+        },
+      },
+    });
+    expect(existsSync(path.join(root, "projects", "show", "episode", "deck", "source.pdf"))).toBe(true);
+    expect(existsSync(path.join(root, "projects", "show", "episode", "deck", "slides", "slide-001.png"))).toBe(true);
   });
 
   it("blocks presentation-demo TTS when the script checkpoint is still awaiting approval", async () => {
@@ -992,7 +1038,7 @@ function presentationDemoPipeline(stages: Stage[]): PipelineManifest {
   return {
     ...pipelineManifest(),
     slug: "presentation-demo",
-    sample_support: "unsupported",
+    sample_support: "paid",
     master_clock: "voiceover",
     defaults: {
       render_runtime: "remotion",

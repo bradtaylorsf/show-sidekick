@@ -1,10 +1,13 @@
+import { createHash } from "node:crypto";
 import { access, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { CostEntry } from "../artifacts/cost-log.js";
+import { DeckManifestSchema, type DeckFileType } from "../artifacts/deck-manifest.js";
 import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { RenderRuntime } from "../artifacts/enums.js";
 import { ScriptSchema, type Script } from "../artifacts/script.js";
 import type { Tool, ToolContext } from "../registry/index.js";
+import { encodeRgbaPng } from "../media/png.js";
 import { readCheckpoint } from "../checkpoints/index.js";
 import { projectDir } from "../checkpoints/paths.js";
 import type { StageContext } from "./context.js";
@@ -194,6 +197,9 @@ async function artifactForStage(
       state.proposal_packet ??= buildProposalPacket(ctx);
       decisions.push(...proposalDecisions(ctx, options));
       return state.proposal_packet;
+    case "deck_manifest":
+      state.deck_manifest ??= await buildDeckManifest(ctx, options);
+      return state.deck_manifest;
     case "script":
       state.script ??= await buildScript(ctx);
       return state.script;
@@ -579,6 +585,163 @@ function slideNarrationSource(
     text: `Bridge ${slideId} into the approved presentation-demo narration without adding unsupported claims.`,
     vo_source: "agent",
   };
+}
+
+async function buildDeckManifest(ctx: StageContext, options: PaidSampleDispatcherOptions): Promise<unknown> {
+  const deckSource = stringInput(ctx, "deck_source");
+  if (deckSource === undefined) {
+    throw new Error("presentation-demo capture requires inputs.deck_source");
+  }
+  if (isHttpUrl(deckSource)) {
+    throw new Error("presentation-demo paid sample requires a local fixture deck; export online decks to PDF/PPTX first");
+  }
+
+  const sourcePath = projectReadPath(ctx, deckSource);
+  const bytes = await readFile(sourcePath);
+  const fileType = deckFileTypeFromPath(sourcePath);
+  const workspace = projectDir(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug);
+  const deckDir = path.join(workspace, "deck");
+  const slidesDir = path.join(deckDir, "slides");
+  const workingDeckPath = path.join(deckDir, `source.${fileType}`);
+  const slideCount = deckSlideCount(fileType, bytes);
+
+  await mkdir(slidesDir, { recursive: true });
+  await copyFile(sourcePath, workingDeckPath);
+
+  const slides = await Promise.all(
+    Array.from({ length: slideCount }, async (_value, index) => {
+      const order = index + 1;
+      const id = `slide-${String(order).padStart(3, "0")}`;
+      const imagePath = path.join(slidesDir, `${id}.png`);
+      await writeFile(imagePath, deckSlideScreenshotPng(index));
+
+      return {
+        id,
+        order,
+        image_path: projectRelativePath(ctx.show.projectRoot, imagePath),
+        image: { width: 640, height: 360 },
+        text: deckSlideText(index),
+        text_source: "native" as const,
+        speaker_notes: deckSlideSpeakerNotes(index),
+        notes_source: "operator" as const,
+        warnings: [],
+        source: { slide_number: order },
+      };
+    }),
+  );
+
+  return DeckManifestSchema.parse({
+    source: {
+      kind: fileType,
+      file_type: fileType,
+      source_path: deckSource,
+      working_file_path: projectRelativePath(ctx.show.projectRoot, workingDeckPath),
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      byte_size: bytes.byteLength,
+    },
+    slides,
+    extraction: {
+      text_engine: "paid-sample-fixture",
+      notes_engine: "operator-notes",
+      screenshot_engine: "paid-sample-fixture",
+      extracted_at: (options.now?.() ?? new Date()).toISOString(),
+      warnings: [],
+    },
+  });
+}
+
+function deckFileTypeFromPath(filePath: string): DeckFileType {
+  const extension = path.extname(filePath).toLowerCase();
+  if (extension === ".pdf") {
+    return "pdf";
+  }
+  if (extension === ".ppt") {
+    return "ppt";
+  }
+  if (extension === ".pptx") {
+    return "pptx";
+  }
+  throw new Error(`unsupported presentation-demo deck extension '${extension || "(none)"}'`);
+}
+
+function deckSlideCount(fileType: DeckFileType, bytes: Buffer): number {
+  if (fileType === "pdf") {
+    const count = Number([...bytes.toString("latin1").matchAll(/\/Type\s*\/Pages\b[\s\S]{0,300}?\/Count\s+(\d+)/gu)].at(-1)?.[1]);
+    if (Number.isInteger(count) && count > 0) {
+      return Math.min(3, Math.max(1, count));
+    }
+  }
+
+  return fileType === "ppt" ? 2 : 3;
+}
+
+function deckSlideText(index: number): string {
+  return [
+    "Frame the deck promise and audience",
+    "Animate highlights, callouts, and narration timing",
+    "Package the rough cut and editor handoff",
+  ][index] ?? `Presentation demo slide ${index + 1}`;
+}
+
+function deckSlideSpeakerNotes(index: number): string {
+  return [
+    "Open with the point of the deck and the viewer problem it solves.",
+    "Explain how the slide becomes an animated beat rather than static playback.",
+    "Close by naming the render, timeline, captions, and deck assets an editor receives.",
+  ][index] ?? "Bridge this slide into the approved narration without adding unsupported claims.";
+}
+
+function deckSlideScreenshotPng(index: number): Buffer {
+  const width = 640;
+  const height = 360;
+  const data = new Uint8Array(width * height * 4);
+  const palette: Array<readonly [number, number, number]> = [
+    [31, 78, 121],
+    [29, 117, 101],
+    [126, 87, 42],
+  ];
+  const accent = palette[index % palette.length] ?? palette[0];
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const offset = (y * width + x) * 4;
+      const shade = Math.round(244 - y * 0.05);
+      data[offset] = shade;
+      data[offset + 1] = shade + 3;
+      data[offset + 2] = 250;
+      data[offset + 3] = 255;
+    }
+  }
+
+  deckPngRect(data, width, 48, 54, 120 + index * 32, 12, accent);
+  deckPngRect(data, width, 48, 96, 360, 22, [40, 48, 60]);
+  deckPngRect(data, width, 48, 140, 440, 12, [89, 99, 112]);
+  deckPngRect(data, width, 48, 166, 320, 12, [123, 133, 146]);
+  deckPngRect(data, width, 390, 190, 160, 82, accent);
+  deckPngRect(data, width, 414, 216, 112, 12, [255, 255, 255]);
+  deckPngRect(data, width, 414, 244, 76, 10, [232, 238, 246]);
+
+  return encodeRgbaPng({ width, height, data });
+}
+
+function deckPngRect(
+  data: Uint8Array,
+  imageWidth: number,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  color: readonly [number, number, number],
+): void {
+  for (let py = y; py < y + height; py += 1) {
+    for (let px = x; px < x + width; px += 1) {
+      const offset = (py * imageWidth + px) * 4;
+      data[offset] = color[0];
+      data[offset + 1] = color[1];
+      data[offset + 2] = color[2];
+      data[offset + 3] = 255;
+    }
+  }
 }
 
 function trimmedString(value: unknown): string | undefined {

@@ -29,6 +29,7 @@ const requiredGeneralStarters = [
   "music-video",
   "news-song",
   "podcast-repurpose",
+  "presentation-demo",
   "product-demo",
   "screen-demo",
   "talking-head",
@@ -37,6 +38,14 @@ const requiredGeneralStarters = [
 const StarterMetadataSchema = z.object({
   fixture_size_bytes: z.number().int().nonnegative(),
   expected_sample_duration_s: z.number().positive(),
+  expected_aspect: z.string().optional(),
+  sample_modes: z
+    .object({
+      zero_key: z.boolean(),
+      paid_demo: z.boolean(),
+    })
+    .strict()
+    .optional(),
 }).strict();
 
 describe("bundled starters", () => {
@@ -74,6 +83,10 @@ describe("bundled starters", () => {
       expect(character.slug).toBe("_template");
       expect(metadata.fixture_size_bytes).toBe(await directorySize(inputsDir));
       expect(metadata.expected_sample_duration_s).toBeGreaterThan(0);
+      if (starterName === "presentation-demo") {
+        expect(metadata.expected_aspect).toBe("16:9");
+        expect(metadata.sample_modes).toEqual({ zero_key: false, paid_demo: true });
+      }
       expect(sampleEpisode.inputs).not.toEqual({});
       await expectSampleInputsExist(starterDir, show, sampleEpisode.inputs);
       expect(readme, `${starterName} README must distinguish starter name`).toContain(`Starter: \`${starterName}\``);
