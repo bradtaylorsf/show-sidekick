@@ -412,6 +412,11 @@ describe("paid sample dispatcher", () => {
             scene_kind: "slide_scene",
             slide_id: "slide-001",
             asset_id: "deck_slide_slide_001",
+            timing_anchor: "section:slide-001",
+            timing_source: "section",
+            start_ms: 0,
+            transition_in: "fade",
+            transition_out: "dissolve",
             provider: "remotion",
           }),
         ]),
@@ -433,7 +438,58 @@ describe("paid sample dispatcher", () => {
       cuesheet: { master_clock: "voiceover" },
       edit_decisions: {
         render_runtime: "remotion",
-        cuts: expect.arrayContaining([expect.objectContaining({ scene_kind: "slide_scene", slide_id: "slide-001" })]),
+        cuts: expect.arrayContaining([
+          expect.objectContaining({
+            scene_kind: "slide_scene",
+            slide_id: "slide-001",
+            timing_anchor: "section:slide-001",
+            timing_source: "section",
+          }),
+        ]),
+      },
+    });
+  });
+
+  it("fails presentation-demo compose instead of silently swapping when Remotion is unavailable", async () => {
+    const root = await scratchProject();
+    const show = presentationDemoShow(root);
+    const episode = presentationDemoEpisode(show);
+    const pipeline = presentationDemoPipeline([
+      stage("capture", "deck_manifest"),
+      { ...stage("script", "script"), human_approval: "required" },
+      stage("cuesheet", "cuesheet"),
+      stage("scene_plan", "scene_plan"),
+      stage("assets", "asset_manifest"),
+      stage("edit", "edit_decisions"),
+      stage("compose", "render_report"),
+    ]);
+    const ffmpegInputs: unknown[] = [];
+
+    await writeStageCheckpoint(root, "capture", "completed", deckManifestWithNotes());
+    await writeStageCheckpoint(root, "script", "completed", approvedSlideScript());
+    await writeStageCheckpoint(root, "cuesheet", "completed", approvedSlideCuesheet());
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "presentation-demo",
+      registry: new Registry({ tools: paidSampleTools(root, { onFfmpegInput: (input) => ffmpegInputs.push(input) }) }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: false, provider_profile: "paid-demo", nonInteractive: true, from: "scene_plan" },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.lastStage).toBe("compose");
+    expect(ffmpegInputs).toHaveLength(0);
+    await expect(readCheckpoint(root, "show", "episode", "compose")).resolves.toMatchObject({
+      status: "failed",
+      artifact: {
+        error: expect.stringMatching(/remotion runtime (?:is not registered|unavailable)/u),
       },
     });
   });

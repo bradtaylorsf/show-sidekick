@@ -1173,6 +1173,10 @@ function buildPresentationDemoScenePlan(ctx: StageContext): unknown {
         hero_moment: index === 0,
         slide_id: resolvedSlideId,
         slide_ids: [resolvedSlideId],
+        timing_anchor: `section:${anchor.sceneId}`,
+        timing_source: "section",
+        start_ms: Math.round(anchor.startS * 1000),
+        end_ms: Math.round(anchor.endS * 1000),
         treatment,
         focus_rect: focusRectForSlide(index),
         highlights: [
@@ -1546,13 +1550,18 @@ function buildPresentationDemoEditDecisions(ctx: StageContext, state: PaidSample
       scene_kind: "slide_scene",
       slide_id: slideId,
       slide_ids: [slideId],
+      timing_anchor: stringValue(scene.timing_anchor) ?? `section:${stringValue(scene.slug) ?? slideId}`,
+      timing_source: stringValue(scene.timing_source) ?? "section",
+      timing_ref: recordValue(scene.timing_ref),
+      start_ms: numberValue(scene.start_ms) ?? Math.round((numberValue(scene.start_s) ?? 0) * 1000),
+      end_ms: numberValue(scene.end_ms) ?? Math.round((numberValue(scene.end_s) ?? duration) * 1000),
       focus_rect: recordValue(scene.focus_rect),
       motion: cutMotionForScene(scene),
       highlights: recordArray(scene.highlights),
       callouts: recordArray(scene.callouts),
       caption: stringValue(scene.caption),
-      transition_in: index === 0 ? "fade_in" : "match_cut",
-      transition_out: index === scenes.length - 1 ? "fade_out" : "cross_dissolve",
+      transition_in: index === 0 ? "fade" : "slide-left",
+      transition_out: index === scenes.length - 1 ? "fade" : "dissolve",
       provider: runtime,
     };
   });
@@ -1730,14 +1739,26 @@ function finalReview(ctx: StageContext, renderReport: Record<string, unknown>, s
 }
 
 async function composeToolForRuntime(ctx: StageContext, runtime: RenderRuntime): Promise<Tool> {
-  if (runtime === "ffmpeg") {
-    return toolFor(ctx, "ffmpeg", "video_compose");
-  }
-  if (runtime === "remotion") {
-    return toolFor(ctx, "remotion", "video_compose");
+  return exactAvailableTool(ctx, runtime);
+}
+
+async function exactAvailableTool(ctx: StageContext, name: string): Promise<Tool> {
+  const named = ctx.registry.get(name);
+  if (named === undefined) {
+    throw new Error(`${name} runtime is not registered`);
   }
 
-  return toolFor(ctx, "hyperframes", "video_compose");
+  const cached = ctx.registry.getAvailability(name);
+  if (cached?.available === true) {
+    return named;
+  }
+
+  const availability = cached ?? (await named.isAvailable({ projectRoot: ctx.show.projectRoot }));
+  if (availability.available) {
+    return named;
+  }
+
+  throw new Error(`${name} runtime unavailable: ${availability.reason}`);
 }
 
 function plannedComposeDuration(ctx: StageContext, state: PaidSampleState): number {

@@ -17,6 +17,19 @@ afterEach(async () => {
 });
 
 describe("ffmpeg tool", () => {
+  it("rejects payloads that do not match an ffmpeg operation", async () => {
+    await expect(
+      ffmpeg.execute(
+        {
+          asset_manifest: { assets: [] },
+          edit_decisions: { cuts: [], render_runtime: "remotion" },
+          output_path: "renders/should-not-succeed.mp4",
+        } as never,
+        testContext(),
+      ),
+    ).rejects.toThrow(/operation|Invalid discriminator/u);
+  });
+
   it.skipIf(!hasFfmpeg)("trims a fixture and leaves a probeable output", async () => {
     const dir = await tempDir();
     const input = join(dir, "input.mp4");
