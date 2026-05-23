@@ -4,34 +4,36 @@
 ## Overview
 Show Sidekick is a show-first AI pre-production harness for video: a CLI plus instruction layer that lets agents run episode pipelines, align visuals to audio, voiceover, or action-timeline clocks, and produce rough cuts with NLE handoff packages for Premiere, DaVinci, CapCut, or EDL. This repo is the harness source for contributors, not a scaffolded user project; user projects own shows, characters, brand assets, generated media, exports, credentials, and runtime state.
 
+Public naming is `show-sidekick` for the package, `showkick` for the primary CLI, `.show-sidekick/` for the bundled cache, and `SHOW_SIDEKICK_` for env vars. Legacy `predit` names are migration-only compatibility paths and must not reappear in new public surfaces.
+
 On first contact, read `specs/README.md`, then `specs/00-overview.md`, `specs/10-installation-and-user-projects.md`, `specs/11-agent-driven-production.md`, and the spec covering the area you are changing. If a local `.migration/` bridge exists and the task touches an area covered there, consult its concepts before designing, but treat it as private reference material only.
 
-The current source includes project scaffolding/cache refresh, env loading, user-project skill mirrors, show/episode/pipeline/playbook scaffolding, build/resume/status/approve/revise flows, provider profile preflight, setup aliases, reference-driven builds, cuesheets, ingest/watch, export packages, config/schema loaders, provider profiles, registry/tool selection, bundled content, checkpoints, decisions, review/cost/approval behavior, audio/media utilities, Remotion-style scene primitives, compose/runtime adapters, and versioned bundled-cache support. `showkick show` and top-level `showkick tools <name>` still use stub handlers; use `showkick ls tools` and `showkick doctor` for live tool inspection.
+The current source includes project scaffolding/cache refresh, env loading, user-project skill mirrors, show/episode/pipeline/playbook scaffolding, build/resume/status/approve/revise flows, provider profile preflight and selection, runtime setup aliases, reference-driven builds, cuesheets, ingest/watch, export packages, config/schema loaders, registry/tool selection, bundled content, checkpoints, decisions, review/cost/approval behavior, audio/media utilities, Remotion-style scene primitives, compose/runtime adapters, and versioned bundled-cache support. `src/cli/program.ts` owns command registration plus pre-action logging, project-root detection, env loading, and cache refresh. `showkick show` and top-level `showkick tools <name>` still use stub handlers; use `showkick ls tools` and `showkick doctor` for live tool inspection.
 
-This repo is initialized for Alpha Loop. `.alpha-loop.yaml` is the loop config, GitHub issues are the source of truth for epic/task execution, and the default role split is Claude plans/reviews while Codex implements, fixes, and validates when live verification is needed.
+This repo is initialized for Alpha Loop. `.alpha-loop.yaml` is the loop config, GitHub issues are the source of truth for epic/task execution, and the default role split is Claude plans/reviews while Codex implements, fixes, and validates when live verification is needed. Alpha Loop source-of-truth agent assets live under `.alpha-loop/templates/`; synced `.claude/`, `.codex/`, and `.agents/` copies should not be hand-edited unless debugging sync output.
 
 ## Tech Stack
 - Language: TypeScript 5.5, strict mode, ESM, NodeNext, ES2022 target, `react-jsx` for TSX scene primitives.
 - Runtime: Node.js 22+.
-- CLI: Commander 12; no web framework and no bundler for the Node CLI.
+- CLI: Commander 12; package binaries are `showkick`, `show-sidekick`, and `showsidekick`; no web framework and no bundler for the Node CLI.
 - Package manager: pnpm 9.
 - Build output: `tsc` emits declarations, source maps, and JS to `dist/`; source lives in `src/`.
 - Key runtime dependencies: commander, zod, yaml, picocolors.
 - Dev utilities use `tsx`, Node scripts, TypeScript, and Vitest.
-- Remotion, the Remotion CLI stack, React, aligned Zod, and HyperFrames are installed into scaffolded user projects when runtime setup is enabled; they are not core harness runtime dependencies.
+- `showkick init` installs Remotion, the Remotion CLI stack, React, aligned Zod, and HyperFrames into scaffolded user projects by default unless runtime setup is disabled or prerequisites are missing; they are not core harness runtime dependencies.
 - Provider SDKs should stay optional unless the harness itself requires them. Tool integrations model optional providers through registry capability/provider contracts, env vars, CLIs, binaries, or libraries instead of direct coupling.
 
 ## Directory Structure
 - `specs/`: Locked design contract; read the relevant spec before touching code or bundled content.
 - `src/`: TypeScript implementation root. Major areas include `cli/`, `config/`, `paths/`, `shows/`, `pipelines/`, `playbooks/`, `skills/`, `artifacts/`, `registry/`, `tools/`, `tool-support/`, `harness/`, `checkpoints/`, `decisions/`, `cost/`, `review/`, `announce/`, `audio/`, `media/`, `compose/`, `remotion/`, `export/`, `hosting/`, `prompts/`, `providers/`, `version/`, and `log/`.
 - `bundled/`: Shipped harness content. `.show-sidekick/` cache writes only `pipelines/`, `playbooks/`, `skills/`, `schemas/`, and `starters/`; `templates/` powers `showkick init`; fixtures, notes, provider profiles, decision-log requirements, and sample-first triggers support bundled behavior and docs.
-- `bundled/skills/`: Pipeline director skills, shared directors, meta/core/creative guidance, and Layer 3 agent/vendor skills. Agent-native skill folders are materialized into user-project `.agents/skills/` and `.claude/skills/`.
+- `bundled/skills/`: Pipeline director skills, shared directors, meta/core/creative guidance, and Layer 3 agent/vendor skills. Agent-native skill folders are materialized into the cache and mirrored into user-project `.agents/skills/` and `.claude/skills/`.
 - `bundled/templates/user-project/`: Files written by `showkick init`; keep this separate from the root harness contributor contract.
-- `docs/`: User-facing quickstart, demo readiness, benchmark notes, and generated provider/profile documentation.
-- `scripts/`: Maintenance utilities for bundled content, artifact schemas, provider docs, lint/format helpers, drift audits, demo matrix, release readiness, and PR comments.
-- `tests/`: Cross-cutting smoke, starter, schema, release, port-script, and content-fidelity coverage outside colocated `src/**/*.test.ts` files.
+- `docs/`: User-facing quickstart, concepts, prompt library, show-type catalog, demo readiness, benchmark notes, and generated provider/profile documentation.
+- `scripts/`: Maintenance utilities for bundled content, artifact schemas, provider docs, lint/format helpers, show-type catalog/matrix checks, porting helpers, release readiness, and PR comments.
+- `tests/`: Cross-cutting smoke, starter, schema, release, port-script, docs, and content-fidelity coverage outside colocated `src/**/*.test.ts` and `scripts/**/*.test.ts` files.
 - `dist/`: Generated build output; do not edit by hand.
-- `.alpha-loop/`: Alpha Loop automation context and source templates. Agent/skill source-of-truth files live under `.alpha-loop/templates/`; synced `.claude/`, `.codex/`, and `.agents/` copies should not be hand-edited unless debugging sync output.
+- `.alpha-loop/`: Alpha Loop automation context and source templates. Agent/skill source-of-truth files live under `.alpha-loop/templates/`; generated loop state is ephemeral.
 - `.migration/`: Private, gitignored reference bridge when present. Do not create, edit, copy from, or leak references to it unless the user explicitly asks.
 
 ## Code Style
@@ -41,13 +43,13 @@ Use Zod for every external contract: YAML configs, pipeline manifests, tool inpu
 
 Keep the architecture layered: shipped workflow belongs in `bundled/pipelines/*.yaml`, stage procedure belongs in Markdown director skills, reusable production guidance belongs in bundled core/meta/creative skills, provider prompting belongs in `bundled/skills/agents/`, concrete integrations belong in `src/tools/`, provider setup lanes belong in `src/providers/`, selection belongs in the registry, and orchestration belongs in the harness.
 
-User project resolution is contractual: project-local resources override `.show-sidekick/` cache resources. Legacy `.predit/` caches migrate to `.show-sidekick/` when possible. Director skills resolve show-specific first, then project-local, then bundled pipeline, then bundled shared; meta and agent skills resolve show/project before bundled. Manifest `skill:` paths are authoritative, and the current resolver preserves the `animated-explainer` to `explainer` pipeline-skill directory alias.
+User project resolution is contractual: project-local resources override `.show-sidekick/` cache resources. Legacy `.predit/` caches migrate to `.show-sidekick/` when possible. Director skills resolve show-specific first, then project-local, then bundled pipeline, then bundled shared; meta and agent skills resolve show/project before bundled. Pipeline manifests declare exact `skill:` and `required_skills` paths that must resolve, and the current helper resolver preserves the `animated-explainer` to `explainer` pipeline-skill directory alias.
 
-Use path-safe lowercase slugs when authoring shows, pipelines, playbooks, characters, and episodes. Use exact snake_case enum values for canonical stages, artifacts, capabilities, master clocks, decision categories, renderer/runtime values, and generated schema filenames. Director skill files follow `<stage>-director.md`.
+Use path-safe lowercase slugs when authoring shows, pipelines, playbooks, characters, and episodes. Use exact snake_case enum values for canonical stages, artifacts, capabilities, master clocks, decision categories, renderer/runtime values, and generated schema filenames. Scaffolded director skills follow `<stage>-director.md`; bundled manifests may declare more specific skill paths such as shared directors or `executive-producer.md`.
 
 Config merge semantics are contractual: objects merge by key, arrays replace, and `null` removes a key. Prefer structured errors with file path and actionable validation details over raw stack traces or raw Zod dumps.
 
-Concrete tool modules export one registry-shaped default, normally through `defineTool`. Tool execution context carries project root, logger, registry, command runner, cost/approval policy, major-change checks, motion guardrails, and first-paid-call hooks; preserve those wrappers. Project-scoped tools live under `projects/<show>/<episode>/tools/`, are tagged as project tools by the registry, and paid project API tools require first-call approval.
+Concrete tool modules export one registry-shaped default, normally through `defineTool`. The registry auto-discovers non-test `.ts`/`.js` modules under `src/tools/` and episode-scoped project tools under `projects/<show>/<episode>/tools/`. Tool execution context carries project root, logger, registry, command runner, cost/approval policy, major-change checks, motion guardrails, and first-paid-call hooks; preserve those wrappers. Project tools are tagged as project tools by the registry, and paid project API tools require first-call approval.
 
 ## Non-Negotiables
 Specs are the contract. If code and specs disagree, surface it; when behavior changes, update the relevant spec with the implementation.
@@ -60,7 +62,7 @@ All tool execution goes through the registry and `defineTool`-style wrappers. Do
 
 Tools that write generated artifacts must keep output paths inside the user project root. User-supplied source media may be read from absolute paths, but review artifacts should preserve the caller's original path string.
 
-Show Sidekick must not store credentials. CLI tools own CLI auth, API tools use environment variables, and setup behavior comes from each tool's `integration.install`.
+Show Sidekick must not store credentials. CLI tools own CLI auth, API tools use environment variables, project commands load `.env`, `.env.<command>`, `.env.local`, and then the parent process environment, and setup behavior comes from each tool's `integration.install`.
 
 Preserve the harness/user-project boundary. This repo ships the CLI, bundled content, schemas, templates, starters, and generated provider documentation; user-owned shows, runtime state, generated media, music libraries, and export packages live in user projects.
 

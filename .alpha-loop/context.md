@@ -1,24 +1,23 @@
 ## Architecture
-- CLI entry is `src/cli/index.ts`, exposed as `showkick` via `dist/cli/index.js`; it calls `createProgram()` in `src/cli/program.ts`, which registers all Commander commands and pre-action project/cache/env setup.
-- `build` loads `show.yaml`, `episode.yaml`, and the selected pipeline via `src/cli/commands/run-target.ts`, discovers tools from `src/tools/`, then runs stages through `src/harness/runner.ts` and dispatchers in `src/harness/dispatcher.ts`.
-- No database: state is filesystem YAML/JSON. Schemas live beside domains (`src/shows`, `src/pipelines`, `src/artifacts`, `src/checkpoints`) and are loaded with Zod-backed `loadYaml`/`loadJson`.
-- Key directories: `src/cli` commands, `src/harness` orchestration, `src/registry` tool discovery/selection, `src/tools` integrations, `bundled/` shipped pipelines/playbooks/skills/starters, `specs/` product contract.
+- CLI package (`type: module`, Node 22+) exposes `showkick`, `show-sidekick`, and `showsidekick`, all built to `dist/cli/index.js` from `src/cli/index.ts`.
+- `src/cli/index.ts` delegates to `createProgram()` in `src/cli/program.ts`; `program.ts` registers all commands and runs pre-action setup: logging, project-root detection, `.env` loading, and `.show-sidekick` cache refresh.
+- No database. Persistent state is filesystem JSON/YAML: user intent in `shows/<show>/show.yaml` and `episodes/*.yaml`; runtime state in `projects/<show>/<episode>/state.json`, `checkpoints/*.json`, `decisions.json`, and `cost_log.json`.
+- Key directories: `src/cli` commands, `src/harness` runner/dispatcher, `src/registry` tool discovery/selection, `src/tools` tool modules, `src/pipelines` manifest loading, `src/artifacts` schemas, `bundled/` shipped pipelines/skills/starters/schemas, `specs/` product contract.
 
 ## Conventions
-- TypeScript ESM (`NodeNext`) on Node 22+, strict `tsc`; core libs are Commander, Zod, YAML, and picocolors.
-- Tests are Vitest, mostly colocated as `src/**/*.test.ts` plus `tests/**/*.test.ts` and `scripts/**/*.test.ts`; run `pnpm test`, `pnpm typecheck`, `pnpm build`.
-- New CLI commands must be wired in `src/cli/program.ts`; command logic lives under `src/cli/commands/`.
-- New tools default-export a `defineTool(...)`-shaped object from `src/tools/`; the registry imports modules automatically, enforces unique names, probes availability, and selects by capability.
-- New pipelines should be manifest + director skills in `bundled/pipelines` and `bundled/skills`, not new orchestration code unless filesystem/schema/registry logic is truly needed.
+- TypeScript ESM with `moduleResolution: NodeNext`, strict Zod-validated config loading, Commander CLI commands, YAML manifests, and JSON artifact/state files.
+- Tests are Vitest files colocated as `src/**/*.test.ts` plus `tests/**/*.test.ts` and `scripts/**/*.test.ts`; run `pnpm test`, `pnpm typecheck`, `pnpm build`, and targeted smoke/release scripts from `package.json`.
+- New CLI commands must be imported in `src/cli/program.ts`, added to `COMMAND_NAMES`, registered with Commander, and covered by command tests.
+- New tools belong in one default-export module under `src/tools/` using `defineTool`; the registry auto-discovers non-test `.ts/.js` files and rejects duplicate tool names.
+- New pipelines should be declarative YAML in `bundled/pipelines/` or project `pipelines/`, with matching Markdown director skills under `bundled/skills/pipelines/<pipeline>/`; orchestration logic should not move into TypeScript unless schemas/state/tool contracts require it.
 
 ## Critical Rules
-- Specs are the contract: if code and `specs/` disagree, surface it and update the relevant spec with the code change.
-- Do not break user contracts casually: `show.yaml`, `episode.yaml`, pipeline manifests, tool shape, checkpoint schemas, and editor exports are consumer-facing.
-- `.alpha-loop/templates/` is the source for loop agent/skill assets; do not hand-edit synced `.claude/`, `.codex/`, or `.agents/` copies except when debugging sync output.
-- User project resolution depends on local resources overriding the `.show-sidekick/` cache; legacy `.predit/` migration, cache refresh/version behavior, and project-root detection in `src/cli/program.ts`, `src/version/*`, and `src/paths/project.ts` must stay aligned.
-- Do not commit credentials or generated/runtime output; `.env*`, `projects/`, `exports/`, `renders/`, caches, and loop traces are intentionally ignored.
+- Specs are the contract; code/spec disagreement must be surfaced and fixed together, especially CLI, pipeline manifests, registry shape, checkpoints, exports, and user-project layout.
+- Do not hand-edit synced Alpha Loop copies in `.agents/`, `.claude/`, or `.codex/`; edit `.alpha-loop/templates/` for source-of-truth agent assets.
+- Treat `dist/`, `bundled/schemas/`, generated caches, runtime `projects/`, and release/demo artifacts carefully; source-of-truth code lives in `src/`, specs, scripts, and bundled authored content.
+- User-owned overrides resolve before `.show-sidekick` cache resources; changing `projectPaths`, `resolve()`, cache refresh, or scaffold templates can break initialized projects.
+- Avoid bypassing the registry with ad-hoc shell calls; paid/provider actions, availability, approval, and cost tracking depend on registry and `defineTool` execution wrappers.
 
 ## Active State
 - Test status: (will be filled in by the loop)
 - Recent changes: (will be filled in by the loop)
-- Project phase: README describes this as a v0.1.0 public-flip candidate with CLI, bundled content, registry, runner, and NLE handoff in active alpha.
