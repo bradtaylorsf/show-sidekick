@@ -45,6 +45,8 @@ describe("tool discovery", () => {
     expect(registry.get("screen_recorder")?.capability).toBe("screen_capture");
     expect(registry.get("screen_capture_selector")?.capability).toBe("screen_capture");
     expect(registry.get("playwright_recording")?.capability).toBe("screen_capture");
+    expect(registry.get("deck_ingest")?.capability).toBe("deck_ingest");
+    expect(registry.get("deck_extract")?.capability).toBe("deck_extract");
     expect(registry.get("tts_selector")?.capability).toBe("tts");
     expect(registry.get("image_selector")?.capability).toBe("image_generation");
     expect(registry.get("video_selector")?.capability).toBe("image_to_video");

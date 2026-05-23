@@ -205,6 +205,28 @@ describe("bundled Batch 8.A skills", () => {
   });
 });
 
+describe("bundled presentation-demo pipeline skills", () => {
+  it("ships director skills with frontmatter names", async () => {
+    const presentationDir = path.join(bundledSkillsDir, "pipelines", "presentation-demo");
+    const expected = [
+      ["executive-producer.md", "presentation-demo-executive-producer"],
+      ["idea-director.md", "presentation-demo-idea-director"],
+      ["capture-director.md", "presentation-demo-capture-director"],
+      ["script-director.md", "presentation-demo-script-director"],
+      ["cuesheet-director.md", "presentation-demo-cuesheet-director"],
+      ["scene-director.md", "presentation-demo-scene-director"],
+      ["asset-director.md", "presentation-demo-asset-director"],
+      ["edit-director.md", "presentation-demo-edit-director"],
+      ["compose-director.md", "presentation-demo-compose-director"],
+      ["publish-director.md", "presentation-demo-publish-director"],
+    ] as const;
+
+    for (const [file, name] of expected) {
+      await expectFrontmatterName(path.join(presentationDir, file), name);
+    }
+  });
+});
+
 describe("bundled Batch 8.B Layer 3 agent skills", () => {
   it("ships the expected agent skill inventory with frontmatter", async () => {
     for (const name of agentSkills) {

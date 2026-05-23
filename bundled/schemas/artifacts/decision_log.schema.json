@@ -50,6 +50,16 @@
           },
           "provider": {
             "type": "string"
+          },
+          "voice_id": {
+            "type": "string"
+          },
+          "voice_name": {
+            "type": "string"
+          },
+          "cost_usd": {
+            "type": "number",
+            "minimum": 0
           }
         },
         "required": []

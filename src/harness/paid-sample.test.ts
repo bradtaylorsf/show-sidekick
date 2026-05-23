@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { readCheckpoint } from "../checkpoints/index.js";
+import { readCheckpoint, readState } from "../checkpoints/index.js";
 import { readCostLog } from "../cost/tracker.js";
 import { readDecisionLog } from "../decisions/store.js";
 import type { PipelineManifest, Stage } from "../pipelines/index.js";
@@ -77,6 +77,80 @@ describe("paid sample dispatcher", () => {
           },
         },
       },
+    });
+  });
+
+  it("requires presentation-demo script approval before TTS and records narration timing choices", async () => {
+    const root = await scratchProject();
+    const show = loadedShow(root);
+    const episode: LoadedEpisode = {
+      ...loadedEpisode(show),
+      pipeline: "presentation-demo",
+      inputs: {
+        narration: "Slide one sets up the product. Slide two shows the workflow.",
+        voice_id: "deck-voice-123",
+        voice_name: "Boardroom narrator",
+      },
+    };
+    const ttsInputs: unknown[] = [];
+    const promptActions = [{ action: "revise" as const, note: "make the second slide more concrete" }, "approve" as const];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline: presentationDemoPipeline(),
+      pipelineName: "presentation-demo",
+      registry: new Registry({ tools: paidSampleTools(root, { onTtsInput: (input) => ttsInputs.push(input) }) }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: false, provider_profile: "paid-demo", budget_usd: 5 },
+      io: captureIo().io,
+      json: true,
+      prompt: async () => {
+        expect(ttsInputs).toHaveLength(0);
+        return promptActions.shift() ?? "approve";
+      },
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(ttsInputs).toEqual([
+      expect.objectContaining({
+        text: expect.stringContaining("Slide one sets up the product"),
+        voice_id: "deck-voice-123",
+        voice_name: "Boardroom narrator",
+      }),
+    ]);
+    await expect(readDecisionLog({ show: "show", episode: "episode" }, { root })).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: "voice_selection",
+          picked: "elevenlabs_tts",
+          scope: expect.objectContaining({
+            capability: "tts",
+            provider: "elevenlabs",
+            voice_id: "deck-voice-123",
+            voice_name: "Boardroom narrator",
+            cost_usd: 0.0003,
+          }),
+          options_considered: expect.arrayContaining([
+            expect.objectContaining({ label: "elevenlabs_tts", rejected_because: null }),
+            expect.objectContaining({ label: "openai_tts", rejected_because: expect.any(String) }),
+          ]),
+        }),
+      ]),
+    );
+    await expect(readCostLog(root, "show", "episode")).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ tool: "elevenlabs_tts", provider: "elevenlabs", usd: 0.0003, mode: "sample" }),
+      ]),
+    );
+    await expect(readCheckpoint(root, "show", "episode", "script")).resolves.toMatchObject({
+      status: "completed",
+    });
+    await expect(readState(root, "show", "episode")).resolves.toMatchObject({
+      revision_notes: { script: ["make the second slide more concrete"] },
     });
   });
 
@@ -686,6 +760,24 @@ function pipelineManifest(): PipelineManifest {
   };
 }
 
+function presentationDemoPipeline(): PipelineManifest {
+  return {
+    ...pipelineManifest(),
+    slug: "presentation-demo",
+    stages: [
+      { ...stage("script", "script"), human_approval: "required" },
+      stage("assets", "asset_manifest"),
+      stage("edit", "edit_decisions"),
+      stage("compose", "render_report"),
+    ],
+    orchestration: {
+      ...pipelineManifest().orchestration,
+      max_revisions_per_stage: 1,
+      max_send_backs: 1,
+    },
+  };
+}
+
 function stage(slug: string, produces: string): Stage {
   return {
     slug,
@@ -716,6 +808,7 @@ function paidSampleTools(
     onFfmpegInput?: (input: unknown) => void;
     onHiggsfieldInput?: (input: unknown) => void;
     onOpenAiInput?: (input: unknown) => void;
+    onTtsInput?: (input: unknown) => void;
     onVideoComposeInput?: (input: unknown) => void;
   } = {},
 ): Tool[] {
@@ -738,9 +831,18 @@ function paidSampleTools(
       await writeFixture(imagePath, "image");
       return { image_path: imagePath, provider: "openai", model: "gpt-image-2", cost_usd: 0.04 };
     }),
-    fixtureTool("elevenlabs_tts", "tts", "elevenlabs", 0.0003, async () => {
+    fixtureTool("elevenlabs_tts", "tts", "elevenlabs", 0.0003, async (input) => {
+      options.onTtsInput?.(input);
       await writeFixture(audioPath, "audio");
-      return { audio_path: audioPath, provider: "elevenlabs", model: "eleven_multilingual_v2", cost_usd: 0.0003 };
+      const record = input as { voice_id?: string; voice_name?: string };
+      return {
+        audio_path: audioPath,
+        provider: "elevenlabs",
+        model: "eleven_multilingual_v2",
+        voice: record.voice_id,
+        voice_name: record.voice_name,
+        cost_usd: 0.0003,
+      };
     }),
     fixtureTool("higgsfield", "image_to_video", "higgsfield", 0.3, async (input) => {
       options.onHiggsfieldInput?.(input);

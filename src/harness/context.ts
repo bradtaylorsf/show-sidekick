@@ -88,17 +88,29 @@ export async function loadPriorArtifacts(
 ): Promise<Record<string, unknown>> {
   const showSlug = slugOf(show);
   const episodeSlug = slugOf(episode);
-  const pipelineStageSlugs = new Set(pipeline.stages.map((stage) => stage.slug));
+  const stagesBySlug = new Map(pipeline.stages.map((stage) => [stage.slug, stage]));
   const artifacts: Record<string, unknown> = {};
 
   for (const stageSlug of await listCheckpoints(projectRoot, showSlug, episodeSlug)) {
-    if (!pipelineStageSlugs.has(stageSlug)) {
+    const stage = stagesBySlug.get(stageSlug);
+    if (stage === undefined) {
       continue;
     }
 
     const checkpoint = await readCheckpoint(projectRoot, showSlug, episodeSlug, stageSlug);
     if (checkpoint.status === "completed" || checkpoint.status === "awaiting_human") {
       artifacts[stageSlug] = checkpoint.artifact;
+      if (stage.produces.trim() !== "") {
+        artifacts[stage.produces] = checkpoint.artifact;
+      }
+      if (isRecord(checkpoint.artifact)) {
+        for (const artifactName of stage.produces_artifacts) {
+          const nested = checkpoint.artifact[artifactName];
+          if (nested !== undefined) {
+            artifacts[artifactName] = nested;
+          }
+        }
+      }
     }
   }
 
@@ -107,4 +119,8 @@ export async function loadPriorArtifacts(
 
 function slugOf(value: SlugRef): string {
   return typeof value === "string" ? value : value.slug;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

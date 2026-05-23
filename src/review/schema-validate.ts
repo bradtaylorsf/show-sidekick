@@ -6,6 +6,7 @@ import { BriefSchema } from "../artifacts/brief.js";
 import { CharacterDesignSchema } from "../artifacts/character-design.js";
 import { CharacterQaReportSchema } from "../artifacts/character-qa-report.js";
 import { CostLogSchema } from "../artifacts/cost-log.js";
+import { DeckManifestSchema } from "../artifacts/deck-manifest.js";
 import { DecisionLogSchema } from "../artifacts/decision-log.js";
 import { EditDecisionsSchema } from "../artifacts/edit-decisions.js";
 import { EndTagPlanSchema } from "../artifacts/end-tag-plan.js";
@@ -33,6 +34,7 @@ const ARTIFACT_SCHEMAS = {
   character_qa_report: CharacterQaReportSchema,
   compose: RenderReportSchema,
   cost_log: CostLogSchema,
+  deck_manifest: DeckManifestSchema,
   decision_log: DecisionLogSchema,
   edit: EditDecisionsSchema,
   edit_decisions: EditDecisionsSchema,

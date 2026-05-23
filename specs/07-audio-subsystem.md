@@ -17,6 +17,8 @@ Each episode runs with exactly one master clock:
 
 The pipeline declares the master clock (`master_clock: audio | voiceover | action_timeline | none`). Single master clock per episode in v1. Hybrid content (music underscore + narration) uses VO as master and treats music as accompaniment that adapts to VO structure.
 
+For `presentation-demo`, `master_clock: voiceover` is mandatory. The deck artifact supplies slide identity and source text, but it does not define timing. The script stage drafts slide-aware narration from speaker notes, slide text/OCR, and operator notes; human approval of that script gates TTS. After approved narration is generated through the registry-selected TTS provider, the cuesheet stage timestamps the audio and attaches slide references to scene anchors so scene planning, captions, edit decisions, and compose all align to the voiceover.
+
 ## The Cuesheet
 
 The canonical artifact of the audio subsystem. Lives at `projects/<show>/<episode>/cuesheet.json`.

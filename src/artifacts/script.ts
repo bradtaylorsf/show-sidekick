@@ -7,6 +7,10 @@ export const DialogueLineSchema = z.object({
   line: z.string(),
 });
 
+export const ScriptSlideIdSchema = z.string().regex(/^slide_\d{4}$/);
+
+export const ScriptVoSourceSchema = z.enum(["pptx_notes", "slide_text", "ocr", "operator_notes"]);
+
 export const ScriptSchema = z.object({
   sections: z.array(
     z.object({
@@ -22,6 +26,9 @@ export const ScriptSchema = z.object({
       narration: z.string().optional(),
       dialogue: z.array(DialogueLineSchema).default([]),
       enhancement_cues: z.array(z.string()).default([]),
+      slide_ids: z.array(ScriptSlideIdSchema).min(1).optional(),
+      slide_range: z.tuple([ScriptSlideIdSchema, ScriptSlideIdSchema]).optional(),
+      vo_source: ScriptVoSourceSchema.optional(),
     }),
   ),
 });

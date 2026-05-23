@@ -10,6 +10,7 @@ import { FINAL_REVIEW_THRESHOLDS } from "./final-review.js";
 import { BRANDING } from "../branding.js";
 
 const stringJson = { type: "string" } as const satisfies JsonSchema;
+const nonEmptyStringJson = { type: "string", minLength: 1 } as const satisfies JsonSchema;
 const booleanJson = { type: "boolean" } as const satisfies JsonSchema;
 const numberJson = { type: "number" } as const satisfies JsonSchema;
 const nonNegativeNumberJson = { type: "number", minimum: 0 } as const satisfies JsonSchema;
@@ -238,6 +239,66 @@ export const CaptureManifestJsonSchema = objectJson(
   ["screenshots"],
 );
 
+const deckFileTypeJson = { type: "string", enum: ["pdf", "pptx", "ppt"] } as const satisfies JsonSchema;
+const deckSourceKindJson = { type: "string", enum: ["pdf", "pptx", "ppt", "download"] } as const satisfies JsonSchema;
+const deckSlideIdJson = { type: "string", pattern: "^slide_\\d{4}$" } as const satisfies JsonSchema;
+const deckSlideIdArrayJson = { type: "array", minItems: 1, items: deckSlideIdJson } as const satisfies JsonSchema;
+
+export const DeckManifestJsonSchema = objectJson(
+  "deck_manifest",
+  {
+    source: objectJson(
+      "deck_manifest.source",
+      {
+        kind: deckSourceKindJson,
+        file_type: deckFileTypeJson,
+        source_path: nonEmptyStringJson,
+        original_url: stringJson,
+        sha256: { type: "string", pattern: "^[a-f0-9]{64}$" },
+        byte_size: nonNegativeIntegerJson,
+      },
+      ["kind", "file_type", "source_path", "sha256", "byte_size"],
+    ),
+    slides: {
+      type: "array",
+      minItems: 1,
+      items: objectJson(
+        "deck_manifest.slide",
+        {
+          id: deckSlideIdJson,
+          order: { type: "integer", exclusiveMinimum: 0 },
+          image_path: nonEmptyStringJson,
+          image: resolutionJson,
+          text: stringJson,
+          text_source: { type: "string", enum: ["native", "ocr", "none", "failed"] },
+          speaker_notes: stringJson,
+          notes_source: { type: "string", enum: ["pptx_notes", "operator", "absent"] },
+          warnings: stringArrayJson,
+          source: objectJson(
+            "deck_manifest.slide.source",
+            {
+              slide_number: { type: "integer", exclusiveMinimum: 0 },
+              page_number: { type: "integer", exclusiveMinimum: 0 },
+            },
+            [],
+          ),
+        },
+        ["id", "order", "image_path", "image", "text_source", "notes_source"],
+      ),
+    },
+    extraction: objectJson(
+      "deck_manifest.extraction",
+      {
+        text_engine: nonEmptyStringJson,
+        notes_engine: nonEmptyStringJson,
+        warnings: stringArrayJson,
+      },
+      ["text_engine", "notes_engine"],
+    ),
+  },
+  ["source", "slides", "extraction"],
+);
+
 const cuesheetSceneAnchorJson = objectJson(
   "cuesheet.scene_anchor",
   {
@@ -245,6 +306,7 @@ const cuesheetSceneAnchorJson = objectJson(
     start_s: nonNegativeNumberJson,
     end_s: nonNegativeNumberJson,
     snapped_to: { type: "string", enum: ["section_start", "beat", "downbeat", "word", "climax", "manual"] },
+    slide_ids: deckSlideIdArrayJson,
     source: objectJson(
       "cuesheet.scene_anchor.source",
       {
@@ -320,6 +382,9 @@ export const DecisionLogJsonSchema = withMeta("decision_log", {
         {
           capability: stringJson,
           provider: stringJson,
+          voice_id: stringJson,
+          voice_name: stringJson,
+          cost_usd: nonNegativeNumberJson,
         },
         [],
       ),
@@ -659,6 +724,7 @@ export const ArtifactJsonSchemas = {
   character_qa_report: CharacterQaReportJsonSchema,
   cost_log: CostLogJsonSchema,
   cuesheet: CuesheetJsonSchema,
+  deck_manifest: DeckManifestJsonSchema,
   decision_log: DecisionLogJsonSchema,
   edit_decisions: EditDecisionsJsonSchema,
   final_review: FinalReviewJsonSchema,

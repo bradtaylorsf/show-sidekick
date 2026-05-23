@@ -261,6 +261,29 @@ describe("TTS provider tools", () => {
     }
   });
 
+  it("falls back to the next configured TTS lane when the preferred provider is unavailable", async () => {
+    const registry = new Registry({ tools: [elevenlabsTts, openaiTts, googleTts, piperTts, doubaoTts] });
+    const originalIsAvailable = new Map(providers.map((spec) => [spec.tool.name, spec.tool.isAvailable]));
+
+    try {
+      for (const spec of providers) {
+        spec.tool.isAvailable = async () =>
+          spec.tool.name === "openai_tts" ? { available: true } : { available: false, reason: "missing env", fix: "env" };
+      }
+
+      await expect(registry.select("tts", { prefer: ["elevenlabs_tts", "openai_tts", "google_tts"] })).resolves.toMatchObject({
+        name: "openai_tts",
+      });
+    } finally {
+      for (const spec of providers) {
+        const original = originalIsAvailable.get(spec.tool.name);
+        if (original) {
+          spec.tool.isAvailable = original;
+        }
+      }
+    }
+  });
+
   it("surfaces non-2xx provider responses with the response body", async () => {
     stubTtsEnv();
     vi.stubGlobal(

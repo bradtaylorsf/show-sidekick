@@ -21,9 +21,12 @@ export type JsonSchema = {
   readonly required?: readonly string[];
   readonly items?: JsonSchema;
   readonly minItems?: number;
+  readonly maxItems?: number;
   readonly enum?: readonly unknown[];
   readonly minimum?: number;
   readonly exclusiveMinimum?: number;
+  readonly minLength?: number;
+  readonly pattern?: string;
   readonly additionalProperties?: boolean | JsonSchema;
   readonly anyOf?: readonly JsonSchema[];
 };
@@ -35,6 +38,14 @@ const nonNegativeNumberJson = { type: "number", minimum: 0 } as const satisfies 
 const positiveNumberJson = { type: "number", exclusiveMinimum: 0 } as const satisfies JsonSchema;
 const nonNegativeIntegerJson = { type: "integer", minimum: 0 } as const satisfies JsonSchema;
 const stringArrayJson = { type: "array", items: stringJson } as const satisfies JsonSchema;
+const deckSlideIdJson = { type: "string", pattern: "^slide_\\d{4}$" } as const satisfies JsonSchema;
+const deckSlideIdArrayJson = { type: "array", minItems: 1, items: deckSlideIdJson } as const satisfies JsonSchema;
+const deckSlideRangeJson = {
+  type: "array",
+  minItems: 2,
+  maxItems: 2,
+  items: deckSlideIdJson,
+} as const satisfies JsonSchema;
 const timingSourceJson = {
   type: "string",
   enum: ["lyric", "word", "beat", "section", "climax", "manual", "audio_energy"],
@@ -173,6 +184,9 @@ export const ScriptJsonSchema = objectJson(
           narration: stringJson,
           dialogue: { type: "array", items: dialogueLineJson },
           enhancement_cues: stringArrayJson,
+          slide_ids: deckSlideIdArrayJson,
+          slide_range: deckSlideRangeJson,
+          vo_source: { type: "string", enum: ["pptx_notes", "slide_text", "ocr", "operator_notes"] },
         },
         ["slug", "start_s", "end_s"],
       ),

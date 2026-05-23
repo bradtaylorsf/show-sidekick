@@ -60,6 +60,7 @@
       "start_s": 0,
       "end_s": 5,
       "snapped_to": "section_start",
+      "slide_ids": ["slide_0001"],
       "source": {
         "section": "intro",
         "lyric_line_id": "line-1"

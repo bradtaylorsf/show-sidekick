@@ -927,6 +927,76 @@ describe("bundled pipeline manifests", () => {
     );
   });
 
+  it("ships the presentation-demo manifest with nine directors plus an executive producer", async () => {
+    const manifest = await loadBundledManifest("presentation-demo");
+    const presentationDemoSkillsDir = path.join(bundledPipelineSkillsDir, "presentation-demo");
+    const directorFiles = [
+      "idea-director.md",
+      "capture-director.md",
+      "script-director.md",
+      "cuesheet-director.md",
+      "scene-director.md",
+      "asset-director.md",
+      "edit-director.md",
+      "compose-director.md",
+      "publish-director.md",
+    ];
+
+    expect(manifest).toMatchObject({
+      slug: "presentation-demo",
+      status: "production",
+      master_clock: "voiceover",
+      stage_order: "manifest",
+      orchestration: {
+        mode: "executive-producer",
+        skill: "pipelines/presentation-demo/executive-producer.md",
+        budget_default_usd: 2,
+        max_revisions_per_stage: 3,
+        max_send_backs: 2,
+        max_wall_time_minutes: 20,
+      },
+    });
+    expect(manifest.stages.map((stage) => stage.slug)).toEqual([
+      "idea",
+      "capture",
+      "script",
+      "cuesheet",
+      "scene_plan",
+      "assets",
+      "edit",
+      "compose",
+      "publish",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "capture")?.tools_available).toEqual([
+      "deck_ingest",
+      "deck_extract",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "script")?.human_approval).toBe("required");
+    expect(manifest.stages.find((stage) => stage.slug === "script")?.required_artifacts_in).toEqual([
+      "brief",
+      "deck_manifest",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "cuesheet")?.audio_sync).toBe("build");
+    expect(manifest.stages.find((stage) => stage.slug === "compose")?.tools_available).toContain("remotion");
+    expect(manifest.required_skills).toEqual(
+      expect.arrayContaining([
+        "pipelines/presentation-demo/executive-producer.md",
+        ...directorFiles.map((file) => `pipelines/presentation-demo/${file}`),
+        "meta/reviewer",
+        "meta/checkpoint-protocol",
+      ]),
+    );
+
+    for (const fileName of directorFiles) {
+      expect(existsSync(path.join(presentationDemoSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
+    }
+    expect(existsSync(path.join(presentationDemoSkillsDir, "executive-producer.md"))).toBe(true);
+    expect(existsSync(path.join(presentationDemoSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+    await expect(readFile(path.join(presentationDemoSkillsDir, "script-director.md"), "utf8")).resolves.toContain(
+      "prefer speaker notes over slide text/OCR",
+    );
+  });
+
   it("resolves every declared pipeline director and executive-producer skill", async () => {
     const manifests = await loadAllBundledManifests();
     const missing: string[] = [];

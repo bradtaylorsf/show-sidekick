@@ -26,6 +26,7 @@ Export reads from existing pipeline artifacts — no extra generation. The artif
 | `cuesheet` | Word-level timing for caption tracks, beat grid for audio sync |
 | `asset_manifest` | Absolute paths to images, video clips, audio segments, music track |
 | `render_report` | Output video path (for embedding in the export package) |
+| `deck_manifest` | Slide IDs, source provenance, slide screenshots, text/notes extraction status for deck-led demos |
 
 ## Output package shape
 
@@ -49,7 +50,7 @@ Every export also writes `projects/<show>/<episode>/publish_log.json`, recording
 
 ## Pipeline declaration
 
-Pipelines declare which export targets they support. Music videos and trailers export cleanly to all targets; abstract animation may only support EDL.
+Pipelines declare which export targets they support. Music videos and trailers export cleanly to all targets; abstract animation may only support EDL. The `presentation-demo` bundled pipeline supports `premiere`, `davinci`, `capcut`, and `edl`; its handoff must include deck-source provenance and slide IDs so an editor can trace every animated beat back to the source deck.
 
 ```yaml
 # pipelines/music-video.yaml
@@ -74,3 +75,7 @@ export:
 - **CapCut draft**: CapCut's JSON draft format. Includes cuts, assets, basic captions. Most useful for mobile-first creators editing on iPad or phone.
 - **DaVinci XML**: Resolve imports the same FCP7 XML as Premiere, with slightly better metadata handling. Use this target when the downstream colorist works in DaVinci.
 - **EDL (CMX 3600)**: Lowest common denominator. Works in every NLE. Loses captions and clip names but keeps timing perfectly.
+
+## Presentation-demo review and export expectations
+
+Deck-led exports are rough-cut animated demos, not slide decks. Export validation should reject or flag a render that merely displays one static slide after another without motion-led explanation. The handoff package should include the rendered video, narration audio, captions/word timings, editable scene assets where available, `deck_manifest`, `capture_manifest` when emitted, `edit_decisions`, `render_report`, and a README that names the source deck and known extraction warnings.

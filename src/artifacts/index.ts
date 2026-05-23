@@ -8,6 +8,7 @@ export * from "./character-animation-validators.js";
 export * from "./character-qa-report.js";
 export * from "./cost-log.js";
 export * from "./cuesheet.js";
+export * from "./deck-manifest.js";
 export * from "./creative-json-schema.js";
 export * from "./json-schema.js";
 export * from "./decision-log.js";

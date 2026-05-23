@@ -756,6 +756,70 @@ describe("Runner", () => {
     expect(dispatched).toEqual(["idea", "script"]);
   });
 
+  it("does not invoke TTS-capable stages while script approval is pending", async () => {
+    const root = await scratchProject();
+    const pipeline = pipelineManifest([
+      stage("script", { produces: "script", human_approval: "required" }),
+      stage("assets", { produces: "asset_manifest", tools_available: ["tts_selector"] }),
+    ]);
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+    const dispatched: string[] = [];
+    const ttsCalls: unknown[] = [];
+    const ttsTool = defineTool({
+      name: "fixture_tts",
+      capability: "tts",
+      provider: "fixture",
+      status: "production",
+      integration: { kind: "library", package: "fixture", install: "none" },
+      best_for: "approval gate test fixture",
+      input: z.unknown(),
+      output: z.unknown(),
+      async isAvailable() {
+        return { available: true };
+      },
+      async execute(input) {
+        ttsCalls.push(input);
+        return { audio_path: path.join(root, "projects", "show", "episode", "audio", "narration.wav"), cost_usd: 0 };
+      },
+    });
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "presentation-demo",
+      registry: new Registry({ tools: [ttsTool] }),
+      dispatcher: async (ctx) => {
+        dispatched.push(ctx.stage.slug);
+        if (ctx.stage.slug === "assets") {
+          const tts = await ctx.registry.select("tts");
+          await tts.execute({ text: "approved narration" }, {
+            projectRoot: root,
+            execution: { mode: "non_interactive" },
+            logger: {
+              info: () => undefined,
+              warn: () => undefined,
+              error: () => undefined,
+              debug: () => undefined,
+              event: () => undefined,
+            },
+          });
+        }
+        return ctx.stage.slug === "script" ? stageResult(scriptArtifact(), 0.1) : stageResult({ assets: [] }, 0.1);
+      },
+      reviewer: passReviewer,
+      runOptions: { sample: false, nonInteractive: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("awaiting_human");
+    expect(dispatched).toEqual(["script"]);
+    expect(ttsCalls).toEqual([]);
+  });
+
   it("shows projected remaining sample and full estimated costs in approval blocks", async () => {
     const root = await scratchProject();
     const pipeline = pipelineManifest([

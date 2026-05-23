@@ -100,6 +100,18 @@ Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_*` environment pr
 |---|---|---|---|---|---|---|
 | `corpus_builder` | beta | library | show-sidekick | none | indexing local clip and image directories for visual similarity search | not declared |
 
+## deck_extract
+
+| name | status | integration | provider/binary | auth | best_for/blurb | cost |
+|---|---|---|---|---|---|---|
+| `deck_extract` | production | library | node:zlib | none | Extracting slide identity, screenshot image files, text, speaker notes, provenance, and capture compatibility from an ingested deck | $0 / call |
+
+## deck_ingest
+
+| name | status | integration | provider/binary | auth | best_for/blurb | cost |
+|---|---|---|---|---|---|---|
+| `deck_ingest` | production | library | node:fs | none | Normalizing local PDF/PPT/PPTX files or direct downloadable deck URLs into project-local working files with provenance; authenticated Google Slides/Microsoft 365 links fail clearly in v1 | $0 / call |
+
 ## eye_enhance
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |

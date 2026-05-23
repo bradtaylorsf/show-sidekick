@@ -779,13 +779,20 @@ async function buildAssets(
   state.imagePath = imagePaths[0];
   state.clipPath = clipPaths[0];
 
+  let narrationProviderForAsset: string | undefined;
+  let narrationModelForAsset: string | undefined;
+  let narrationCostForAsset: number | undefined;
+
   if (ctx.pipeline.master_clock === "voiceover" || hasNarrationInput(ctx)) {
     const tts = await preferredTtsTool(ctx);
     const text = await narrationText(ctx);
+    const selectedVoiceId = voiceId(ctx);
+    const selectedVoiceName = voiceName(ctx);
     const ttsResult = await tts.execute(
       {
         text,
-        voice_id: voiceId(ctx),
+        voice_id: selectedVoiceId,
+        ...(selectedVoiceName === undefined ? {} : { voice_name: selectedVoiceName }),
         format: tts.name === "elevenlabs_tts" ? "mp3_44100_128" : "mp3",
       },
       toolContext(ctx, {
@@ -796,16 +803,22 @@ async function buildAssets(
     );
     const audio = recordValue(ttsResult);
     state.narrationPath = await episodeMediaPath(ctx, stringValue(audio?.audio_path), "audio", "narration.mp3");
+    const narrationProvider = stringValue(audio?.provider) ?? tts.provider;
+    const narrationModel = stringValue(audio?.model) ?? (tts.name === "elevenlabs_tts" ? "eleven_multilingual_v2" : "gpt-4o-mini-tts");
+    const narrationCostUsd = numberValue(audio?.cost_usd) ?? 0;
+    narrationProviderForAsset = narrationProvider;
+    narrationModelForAsset = narrationModel;
+    narrationCostForAsset = narrationCostUsd;
     costEntries.push(
       costEntry(
         tts.name,
-        tts.provider,
-        stringValue(audio?.model) ?? (tts.name === "elevenlabs_tts" ? "eleven_multilingual_v2" : "gpt-4o-mini-tts"),
+        narrationProvider,
+        narrationModel,
         1,
-        numberValue(audio?.cost_usd) ?? 0,
+        narrationCostUsd,
       ),
     );
-    decisions.push(voiceDecision(ctx, tts, options));
+    decisions.push(voiceDecision(ctx, tts, options, { voiceId: selectedVoiceId, voiceName: selectedVoiceName, costUsd: narrationCostUsd }));
   }
 
   decisions.push(
@@ -826,10 +839,10 @@ async function buildAssets(
               id: "paid_sample_narration",
               kind: "audio",
               path: state.narrationPath,
-              provider: "elevenlabs",
-              model: "eleven_multilingual_v2",
+              provider: narrationProviderForAsset ?? "unknown",
+              model: narrationModelForAsset ?? "unknown",
               prompt: "Narration generated from episode script input.",
-              cost_usd: 0,
+              cost_usd: narrationCostForAsset ?? 0,
             },
           ]),
     ],
@@ -1649,6 +1662,11 @@ function voiceId(ctx: StageContext): string {
   return typeof value === "string" && value.trim().length > 0 ? value : "21m00Tcm4TlvDq8ikWAM";
 }
 
+function voiceName(ctx: StageContext): string | undefined {
+  const value = ctx.episode.inputs.voice_name ?? ctx.episode.inputs.voice_preference;
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
 function assetCount(assetManifest: unknown): number {
   const assets = recordValue(assetManifest)?.assets;
   return Array.isArray(assets) ? assets.length : 0;
@@ -1741,8 +1759,38 @@ function modelDecision(
   };
 }
 
-function voiceDecision(ctx: StageContext, tool: Tool, options: PaidSampleDispatcherOptions): DecisionEntry {
-  return decision(ctx, "script", "voice_selection", tool.name, `${tool.name} is the configured narration lane for the paid sample.`, options);
+function voiceDecision(
+  ctx: StageContext,
+  tool: Tool,
+  options: PaidSampleDispatcherOptions,
+  voice: { voiceId: string; voiceName?: string; costUsd: number },
+): DecisionEntry {
+  return {
+    ...decision(
+      ctx,
+      "script",
+      "voice_selection",
+      tool.name,
+      `${tool.name} is the configured narration lane for the paid sample with voice_id ${voice.voiceId}.`,
+      options,
+    ),
+    scope: {
+      capability: "tts",
+      provider: tool.provider,
+      voice_id: voice.voiceId,
+      ...(voice.voiceName === undefined ? {} : { voice_name: voice.voiceName }),
+      cost_usd: voice.costUsd,
+    },
+    options_considered: voiceOptionsConsidered(tool.name),
+  };
+}
+
+function voiceOptionsConsidered(picked: string): DecisionEntry["options_considered"] {
+  return ["elevenlabs_tts", "openai_tts", "google_tts", "piper_tts"].map((label) => ({
+    label,
+    rejected_because: label === picked ? null : "not selected for this configured narration lane",
+    notes: label === picked ? "Selected through registry TTS provider selection." : null,
+  }));
 }
 
 function renderRuntimeDecision(ctx: StageContext, stage: string, options: PaidSampleDispatcherOptions): DecisionEntry {

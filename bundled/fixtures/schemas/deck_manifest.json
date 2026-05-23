@@ -1,0 +1,53 @@
+{
+  "source": {
+    "kind": "pptx",
+    "file_type": "pptx",
+    "source_path": "projects/demo/episode/source/deck.pptx",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "byte_size": 2048
+  },
+  "slides": [
+    {
+      "id": "slide_0001",
+      "order": 1,
+      "image_path": "projects/demo/episode/slides/slide_0001.png",
+      "image": {
+        "width": 1280,
+        "height": 720
+      },
+      "text": "Welcome to the product demo",
+      "text_source": "native",
+      "speaker_notes": "Open with the customer problem.",
+      "notes_source": "pptx_notes",
+      "warnings": [],
+      "source": {
+        "slide_number": 1
+      }
+    },
+    {
+      "id": "slide_0002",
+      "order": 2,
+      "image_path": "projects/demo/episode/slides/slide_0002.png",
+      "image": {
+        "width": 1280,
+        "height": 720
+      },
+      "text": "OCR fallback copy",
+      "text_source": "ocr",
+      "notes_source": "absent",
+      "warnings": [
+        "ocr_fallback_used"
+      ],
+      "source": {
+        "slide_number": 2
+      }
+    }
+  ],
+  "extraction": {
+    "text_engine": "pptx_xml",
+    "notes_engine": "pptx_notes_xml",
+    "warnings": [
+      "slide_0002_text_ocr_fallback"
+    ]
+  }
+}

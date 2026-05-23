@@ -141,6 +141,7 @@ Approved bundled manifest slugs:
 - `music-video`
 - `news-song`
 - `podcast-repurpose`
+- `presentation-demo`
 - `screen-demo`
 - `talking-head`
 
@@ -149,6 +150,10 @@ Test-only lane:
 - `framework-smoke`
 
 `SHOW_ONLY_DENYLIST` is currently empty because personal/branded concepts are not shipped as bundled starters or playbooks. If a future bespoke benchmark is kept for internal use, keep it outside the public seed catalog unless it is generalized and receives a real pipeline manifest or starter row.
+
+### Presentation Demo Lane
+
+`presentation-demo` is classified as `core_default` with `defaultStarterTarget: true`; the generalized starter lands separately. Its required episode input is `inputs.deck_source` plus optional `inputs.operator_notes`, voice preference, duration, and aspect overrides. The expected artifacts are `deck_manifest` as the canonical slide contract, optional `capture_manifest` for screenshot compatibility, reviewable `script`, voiceover `cuesheet`, `scene_plan`, `asset_manifest`, `edit_decisions`, `render_report`, `final_review`, and `publish_log`. Export targets are Premiere, DaVinci, CapCut, and EDL.
 
 ### Runnable Demo Matrix
 

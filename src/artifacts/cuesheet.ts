@@ -53,11 +53,14 @@ export const ClimaxPointSchema = z.object({
   source: z.enum(["algorithm", "agent", "manual"]),
 });
 
+export const CuesheetSlideIdSchema = z.string().regex(/^slide_\d{4}$/);
+
 export const SceneAnchorSchema = z.object({
   scene_id: z.string(),
   start_s: z.number().nonnegative(),
   end_s: z.number().nonnegative(),
   snapped_to: z.enum(["section_start", "beat", "downbeat", "word", "climax", "manual"]),
+  slide_ids: z.array(CuesheetSlideIdSchema).min(1).optional(),
   source: z.object({
     section: z.string().optional(),
     lyric_line_id: z.string().optional(),

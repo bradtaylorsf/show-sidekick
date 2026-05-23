@@ -114,7 +114,41 @@ describe("stage context", () => {
 
     await expect(loadPriorArtifacts(root, show, episode, pipeline)).resolves.toEqual({
       idea: { concept: "one" },
+      idea_artifact: { concept: "one" },
       script: { beats: 4 },
+      script_artifact: { beats: 4 },
+    });
+  });
+
+  it("loads canonical artifact names and nested produced artifacts from checkpoints", async () => {
+    const root = await scratchProject();
+    const show = loadedShow(root);
+    const episode = loadedEpisode(show);
+    const pipeline: PipelineManifest = {
+      ...pipelineManifest(),
+      stages: [
+        {
+          ...stage("capture"),
+          produces: "deck_manifest",
+          produces_artifacts: ["deck_manifest", "capture_manifest"],
+        },
+      ],
+    };
+    const deckManifest = { slides: [{ id: "slide_0001" }] };
+    const captureManifest = { screenshots: [{ story_id: "slide_0001" }] };
+
+    await writeCheckpoint(
+      root,
+      show.slug,
+      episode.slug,
+      "capture",
+      checkpoint("capture", "completed", { deck_manifest: deckManifest, capture_manifest: captureManifest }),
+    );
+
+    await expect(loadPriorArtifacts(root, show, episode, pipeline)).resolves.toEqual({
+      capture: { deck_manifest: deckManifest, capture_manifest: captureManifest },
+      deck_manifest: deckManifest,
+      capture_manifest: captureManifest,
     });
   });
 });

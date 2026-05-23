@@ -31,6 +31,9 @@ export const DecisionEntrySchema = z.object({
     .object({
       capability: z.string().optional(),
       provider: z.string().optional(),
+      voice_id: z.string().optional(),
+      voice_name: z.string().optional(),
+      cost_usd: z.number().nonnegative().optional(),
     })
     .optional(),
   options_considered: z

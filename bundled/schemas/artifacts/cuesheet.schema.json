@@ -94,6 +94,14 @@
               "manual"
             ]
           },
+          "slide_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^slide_\\d{4}$"
+            }
+          },
           "source": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$id": "show-sidekick://artifacts/cuesheet.scene_anchor.source",

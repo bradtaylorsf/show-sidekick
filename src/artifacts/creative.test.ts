@@ -158,6 +158,8 @@ describe("creative artifact schemas", () => {
           start_s: 0,
           end_s: 10,
           narration: "Here is the setup.",
+          slide_ids: ["slide_0001"],
+          vo_source: "pptx_notes",
           dialogue: [{ character: "host", line: "Watch this." }],
           enhancement_cues: ["cut on beat"],
         },
@@ -165,6 +167,38 @@ describe("creative artifact schemas", () => {
     });
 
     expect(script.sections[0]?.dialogue).toHaveLength(1);
+    expect(script.sections[0]?.slide_ids).toEqual(["slide_0001"]);
+    expect(script.sections[0]?.vo_source).toBe("pptx_notes");
+  });
+
+  it("keeps deck-aware script fields additive and validates slide IDs", () => {
+    expect(
+      ScriptSchema.parse({
+        sections: [
+          {
+            slug: "legacy",
+            start_s: 0,
+            end_s: 4,
+            narration: "Existing scripts do not need deck metadata.",
+          },
+        ],
+      }).sections[0]?.slide_ids,
+    ).toBeUndefined();
+
+    expect(() =>
+      ScriptSchema.parse({
+        sections: [
+          {
+            slug: "bad-slide",
+            start_s: 0,
+            end_s: 4,
+            narration: "This section points at a malformed slide ID.",
+            slide_ids: ["intro"],
+            vo_source: "slide_text",
+          },
+        ],
+      }),
+    ).toThrow();
   });
 
   it("accepts a scene plan fixture", () => {

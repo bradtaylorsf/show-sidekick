@@ -6,6 +6,23 @@ Material harness-level choices are recorded in specs as well as in issue or PR d
 
 The pre-public `predit` implementation name receives a hard public rename with no retained CLI binary alias. A temporary project-cache migration from `.predit/` to `.show-sidekick/` remains only through `v0.2.0`; legacy `PREDIT_*` environment variables fail with explicit `SHOW_SIDEKICK_*` remediation.
 
+### Decision: canonical deck artifact for `presentation-demo`
+
+`presentation-demo` introduces a new canonical `deck_manifest` artifact instead of overloading `capture_manifest`.
+
+Rationale:
+
+- Deck-to-demo needs stable slide IDs, original order, speaker notes, text/OCR extraction state, source provenance, and extraction warnings attached to each slide.
+- Existing `capture_manifest` is screenshot-oriented (`screenshots[]`, `story_id`, viewport/status fields) and is still useful for downstream screenshot-style stages, but it does not naturally represent presenter notes or slide text provenance.
+- The capture stage may emit both artifacts: `deck_manifest` as the canonical deck contract and `capture_manifest` as compatibility output where `screenshots[].story_id` equals the slide ID.
+- Downstream script, scene planning, captions, edit, compose, review, and export should prefer `deck_manifest` for slide identity and use `capture_manifest` only for screenshot compatibility.
+
+Affected artifact schema plan:
+
+- Add `deck_manifest` to `src/artifacts/*`, `src/artifacts/json-schema.ts`, `bundled/schemas/artifacts/*`, and schema validation.
+- Require unique `slide_0001`-style IDs, monotonically increasing slide order, image paths, dimensions, source provenance, text extraction status, notes extraction status, and warning arrays.
+- Preserve `capture_manifest` schema compatibility; do not mutate its existing screenshot contract to carry deck-only fields.
+
 ## Why
 
 Production runs make dozens of material choices: which TTS provider, which image model, which render runtime, which music track, which voice, which playbook, what to do when the primary path is blocked. The decision log is the cumulative audit trail of those choices. It lets the user (and the reviewer) verify that the agent considered alternatives, gave honest reasons, and didn't quietly substitute one path for another.

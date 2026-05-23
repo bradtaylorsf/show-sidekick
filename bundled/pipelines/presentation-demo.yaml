@@ -1,0 +1,280 @@
+slug: presentation-demo
+display_name: Presentation Demo
+description: "Deck-led, voiceover-timed pipeline that turns PDF, PowerPoint, or direct-download deck sources into an animated explainer/demo rough cut with slide provenance and NLE handoff."
+status: production
+sample_support: unsupported
+master_clock: voiceover
+stage_order: manifest
+default_checkpoint_policy: guided
+defaults:
+  aspect: "16:9"
+  duration_strategy: brief
+  render_runtime: remotion
+extensions:
+  custom_scripts: true
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+required_skills:
+  - pipelines/presentation-demo/executive-producer.md
+  - pipelines/presentation-demo/idea-director.md
+  - pipelines/presentation-demo/capture-director.md
+  - pipelines/presentation-demo/script-director.md
+  - pipelines/presentation-demo/cuesheet-director.md
+  - pipelines/presentation-demo/scene-director.md
+  - pipelines/presentation-demo/asset-director.md
+  - pipelines/presentation-demo/edit-director.md
+  - pipelines/presentation-demo/compose-director.md
+  - pipelines/presentation-demo/publish-director.md
+  - meta/reviewer
+  - meta/checkpoint-protocol
+compatible_playbooks:
+  recommended:
+    - flat-motion-graphics
+    - clean-professional
+  also_works:
+    - minimalist-diagram
+  custom_allowed: true
+orchestration:
+  mode: executive-producer
+  skill: pipelines/presentation-demo/executive-producer.md
+  budget_default_usd: 2
+  max_revisions_per_stage: 3
+  max_send_backs: 2
+  max_wall_time_minutes: 20
+export:
+  supported_targets: [premiere, davinci, capcut, edl]
+  default_target: premiere
+  notes: |
+    Export packages include the animated rough cut, narration, captions, deck_manifest slide provenance, capture_manifest compatibility metadata, reusable assets, edit decisions, render output, and NLE handoff metadata.
+stages:
+  - slug: idea
+    skill: pipelines/presentation-demo/idea-director.md
+    produces: brief
+    produces_artifacts:
+      - brief
+      - decision_log
+    required_artifacts_in: []
+    tools_available: []
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Deck source, audience, duration, aspect, and voice direction are explicit
+      - Authenticated deck links are rejected or converted to direct downloads before capture
+      - Operator notes are preserved as constraints, not silently rewritten
+    success_criteria:
+      - Schema-valid brief artifact
+      - inputs.deck_source is present and classified as local deck or direct-download URL
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+  - slug: capture
+    skill: pipelines/presentation-demo/capture-director.md
+    produces: deck_manifest
+    produces_artifacts:
+      - deck_manifest
+      - capture_manifest
+    required_artifacts_in:
+      - brief
+    tools_available:
+      - deck_ingest
+      - deck_extract
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - deck_ingest records source provenance before extraction
+      - deck_extract produces stable slide IDs, screenshots, text, speaker notes, and warnings
+      - capture_manifest compatibility uses slide IDs as story IDs
+    success_criteria:
+      - Schema-valid deck_manifest artifact
+      - Every source slide has an image_path and stable slide id
+      - Authenticated or unsupported sources fail before paid/provider calls
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+  - slug: script
+    skill: pipelines/presentation-demo/script-director.md
+    produces: script
+    produces_artifacts:
+      - script
+    required_artifacts_in:
+      - brief
+      - deck_manifest
+    tools_available: []
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Speaker notes are preferred over slide text/OCR
+      - Every narration section references slide IDs or slide ranges
+      - No TTS or paid generation is attempted before approval
+    success_criteria:
+      - Schema-valid script artifact
+      - Script sections cite deck_manifest slide IDs
+      - Human approval gates TTS and paid generation
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+  - slug: cuesheet
+    skill: pipelines/presentation-demo/cuesheet-director.md
+    produces: cuesheet
+    produces_artifacts:
+      - cuesheet
+    required_artifacts_in:
+      - script
+      - deck_manifest
+    tools_available:
+      - tts_selector
+      - whisper
+    audio_sync: build
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - TTS runs only after the approved script checkpoint
+      - Cuesheet master_clock is voiceover
+      - Scene anchors preserve slide IDs for captions and edit decisions
+    success_criteria:
+      - Schema-valid cuesheet artifact
+      - voiceover cues align to script sections and slide IDs
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+  - slug: scene_plan
+    skill: pipelines/presentation-demo/scene-director.md
+    produces: scene_plan
+    produces_artifacts:
+      - scene_plan
+    required_artifacts_in:
+      - script
+      - deck_manifest
+      - cuesheet
+    tools_available:
+      - diagram_gen
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Every scene maps to source slides, slide ranges, or approved support visuals
+      - Motion choices explain the deck rather than replaying static slides
+      - Source meaning and operator direction are preserved
+    success_criteria:
+      - Schema-valid scene_plan artifact
+      - Every narrated section maps to one or more slide IDs
+      - Output must be an animated explainer/demo, not a static slideshow
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+  - slug: assets
+    skill: pipelines/presentation-demo/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - scene_plan
+      - script
+      - deck_manifest
+      - cuesheet
+    optional_tools:
+      - tts_selector
+      - image_selector
+      - diagram_gen
+      - subtitle_gen
+    tools_available:
+      - tts_selector
+      - image_selector
+      - diagram_gen
+      - subtitle_gen
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Asset generation follows approved script and scene plan
+      - Narration provider decisions and costs are recorded
+      - Support visuals preserve slide meaning and operator constraints
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - All generated assets link back to scene IDs or slide IDs
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+  - slug: edit
+    skill: pipelines/presentation-demo/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - scene_plan
+      - asset_manifest
+      - deck_manifest
+      - cuesheet
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Cuts follow voiceover timing and slide anchors
+      - Captions and callouts remain readable
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - Every cut references approved assets and timing anchors
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+  - slug: compose
+    skill: pipelines/presentation-demo/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+      - final_review
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+      - deck_manifest
+      - cuesheet
+    required_tools:
+      - video_compose
+      - audio_mixer
+    tools_available:
+      - video_compose
+      - audio_mixer
+      - hyperframes_compose
+      - remotion
+    requires_runtime: any
+    checkpoint_required: true
+    human_approval: optional
+    human_approval_default: false
+    review_focus:
+      - Rendered timing matches voiceover cues
+      - Output must be an animated explainer/demo, not a static slideshow
+      - silent runtime swap is a CRITICAL governance violation
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output file exists and records duration, drift, runtime, and warnings
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }
+  - slug: publish
+    skill: pipelines/presentation-demo/publish-director.md
+    produces: publish_log
+    produces_artifacts:
+      - publish_log
+    required_artifacts_in:
+      - render_report
+      - final_review
+      - deck_manifest
+    checkpoint_required: true
+    human_approval: required
+    human_approval_default: true
+    review_focus:
+      - Handoff includes rendered rough cut, narration, captions, deck_manifest, and source provenance
+      - Known extraction warnings are visible to the editor
+      - Export target is one of premiere, davinci, capcut, or edl
+    success_criteria:
+      - Schema-valid publish_log artifact
+      - Export package contains deck provenance and NLE handoff metadata
+    estimated_cost:
+      sample: { usd: 0 }
+      full: { usd: 0 }

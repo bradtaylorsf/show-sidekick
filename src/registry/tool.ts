@@ -47,6 +47,8 @@ export type KnownCapability =
   | "upscale"
   | "character_animation"
   | "screen_capture"
+  | "deck_ingest"
+  | "deck_extract"
   | "stock_image"
   | "stock_video"
   | "stock_cross_search"

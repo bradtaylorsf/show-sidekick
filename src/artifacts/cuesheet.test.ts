@@ -20,6 +20,25 @@ describe("CuesheetSchema", () => {
     expect(parsed.climax[0]?.source).toBe("manual");
   });
 
+  it("accepts voiceover cuesheet anchors with slide IDs for captions and edit decisions", () => {
+    const parsed = CuesheetSchema.parse({
+      ...cuesheet(),
+      master_clock: "voiceover",
+      scene_anchors: [
+        {
+          scene_id: "slide-setup",
+          start_s: 0,
+          end_s: 4,
+          snapped_to: "word",
+          slide_ids: ["slide_0001", "slide_0002"],
+          source: { section: "intro", word_id: "word-1" },
+        },
+      ],
+    });
+
+    expect(parsed.scene_anchors[0]?.slide_ids).toEqual(["slide_0001", "slide_0002"]);
+  });
+
   it("writes atomically and reads back validated JSON", async () => {
     const root = await scratchProject();
     const outputPath = await writeCuesheet(root, "show", "episode", cuesheet());

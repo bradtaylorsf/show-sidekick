@@ -158,6 +158,12 @@ Tools that write generated artifacts must keep output paths inside `projectRoot`
 When a tool needs an output directory for frames, recordings, downloads, or rendered media, it should resolve that path with the write-path helper and reject traversal outside the project.
 If a tool stores a review artifact for a caller-supplied source path, it should preserve the caller's original path string in the artifact and use the resolved path only for probing.
 
+Deck ingestion follows the same path policy. The `presentation-demo` pipeline uses a registry-backed `deck_ingest` capability to normalize local `.pdf`, `.ppt`, `.pptx`, and direct downloadable URL sources into project-local working files before capture/extraction proceeds. Reads may come from user-supplied absolute paths; downloads and normalized copies must be written inside `projectRoot` through the write-path helper.
+
+The `deck_ingest` output must report source kind, normalized path, original URL when present, byte size, SHA-256, page or slide count when known, warnings, and structured failure reasons for unsupported or auth-gated sources. v1 explicitly rejects authenticated Google Slides, Microsoft 365, SSO, token-expiring, or browser-only links unless they resolve directly to a downloadable PDF/PPT/PPTX file. These failures happen before any paid provider, TTS, rendering, or deck extraction call.
+
+The follow-on `deck_extract` capability consumes the normalized deck source and produces the canonical `deck_manifest` artifact plus a compatible `capture_manifest` when downstream screenshot-style stages need it. Tool definitions stay terse; conversion/runtime guidance belongs in the `presentation-demo` capture director skill.
+
 ## Project-scoped tools
 
 `MET-11` capability extensions may add episode-local tools under `projects/<show>/<episode>/tools/<name>.ts` or `.js`.

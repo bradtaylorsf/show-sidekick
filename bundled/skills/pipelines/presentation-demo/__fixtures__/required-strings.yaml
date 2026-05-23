@@ -1,0 +1,42 @@
+pipeline: presentation-demo
+required_sections:
+  - file: executive-producer.md
+    section: "## Pipeline state machine"
+  - file: executive-producer.md
+    section: "## Mandatory locked decisions"
+  - file: executive-producer.md
+    section: "## When to stop and check with the human"
+  - file: capture-director.md
+    section: "## Capture Tools"
+  - file: scene-director.md
+    section: "## Motion Requirement"
+required_phrases:
+  - file: capture-director.md
+    phrase: "deck_ingest"
+  - file: capture-director.md
+    phrase: "deck_extract"
+  - file: script-director.md
+    phrase: "prefer speaker notes over slide text/OCR"
+  - file: script-director.md
+    phrase: "pptx_notes -> slide_text/ocr -> operator_notes"
+  - file: script-director.md
+    phrase: "Human approval is required before any TTS or paid generation"
+  - file: asset-director.md
+    phrase: "Do not call the registry-selected TTS provider or paid generation unless the script checkpoint is approved"
+  - file: cuesheet-director.md
+    phrase: "Call the registry-selected TTS provider only after the script checkpoint is `approved`"
+  - file: scene-director.md
+    phrase: "Output must be an animated explainer/demo, not a static slideshow"
+  - file: compose-director.md
+    phrase: "Output must be an animated explainer/demo, not a static slideshow"
+  - file: edit-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+  - file: compose-director.md
+    phrase: "silent runtime swap is a CRITICAL governance violation"
+required_modules:
+  - file: executive-producer.md
+    module: "Validated patterns"
+  - file: script-director.md
+    module: "Source Priority"
+  - file: scene-director.md
+    module: "Motion Requirement"

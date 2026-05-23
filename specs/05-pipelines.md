@@ -167,10 +167,60 @@ Examples:
 - `music-video`: `idea → proposal → script → cuesheet → scene_plan → assets → edit → compose`
 - `documentary-montage`: `idea → scene_plan → assets → edit → compose` (skips proposal, script, cuesheet)
 - `daily-news`: `idea → research → capture → script → scene_plan → assets → edit → compose → publish` (`stage_order: manifest`)
+- `presentation-demo`: `idea → capture → script → cuesheet → scene_plan → assets → edit → compose → publish` (`stage_order: manifest`; deck ingestion and extraction must run before narration is drafted)
 - `character-animation`: `research → proposal → script → character_design → rig_plan → scene_plan → assets → edit → compose → publish`
 - `framework-smoke`: `research → script` (test pipeline; minimal)
 
 `cuesheet` is included only by pipelines with `master_clock: audio | voiceover`.
+
+## `presentation-demo` pipeline contract
+
+`presentation-demo` is a generalized bundled show type for turning a user-supplied deck into an animated explainer/demo rough cut. It accepts local PDF, PowerPoint, and downloadable deck sources: `.pdf`, `.ppt`, `.pptx`, and direct downloadable URLs that resolve to one of those file types. The pipeline is deck-source-led for capture, then voiceover-led for timing.
+
+Episode inputs:
+
+```yaml
+pipeline: presentation-demo
+aspect: "16:9"              # optional; defaults to 16:9 unless show or episode overrides
+duration_s: 90              # optional target duration; script stage reconciles with deck density
+voice_preference: "warm product narrator" # optional, passed to TTS provider selection
+inputs:
+  deck_source: ./source/product-overview.pptx
+  operator_notes: |
+    Emphasize the customer pain on slides 2-3 and keep the technical appendix out of VO.
+```
+
+`inputs.deck_source` is required and may be a local path or a direct downloadable URL. `inputs.operator_notes` is optional and should clarify emphasis, omissions, audience, or compliance constraints. Authenticated Google Slides, Microsoft 365, SSO, token-expiring, or browser-only sharing links are out of scope for v1 unless they also expose a direct downloadable PDF/PPT/PPTX URL; the ingestion tool must fail before any paid provider or rendering call when the source cannot be downloaded without authentication.
+
+The canonical stage order is manifest order, not canonical sorting:
+
+```yaml
+slug: presentation-demo
+master_clock: voiceover
+stage_order: manifest
+stages:
+  - idea
+  - capture
+  - script
+  - cuesheet
+  - scene_plan
+  - assets
+  - edit
+  - compose
+  - publish
+```
+
+Approval gates:
+
+- `idea` requires human approval before deck interpretation rules, duration, audience, aspect, and voice direction become locked.
+- `capture` may be optional approval, but must checkpoint the deck artifact before script generation.
+- `script` requires human approval and is the hard gate before TTS or any other paid narration generation.
+- `cuesheet` builds timing from the approved narration and must complete before scene planning treats VO as the master clock.
+- `scene_plan` requires human approval before asset generation and composition.
+- `publish` requires human approval before the handoff is considered deliverable.
+- `assets`, `edit`, and `compose` may be optional approval, but any paid/provider call still follows announcement, approval, cost, and decision-log rules.
+
+The output promise is an animated explainer/demo video, not a static slideshow or simple slide screen recording. Scene planning and composition must use motion, zooms, callouts, rebuilds, support visuals, captions, and timing choices where appropriate while preserving the meaning and order of the source slides.
 
 ## Validation rules
 
