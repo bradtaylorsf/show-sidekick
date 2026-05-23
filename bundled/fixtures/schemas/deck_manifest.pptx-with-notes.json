@@ -1,0 +1,73 @@
+{
+  "source": {
+    "kind": "pptx",
+    "file_type": "pptx",
+    "source_path": "/Users/example/Desktop/presentation-demo.pptx",
+    "working_file_path": "projects/deck-show/pilot/deck/source.pptx",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "byte_size": 245760
+  },
+  "slides": [
+    {
+      "id": "slide-001",
+      "order": 1,
+      "image_path": "captures/slides/slide-001.png",
+      "image": {
+        "width": 1920,
+        "height": 1080
+      },
+      "text": "Your deck is already the source material",
+      "text_source": "native",
+      "speaker_notes": "Open by naming the pain: teams already have strong deck material but need a video draft.",
+      "notes_source": "pptx_notes",
+      "warnings": [],
+      "source": {
+        "slide_number": 1,
+        "source_slide_id": "256"
+      }
+    },
+    {
+      "id": "slide-002",
+      "order": 2,
+      "image_path": "captures/slides/slide-002.png",
+      "image": {
+        "width": 1920,
+        "height": 1080
+      },
+      "text": "Capture slides, text, and presenter notes",
+      "text_source": "native",
+      "speaker_notes": "Explain that Show Sidekick extracts slide evidence and drafts a voiceover for review.",
+      "notes_source": "pptx_notes",
+      "warnings": [],
+      "source": {
+        "slide_number": 2,
+        "source_slide_id": "257"
+      }
+    },
+    {
+      "id": "slide-003",
+      "order": 3,
+      "image_path": "captures/slides/slide-003.png",
+      "image": {
+        "width": 1920,
+        "height": 1080
+      },
+      "text": "Ship an animated demo rough cut and NLE handoff",
+      "text_source": "native",
+      "speaker_notes": "Close with the handoff promise: animated rough cut plus edit package for a human editor.",
+      "notes_source": "pptx_notes",
+      "warnings": [],
+      "source": {
+        "slide_number": 3,
+        "source_slide_id": "258"
+      }
+    }
+  ],
+  "extraction": {
+    "text_engine": "pptx-native",
+    "notes_engine": "pptx-notes",
+    "screenshot_engine": "deck-renderer",
+    "extracted_at": "2026-05-23T12:00:00.000Z",
+    "warnings": []
+  }
+}

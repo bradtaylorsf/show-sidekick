@@ -16,7 +16,8 @@ Produce `scene_plan.json` that turns deck content into an animated explainer/dem
 1. Use VO timing from `cuesheet` as the master clock.
 2. Map every scene to one or more `deck_manifest` slide IDs or an explicit support visual.
 3. Add motion treatment: reveals, zooms, callouts, comparison layouts, cursor-like emphasis, transitions, diagrams, or data motion.
-4. Preserve deck meaning while avoiding static slide playback.
+4. Use motion, zooms, callouts, comparison layouts, rebuilds, or support visuals; never produce a static slide playback.
+5. Preserve deck meaning while avoiding static slide playback.
 
 ## Quality Gate
 

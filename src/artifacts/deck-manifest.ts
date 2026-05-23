@@ -56,17 +56,67 @@ export const DeckSlideSchema = z.object({
   source: DeckSlideSourceSchema,
 });
 
-export const DeckManifestSchema = z.object({
-  source: DeckSourceSchema,
-  slides: z.array(DeckSlideSchema),
-  extraction: z.object({
-    text_engine: z.string().optional(),
-    notes_engine: z.string().optional(),
-    screenshot_engine: z.string().optional(),
-    extracted_at: z.string().optional(),
-    warnings: z.array(z.string()).default([]),
-  }),
-});
+export const DeckManifestSchema = z
+  .object({
+    source: DeckSourceSchema,
+    slides: z.array(DeckSlideSchema),
+    extraction: z.object({
+      text_engine: z.string().optional(),
+      notes_engine: z.string().optional(),
+      screenshot_engine: z.string().optional(),
+      extracted_at: z.string().optional(),
+      warnings: z.array(z.string()).default([]),
+    }),
+  })
+  .superRefine((manifest, ctx) => {
+    const slideIds = new Map<string, number>();
+    const orders = new Map<number, number>();
+    const sourceSlideNumbers = new Map<number, number>();
+
+    manifest.slides.forEach((slide, index) => {
+      const priorSlideIdIndex = slideIds.get(slide.id);
+      if (priorSlideIdIndex !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["slides"],
+          message: `slide id '${slide.id}' is duplicated; first declared at slides[${priorSlideIdIndex}]`,
+        });
+      } else {
+        slideIds.set(slide.id, index);
+      }
+
+      const priorOrderIndex = orders.get(slide.order);
+      if (priorOrderIndex !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["slides"],
+          message: `slide order ${slide.order} is duplicated; first declared at slides[${priorOrderIndex}]`,
+        });
+      } else {
+        orders.set(slide.order, index);
+      }
+
+      const expectedOrder = index + 1;
+      if (slide.order !== expectedOrder) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["slides"],
+          message: `slide order ${slide.order} at slides[${index}] must match its array position ${expectedOrder}`,
+        });
+      }
+
+      const priorSourceSlideNumberIndex = sourceSlideNumbers.get(slide.source.slide_number);
+      if (priorSourceSlideNumberIndex !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["slides"],
+          message: `source slide_number ${slide.source.slide_number} is duplicated; first declared at slides[${priorSourceSlideNumberIndex}]`,
+        });
+      } else {
+        sourceSlideNumbers.set(slide.source.slide_number, index);
+      }
+    });
+  });
 
 export type DeckFileType = z.infer<typeof DeckFileTypeSchema>;
 export type DeckSourceKind = z.infer<typeof DeckSourceKindSchema>;

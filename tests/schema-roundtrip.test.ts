@@ -116,5 +116,6 @@ async function fixtureArtifactNames(): Promise<string[]> {
   return entries
     .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
     .map((entry) => entry.name.replace(/\.json$/u, ""))
+    .filter((name) => !name.includes("."))
     .sort();
 }

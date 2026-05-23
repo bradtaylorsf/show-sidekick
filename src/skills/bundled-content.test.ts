@@ -317,6 +317,26 @@ describe("bundled Batch 8.B Layer 3 agent skills", () => {
   });
 });
 
+describe("presentation-demo pipeline skills", () => {
+  it("preserves deck-to-demo governance phrases", async () => {
+    await expectFileContains("pipelines/presentation-demo/script-director.md", [
+      "Prefer pptx_notes as the voiceover source over slide text or OCR; preserve slide meaning and operator direction.",
+      "Present the script for human approval before any TTS or paid generation.",
+    ]);
+    await expectFileContains("pipelines/presentation-demo/cuesheet-director.md", [
+      "Human approval of the script is required before any TTS call.",
+      "`master_clock` is `voiceover`",
+    ]);
+    await expectFileContains("pipelines/presentation-demo/scene-director.md", [
+      "Use motion, zooms, callouts, comparison layouts, rebuilds, or support visuals; never produce a static slide playback.",
+    ]);
+    await expectFileContains("pipelines/presentation-demo/compose-director.md", [
+      "Run a motion-led verification check for zooms, callouts, rebuilds, support visuals, or other animated treatment.",
+      "Reject static slideshow playback as a failed compose outcome.",
+    ]);
+  });
+});
+
 async function expectFrontmatterName(
   filePath: string,
   expectedName: string,

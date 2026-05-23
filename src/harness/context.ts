@@ -98,7 +98,40 @@ export async function loadPriorArtifacts(
 
     const checkpoint = await readCheckpoint(projectRoot, showSlug, episodeSlug, stageSlug);
     if (checkpoint.status === "completed" || checkpoint.status === "awaiting_human") {
-      artifacts[stageSlug] = checkpoint.artifact;
+      const stage = pipeline.stages.find((candidate) => candidate.slug === stageSlug);
+      if (stage !== undefined) {
+        Object.assign(artifacts, withStageArtifactAliases(artifacts, stage, checkpoint.artifact));
+      }
+    }
+  }
+
+  return artifacts;
+}
+
+export function withStageArtifactAliases(
+  priorArtifacts: Record<string, unknown>,
+  stage: Stage,
+  artifact: unknown,
+): Record<string, unknown> {
+  const artifacts: Record<string, unknown> = {
+    ...priorArtifacts,
+    [stage.slug]: artifact,
+  };
+
+  if (stage.produces.trim().length > 0) {
+    artifacts[stage.produces] = artifact;
+  }
+
+  if (isRecord(artifact)) {
+    for (const artifactName of stage.produces_artifacts) {
+      if (artifactName === stage.produces) {
+        continue;
+      }
+
+      const nestedArtifact = artifact[artifactName];
+      if (nestedArtifact !== undefined) {
+        artifacts[artifactName] = nestedArtifact;
+      }
     }
   }
 
@@ -107,4 +140,8 @@ export async function loadPriorArtifacts(
 
 function slugOf(value: SlugRef): string {
   return typeof value === "string" ? value : value.slug;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -16,7 +16,8 @@ Render an animated explainer/demo video and produce `render_report.json` plus `f
 1. Use the approved runtime decision and record any final runtime confirmation.
 2. Render with VO as the master clock.
 3. Verify readable slides, animated treatment, duration, drift, captions, and audio.
-4. Reject static slideshow playback as a failed compose outcome.
+4. Run a motion-led verification check for zooms, callouts, rebuilds, support visuals, or other animated treatment.
+5. Reject static slideshow playback as a failed compose outcome.
 
 ## Quality Gate
 

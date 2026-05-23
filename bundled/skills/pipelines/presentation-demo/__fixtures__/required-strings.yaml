@@ -17,8 +17,14 @@ required_phrases:
     phrase: "Produce `deck_manifest.json` as the canonical deck artifact."
   - file: script-director.md
     phrase: "Present the script for human approval before any TTS or paid generation."
+  - file: script-director.md
+    phrase: "Prefer pptx_notes as the voiceover source over slide text or OCR; preserve slide meaning and operator direction."
   - file: cuesheet-director.md
     phrase: "`master_clock` is `voiceover`"
+  - file: cuesheet-director.md
+    phrase: "Human approval of the script is required before any TTS call."
+  - file: scene-director.md
+    phrase: "Use motion, zooms, callouts, comparison layouts, rebuilds, or support visuals; never produce a static slide playback."
   - file: compose-director.md
     phrase: "Reject static slideshow playback as a failed compose outcome."
 required_modules:

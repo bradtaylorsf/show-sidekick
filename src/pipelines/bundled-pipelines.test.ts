@@ -941,6 +941,20 @@ describe("bundled pipeline manifests", () => {
       "compose-director.md",
       "publish-director.md",
     ];
+    const expectedRequiredSkills = [
+      "pipelines/presentation-demo/executive-producer.md",
+      "pipelines/presentation-demo/idea-director.md",
+      "pipelines/presentation-demo/capture-director.md",
+      "pipelines/presentation-demo/script-director.md",
+      "pipelines/presentation-demo/cuesheet-director.md",
+      "pipelines/presentation-demo/scene-director.md",
+      "pipelines/presentation-demo/asset-director.md",
+      "pipelines/presentation-demo/edit-director.md",
+      "pipelines/presentation-demo/compose-director.md",
+      "pipelines/presentation-demo/publish-director.md",
+      "meta/reviewer",
+      "meta/checkpoint-protocol",
+    ];
 
     expect(manifest).toMatchObject({
       slug: "presentation-demo",
@@ -981,7 +995,11 @@ describe("bundled pipeline manifests", () => {
       ["publish", "optional"],
     ]);
     expect(manifest.stages.find((stage) => stage.slug === "capture")?.produces).toBe("deck_manifest");
+    expect(manifest.stages.find((stage) => stage.slug === "capture")?.produces_artifacts).toEqual([
+      "deck_manifest",
+    ]);
     expect(manifest.stages.find((stage) => stage.slug === "cuesheet")?.audio_sync).toBe("build");
+    expect(manifest.required_skills).toEqual(expectedRequiredSkills);
 
     for (const fileName of directorFiles) {
       expect(existsSync(path.join(presentationDemoSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
