@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import remotion, { buildRemotionSlideSceneProps } from "./remotion.js";
+import remotion, { buildRemotionCompositionProps, buildRemotionSlideSceneProps } from "./remotion.js";
 
 let scratchDirs: string[] = [];
 
@@ -158,6 +158,47 @@ describe("remotion tool", () => {
         }),
       }),
     ]);
+  });
+
+  it("uses cut captions instead of provider prompts for generic scene copy and caption timing", () => {
+    const narration = "They told you Mom is coming home tomorrow, and you do not feel ready.";
+    const props = buildRemotionCompositionProps({
+      fps: 30,
+      resolution: { width: 1080, height: 1920 },
+      asset_manifest: {
+        assets: [
+          {
+            id: "paid_sample_clip",
+            kind: "video",
+            path: "projects/show/episode/clips/higgsfield-sample.mp4",
+            prompt: 'Animate "Hook" as a short explainer-teacher animated explainer beat.',
+          },
+        ],
+      },
+      edit_decisions: {
+        cuts: [
+          {
+            start_s: 0,
+            end_s: 4,
+            asset_id: "paid_sample_clip",
+            caption: narration,
+          },
+        ],
+        overlays: [],
+        render_runtime: "remotion",
+        renderer_family: "explainer-teacher",
+      },
+    });
+
+    expect(props.width).toBe(1080);
+    expect(props.height).toBe(1920);
+    expect(props.cuts[0]).toMatchObject({
+      label: narration,
+      body: narration,
+      caption: narration,
+    });
+    expect(props.captions.map((word) => word.text).join(" ")).toBe(narration);
+    expect(JSON.stringify(props)).not.toContain("short explainer-teacher");
   });
 
   it("refuses to compose when edit decisions lock another runtime", async () => {

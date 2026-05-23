@@ -788,6 +788,48 @@ function narrationForSection(section: Script["sections"][number]): string {
   return (section.narration ?? dialogue).replace(/\s+/gu, " ").trim();
 }
 
+function sectionsFromScript(value: unknown): Script["sections"] {
+  const parsed = ScriptSchema.safeParse(value);
+  return parsed.success ? parsed.data.sections : [];
+}
+
+function captionForScene(
+  sections: Script["sections"],
+  fallbackCaptions: readonly string[],
+  sceneId: string,
+  index: number,
+): string | undefined {
+  const section = sections.find((candidate) => candidate.slug === sceneId) ?? sections[index];
+  const caption = section === undefined ? fallbackCaptions[index] : narrationForSection(section);
+  return caption && caption.length > 0 ? caption : undefined;
+}
+
+function captionFallbacksFromInputs(ctx: StageContext): string[] {
+  for (const key of ["narration", "script", "host_script", "brief", "notes"]) {
+    const value = stringInput(ctx, key);
+    if (value === undefined || looksLikeInputPath(value)) {
+      continue;
+    }
+
+    const lines = meaningfulTextLines(value);
+    return lines.length > 0 ? lines : splitSentences(value);
+  }
+
+  return [];
+}
+
+function looksLikeInputPath(value: string): boolean {
+  if (isHttpUrl(value) || path.isAbsolute(value) || value.startsWith("./") || value.startsWith("../")) {
+    return true;
+  }
+  if (value.includes("/") || value.includes("\\")) {
+    return true;
+  }
+
+  const extension = path.extname(value).toLowerCase();
+  return TEXT_REFERENCE_EXTENSIONS.has(extension) || IMAGE_REFERENCE_EXTENSIONS.has(extension);
+}
+
 function wordsForSection(section: Script["sections"][number]): Array<{ text: string; start_s: number; end_s: number; confidence: number }> {
   const words = narrationForSection(section).match(/[A-Za-z0-9']+/gu) ?? [];
   const duration = Math.max(0.001, section.end_s - section.start_s);
@@ -1497,16 +1539,23 @@ function buildEditDecisions(ctx: StageContext, state: PaidSampleState): unknown 
   const duration = sampleDuration(ctx);
   const clipPaths = state.clipPaths && state.clipPaths.length > 0 ? state.clipPaths : state.clipPath ? [state.clipPath] : [];
   const scenes = recordValue(state.scene_plan)?.scenes;
+  const scriptSections = sectionsFromScript(state.script ?? ctx.priorArtifacts.script);
+  const fallbackCaptions = captionFallbacksFromInputs(ctx);
   const sceneCuts = Array.isArray(scenes)
     ? scenes.map((scene, index) => {
         const record = recordValue(scene);
         const requiredAssets = record?.required_assets;
         const firstAsset = Array.isArray(requiredAssets) ? recordValue(requiredAssets[0]) : undefined;
+        const sceneId = stringValue(record?.slug) ?? `sample-${index + 1}`;
+        const caption = captionForScene(scriptSections, fallbackCaptions, sceneId, index);
 
         return {
           start_s: numberValue(record?.start_s) ?? 0,
           end_s: numberValue(record?.end_s) ?? duration,
           asset_id: stringValue(firstAsset?.id) ?? clipAssetId(index % Math.max(1, clipPaths.length)),
+          scene_id: sceneId,
+          scene_kind: "video_clip",
+          caption,
           provider: "higgsfield",
         };
       })
@@ -1521,6 +1570,9 @@ function buildEditDecisions(ctx: StageContext, state: PaidSampleState): unknown 
         start_s: roundTime(index * cutDuration),
         end_s: roundTime(index === clipCount - 1 ? duration : (index + 1) * cutDuration),
         asset_id: clipAssetId(index),
+        scene_id: `sample-${index + 1}`,
+        scene_kind: "video_clip",
+        caption: captionForScene(scriptSections, fallbackCaptions, `sample-${index + 1}`, index),
         provider: "higgsfield",
       })),
     overlays: [],
@@ -1623,6 +1675,7 @@ async function buildRenderReport(
           output_path: outputPath,
           planned_duration_s: expectedDuration,
           expected_duration_s: expectedDuration,
+          resolution: resolutionObject(ctx),
         };
   const renderResult = await composeTool.execute(
     composeInput,
@@ -1692,6 +1745,11 @@ function normalizeRenderReport(ctx: StageContext, renderResult: unknown, state: 
       ? record.validation_steps
       : [{ name: "paid-sample-compose", status: "pass", notes: "Render assembled through the paid sample dispatcher." }],
   };
+}
+
+function resolutionObject(ctx: StageContext): { width: number; height: number } {
+  const [width, height] = resolution(ctx);
+  return { width, height };
 }
 
 function finalReview(ctx: StageContext, renderReport: Record<string, unknown>, state: PaidSampleState): unknown {

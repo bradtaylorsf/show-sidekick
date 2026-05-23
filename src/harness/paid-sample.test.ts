@@ -583,12 +583,15 @@ describe("paid sample dispatcher", () => {
   it("uses available Remotion runtime and creates multiple generated motion clips from script beats", async () => {
     const root = await scratchProject();
     const show = loadedShow(root, "remotion");
-    const episode = loadedEpisode(show, "remotion", [
-      "Start with the contract: pipeline first.",
-      "Check readiness: doctor, tools, runtimes.",
-      "Build the sample: voice, frame, motion, review.",
-      "Export the handoff: Premiere, EDL, logs.",
-    ].join("\n"));
+    const episode = {
+      ...loadedEpisode(show, "remotion", [
+        "Start with the contract: pipeline first.",
+        "Check readiness: doctor, tools, runtimes.",
+        "Build the sample: voice, frame, motion, review.",
+        "Export the handoff: Premiere, EDL, logs.",
+      ].join("\n")),
+      aspect: "9:16",
+    };
     const pipeline = pipelineManifest();
     const videoComposeInputs: unknown[] = [];
 
@@ -624,14 +627,25 @@ describe("paid sample dispatcher", () => {
       artifact: {
         render_runtime: "remotion",
         cuts: [
-          expect.objectContaining({ asset_id: "paid_sample_clip", start_s: 0, end_s: 7.5 }),
-          expect.objectContaining({ asset_id: "paid_sample_clip_2", start_s: 7.5, end_s: 15 }),
+          expect.objectContaining({
+            asset_id: "paid_sample_clip",
+            start_s: 0,
+            end_s: 7.5,
+            caption: "Start with the contract: pipeline first.",
+          }),
+          expect.objectContaining({
+            asset_id: "paid_sample_clip_2",
+            start_s: 7.5,
+            end_s: 15,
+            caption: "Check readiness: doctor, tools, runtimes.",
+          }),
         ],
       },
     });
     await expect(readCheckpoint(root, "show", "episode", "compose")).resolves.toMatchObject({
       artifact: {
         runtime_used: "remotion",
+        resolution: { width: 1080, height: 1920 },
         final_review: {
           checks: {
             promise_preservation: {
@@ -643,8 +657,14 @@ describe("paid sample dispatcher", () => {
     });
     expect(videoComposeInputs).toHaveLength(1);
     expect(videoComposeInputs[0]).toMatchObject({
+      resolution: { width: 1080, height: 1920 },
       edit_decisions: {
         render_runtime: "remotion",
+        cuts: expect.arrayContaining([
+          expect.objectContaining({
+            caption: "Start with the contract: pipeline first.",
+          }),
+        ]),
       },
       asset_manifest: {
         assets: expect.arrayContaining([
@@ -1431,7 +1451,7 @@ function paidSampleTools(
               drift_frames: 0,
               drift_tolerance_s: 0.2,
               within_tolerance: true,
-              resolution: { width: 1920, height: 1080 },
+              resolution: resolutionFromInput(input),
               framerate: 30,
               runtime_used: "remotion",
               asset_count: composeAssetCount(input),
@@ -1511,6 +1531,17 @@ function composeAssetCount(input: unknown): number {
   return typeof manifest === "object" && manifest !== null && "assets" in manifest && Array.isArray(manifest.assets)
     ? manifest.assets.length
     : 0;
+}
+
+function resolutionFromInput(input: unknown): { width: number; height: number } {
+  const resolution = typeof input === "object" && input !== null && "resolution" in input ? input.resolution : undefined;
+  const width = typeof resolution === "object" && resolution !== null && "width" in resolution ? resolution.width : undefined;
+  const height = typeof resolution === "object" && resolution !== null && "height" in resolution ? resolution.height : undefined;
+
+  return {
+    width: typeof width === "number" ? width : 1920,
+    height: typeof height === "number" ? height : 1080,
+  };
 }
 
 const passReviewer: StageReviewer = (stageSlug, _artifact, ctx) => ({

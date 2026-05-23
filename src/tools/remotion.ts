@@ -302,27 +302,60 @@ function remotionEntrySource(
   resolution: { width: number; height: number },
   media: RemotionMediaMap,
 ): string {
+  const props = buildRemotionCompositionProps(input, projectRoot, resolution, media);
+
+  return `
+import React from "react";
+import { AbsoluteFill, Audio, Composition, Img, OffthreadVideo, Sequence, interpolate, registerRoot, staticFile, useCurrentFrame } from "remotion";
+
+const props = ${JSON.stringify(props)};
+
+function mediaUrl(src, useStaticFile) {
+  return useStaticFile ? staticFile(src) : src;
+}
+${remotionSceneSource(durationInFrames)}`;
+}
+
+export function buildRemotionCompositionProps(
+  params: RemotionComposeInput,
+  projectRoot = "/",
+  resolutionOverride?: { width: number; height: number },
+  media: RemotionMediaMap = new Map(),
+): {
+  fps: number;
+  animationFirst: boolean;
+  cuts: Array<Record<string, unknown>>;
+  captions: Array<{ index: number; text: string; startFrame: number; endFrame: number }>;
+  audioSrc?: string;
+  audioUsesStaticFile: boolean;
+  width: number;
+  height: number;
+} {
+  const input = RemotionComposeInputSchema.parse(params);
   const assets = new Map(input.asset_manifest?.assets.map((asset) => [asset.id, asset]) ?? []);
+  const scenes = input.scene_plan?.scenes ?? [];
   const slideScenes = buildRemotionSlideSceneProps(input);
   const slideScenesByCutIndex = new Map(slideScenes.map((scene) => [scene.cutIndex, scene]));
-  const captionWords = input.cuesheet === undefined
-    ? []
-    : cuesheetToWords(input.cuesheet).map((word, index) => ({
-        index,
-        text: word.text,
-        startFrame: Math.round(word.start_s * input.fps),
-        endFrame: Math.round(word.end_s * input.fps),
-      }));
+  const captionWords = captionWordsForInput(input).map((word, index) => ({
+    index,
+    text: word.text,
+    startFrame: Math.round(word.start_s * input.fps),
+    endFrame: Math.round(word.end_s * input.fps),
+  }));
   const audioPath = input.edit_decisions.audio?.music?.track_path ?? input.cuesheet?.audio.path;
   const audioSource = audioPath ? mediaSrc(audioPath, projectRoot, media) : undefined;
-  const props = {
+  const resolution = resolutionOverride ?? input.resolution ?? { width: 1920, height: 1080 };
+
+  return {
     fps: input.fps,
     animationFirst: input.edit_decisions.renderer_family === "animation-first",
     cuts: input.edit_decisions.cuts.map((cut, index) => {
       const asset = assets.get(cut.asset_id);
+      const scene = sceneForCut(cut, scenes);
       const source = asset?.path ? mediaSrc(asset.path, projectRoot, media) : undefined;
       const slideScene = slideScenesByCutIndex.get(index);
-      const card = starterCardCopy(asset?.prompt ?? cut.asset_id);
+      const displayText = cut.caption ?? scene?.caption ?? asset?.prompt ?? cut.asset_id;
+      const card = starterCardCopy(displayText);
       const slide =
         slideScene === undefined
           ? undefined
@@ -339,7 +372,8 @@ function remotionEntrySource(
         src: source?.src,
         useStaticFile: source?.useStaticFile ?? false,
         kind: asset?.kind ?? "video",
-        label: asset?.prompt ?? cut.asset_id,
+        label: displayText,
+        caption: cut.caption ?? scene?.caption,
         eyebrow: card.eyebrow,
         title: card.title,
         body: card.body,
@@ -352,17 +386,10 @@ function remotionEntrySource(
     width: resolution.width,
     height: resolution.height,
   };
-
-  return `
-import React from "react";
-import { AbsoluteFill, Audio, Composition, Img, OffthreadVideo, Sequence, interpolate, registerRoot, staticFile, useCurrentFrame } from "remotion";
-
-const props = ${JSON.stringify(props)};
-
-function mediaUrl(src, useStaticFile) {
-  return useStaticFile ? staticFile(src) : src;
 }
 
+function remotionSceneSource(durationInFrames: number): string {
+  return `
 function Scene({ cut, total }) {
   const frame = useCurrentFrame();
   const progress = interpolate(frame, [0, Math.max(1, cut.durationFrames - 1)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
@@ -798,6 +825,30 @@ export const RemotionRoot = () => (
 registerRoot(RemotionRoot);
 export default RemotionRoot;
 `;
+}
+
+function captionWordsForInput(input: RemotionComposeInput): Array<{ text: string; start_s: number; end_s: number }> {
+  if (input.cuesheet !== undefined) {
+    return cuesheetToWords(input.cuesheet);
+  }
+
+  return input.edit_decisions.cuts.flatMap((cut) => wordsFromCutCaption(cut));
+}
+
+function wordsFromCutCaption(cut: RemotionCut): Array<{ text: string; start_s: number; end_s: number }> {
+  const words = cut.caption?.match(/\S+/gu) ?? [];
+  if (words.length === 0) {
+    return [];
+  }
+
+  const duration = Math.max(0.001, cut.end_s - cut.start_s);
+  const wordDuration = duration / words.length;
+
+  return words.map((word, index) => ({
+    text: word,
+    start_s: cut.start_s + index * wordDuration,
+    end_s: Math.min(cut.end_s, cut.start_s + (index + 1) * wordDuration),
+  }));
 }
 
 function starterCardCopy(value: string): { eyebrow: string; title: string; body: string } {
