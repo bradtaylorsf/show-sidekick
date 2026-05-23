@@ -6,6 +6,23 @@ Material harness-level choices are recorded in specs as well as in issue or PR d
 
 The pre-public `predit` implementation name receives a hard public rename with no retained CLI binary alias. A temporary project-cache migration from `.predit/` to `.show-sidekick/` remains only through `v0.2.0`; legacy `PREDIT_*` environment variables fail with explicit `SHOW_SIDEKICK_*` remediation.
 
+## Harness Artifact Decision: `deck_manifest`
+
+`presentation-demo` introduces `deck_manifest` as a new canonical artifact rather than extending `capture_manifest`.
+
+Rationale:
+
+- `capture_manifest` is screenshot/story oriented. It works for web pages and screen states, but it does not own deck-specific provenance, slide order, speaker notes, text extraction source, source deck hash, or normalized working-file metadata.
+- `deck_manifest` represents the source deck itself. It records local PDF/PPT/PPTX sources and direct downloadable URLs, stable slide IDs, screenshot paths, native text or OCR provenance, speaker notes when available, extraction warnings, and source file metadata.
+- Compatibility remains possible. When downstream screen-demo tooling needs screenshot-style records, the deck slide ID may be reused as `capture_manifest.screenshots[].story_id`, but `deck_manifest` stays the source of truth.
+
+Affected schema plan before downstream implementation:
+
+- `schemas/artifacts/deck_manifest.schema.json` is the canonical schema.
+- `script.sections[].slide_ids` and `script.sections[].vo_source` connect approved narration to deck evidence.
+- `cuesheet.scene_anchors[].slide_ids` connects VO timing to deck evidence.
+- Later deck extraction tooling should produce `deck_manifest` directly and may emit `capture_manifest` only as a bridge artifact.
+
 ## Why
 
 Production runs make dozens of material choices: which TTS provider, which image model, which render runtime, which music track, which voice, which playbook, what to do when the primary path is blocked. The decision log is the cumulative audit trail of those choices. It lets the user (and the reviewer) verify that the agent considered alternatives, gave honest reasons, and didn't quietly substitute one path for another.

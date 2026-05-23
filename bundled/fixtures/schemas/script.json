@@ -19,7 +19,9 @@
           "line": "Let us check the artifact."
         }
       ],
-      "enhancement_cues": ["show title"]
+      "enhancement_cues": ["show title"],
+      "slide_ids": ["slide-001"],
+      "vo_source": "agent"
     }
   ]
 }

@@ -24,7 +24,7 @@ describe("show type validation commands", () => {
 
     expect(result).toMatchObject({
       status: "passed",
-      pipeline_lane_count: 15,
+      pipeline_lane_count: 16,
       starter_lane_count: 16,
       exitCode: 0,
     });

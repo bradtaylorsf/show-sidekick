@@ -238,6 +238,70 @@ export const CaptureManifestJsonSchema = objectJson(
   ["screenshots"],
 );
 
+export const DeckManifestJsonSchema = objectJson(
+  "deck_manifest",
+  {
+    source: objectJson(
+      "deck_manifest.source",
+      {
+        kind: { type: "string", enum: ["pdf", "ppt", "pptx", "url"] },
+        file_type: { type: "string", enum: ["pdf", "ppt", "pptx"] },
+        source_path: stringJson,
+        source_url: stringJson,
+        working_file_path: stringJson,
+        sha256: stringJson,
+        byte_size: nonNegativeIntegerJson,
+      },
+      ["kind", "file_type", "sha256", "byte_size"],
+    ),
+    slides: {
+      type: "array",
+      items: objectJson(
+        "deck_manifest.slide",
+        {
+          id: stringJson,
+          order: { type: "integer", exclusiveMinimum: 0 },
+          image_path: stringJson,
+          image: objectJson(
+            "deck_manifest.slide.image",
+            {
+              width: { type: "integer", exclusiveMinimum: 0 },
+              height: { type: "integer", exclusiveMinimum: 0 },
+            },
+            ["width", "height"],
+          ),
+          text: stringJson,
+          text_source: { type: "string", enum: ["native", "ocr", "absent"] },
+          speaker_notes: stringJson,
+          notes_source: { type: "string", enum: ["pptx_notes", "operator", "absent"] },
+          warnings: stringArrayJson,
+          source: objectJson(
+            "deck_manifest.slide.source",
+            {
+              slide_number: { type: "integer", exclusiveMinimum: 0 },
+              source_slide_id: stringJson,
+            },
+            ["slide_number"],
+          ),
+        },
+        ["id", "order", "image_path", "image", "text_source", "notes_source", "source"],
+      ),
+    },
+    extraction: objectJson(
+      "deck_manifest.extraction",
+      {
+        text_engine: stringJson,
+        notes_engine: stringJson,
+        screenshot_engine: stringJson,
+        extracted_at: stringJson,
+        warnings: stringArrayJson,
+      },
+      [],
+    ),
+  },
+  ["source", "slides", "extraction"],
+);
+
 const cuesheetSceneAnchorJson = objectJson(
   "cuesheet.scene_anchor",
   {
@@ -245,6 +309,7 @@ const cuesheetSceneAnchorJson = objectJson(
     start_s: nonNegativeNumberJson,
     end_s: nonNegativeNumberJson,
     snapped_to: { type: "string", enum: ["section_start", "beat", "downbeat", "word", "climax", "manual"] },
+    slide_ids: stringArrayJson,
     source: objectJson(
       "cuesheet.scene_anchor.source",
       {
@@ -659,6 +724,7 @@ export const ArtifactJsonSchemas = {
   character_qa_report: CharacterQaReportJsonSchema,
   cost_log: CostLogJsonSchema,
   cuesheet: CuesheetJsonSchema,
+  deck_manifest: DeckManifestJsonSchema,
   decision_log: DecisionLogJsonSchema,
   edit_decisions: EditDecisionsJsonSchema,
   final_review: FinalReviewJsonSchema,

@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "show-sidekick://artifacts/deck_manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "show-sidekick://artifacts/deck_manifest.source",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "pdf",
+            "ppt",
+            "pptx",
+            "url"
+          ]
+        },
+        "file_type": {
+          "type": "string",
+          "enum": [
+            "pdf",
+            "ppt",
+            "pptx"
+          ]
+        },
+        "source_path": {
+          "type": "string"
+        },
+        "source_url": {
+          "type": "string"
+        },
+        "working_file_path": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "byte_size": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "kind",
+        "file_type",
+        "sha256",
+        "byte_size"
+      ]
+    },
+    "slides": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "show-sidekick://artifacts/deck_manifest.slide",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "image_path": {
+            "type": "string"
+          },
+          "image": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "show-sidekick://artifacts/deck_manifest.slide.image",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "width": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "height": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "width",
+              "height"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "text_source": {
+            "type": "string",
+            "enum": [
+              "native",
+              "ocr",
+              "absent"
+            ]
+          },
+          "speaker_notes": {
+            "type": "string"
+          },
+          "notes_source": {
+            "type": "string",
+            "enum": [
+              "pptx_notes",
+              "operator",
+              "absent"
+            ]
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "show-sidekick://artifacts/deck_manifest.slide.source",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "slide_number": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "source_slide_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "slide_number"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "order",
+          "image_path",
+          "image",
+          "text_source",
+          "notes_source",
+          "source"
+        ]
+      }
+    },
+    "extraction": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "show-sidekick://artifacts/deck_manifest.extraction",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text_engine": {
+          "type": "string"
+        },
+        "notes_engine": {
+          "type": "string"
+        },
+        "screenshot_engine": {
+          "type": "string"
+        },
+        "extracted_at": {
+          "type": "string"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": []
+    }
+  },
+  "required": [
+    "source",
+    "slides",
+    "extraction"
+  ]
+}

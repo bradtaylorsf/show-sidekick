@@ -20,6 +20,7 @@ describe("ArtifactJsonSchemas", () => {
       "cost_log",
       "cuesheet",
       "decision_log",
+      "deck_manifest",
       "edit_decisions",
       "end_tag_plan",
       "final_review",

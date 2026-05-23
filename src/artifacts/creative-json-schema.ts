@@ -39,6 +39,10 @@ const timingSourceJson = {
   type: "string",
   enum: ["lyric", "word", "beat", "section", "climax", "manual", "audio_energy"],
 } as const satisfies JsonSchema;
+const voiceoverSourceJson = {
+  type: "string",
+  enum: ["pptx_notes", "slide_text", "ocr", "operator", "agent"],
+} as const satisfies JsonSchema;
 const timingRefJson = objectJson(
   "timing-ref",
   {
@@ -173,6 +177,8 @@ export const ScriptJsonSchema = objectJson(
           narration: stringJson,
           dialogue: { type: "array", items: dialogueLineJson },
           enhancement_cues: stringArrayJson,
+          slide_ids: stringArrayJson,
+          vo_source: voiceoverSourceJson,
         },
         ["slug", "start_s", "end_s"],
       ),

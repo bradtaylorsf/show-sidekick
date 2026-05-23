@@ -113,6 +113,22 @@
             "items": {
               "type": "string"
             }
+          },
+          "slide_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "vo_source": {
+            "type": "string",
+            "enum": [
+              "pptx_notes",
+              "slide_text",
+              "ocr",
+              "operator",
+              "agent"
+            ]
           }
         },
         "required": [
