@@ -19,6 +19,7 @@ export const ShowSchema = z
     created: z.coerce.date(),
     sample_support: SampleSupportSchema.optional(),
     sample_providers: SampleProvidersConfigSchema.optional(),
+    bake_brand_into_images: z.boolean().optional(),
     brand: z.string().optional(),
     characters: z.string().optional(),
     skills: z.string().optional(),

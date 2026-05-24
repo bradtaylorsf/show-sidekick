@@ -145,6 +145,23 @@ describe("higgsfield tool", () => {
     expect(result.request.body.model).toBe("seedance_3_0");
   });
 
+  it("records model-aware cost for known Higgsfield models", async () => {
+    const ctx = context();
+
+    const result = await higgsfield.execute(
+      higgsfield.input.parse({
+        image_url: "https://cdn.example.com/reference.png",
+        prompt: "animate with kling pricing",
+        duration: 5,
+        model: "kling3_0",
+      }),
+      ctx,
+    );
+
+    expect(result.request.body.model).toBe("kling3_0");
+    expect(result.cost_usd).toBe(0.13);
+  });
+
   it("passes portrait aspect through to Seedance generations", async () => {
     const ctx = context();
 

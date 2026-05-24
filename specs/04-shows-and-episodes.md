@@ -44,6 +44,7 @@ slug: news-music-studio
 display_name: "News Music Studio"
 description: "Sourced news songs plus evergreen beat-synced music videos"
 created: 2026-05-12
+bake_brand_into_images: false             # optional; default true. False reserves text for renderer overlays.
 
 # Show-owned content — paths relative to show.yaml.
 brand: ./brand/
@@ -105,6 +106,8 @@ When `slug_from` is `parent_dir`, watch suggestions derive the episode slug from
 `showkick import` uses the episode slug from `--as`, the matched watch entry's `pipeline`, and sibling files next to the matched file to populate `inputs`. Audio files become `track`, `.txt` becomes `lyrics`, `.yaml` / `.yml` becomes `sources`, video files become `reference`, and other files become `source`.
 
 A single-pipeline show is just a `pipelines:` map with one entry. The model degrades cleanly to "one workflow per show" when that's all the show needs.
+
+`bake_brand_into_images: false` tells paid sample image prompts to avoid readable title pills, headlines, labels, UI chrome, logos, watermarks, and overlay numerals so the renderer can own all typography. Omitting the field preserves the current behavior where generated imagery may include exact show-title branding.
 
 ## `episode.yaml`
 

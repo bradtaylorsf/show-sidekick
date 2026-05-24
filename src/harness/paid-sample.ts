@@ -2768,10 +2768,28 @@ async function brandContextForPrompt(ctx: StageContext): Promise<string> {
   const notes = await brandReferenceForPrompt(ctx);
   const showTitle = ctx.show.display_name;
   const exactTitle = showTitle.toUpperCase();
-  return [
+  const base = [
     `Brand context: Show title: "${showTitle}". Episode title: "${ctx.episode.title}".`,
     ctx.show.description === undefined ? undefined : `Show description: ${trimForNarration(ctx.show.description)}.`,
     notes === undefined ? undefined : `Brand notes: ${notes}`,
+  ];
+
+  if (ctx.show.bake_brand_into_images === false) {
+    return [
+      ...base,
+      [
+        "On-screen text policy: NO readable text anywhere in the image.",
+        "No title pills, headers, captions, labels, UI chrome, logos, watermarks, or overlay numerals.",
+        "Background ambient signage may exist only when it is in-scene and not the headline of the frame.",
+        "Composition: keep the main subject in the central 60% of the frame; the top 15% and bottom 25% may be covered by rendered overlays.",
+      ].join(" "),
+    ]
+      .filter((part): part is string => typeof part === "string")
+      .join(" ");
+  }
+
+  return [
+    ...base,
     [
       `On-screen text policy: If a show title pill is rendered, it must read exactly "${exactTitle}".`,
       "Do not invent other brand names, logos, trademarks, title variants, or altered numerals.",

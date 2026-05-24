@@ -112,6 +112,7 @@ describe("ShowSchema", () => {
       slug: "provider-flex",
       display_name: "Provider Flex",
       created: "2026-05-12",
+      bake_brand_into_images: false,
       sample_providers: {
         image: { provider: "google", model: "imagen-3.0-generate-001" },
         video: { tool: "veo_video", model: "veo-2.0-generate-001" },
@@ -130,6 +131,7 @@ describe("ShowSchema", () => {
     });
 
     expect(show.sample_providers?.image?.provider).toBe("google");
+    expect(show.bake_brand_into_images).toBe(false);
     expect(show.pipelines.explainer?.sample_providers?.tts?.tool).toBe("google_tts");
   });
 

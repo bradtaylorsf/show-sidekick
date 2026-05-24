@@ -779,6 +779,51 @@ describe("paid sample dispatcher", () => {
     });
   });
 
+  it("omits baked brand text instructions when the show opts out", async () => {
+    const root = await scratchProject();
+    const show: LoadedShow = {
+      ...loadedShow(root),
+      display_name: "First 48 Hours",
+      bake_brand_into_images: false,
+    };
+    const episode = {
+      ...loadedEpisode(show),
+      title: "Hospital Discharge",
+    };
+    const pipeline: PipelineManifest = {
+      ...pipelineManifest(),
+      stages: [stage("assets", "asset_manifest")],
+    };
+    const openAiInputs: unknown[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "paid-demo",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          onOpenAiInput: (input) => openAiInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", nonInteractive: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(openAiInputs).toHaveLength(1);
+    const prompt = promptFromInput(openAiInputs[0]);
+    expect(prompt).toContain('Show title: "First 48 Hours"');
+    expect(prompt).toContain("NO readable text anywhere in the image");
+    expect(prompt).toContain("No title pills");
+    expect(prompt).toContain("central 60% of the frame");
+    expect(prompt).not.toContain('If a show title pill is rendered, it must read exactly "FIRST 48 HOURS"');
+  });
+
   it("plans source-free news-song samples from lyrics, skips filler ad-libs, and uses OpenAI GPT Image 2", async () => {
     const root = await scratchProject();
     const show: LoadedShow = {
