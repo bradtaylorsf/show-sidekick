@@ -61,6 +61,10 @@ pipelines:
     aspect: "16:9"
     budget_usd: 6
     provider_profile: paid-demo           # optional paid-provider default for this pipeline
+    sample_providers:                    # optional sample provider plan for this pipeline
+      image: { tool: google_imagen, model: imagen-3.0-generate-001 }
+      video: { tool: veo_video, model: veo-2.0-generate-001 }
+      tts: { tool: google_tts, voice_id: en-US-Chirp3-HD-Charon }
     playbook_overrides: ./pipelines/news-song.playbook-overrides.yaml
   music-video:                            # evergreen beat-synced songs
     playbook: beat-synced-lyric-video
@@ -120,6 +124,10 @@ runtime: hyperframes
 aspect: "16:9"
 budget_usd: 6
 provider_profile: paid-demo
+sample_providers:
+  image: { provider: google, model: imagen-3.0-generate-001 }
+  video: { tool: veo_video, model: veo-2.0-generate-001 }
+  voice: { tool: google_tts, voice_id: en-US-Chirp3-HD-Charon }
 
 # Inputs the pipeline needs.
 inputs:
@@ -150,6 +158,7 @@ When the harness loads an episode, it merges configuration in this order (later 
 5. **Apply per-pipeline playbook overrides.** `show.pipelines[<pipeline>].playbook_overrides` is deep-merged on top of the playbook.
 6. **Apply per-pipeline defaults.** `show.pipelines[<pipeline>]` defaults (runtime, aspect, budget, provider profile) deep-merge on top of the pipeline manifest's defaults.
 7. **Apply episode overrides.** `episode.*` deep-merges on top of the merged result. For paid sample routing, provider profile precedence is CLI `--provider-profile` > `episode.provider_profile` > `show.pipelines[<pipeline>].provider_profile` > `show.defaults.provider_profile`.
+   Sample media providers resolve separately through `sample_providers`: fallback profile defaults < pipeline manifest < playbook < `show.sample_providers` < `show.pipelines[<pipeline>].sample_providers` < `episode.sample_providers`. Each role may name exact registry `tool` / `tools`, a `provider`, a `model`, and voice fields such as `voice_id` or `voice_name`.
 8. **Resolve characters.** `episode.cast[]` → `shows/<show>/characters/<slug>/`.
 9. **Resolve skills** (first match wins):
    - show-level: `shows/<show>/skills/<stage>-director.md`

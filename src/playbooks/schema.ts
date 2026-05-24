@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SampleProvidersConfigSchema } from "../providers/sample-plan.js";
 
 export const FontSpecSchema = z.object({
   font: z.string(),
@@ -94,6 +95,7 @@ export const BundledPlaybookSchema = z
       })
       .optional(),
     style_cues: z.array(z.string()).optional(),
+    sample_providers: SampleProvidersConfigSchema.optional(),
   })
   .superRefine((playbook, ctx) => {
     const pacing = playbook.motion.pacing_rules;

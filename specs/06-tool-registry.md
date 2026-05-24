@@ -147,6 +147,8 @@ agent or runner selects the real provider for the stage.
 
 Provider profiles are named setup lanes that group concrete tools and preflight checks for repeatable demos. The first shipped profile is `paid-demo`: OpenAI GPT Image 2 still generation (`openai_image` through the Image API with `OPENAI_API_KEY`), OpenAI TTS fallback (`OPENAI_API_KEY`), ElevenLabs TTS (`ELEVENLABS_API_KEY`), Higgsfield image-to-video (`higgsfield` plus `higgsfield account status --json`), optional Higgsfield GPT Image 2 still generation (`higgsfield_image` through the `higgsfield` CLI), and local `ffmpeg` / `ffprobe`.
 
+A provider profile is not a hard provider lock. Paid samples resolve actual image, video, and TTS tools from `sample_providers` in pipeline, playbook, show, per-pipeline show config, and episode config. If no sample provider plan is declared, the dispatcher falls back to the profile's default sample stack.
+
 Selecting a provider profile for a run records a `provider_profile_selection` decision with rejected alternatives, so reviewers can distinguish an intentional paid-provider lane from the zero-key or mixed setup paths.
 
 ## Deck ingestion capability

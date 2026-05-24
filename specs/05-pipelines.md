@@ -28,6 +28,13 @@ defaults:
   max_scene_duration_s: 5
   render_runtime: hyperframes
 
+# Optional sample provider plan. Shows, playbooks, and episodes may override
+# these values without changing the pipeline's stage graph.
+sample_providers:
+  image: { tool: google_imagen, model: imagen-3.0-generate-001 }
+  video: { tool: veo_video, model: veo-2.0-generate-001 }
+  tts: { tool: google_tts, voice_id: en-US-Chirp3-HD-Charon }
+
 orchestration:
   mode: executive-producer
   skill: pipelines/music-video/executive-producer.md
@@ -149,6 +156,12 @@ export:
 | `sample_mode_supported` | Whether `--sample` is honored at this stage |
 | `estimated_cost` | `{ sample: { usd, comment }, full: { usd, comment } }` — used for proposal-time summaries |
 | `requires_runtime` | Forces a specific render runtime (compose stages only) |
+
+## Sample Provider Plans
+
+`sample_providers` keeps paid sample media selection declarative. It can be declared in a pipeline manifest, playbook, `show.yaml`, a `show.pipelines[<pipeline>]` override, or an `episode.yaml`. The paid sample dispatcher resolves those configs before invoking tools, so a sample can use OpenAI + Higgsfield, all Google tools, local/project tools, or any other registered provider mix without changing dispatcher code.
+
+Supported role aliases are `image` / `image_generation`, `video` / `image_to_video` / `text_to_video`, and `tts` / `voice` / `voiceover`. Each role may specify `tool`, `tools`, `provider`, `model`, `voice_id`, `voice_name`, and provider-specific passthrough fields.
 
 ## Stage list
 

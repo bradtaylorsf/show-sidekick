@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { SampleSupportSchema } from "../pipelines/manifest.js";
 import { ProviderProfileNameSchema } from "../providers/profiles.js";
+import { SampleProvidersConfigSchema } from "../providers/sample-plan.js";
 import { PipelineConfigSchema } from "./pipeline-config.js";
 
 const IngestWatchSchema = z.object({
@@ -17,6 +18,7 @@ export const ShowSchema = z
     description: z.string().optional(),
     created: z.coerce.date(),
     sample_support: SampleSupportSchema.optional(),
+    sample_providers: SampleProvidersConfigSchema.optional(),
     brand: z.string().optional(),
     characters: z.string().optional(),
     skills: z.string().optional(),

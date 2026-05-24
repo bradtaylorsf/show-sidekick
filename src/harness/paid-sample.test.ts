@@ -82,6 +82,88 @@ describe("paid sample dispatcher", () => {
     });
   });
 
+  it("uses sample_providers config instead of paid-demo defaults for image, video, and TTS", async () => {
+    const root = await scratchProject();
+    const show: LoadedShow = {
+      ...loadedShow(root),
+      sample_providers: {
+        image: { tool: "google_imagen", model: "imagen-test" },
+        video: { tool: "veo_video", model: "veo-test" },
+        tts: { tool: "google_tts", model: "chirp-test", voice_id: "en-US-Test" },
+      },
+    };
+    const episode = loadedEpisode(show);
+    const pipeline = pipelineManifest();
+    const openAiInputs: unknown[] = [];
+    const higgsfieldInputs: unknown[] = [];
+    const googleImageInputs: unknown[] = [];
+    const veoInputs: unknown[] = [];
+    const googleTtsInputs: unknown[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "paid-demo",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          includeGoogleImage: true,
+          includeGoogleTts: true,
+          includeVeoVideo: true,
+          onGoogleImageInput: (input) => googleImageInputs.push(input),
+          onGoogleTtsInput: (input) => googleTtsInputs.push(input),
+          onHiggsfieldInput: (input) => higgsfieldInputs.push(input),
+          onOpenAiInput: (input) => openAiInputs.push(input),
+          onVeoInput: (input) => veoInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", nonInteractive: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(openAiInputs).toEqual([]);
+    expect(higgsfieldInputs).toEqual([]);
+    expect(googleImageInputs[0]).toMatchObject({
+      model: "imagen-test",
+      aspect_ratio: "16:9",
+      prompt: expect.stringContaining('Show title: "Show"'),
+    });
+    expect(veoInputs[0]).toMatchObject({
+      model: "veo-test",
+      aspect_ratio: "16:9",
+      duration: 10,
+      prompt: expect.stringContaining("Animate"),
+    });
+    expect(veoInputs[0]).not.toHaveProperty("image_url");
+    expect(googleTtsInputs[0]).toMatchObject({
+      model: "chirp-test",
+      voice_id: "en-US-Test",
+      text: expect.stringContaining("paid sample dispatcher"),
+    });
+    await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
+      artifact: {
+        assets: expect.arrayContaining([
+          expect.objectContaining({ id: "paid_sample_image", provider: "google", model: "imagen-test" }),
+          expect.objectContaining({ id: "paid_sample_clip", provider: "google", model: "veo-test" }),
+          expect.objectContaining({ id: "paid_sample_narration", provider: "google", model: "chirp-test" }),
+        ]),
+      },
+    });
+    await expect(readDecisionLog({ show: "show", episode: "episode" }, { root })).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ category: "provider_selection", picked: "google" }),
+        expect.objectContaining({ category: "model_selection", picked: "imagen-test" }),
+        expect.objectContaining({ category: "model_selection", picked: "veo-test" }),
+        expect.objectContaining({ category: "voice_selection", picked: "google_tts" }),
+      ]),
+    );
+  });
+
   it("records zero-cost Higgsfield cache hits", async () => {
     const root = await scratchProject();
     const show = loadedShow(root);
@@ -1377,21 +1459,30 @@ function paidSampleTools(
   options: {
     higgsfieldCacheHit?: boolean;
     includeCodeSnippet?: boolean;
+    includeGoogleImage?: boolean;
+    includeGoogleTts?: boolean;
     includeHiggsfieldImage?: boolean;
     includeOpenAiImage?: boolean;
     includeRemotionRuntime?: boolean;
+    includeVeoVideo?: boolean;
     onCodeSnippetInput?: (input: unknown) => void;
     onFfmpegInput?: (input: unknown) => void;
+    onGoogleImageInput?: (input: unknown) => void;
+    onGoogleTtsInput?: (input: unknown) => void;
     onHiggsfieldImageInput?: (input: unknown) => void;
     onHiggsfieldInput?: (input: unknown) => void;
     onOpenAiInput?: (input: unknown) => void;
+    onVeoInput?: (input: unknown) => void;
     onVideoComposeInput?: (input: unknown) => void;
   } = {},
 ): Tool[] {
   const imagePath = path.join(root, "fixtures", "openai.png");
+  const googleImagePath = path.join(root, "fixtures", "google.png");
   const higgsfieldImagePath = path.join(root, "fixtures", "higgsfield.png");
   const audioPath = path.join(root, "fixtures", "narration.mp3");
+  const googleAudioPath = path.join(root, "fixtures", "google-narration.mp3");
   const clipPath = path.join(root, "fixtures", "clip.mp4");
+  const veoClipPath = path.join(root, "fixtures", "veo.mp4");
 
   return [
     ...(options.includeCodeSnippet
@@ -1412,6 +1503,20 @@ function paidSampleTools(
               options.onCodeSnippetInput?.(input);
               throw new Error("code_snippet should not be used for paid-sample motion frames");
             },
+          }),
+        ]
+      : []),
+    ...(options.includeGoogleImage
+      ? [
+          fixtureTool("google_imagen", "image_generation", "google", 0.04, async (input) => {
+            options.onGoogleImageInput?.(input);
+            await writeFixture(googleImagePath, "google-image");
+            return {
+              image_path: googleImagePath,
+              provider: "google",
+              model: inputProperty(input, "model") ?? "imagen-3.0-generate-001",
+              cost_usd: 0.04,
+            };
           }),
         ]
       : []),
@@ -1437,11 +1542,40 @@ function paidSampleTools(
       await writeFixture(audioPath, "audio");
       return { audio_path: audioPath, provider: "elevenlabs", model: "eleven_multilingual_v2", cost_usd: 0.0003 };
     }),
+    ...(options.includeGoogleTts
+      ? [
+          fixtureTool("google_tts", "tts", "google", 0.000016, async (input) => {
+            options.onGoogleTtsInput?.(input);
+            await writeFixture(googleAudioPath, "google-audio");
+            return {
+              audio_path: googleAudioPath,
+              provider: "google",
+              model: inputProperty(input, "model") ?? "chirp3-hd",
+              voice: inputProperty(input, "voice_id") ?? "en-US-Chirp3-HD-Charon",
+              cost_usd: 0.000016,
+            };
+          }),
+        ]
+      : []),
     fixtureTool("higgsfield", "image_to_video", "higgsfield", 0.3, async (input) => {
       options.onHiggsfieldInput?.(input);
       await writeFixture(clipPath, "clip");
       return { video_path: clipPath, cost_usd: options.higgsfieldCacheHit ? 0 : 0.3, cache_hit: options.higgsfieldCacheHit === true };
     }),
+    ...(options.includeVeoVideo
+      ? [
+          fixtureTool("veo_video", "text_to_video", "google", 0.5, async (input) => {
+            options.onVeoInput?.(input);
+            await writeFixture(veoClipPath, "veo-clip");
+            return {
+              video_path: veoClipPath,
+              provider: "google",
+              model: inputProperty(input, "model") ?? "veo-2.0-generate-001",
+              cost_usd: 0.5,
+            };
+          }),
+        ]
+      : []),
     fixtureTool("ffmpeg", "video_compose", "ffmpeg", 0, async (input) => {
       options.onFfmpegInput?.(input);
       const outputPath = path.join(root, "projects", "show", "episode", "renders", "paid-sample.mp4");
@@ -1539,6 +1673,15 @@ function tinyPngBytes(): Buffer {
 
 function promptFromInput(input: unknown): string {
   return typeof input === "object" && input !== null && "prompt" in input && typeof input.prompt === "string" ? input.prompt : "";
+}
+
+function inputProperty(input: unknown, key: string): string | undefined {
+  if (typeof input !== "object" || input === null || !(key in input)) {
+    return undefined;
+  }
+
+  const value = (input as Record<string, unknown>)[key];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
 function composeDuration(input: unknown): number {

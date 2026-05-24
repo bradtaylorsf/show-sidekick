@@ -7,6 +7,12 @@ import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { RenderRuntime } from "../artifacts/enums.js";
 import { ScriptSchema, type Script } from "../artifacts/script.js";
 import type { Capability, Tool, ToolContext } from "../registry/index.js";
+import {
+  SampleProvidersConfigSchema,
+  sampleProviderToolNames,
+  type SampleProviderChoice,
+  type SampleProvidersConfig,
+} from "../providers/sample-plan.js";
 import { encodeRgbaPng } from "../media/png.js";
 import { readCheckpoint } from "../checkpoints/index.js";
 import { projectDir } from "../checkpoints/paths.js";
@@ -84,6 +90,25 @@ const IMAGE_REFERENCE_EXTENSIONS = new Set([".gif", ".jpeg", ".jpg", ".png", ".w
 const TEXT_REFERENCE_EXTENSIONS = new Set([".csv", ".json", ".md", ".srt", ".tsv", ".txt", ".yaml", ".yml"]);
 const PAID_SAMPLE_IMAGE_TOOLS = ["openai_image", "higgsfield_image"] as const;
 const PAID_SAMPLE_VIDEO_TOOLS = ["higgsfield", "higgsfield_video"] as const;
+
+type SamplePlanRole = "image" | "video" | "tts";
+
+type ResolvedSampleChoice = {
+  role: SamplePlanRole;
+  source: string;
+  toolNames: string[];
+  provider?: string;
+  model?: string;
+  voiceId?: string;
+  voiceName?: string;
+  raw: SampleProviderChoice;
+};
+
+type ResolvedSamplePlan = {
+  image: ResolvedSampleChoice;
+  video: ResolvedSampleChoice;
+  tts: ResolvedSampleChoice;
+};
 
 export class PaidSampleStageError extends Error {
   readonly lastArtifactPath?: string;
@@ -445,9 +470,10 @@ async function buildPresentationDemoCuesheet(
   }
 
   const text = sections.map(narrationForSection).join("\n\n");
-  const tts = await preferredTtsTool(ctx);
-  const voice = voiceInputForTool(ctx, tts);
-  const model = ttsModelForTool(tts);
+  const samplePlan = resolveSamplePlan(ctx);
+  const tts = await preferredTtsTool(ctx, samplePlan);
+  const voice = voiceInputForTool(ctx, tts, samplePlan.tts);
+  const model = ttsModelForTool(tts, samplePlan.tts);
   const ttsInput = {
     text,
     ...voice.input,
@@ -1103,6 +1129,9 @@ async function buildScenePlan(ctx: StageContext): Promise<unknown> {
   const duration = sampleDuration(ctx);
   const beats = await sampleBeats(ctx);
   const cuts = sampleBeatCuts(duration, beats);
+  const samplePlan = resolveSamplePlan(ctx);
+  const imageProviderLabel = sampleChoiceLabel(samplePlan.image);
+  const videoProviderLabel = sampleChoiceLabel(samplePlan.video);
   if (!lyricMusicMode(ctx)) {
     return {
       scenes: beats.map((beat, index) => ({
@@ -1130,7 +1159,7 @@ async function buildScenePlan(ctx: StageContext): Promise<unknown> {
           {
             id: clipAssetId(index),
             source: "generated",
-            notes: `Generated start frame plus Higgsfield motion clip for this ${readableSlug(ctx.pipeline.slug)} beat.`,
+            notes: `Generated start frame (${imageProviderLabel}) plus motion clip (${videoProviderLabel}) for this ${readableSlug(ctx.pipeline.slug)} beat.`,
           },
         ],
       })),
@@ -1174,7 +1203,7 @@ async function buildScenePlan(ctx: StageContext): Promise<unknown> {
         {
           id: clipAssetId(index),
           source: "generated",
-          notes: "Higgsfield GPT Image 2 start frame plus Higgsfield motion clip reused across split <=5s sample scenes.",
+          notes: `Generated start frame (${imageProviderLabel}) plus motion clip (${videoProviderLabel}) reused across split <=5s sample scenes.`,
         },
       ],
     }));
@@ -1313,16 +1342,19 @@ async function buildAssets(
     return buildPresentationDemoAssets(ctx, state);
   }
 
-  const imageTool = await paidSampleToolFor(ctx, {
-    role: "image generation provider",
-    capability: "image_generation",
-    names: PAID_SAMPLE_IMAGE_TOOLS,
+  const samplePlan = resolveSamplePlan(ctx);
+  const imageTool = await sampleToolFor(ctx, {
+    role: "image",
+    capabilities: ["image_generation"],
+    choice: samplePlan.image,
   });
-  const videoTool = await paidSampleToolFor(ctx, {
-    role: "motion provider",
-    capability: "image_to_video",
-    names: PAID_SAMPLE_VIDEO_TOOLS,
+  const videoTool = await sampleToolFor(ctx, {
+    role: "video",
+    capabilities: ["image_to_video", "text_to_video"],
+    choice: samplePlan.video,
   });
+  const imageModel = sampleModelForTool(imageTool, samplePlan.image);
+  const videoModel = sampleModelForTool(videoTool, samplePlan.video);
   const beats = await sampleBeats(ctx);
   const imageAssets: Array<Record<string, unknown>> = [];
   const clipAssets: Array<Record<string, unknown>> = [];
@@ -1332,22 +1364,8 @@ async function buildAssets(
   for (const beat of beats) {
     const imagePromptText = await imagePrompt(ctx, beat);
     const motionPromptText = await motionPrompt(ctx, beat);
-    const targetAspect = providerAspectRatio(ctx);
-    const imageModel = imageTool.name === "higgsfield_image" ? "gpt_image_2" : "gpt-image-2";
     const imageResult = await imageTool.execute(
-      imageTool.name === "higgsfield_image"
-        ? {
-            prompt: imagePromptText,
-            aspect_ratio: targetAspect,
-            quality: "low",
-            resolution: "2k",
-          }
-        : {
-            prompt: imagePromptText,
-            model: imageModel,
-            size: imageSize(ctx),
-            quality: "low",
-          },
+      imageInputForTool(ctx, imageTool, samplePlan.image, imagePromptText),
       toolContext(ctx, {
         reason: `Generate paid-demo explainer start frame ${beat.index + 1}.`,
         model: imageModel,
@@ -1355,43 +1373,32 @@ async function buildAssets(
       }),
     );
     const image = recordValue(imageResult);
-    const imagePrefix = imageTool.name === "higgsfield_image" ? "higgsfield" : "openai";
+    const imagePrefix = providerFilePrefix(imageTool);
     const imageFileName = beat.index === 0 ? `${imagePrefix}-sample.png` : `${imagePrefix}-sample-${beat.index + 1}.png`;
     const imagePath = await episodeMediaPath(ctx, stringValue(image?.image_path), "assets", imageFileName);
+    const resolvedImageModel = stringValue(image?.model) ?? imageModel;
     imagePaths.push(imagePath);
     costEntries.push(
-      costEntry(imageTool.name, imageTool.provider, stringValue(image?.model) ?? imageModel, 1, numberValue(image?.cost_usd) ?? 0),
+      costEntry(imageTool.name, imageTool.provider, resolvedImageModel, 1, numberValue(image?.cost_usd) ?? 0),
     );
 
-    const videoInput =
-      videoTool.provider === "higgsfield" || typeof image?.url !== "string"
-        ? {
-            image_path: imagePath,
-            prompt: motionPromptText,
-            duration: higgsfieldDuration(ctx),
-            aspect_ratio: targetAspect,
-          }
-        : {
-            image_url: image.url,
-            prompt: motionPromptText,
-            duration: higgsfieldDuration(ctx),
-            aspect_ratio: targetAspect,
-          };
     const videoResult = await videoTool.execute(
-      videoInput,
+      videoInputForTool(ctx, videoTool, samplePlan.video, image, imagePath, motionPromptText),
       toolContext(ctx, {
         reason: `Generate paid-demo explainer motion clip ${beat.index + 1}.`,
-        model: "seedance_2_0",
+        model: videoModel,
         units: 1,
       }),
     );
     const video = recordValue(videoResult);
-    const clipFileName = beat.index === 0 ? "higgsfield-sample.mp4" : `higgsfield-sample-${beat.index + 1}.mp4`;
+    const videoPrefix = providerFilePrefix(videoTool);
+    const clipFileName = beat.index === 0 ? `${videoPrefix}-sample.mp4` : `${videoPrefix}-sample-${beat.index + 1}.mp4`;
     const clipPath = await episodeMediaPath(ctx, stringValue(video?.video_path), "clips", clipFileName);
     clipPaths.push(clipPath);
     const cacheHit = video?.cache_hit === true || numberValue(video?.cost_usd) === 0;
+    const resolvedVideoModel = stringValue(video?.model) ?? videoModel;
     costEntries.push(
-      costEntry(videoTool.name, videoTool.provider, "seedance_2_0", cacheHit ? 0 : 1, numberValue(video?.cost_usd) ?? 0, cacheHit),
+      costEntry(videoTool.name, videoTool.provider, resolvedVideoModel, cacheHit ? 0 : 1, numberValue(video?.cost_usd) ?? 0, cacheHit),
     );
 
     imageAssets.push({
@@ -1400,7 +1407,7 @@ async function buildAssets(
       path: imagePath,
       scene_ref: `sample-${beat.index + 1}`,
       provider: imageTool.provider,
-      model: stringValue(image?.model) ?? imageModel,
+      model: resolvedImageModel,
       prompt: imagePromptText,
       cost_usd: numberValue(image?.cost_usd) ?? 0,
     });
@@ -1410,13 +1417,13 @@ async function buildAssets(
       path: clipPath,
       scene_ref: `sample-${beat.index + 1}`,
       provider: videoTool.provider,
-      model: "seedance_2_0",
+      model: resolvedVideoModel,
       prompt: motionPromptText,
       cost_usd: numberValue(video?.cost_usd) ?? 0,
     });
 
     if (cacheHit) {
-      decisions.push(cacheHitDecision(ctx, options));
+      decisions.push(cacheHitDecision(ctx, options, videoTool));
     }
   }
 
@@ -1426,10 +1433,10 @@ async function buildAssets(
   state.clipPath = clipPaths[0];
 
   if (state.narrationPath === undefined && (ctx.pipeline.master_clock === "voiceover" || hasNarrationInput(ctx))) {
-    const tts = await preferredTtsTool(ctx);
+    const tts = await preferredTtsTool(ctx, samplePlan);
     const text = await narrationText(ctx);
-    const voice = voiceInputForTool(ctx, tts);
-    const model = ttsModelForTool(tts);
+    const voice = voiceInputForTool(ctx, tts, samplePlan.tts);
+    const model = ttsModelForTool(tts, samplePlan.tts);
     const ttsResult = await tts.execute(
       {
         text,
@@ -1472,10 +1479,10 @@ async function buildAssets(
   }
 
   decisions.push(
-    providerDecision(ctx, "image_generation", imageTool.provider, options),
-    modelDecision(ctx, imageTool.provider, imageTool.name === "higgsfield_image" ? "gpt_image_2" : "gpt-image-2", options),
-    providerDecision(ctx, "image_to_video", "higgsfield", options),
-    modelDecision(ctx, "higgsfield", "seedance_2_0", options),
+    providerDecision(ctx, imageTool.capability, imageTool.provider, options, samplePlan.image),
+    modelDecision(ctx, imageTool.provider, imageModel, options, samplePlan.image),
+    providerDecision(ctx, videoTool.capability, videoTool.provider, options, samplePlan.video),
+    modelDecision(ctx, videoTool.provider, videoModel, options, samplePlan.video),
   );
 
   return {
@@ -1553,6 +1560,7 @@ function buildEditDecisions(ctx: StageContext, state: PaidSampleState): unknown 
   const scenes = recordValue(state.scene_plan)?.scenes;
   const scriptSections = sectionsFromScript(state.script ?? ctx.priorArtifacts.script);
   const fallbackCaptions = captionFallbacksFromInputs(ctx);
+  const assetProviders = assetProviderMap(state.asset_manifest);
   const sceneCuts = Array.isArray(scenes)
     ? scenes.map((scene, index) => {
         const record = recordValue(scene);
@@ -1560,15 +1568,16 @@ function buildEditDecisions(ctx: StageContext, state: PaidSampleState): unknown 
         const firstAsset = Array.isArray(requiredAssets) ? recordValue(requiredAssets[0]) : undefined;
         const sceneId = stringValue(record?.slug) ?? `sample-${index + 1}`;
         const caption = captionForScene(scriptSections, fallbackCaptions, sceneId, index);
+        const assetId = stringValue(firstAsset?.id) ?? clipAssetId(index % Math.max(1, clipPaths.length));
 
         return {
           start_s: numberValue(record?.start_s) ?? 0,
           end_s: numberValue(record?.end_s) ?? duration,
-          asset_id: stringValue(firstAsset?.id) ?? clipAssetId(index % Math.max(1, clipPaths.length)),
+          asset_id: assetId,
           scene_id: sceneId,
           scene_kind: "video_clip",
           caption,
-          provider: "higgsfield",
+          provider: assetProviders.get(assetId) ?? "generated",
         };
       })
     : undefined;
@@ -1585,7 +1594,7 @@ function buildEditDecisions(ctx: StageContext, state: PaidSampleState): unknown 
         scene_id: `sample-${index + 1}`,
         scene_kind: "video_clip",
         caption: captionForScene(scriptSections, fallbackCaptions, `sample-${index + 1}`, index),
-        provider: "higgsfield",
+        provider: assetProviders.get(clipAssetId(index)) ?? "generated",
       })),
     overlays: [],
     audio:
@@ -1853,10 +1862,110 @@ function plannedComposeDuration(ctx: StageContext, state: PaidSampleState): numb
   return cueDuration === undefined ? sampleDuration(ctx) : roundTime(cueDuration);
 }
 
-async function preferredTtsTool(ctx: StageContext): Promise<Tool> {
-  return ctx.registry.select("tts", {
-    prefer: ttsPreferenceList(ctx),
-    context: { projectRoot: ctx.show.projectRoot },
+function resolveSamplePlan(ctx: StageContext): ResolvedSamplePlan {
+  const base = {
+    image: sampleChoice("image", "fallback", {
+      tools: [...PAID_SAMPLE_IMAGE_TOOLS],
+    }),
+    video: sampleChoice("video", "fallback", {
+      tools: [...PAID_SAMPLE_VIDEO_TOOLS],
+      model: "seedance_2_0",
+    }),
+    tts: sampleChoice("tts", "fallback", {
+      tools: ttsPreferenceList(ctx),
+    }),
+  };
+  const sources: Array<[string, SampleProvidersConfig | undefined]> = [
+    ["pipeline", sampleProvidersFrom(ctx.pipeline.sample_providers, "pipeline.sample_providers")],
+    ["playbook", sampleProvidersFrom(recordValue(ctx.playbook)?.sample_providers, "playbook.sample_providers")],
+    ["show", sampleProvidersFrom(ctx.show.sample_providers, "show.sample_providers")],
+    [
+      `show.pipelines.${ctx.pipeline.slug}`,
+      sampleProvidersFrom(ctx.show.pipelines[ctx.pipeline.slug]?.sample_providers, `show.pipelines.${ctx.pipeline.slug}.sample_providers`),
+    ],
+    ["episode", sampleProvidersFrom(ctx.episode.sample_providers, "episode.sample_providers")],
+  ];
+
+  return sources.reduce((plan, [source, config]) => mergeSamplePlan(plan, config, source), base);
+}
+
+function sampleProvidersFrom(value: unknown, source: string): SampleProvidersConfig | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = SampleProvidersConfigSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new Error(`${source} is invalid: ${parsed.error.message}`);
+  }
+
+  return parsed.data;
+}
+
+function mergeSamplePlan(plan: ResolvedSamplePlan, config: SampleProvidersConfig | undefined, source: string): ResolvedSamplePlan {
+  if (config === undefined) {
+    return plan;
+  }
+
+  return {
+    image: mergeSampleChoice(plan.image, sampleChoiceForRole(config, "image"), source),
+    video: mergeSampleChoice(plan.video, sampleChoiceForRole(config, "video"), source),
+    tts: mergeSampleChoice(plan.tts, sampleChoiceForRole(config, "tts"), source),
+  };
+}
+
+function sampleChoiceForRole(config: SampleProvidersConfig, role: SamplePlanRole): SampleProviderChoice | undefined {
+  if (role === "image") {
+    return config.image ?? config.image_generation;
+  }
+  if (role === "video") {
+    return config.video ?? config.image_to_video ?? config.text_to_video;
+  }
+
+  return config.tts ?? config.voice ?? config.voiceover;
+}
+
+function mergeSampleChoice(
+  current: ResolvedSampleChoice,
+  next: SampleProviderChoice | undefined,
+  source: string,
+): ResolvedSampleChoice {
+  if (next === undefined) {
+    return current;
+  }
+
+  const nextToolNames = sampleProviderToolNames(next);
+  const raw: SampleProviderChoice = { ...current.raw, ...next };
+  if (nextToolNames.length > 0) {
+    raw.tools = nextToolNames;
+  } else if (next.provider !== undefined) {
+    delete raw.tool;
+    raw.tools = [];
+  } else {
+    raw.tools = current.toolNames;
+  }
+
+  return sampleChoice(current.role, source, raw);
+}
+
+function sampleChoice(role: SamplePlanRole, source: string, raw: SampleProviderChoice): ResolvedSampleChoice {
+  return {
+    role,
+    source,
+    toolNames: sampleProviderToolNames(raw),
+    provider: raw.provider,
+    model: raw.model,
+    voiceId: raw.voice_id,
+    voiceName: raw.voice_name,
+    raw,
+  };
+}
+
+async function preferredTtsTool(ctx: StageContext, samplePlan: ResolvedSamplePlan): Promise<Tool> {
+  return sampleToolFor(ctx, {
+    role: "tts",
+    capabilities: ["tts"],
+    choice: samplePlan.tts,
   });
 }
 
@@ -1869,17 +1978,92 @@ function ttsPreferenceList(ctx: StageContext): string[] {
   return [...configured, "elevenlabs_tts", "openai_tts", "google_tts", "piper_tts"];
 }
 
+function imageInputForTool(
+  ctx: StageContext,
+  tool: Tool,
+  choice: ResolvedSampleChoice,
+  prompt: string,
+): Record<string, unknown> {
+  const model = sampleModelForTool(tool, choice);
+  const extra = sampleChoiceExtra(choice);
+
+  if (tool.name === "higgsfield_image") {
+    return {
+      prompt,
+      aspect_ratio: providerAspectRatio(ctx),
+      quality: "low",
+      resolution: "2k",
+      ...extra,
+    };
+  }
+
+  if (tool.name === "openai_image") {
+    return {
+      prompt,
+      model,
+      size: imageSize(ctx),
+      quality: "low",
+      ...extra,
+    };
+  }
+
+  return {
+    prompt,
+    model,
+    aspect_ratio: providerAspectRatio(ctx),
+    size: imageSize(ctx),
+    quality: "low",
+    ...extra,
+  };
+}
+
+function videoInputForTool(
+  ctx: StageContext,
+  tool: Tool,
+  choice: ResolvedSampleChoice,
+  image: Record<string, unknown> | undefined,
+  imagePath: string,
+  prompt: string,
+): Record<string, unknown> {
+  const model = sampleModelForTool(tool, choice);
+  const base = {
+    prompt,
+    duration: higgsfieldDuration(ctx),
+    aspect_ratio: providerAspectRatio(ctx),
+    ...(choice.model === undefined && tool.name !== "higgsfield" && tool.name !== "higgsfield_video" ? {} : { model }),
+    ...sampleChoiceExtra(choice),
+  };
+
+  if (tool.capability === "text_to_video") {
+    return base;
+  }
+
+  const imageUrl = stringValue(image?.url) ?? stringValue(image?.image_url);
+  if (imageUrl !== undefined && tool.provider !== "higgsfield") {
+    return {
+      ...base,
+      image_url: imageUrl,
+    };
+  }
+
+  return {
+    ...base,
+    image_path: imagePath,
+  };
+}
+
 function voiceInputForTool(
   ctx: StageContext,
   tool: Tool,
+  choice?: ResolvedSampleChoice,
 ): {
   input: { voice_id?: string; voice_name?: string };
   label: string;
   voiceId?: string;
   voiceName?: string;
 } {
-  const voiceIdInput = stringInput(ctx, "voice_id");
-  const voiceName = stringInput(ctx, "voice_name") ?? stringInput(ctx, "voice_preference");
+  const voiceIdInput = choice?.voiceId ?? stringInput(ctx, "voice_id");
+  const voiceName = choice?.voiceName ?? stringInput(ctx, "voice_name") ?? stringInput(ctx, "voice_preference");
 
   if (voiceIdInput !== undefined) {
     return { input: { voice_id: voiceIdInput }, label: voiceIdInput, voiceId: voiceIdInput, voiceName };
@@ -1906,55 +2090,166 @@ function voiceInputForTool(
   };
 }
 
-function ttsModelForTool(tool: Tool): string {
-  if (tool.name === "elevenlabs_tts") {
-    return "eleven_multilingual_v2";
+function ttsModelForTool(tool: Tool, choice?: ResolvedSampleChoice): string {
+  return choice?.model ?? defaultModelForTool(tool);
+}
+
+function sampleModelForTool(tool: Tool, choice: ResolvedSampleChoice): string {
+  return choice.model ?? defaultModelForTool(tool);
+}
+
+function defaultModelForTool(tool: Tool): string {
+  const knownDefaults: Record<string, string> = {
+    elevenlabs_tts: "eleven_multilingual_v2",
+    flux_image: "flux-pro-1.1",
+    google_imagen: "imagen-3.0-generate-001",
+    google_tts: "chirp3-hd",
+    grok_image: "grok-2-image",
+    grok_video: "grok-video-1",
+    higgsfield: "seedance_2_0",
+    higgsfield_image: "gpt_image_2",
+    higgsfield_video: "seedance_2_0",
+    openai_image: "gpt-image-2",
+    openai_tts: "gpt-4o-mini-tts",
+    piper_tts: "en_US-lessac-medium",
+    recraft_image: "recraftv3",
+    veo_video: "veo-2.0-generate-001",
+  };
+  if (knownDefaults[tool.name] !== undefined) {
+    return knownDefaults[tool.name];
   }
-  if (tool.name === "openai_tts") {
-    return "gpt-4o-mini-tts";
-  }
-  if (tool.name === "google_tts") {
-    return "chirp3-hd";
-  }
-  if (tool.name === "piper_tts") {
-    return "en_US-lessac-medium";
-  }
-  return tool.name;
+
+  const genericSupports = new Set([
+    "image-to-video",
+    "text-to-video",
+    "text-to-image",
+    "reference-image-animation",
+    "still-assets",
+    "narration-audio",
+    "premium-voices",
+    "voice-cloning",
+    "legible-text",
+    "vertex-ai",
+    "image-prompt",
+  ]);
+  return tool.supports?.find((item) => !genericSupports.has(item)) ?? tool.name;
 }
 
 function ttsFormatForTool(tool: Tool): string {
   return tool.name === "elevenlabs_tts" ? "mp3_44100_128" : "mp3";
 }
 
-async function paidSampleToolFor(
+function sampleChoiceExtra(choice: ResolvedSampleChoice): Record<string, unknown> {
+  const raw = recordValue(choice.raw) ?? {};
+  const {
+    tool: _tool,
+    tools: _tools,
+    provider: _provider,
+    model: _model,
+    voice_id: _voiceId,
+    voice_name: _voiceName,
+    ...extra
+  } = raw;
+
+  return extra;
+}
+
+function providerFilePrefix(tool: Tool): string {
+  return safeFileSlug(tool.provider || tool.name.replace(/_(?:image|video|tts)$/u, ""));
+}
+
+function sampleProviderSummaries(
   ctx: StageContext,
-  input: { role: string; capability: Capability; names: readonly string[] },
+  choice: ResolvedSampleChoice,
+  capabilities: readonly Capability[],
+): Array<{ provider: string; tool?: string; model: string; execution_path: string; source: string }> {
+  const tools =
+    choice.toolNames.length > 0
+      ? choice.toolNames.map((name) => ctx.registry.get(name)).filter((tool): tool is Tool => tool !== undefined)
+      : ctx.registry
+          .all()
+          .filter((tool) => !isProviderSelectionMarker(tool))
+          .filter((tool) => capabilities.includes(tool.capability))
+          .filter((tool) => choice.provider === undefined || tool.provider === choice.provider);
+
+  return tools
+    .filter((tool) => choice.provider === undefined || tool.provider === choice.provider)
+    .filter((tool) => capabilities.includes(tool.capability))
+    .map((tool) => ({
+      provider: tool.provider,
+      tool: tool.name,
+      model: sampleModelForTool(tool, choice),
+      execution_path: `${tool.integration.kind}:${tool.name}`,
+      source: choice.source,
+    }));
+}
+
+function sampleProviderSummaryFromChoice(choice: ResolvedSampleChoice): {
+  provider: string;
+  model: string;
+  source: string;
+} {
+  return {
+    provider: choice.provider ?? choice.toolNames[0] ?? "registry",
+    model: choice.model ?? "tool-default",
+    source: choice.source,
+  };
+}
+
+function sampleChoiceLabel(choice: ResolvedSampleChoice): string {
+  return choice.provider ?? (choice.toolNames.join("/") || choice.source);
+}
+
+async function sampleToolFor(
+  ctx: StageContext,
+  input: { role: SamplePlanRole; capabilities: readonly Capability[]; choice: ResolvedSampleChoice },
 ): Promise<Tool> {
   const unavailable: string[] = [];
+  const candidateTools =
+    input.choice.toolNames.length > 0
+      ? input.choice.toolNames
+          .map((name) => {
+            const tool = ctx.registry.get(name);
+            if (tool === undefined) {
+              unavailable.push(`${name}: not registered`);
+            }
+            return tool;
+          })
+          .filter((tool): tool is Tool => tool !== undefined)
+      : ctx.registry
+          .all()
+          .filter((tool) => !isProviderSelectionMarker(tool))
+          .filter((tool) => input.capabilities.includes(tool.capability))
+          .filter((tool) => input.choice.provider === undefined || tool.provider === input.choice.provider);
 
-  for (const name of input.names) {
-    const tool = ctx.registry.get(name);
-    if (tool === undefined) {
-      unavailable.push(`${name}: not registered`);
+  for (const tool of candidateTools) {
+    if (!input.capabilities.includes(tool.capability)) {
+      unavailable.push(`${tool.name}: registered as ${tool.capability}, expected ${input.capabilities.join(" or ")}`);
       continue;
     }
 
-    if (tool.capability !== input.capability) {
-      unavailable.push(`${name}: registered as ${tool.capability}, expected ${input.capability}`);
+    if (input.choice.provider !== undefined && tool.provider !== input.choice.provider) {
+      unavailable.push(`${tool.name}: provider is ${tool.provider}, expected ${input.choice.provider}`);
       continue;
     }
 
-    const cached = ctx.registry.getAvailability(name);
+    const cached = ctx.registry.getAvailability(tool.name);
     const availability = cached ?? (await tool.isAvailable({ projectRoot: ctx.show.projectRoot }));
     if (availability.available) {
       return tool;
     }
 
-    unavailable.push(`${name}: ${availability.reason}`);
+    unavailable.push(`${tool.name}: ${availability.reason}`);
   }
 
+  const providerHint = input.choice.provider === undefined ? "" : ` provider ${input.choice.provider}`;
+  const toolHint = input.choice.toolNames.length === 0 ? "" : ` tools ${input.choice.toolNames.join(", ")}`;
+  const details = unavailable.length === 0 ? "no matching registered tools" : unavailable.join("; ");
+
   throw new Error(
-    `no paid-sample ${input.role} available; expected one of ${input.names.join(", ")} for ${input.capability} (${unavailable.join("; ")})`,
+    `no sample ${input.role}${providerHint} provider available from ${input.choice.source}; expected ${input.capabilities.join(
+      " or ",
+    )}${toolHint} (${details})`,
   );
 }
 
@@ -2034,6 +2329,9 @@ async function writeLyricPlanningArtifacts(
   beats: readonly SampleBeat[],
   scenes: readonly unknown[],
 ): Promise<void> {
+  const samplePlan = resolveSamplePlan(ctx);
+  const imageProviders = sampleProviderSummaries(ctx, samplePlan.image, ["image_generation"]);
+  const videoProviders = sampleProviderSummaries(ctx, samplePlan.video, ["image_to_video", "text_to_video"]);
   const fullScenes = scenes.map((scene, index) => {
     const record = recordValue(scene);
     const slug = stringValue(record?.slug) ?? `sample-${index + 1}`;
@@ -2078,9 +2376,9 @@ async function writeLyricPlanningArtifacts(
     duration_seconds: sampleDuration(ctx),
     scene_count: fullScenes.length,
     max_scene_duration: Math.max(...fullScenes.map((scene) => numberValue(scene.duration) ?? 0)),
-    image_provider: { provider: "openai", model: "gpt-image-2", execution_path: "OpenAI Image API" },
-    alternate_image_provider: { provider: "higgsfield", model: "gpt_image_2", execution_path: "higgsfield CLI" },
-    video_provider: { provider: "higgsfield", model: "seedance_2_0", execution_path: "higgsfield CLI image-to-video" },
+    image_provider: imageProviders[0] ?? sampleProviderSummaryFromChoice(samplePlan.image),
+    ...(imageProviders[1] === undefined ? {} : { alternate_image_provider: imageProviders[1] }),
+    video_provider: videoProviders[0] ?? sampleProviderSummaryFromChoice(samplePlan.video),
     storyboard_first: true,
     scenes: fullScenes,
   });
@@ -2726,6 +3024,15 @@ function assetPaths(assetManifest: unknown, idPattern: RegExp): string[] {
     .filter((value): value is string => value !== undefined);
 }
 
+function assetProviderMap(assetManifest: unknown): Map<string, string> {
+  const assets = recordArray(recordValue(assetManifest)?.assets);
+  return new Map(
+    assets
+      .map((asset) => [stringValue(asset.id), stringValue(asset.provider)] as const)
+      .filter((entry): entry is readonly [string, string] => entry[0] !== undefined && entry[1] !== undefined),
+  );
+}
+
 function costEntry(
   tool: string,
   provider: string,
@@ -2756,7 +3063,7 @@ function proposalDecisions(ctx: StageContext, options: PaidSampleDispatcherOptio
       "proposal",
       "concept_selection",
       "provider-sample",
-      "The provider sample concept validates OpenAI, ElevenLabs, Higgsfield, and the selected composition runtime.",
+      "The provider sample concept validates the resolved sample provider plan and the selected composition runtime.",
       options,
     ),
     ...(ctx.pipeline.master_clock === "audio"
@@ -2770,9 +3077,11 @@ function providerDecision(
   capability: string,
   provider: string,
   options: PaidSampleDispatcherOptions,
+  choice?: ResolvedSampleChoice,
 ): DecisionEntry {
+  const source = choice?.source ?? options.providerProfile;
   return {
-    ...decision(ctx, "assets", "provider_selection", provider, `${provider} is selected by the ${options.providerProfile} profile for ${capability}.`, options),
+    ...decision(ctx, "assets", "provider_selection", provider, `${provider} is selected by ${source} for ${capability}.`, options),
     scope: { capability, provider },
   };
 }
@@ -2782,9 +3091,11 @@ function modelDecision(
   provider: string,
   model: string,
   options: PaidSampleDispatcherOptions,
+  choice?: ResolvedSampleChoice,
 ): DecisionEntry {
+  const source = choice?.source ?? options.providerProfile;
   return {
-    ...decision(ctx, "assets", "model_selection", model, `${model} is the configured ${options.providerProfile} model for ${provider}.`, options),
+    ...decision(ctx, "assets", "model_selection", model, `${model} is the configured ${source} model for ${provider}.`, options),
     scope: { provider },
   };
 }
@@ -2831,8 +3142,15 @@ function renderRuntimeDecision(ctx: StageContext, stage: string, options: PaidSa
   };
 }
 
-function cacheHitDecision(ctx: StageContext, options: PaidSampleDispatcherOptions): DecisionEntry {
-  return decision(ctx, "assets", "budget_tradeoff", "higgsfield_cache_hit", "A repeated Higgsfield prompt/input reused the cached clip with zero new provider cost.", options);
+function cacheHitDecision(ctx: StageContext, options: PaidSampleDispatcherOptions, tool: Tool): DecisionEntry {
+  return decision(
+    ctx,
+    "assets",
+    "budget_tradeoff",
+    `${tool.name}_cache_hit`,
+    `A repeated ${tool.provider} prompt/input reused the cached clip with zero new provider cost.`,
+    options,
+  );
 }
 
 function decision(

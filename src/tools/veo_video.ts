@@ -2,8 +2,8 @@ import { defineTool } from "../registry/define-tool.js";
 import { envValue, postVideoGeneration, videoProviderInputSchema, videoProviderOutputSchema } from "../tool-support/video-provider.js";
 
 const COST_USD = 0.5;
-const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/veo-2.0-generate-001:predict";
-const MODEL = "veo-2.0-generate-001";
+const ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const DEFAULT_MODEL = "veo-2.0-generate-001";
 const inputSchema = videoProviderInputSchema.omit({ image_url: true }).strict();
 
 export default defineTool({
@@ -23,7 +23,7 @@ export default defineTool({
 
     return postVideoGeneration({
       provider: "google",
-      url: ENDPOINT,
+      url: `${ENDPOINT_BASE}/${encodeURIComponent(input.model ?? DEFAULT_MODEL)}:predict`,
       headers: {
         "x-goog-api-key": envValue("GOOGLE_API_KEY"),
       },
@@ -37,7 +37,7 @@ export default defineTool({
       costUsd: (input.duration ?? 5) * COST_USD,
       ctx,
       prompt: input.prompt,
-      model: MODEL,
+      model: input.model ?? DEFAULT_MODEL,
     });
   },
 });

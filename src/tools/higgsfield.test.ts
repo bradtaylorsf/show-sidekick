@@ -123,6 +123,28 @@ describe("higgsfield tool", () => {
     expect(result.cost_usd).toBe(0.3);
   });
 
+  it("passes configured model values to the Higgsfield CLI and wire request", async () => {
+    const ctx = context();
+
+    const result = await higgsfield.execute(
+      higgsfield.input.parse({
+        image_url: "https://cdn.example.com/reference.png",
+        prompt: "animate with a configured model",
+        duration: 5,
+        model: "seedance_3_0",
+      }),
+      ctx,
+    );
+
+    expect(ctx.runCli).toHaveBeenCalledWith(
+      "higgsfield",
+      expect.arrayContaining(["generate", "create", "seedance_3_0"]),
+      expect.any(Object),
+    );
+    expect(result.request.url.endsWith("generate/create/seedance_3_0")).toBe(true);
+    expect(result.request.body.model).toBe("seedance_3_0");
+  });
+
   it("passes portrait aspect through to Seedance generations", async () => {
     const ctx = context();
 

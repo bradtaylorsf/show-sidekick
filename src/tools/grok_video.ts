@@ -3,7 +3,7 @@ import { envValue, postVideoGeneration, videoProviderInputSchema, videoProviderO
 
 const COST_USD = 0.5;
 const ENDPOINT = "https://api.x.ai/v1/video/generations";
-const MODEL = "grok-video-1";
+const DEFAULT_MODEL = "grok-video-1";
 
 export default defineTool({
   name: "grok_video",
@@ -27,7 +27,7 @@ export default defineTool({
         Authorization: `Bearer ${envValue("XAI_API_KEY")}`,
       },
       body: {
-        model: MODEL,
+        model: input.model ?? DEFAULT_MODEL,
         prompt: input.prompt,
         image_url: input.image_url,
         duration: input.duration ?? 5,
@@ -36,7 +36,7 @@ export default defineTool({
       costUsd: COST_USD,
       ctx,
       prompt: input.prompt,
-      model: MODEL,
+      model: input.model ?? DEFAULT_MODEL,
     });
   },
 });

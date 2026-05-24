@@ -8,8 +8,8 @@ import { defaultRunCli } from "../tool-support/cli-runner.js";
 import { lookupClipCache, rememberClipCache } from "../tool-support/clip-cache.js";
 
 const HIGGSFIELD_COST_USD = 0.3;
-const HIGGSFIELD_GENERATE_CREATE_URL = "https://api.higgsfield.ai/generate/create/seedance_2_0";
-const MODEL = "seedance_2_0";
+const HIGGSFIELD_GENERATE_CREATE_URL = "https://api.higgsfield.ai/generate/create";
+const DEFAULT_MODEL = "seedance_2_0";
 
 const durationSchema = z.union([z.literal(5), z.literal(10)]);
 const aspectRatioSchema = z.enum(["16:9", "9:16", "1:1"]);
@@ -21,6 +21,7 @@ const inputSchema = z
     prompt: z.string().min(1),
     duration: durationSchema.default(5),
     aspect_ratio: aspectRatioSchema.default("16:9"),
+    model: z.string().min(1).default(DEFAULT_MODEL),
   })
   .superRefine((value, ctx) => {
     if (!value.image_url && !value.image_path) {
@@ -88,7 +89,7 @@ export default defineTool({
     const cacheKey = {
       prompt: input.prompt,
       provider: "higgsfield",
-      model: MODEL,
+      model: input.model,
       ...imageSource.cacheKey,
       duration: input.duration,
       aspect_ratio: input.aspect_ratio,
@@ -166,13 +167,13 @@ function resolvePreparedImageReference(input: PreparedImageSource): string {
 
 function buildWireRequest(input: HiggsfieldInput, imageUrl: string): WireRequest {
   return {
-    url: HIGGSFIELD_GENERATE_CREATE_URL,
+    url: `${HIGGSFIELD_GENERATE_CREATE_URL}/${encodeURIComponent(input.model)}`,
     headers: {
       Authorization: `Key ${nonBlankEnv("HIGGSFIELD_API_KEY") ?? "<key>"}:${nonBlankEnv("HIGGSFIELD_API_SECRET") ?? "<secret>"}`,
       "Content-Type": "application/json",
     },
     body: {
-      model: MODEL,
+      model: input.model,
       start_image: imageUrl,
       prompt: input.prompt,
       duration: input.duration,
@@ -194,7 +195,7 @@ async function runHiggsfield(
     [
       "generate",
       "create",
-      MODEL,
+      input.model,
       "--start-image",
       imageUrl,
       "--prompt",

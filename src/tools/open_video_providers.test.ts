@@ -215,6 +215,21 @@ describe("open video provider tools", () => {
     }
   });
 
+  it("passes configured Grok video models through to the request body", async () => {
+    stubProviderEnv();
+    const fetchMock = vi.fn(async () => {
+      return new Response(JSON.stringify({ video_path: "projects/show/episode/clips/out.mp4" }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await grokVideo.execute(grokVideo.input.parse({ prompt: "fixture camera move", model: "grok-video-2" }), context());
+
+    expect(JSON.parse((fetchMock.mock.calls[0] as FetchCall)[1].body ?? "{}")).toMatchObject({
+      model: "grok-video-2",
+      prompt: "fixture camera move",
+    });
+  });
+
   it("surfaces non-2xx provider responses with the response body", async () => {
     stubProviderEnv();
     vi.stubGlobal(

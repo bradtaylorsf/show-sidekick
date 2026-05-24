@@ -187,6 +187,21 @@ describe("PipelineManifestSchema", () => {
     });
   });
 
+  it("accepts declarative sample provider plans", () => {
+    const manifest = PipelineManifestSchema.parse({
+      slug: "provider-flex",
+      sample_providers: {
+        image: { tool: "google_imagen", model: "imagen-3.0-generate-001" },
+        image_to_video: { provider: "google", tool: "veo_video" },
+        tts: { tool: "google_tts", voice_id: "en-US-Chirp3-HD-Charon" },
+      },
+      stages: [stage("assets"), stage("edit"), stage("compose")],
+    });
+
+    expect(manifest.sample_providers?.image?.tool).toBe("google_imagen");
+    expect(manifest.sample_providers?.image_to_video?.provider).toBe("google");
+  });
+
   it("rejects empty stage lists", () => {
     expect(() =>
       PipelineManifestSchema.parse({
