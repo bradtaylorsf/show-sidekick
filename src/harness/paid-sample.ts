@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { access, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { CostEntry } from "../artifacts/cost-log.js";
+import { cuesheetPath, readCuesheet } from "../artifacts/cuesheet.js";
 import { DeckManifestSchema, type DeckFileType } from "../artifacts/deck-manifest.js";
 import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { RenderRuntime } from "../artifacts/enums.js";
@@ -1724,7 +1725,7 @@ async function editDecisionsWithComposeRecipe(ctx: StageContext, state: PaidSamp
     show: ctx.show,
     episode: ctx.episode,
     script: state.script ?? ctx.priorArtifacts.script,
-    cuesheet: state.cuesheet ?? ctx.priorArtifacts.cuesheet ?? ctx.cuesheet,
+    cuesheet: await cuesheetForComposeRecipe(ctx, state),
     playbook: ctx.playbook,
     fps: 30,
     resolution: resolutionObject(ctx),
@@ -1744,6 +1745,22 @@ async function editDecisionsWithComposeRecipe(ctx: StageContext, state: PaidSamp
     ...editDecisions,
     overlays: [...recordArray(editDecisions.overlays), ...overlays],
   };
+}
+
+async function cuesheetForComposeRecipe(ctx: StageContext, state: PaidSampleState): Promise<unknown> {
+  const inMemory = state.cuesheet ?? ctx.priorArtifacts.cuesheet ?? ctx.cuesheet;
+  if (inMemory !== undefined) {
+    return inMemory;
+  }
+
+  const filePath = cuesheetPath(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug);
+  try {
+    await access(filePath);
+  } catch {
+    return undefined;
+  }
+
+  return readCuesheet(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug);
 }
 
 function buildPublishLog(ctx: StageContext, state: PaidSampleState): unknown {

@@ -239,6 +239,11 @@ describe("remotion tool", () => {
             registry: "overlay",
             props: {
               words: [{ text: "Script", start_s: 0, end_s: 0.5, confidence: 1 }],
+              style: {
+                position: "center",
+                font_family: "Helvetica Neue",
+                background: "rgba(30, 64, 175, 0.85)",
+              },
               fps: 30,
               duration_frames: 60,
             },
@@ -263,6 +268,9 @@ describe("remotion tool", () => {
       component: "caption_burn",
       captionBurn: true,
     });
+    expect(props.overlays[1]?.node).toBeDefined();
+    expect(JSON.stringify(props.overlays[1]?.node)).toContain('"position":"center"');
+    expect(JSON.stringify(props.overlays[1]?.node)).toContain("Helvetica Neue");
   });
 
   it("refuses to compose when edit decisions lock another runtime", async () => {

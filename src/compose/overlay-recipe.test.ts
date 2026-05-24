@@ -31,6 +31,10 @@ describe("compose overlay recipe", () => {
         "  - component: caption_burn",
         "    props:",
         "      source: script",
+        "      style:",
+        "        position: center",
+        "        font_family: Helvetica Neue",
+        "        background: rgba(30, 64, 175, 0.85)",
         "    timeline:",
         "      sync: script",
         "",
@@ -86,6 +90,11 @@ describe("compose overlay recipe", () => {
         component: "caption_burn",
         registry: "overlay",
         props: {
+          style: expect.objectContaining({
+            position: "center",
+            font_family: "Helvetica Neue",
+            background: "rgba(30, 64, 175, 0.85)",
+          }),
           words: [
             expect.objectContaining({ text: "Stay" }),
             expect.objectContaining({ text: "ready" }),

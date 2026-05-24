@@ -675,6 +675,110 @@ describe("paid sample dispatcher", () => {
     });
   });
 
+  it("loads an on-disk cuesheet for compose recipe caption_burn source cuesheet", async () => {
+    const root = await scratchProject();
+    const show = loadedShow(root, "remotion");
+    const episode = loadedEpisode(show, "remotion", "Disk cuesheets should drive captions.");
+    const pipeline: PipelineManifest = {
+      ...pipelineManifest(),
+      stages: [stage("assets", "asset_manifest"), stage("edit", "edit_decisions"), stage("compose", "render_report")],
+    };
+    const composeInputs: unknown[] = [];
+
+    await mkdir(path.join(show.rootDir, "compose"), { recursive: true });
+    await writeFile(
+      path.join(show.rootDir, "compose", "recipe.yaml"),
+      [
+        "overlays:",
+        "  - component: caption_burn",
+        "    props:",
+        "      source: cuesheet",
+        "    timeline:",
+        "      sync: cuesheet",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    await mkdir(path.join(root, "projects", "show", "episode"), { recursive: true });
+    await writeFile(
+      path.join(root, "projects", "show", "episode", "cuesheet.json"),
+      `${JSON.stringify({
+        audio: {
+          path: "projects/show/episode/audio/narration.mp3",
+          duration_s: 2,
+          sample_rate: 44100,
+          channels: 1,
+        },
+        master_clock: "voiceover",
+        words: [
+          { text: "Disk", start_s: 0, end_s: 0.4, confidence: 1 },
+          { text: "timing", start_s: 0.4, end_s: 0.9, confidence: 1 },
+        ],
+        segments: [
+          {
+            start_s: 0,
+            end_s: 0.9,
+            text: "Disk timing",
+            words: [
+              { text: "Disk", start_s: 0, end_s: 0.4, confidence: 1 },
+              { text: "timing", start_s: 0.4, end_s: 0.9, confidence: 1 },
+            ],
+          },
+        ],
+        sections: [{ label: "voiceover", start_s: 0, end_s: 2, kind: "vocal", energy: 0.8 }],
+        beats: [],
+        climax: [],
+        scene_anchors: [],
+      })}\n`,
+      "utf8",
+    );
+    await writeStageCheckpoint(root, "assets", "completed", {
+      assets: [{ id: "paid_sample_clip", kind: "video", path: "projects/show/episode/clips/sample.mp4" }],
+    });
+    await writeStageCheckpoint(root, "edit", "completed", {
+      cuts: [{ start_s: 0, end_s: 2, asset_id: "paid_sample_clip", scene_id: "sample-1", scene_kind: "video_clip" }],
+      overlays: [],
+      render_runtime: "remotion",
+      renderer_family: "explainer-teacher",
+    });
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "paid-demo",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          includeRemotionRuntime: true,
+          onVideoComposeInput: (input) => composeInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", nonInteractive: true, from: "compose" },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(composeInputs[0]).toMatchObject({
+      edit_decisions: {
+        overlays: [
+          expect.objectContaining({
+            component: "caption_burn",
+            props: expect.objectContaining({
+              words: [
+                expect.objectContaining({ text: "Disk", start_s: 0, end_s: 0.4 }),
+                expect.objectContaining({ text: "timing", start_s: 0.4, end_s: 0.9 }),
+              ],
+            }),
+          }),
+        ],
+      },
+    });
+  });
+
   it("fails presentation-demo compose instead of silently swapping when Remotion is unavailable", async () => {
     const root = await scratchProject();
     const show = presentationDemoShow(root);

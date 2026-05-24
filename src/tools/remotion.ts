@@ -422,8 +422,6 @@ function buildRemotionOverlayProps(input: RemotionComposeInput, durationFrames: 
 
     const overlay = parsed.data;
     const timing = overlayTimelineFrames(overlay.timeline, input.fps, durationFrames);
-    const captionBurn = overlay.registry === "overlay" && overlay.component === "caption_burn";
-
     return [
       {
         index,
@@ -431,8 +429,8 @@ function buildRemotionOverlayProps(input: RemotionComposeInput, durationFrames: 
         registry: overlay.registry,
         startFrame: timing.startFrame,
         durationFrames: timing.durationFrames,
-        captionBurn,
-        node: captionBurn ? undefined : renderOverlayNode(overlay),
+        captionBurn: overlay.registry === "overlay" && overlay.component === "caption_burn",
+        node: renderOverlayNode(overlay),
       },
     ];
   });
@@ -821,10 +819,6 @@ function NextStep({ progress, accent }) {
 }
 
 function OverlayLayer({ overlay }) {
-  if (overlay.captionBurn) {
-    return <CaptionLayer />;
-  }
-
   return (
     <div data-overlay-component={overlay.component} data-overlay-registry={overlay.registry} style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
       <SceneNodeLayer node={overlay.node} />
@@ -846,7 +840,7 @@ function SceneNodeLayer({ node }) {
     return null;
   }
 
-  const style = nodeProps.style || {};
+  const style = sceneNodeStyle(node);
   const text = sceneNodeText(node);
   const children = node.children || [];
 
@@ -870,6 +864,46 @@ function sceneNodeText(node) {
     return String(nodeProps.text || "");
   }
   return null;
+}
+
+function sceneNodeStyle(node) {
+  const nodeProps = node.props || {};
+  const baseStyle = nodeProps.style || {};
+  if (node.type === "caption-box") {
+    return {
+      position: "absolute",
+      left: "16%",
+      right: "16%",
+      padding: "14px 20px",
+      borderRadius: 8,
+      lineHeight: 1.18,
+      textAlign: "center",
+      textShadow: "0 2px 8px rgba(0,0,0,0.55)",
+      ...captionPositionStyle(nodeProps.position),
+      ...baseStyle,
+    };
+  }
+  if (node.type === "caption-line") {
+    return { display: "block" };
+  }
+  if (node.type === "caption-word") {
+    return {
+      color: nodeProps.color,
+      display: "inline-block",
+      marginRight: 8,
+    };
+  }
+  return baseStyle;
+}
+
+function captionPositionStyle(position) {
+  if (position === "top") {
+    return { top: 42 };
+  }
+  if (position === "center") {
+    return { top: "50%", transform: "translateY(-50%)" };
+  }
+  return { bottom: 26 };
 }
 
 function ShowSidekickSample({ cuts, audioSrc }) {
