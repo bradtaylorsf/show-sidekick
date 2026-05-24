@@ -7,6 +7,7 @@ import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { RenderRuntime } from "../artifacts/enums.js";
 import { ScriptSchema, type Script } from "../artifacts/script.js";
 import type { Capability, Tool, ToolContext } from "../registry/index.js";
+import { loadShowComposeRecipe } from "../compose/overlay-recipe.js";
 import {
   SampleProvidersConfigSchema,
   sampleProviderToolNames,
@@ -1676,19 +1677,20 @@ async function buildRenderReport(
   const composeTool = await composeToolForRuntime(ctx, runtime);
   const outputPath = `projects/${ctx.show.slug}/${ctx.episode.slug}/renders/paid-sample.mp4`;
   const expectedDuration = plannedComposeDuration(ctx, state);
+  const editDecisions = runtime === "remotion" ? await editDecisionsWithComposeRecipe(ctx, state, expectedDuration) : state.edit_decisions;
   const composeInput =
     runtime === "ffmpeg"
       ? {
           operation: "compose",
           asset_manifest: state.asset_manifest,
-          edit_decisions: state.edit_decisions,
+          edit_decisions: editDecisions,
           output_path: outputPath,
           expected_duration_s: expectedDuration,
         }
       : {
           asset_manifest: state.asset_manifest,
           deck_manifest: state.deck_manifest,
-          edit_decisions: state.edit_decisions,
+          edit_decisions: editDecisions,
           scene_plan: state.scene_plan,
           cuesheet: state.cuesheet,
           proposal_packet: state.proposal_packet,
@@ -1713,6 +1715,34 @@ async function buildRenderReport(
   return {
     ...report,
     final_review: finalReview(ctx, report, state),
+  };
+}
+
+async function editDecisionsWithComposeRecipe(ctx: StageContext, state: PaidSampleState, durationS: number): Promise<unknown> {
+  const overlays = await loadShowComposeRecipe({
+    projectRoot: ctx.show.projectRoot,
+    show: ctx.show,
+    episode: ctx.episode,
+    script: state.script ?? ctx.priorArtifacts.script,
+    cuesheet: state.cuesheet ?? ctx.priorArtifacts.cuesheet ?? ctx.cuesheet,
+    playbook: ctx.playbook,
+    fps: 30,
+    resolution: resolutionObject(ctx),
+    durationS,
+  });
+
+  if (overlays.length === 0) {
+    return state.edit_decisions;
+  }
+
+  const editDecisions = recordValue(state.edit_decisions);
+  if (editDecisions === undefined) {
+    return state.edit_decisions;
+  }
+
+  return {
+    ...editDecisions,
+    overlays: [...recordArray(editDecisions.overlays), ...overlays],
   };
 }
 
@@ -2781,7 +2811,7 @@ async function brandContextForPrompt(ctx: StageContext): Promise<string> {
         "On-screen text policy: NO readable text anywhere in the image.",
         "No title pills, headers, captions, labels, UI chrome, logos, watermarks, or overlay numerals.",
         "Background ambient signage may exist only when it is in-scene and not the headline of the frame.",
-        "Composition: keep the main subject in the central 60% of the frame; the top 15% and bottom 25% may be covered by rendered overlays.",
+        "Leave show typography and branding decisions to the compose recipe.",
       ].join(" "),
     ]
       .filter((part): part is string => typeof part === "string")

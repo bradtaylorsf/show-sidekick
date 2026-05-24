@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { CaptionBurnPropsSchema } from "../captions/index.js";
 import {
   AnimeScenePropsSchema,
   BarChartPropsSchema,
@@ -225,6 +226,15 @@ export const slideCalloutOverlayFixture = {
   theme: sharedTheme,
 } satisfies z.input<typeof SlideCalloutOverlayPropsSchema>;
 
+export const captionBurnOverlayFixture = {
+  words: [
+    { text: "Timing", start_s: 0, end_s: 0.4, confidence: 1 },
+    { text: "follows", start_s: 0.4, end_s: 0.8, confidence: 1 },
+    { text: "narration", start_s: 0.8, end_s: 1.2, confidence: 1 },
+  ],
+  theme: sharedTheme,
+} satisfies z.input<typeof CaptionBurnPropsSchema>;
+
 export const sceneFixtures = {
   anime_scene: animeSceneFixture,
   bar_chart: barChartFixture,
@@ -242,6 +252,7 @@ export const sceneFixtures = {
 };
 
 export const overlayFixtures = {
+  caption_burn: captionBurnOverlayFixture,
   hero_title: heroTitleOverlayFixture,
   provider_chip: providerChipOverlayFixture,
   section_title: sectionTitleOverlayFixture,

@@ -577,6 +577,104 @@ describe("paid sample dispatcher", () => {
     });
   });
 
+  it("passes show-owned compose recipe overlays into the Remotion compose input", async () => {
+    const root = await scratchProject();
+    const show = loadedShow(root, "remotion");
+    const episode = loadedEpisode(show, "remotion", "Recipe captions should come from the approved script.");
+    const pipeline: PipelineManifest = {
+      ...pipelineManifest(),
+      stages: [stage("script", "script"), stage("assets", "asset_manifest"), stage("edit", "edit_decisions"), stage("compose", "render_report")],
+    };
+    const composeInputs: unknown[] = [];
+
+    await mkdir(path.join(show.rootDir, "compose"), { recursive: true });
+    await writeFile(
+      path.join(show.rootDir, "compose", "recipe.yaml"),
+      [
+        "overlays:",
+        "  - component: hero_title",
+        "    props:",
+        '      title: "{{ show.display_name | upper }}"',
+        '      subtitle: "{{ episode.title }}"',
+        "    timeline:",
+        "      from_s: 0",
+        "      to_s: end",
+        "  - component: caption_burn",
+        "    props:",
+        "      source: script",
+        "    timeline:",
+        "      sync: script",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    await writeStageCheckpoint(root, "script", "completed", {
+      sections: [
+        {
+          slug: "hook",
+          start_s: 0,
+          end_s: 4,
+          narration: "Recipe captions should come from the approved script.",
+          dialogue: [],
+          enhancement_cues: [],
+          slide_ids: [],
+        },
+      ],
+    });
+    await writeStageCheckpoint(root, "assets", "completed", {
+      assets: [{ id: "paid_sample_clip", kind: "video", path: "projects/show/episode/clips/sample.mp4" }],
+    });
+    await writeStageCheckpoint(root, "edit", "completed", {
+      cuts: [{ start_s: 0, end_s: 4, asset_id: "paid_sample_clip", scene_id: "sample-1", scene_kind: "video_clip" }],
+      overlays: [],
+      render_runtime: "remotion",
+      renderer_family: "explainer-teacher",
+    });
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "paid-demo",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          includeRemotionRuntime: true,
+          onVideoComposeInput: (input) => composeInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", nonInteractive: true, from: "compose" },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(composeInputs).toHaveLength(1);
+    expect(composeInputs[0]).toMatchObject({
+      edit_decisions: {
+        overlays: [
+          expect.objectContaining({
+            component: "hero_title",
+            registry: "overlay",
+            props: expect.objectContaining({
+              title: "SHOW",
+              subtitle: "Paid Sample",
+            }),
+          }),
+          expect.objectContaining({
+            component: "caption_burn",
+            registry: "overlay",
+            props: expect.objectContaining({
+              words: expect.arrayContaining([expect.objectContaining({ text: "Recipe" })]),
+            }),
+          }),
+        ],
+      },
+    });
+  });
+
   it("fails presentation-demo compose instead of silently swapping when Remotion is unavailable", async () => {
     const root = await scratchProject();
     const show = presentationDemoShow(root);
@@ -820,7 +918,7 @@ describe("paid sample dispatcher", () => {
     expect(prompt).toContain('Show title: "First 48 Hours"');
     expect(prompt).toContain("NO readable text anywhere in the image");
     expect(prompt).toContain("No title pills");
-    expect(prompt).toContain("central 60% of the frame");
+    expect(prompt).toContain("Leave show typography and branding decisions to the compose recipe.");
     expect(prompt).not.toContain('If a show title pill is rendered, it must read exactly "FIRST 48 HOURS"');
   });
 

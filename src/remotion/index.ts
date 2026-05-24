@@ -29,6 +29,10 @@ import {
   TextCardPropsSchema,
 } from "./scenes/index.js";
 import {
+  caption_burn,
+  CaptionBurnPropsSchema,
+} from "./captions/index.js";
+import {
   overlay_hero_title,
   HeroTitleOverlayPropsSchema,
   provider_chip,
@@ -72,6 +76,7 @@ export const sceneCatalog = {
 } as const;
 
 export const overlayCatalog = {
+  caption_burn: { component: caption_burn, schema: CaptionBurnPropsSchema },
   hero_title: { component: overlay_hero_title, schema: HeroTitleOverlayPropsSchema },
   provider_chip: { component: provider_chip, schema: ProviderChipOverlayPropsSchema },
   section_title: { component: section_title, schema: SectionTitleOverlayPropsSchema },

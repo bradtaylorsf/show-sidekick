@@ -15,7 +15,13 @@ import {
   type RenderReport,
 } from "../artifacts/index.js";
 import { playbookToCssVariables } from "../compose/hyperframes-style-bridge.js";
-import { cuesheetToWords, SlideScenePropsSchema, validateCaptionFrameSync } from "../remotion/index.js";
+import {
+  overlayTimelineFrames,
+  renderResolvedOverlayFrame,
+  ResolvedComposeOverlaySchema,
+  type ResolvedComposeOverlay,
+} from "../compose/overlay-recipe.js";
+import { cuesheetToWords, SlideScenePropsSchema, validateCaptionFrameSync, type SceneNode } from "../remotion/index.js";
 import { defineTool, type ToolAvailabilityContext } from "../registry/index.js";
 
 const require = createRequire(import.meta.url);
@@ -48,6 +54,16 @@ export type RemotionSlideSceneTimelineProps = {
   asset_id: string;
   scene_id?: string;
   props: z.output<typeof SlideScenePropsSchema>;
+};
+
+export type RemotionOverlayTimelineProps = {
+  index: number;
+  component: string;
+  registry: "overlay" | "scene";
+  startFrame: number;
+  durationFrames: number;
+  captionBurn: boolean;
+  node?: SceneNode;
 };
 
 export function buildRemotionSlideSceneProps(params: RemotionComposeInput): RemotionSlideSceneTimelineProps[] {
@@ -327,6 +343,7 @@ export function buildRemotionCompositionProps(
   animationFirst: boolean;
   cuts: Array<Record<string, unknown>>;
   captions: Array<{ index: number; text: string; startFrame: number; endFrame: number }>;
+  overlays: RemotionOverlayTimelineProps[];
   audioSrc?: string;
   audioUsesStaticFile: boolean;
   width: number;
@@ -348,6 +365,8 @@ export function buildRemotionCompositionProps(
   const audioSource = audioPath ? mediaSrc(audioPath, projectRoot, media) : undefined;
   const resolution = resolutionOverride ?? input.resolution ?? { width: 1920, height: 1080 };
   const hasCaptionTrack = captionWords.length > 0;
+  const durationFrames = Math.max(1, Math.ceil(input.edit_decisions.cuts.reduce((max, cut) => Math.max(max, cut.end_s), 0) * input.fps));
+  const overlays = buildRemotionOverlayProps(input, durationFrames);
 
   return {
     fps: input.fps,
@@ -385,12 +404,43 @@ export function buildRemotionCompositionProps(
       };
     }),
     captions: captionWords,
+    overlays,
     audioSrc: audioSource?.src,
     audioUsesStaticFile: audioSource?.useStaticFile ?? false,
     width: resolution.width,
     height: resolution.height,
     showBeatCounter: input.debug_overlay === "beats" || input.debug_overlay === "all",
   };
+}
+
+function buildRemotionOverlayProps(input: RemotionComposeInput, durationFrames: number): RemotionOverlayTimelineProps[] {
+  return input.edit_decisions.overlays.flatMap((candidate, index) => {
+    const parsed = ResolvedComposeOverlaySchema.safeParse(candidate);
+    if (!parsed.success) {
+      return [];
+    }
+
+    const overlay = parsed.data;
+    const timing = overlayTimelineFrames(overlay.timeline, input.fps, durationFrames);
+    const captionBurn = overlay.registry === "overlay" && overlay.component === "caption_burn";
+
+    return [
+      {
+        index,
+        component: overlay.component,
+        registry: overlay.registry,
+        startFrame: timing.startFrame,
+        durationFrames: timing.durationFrames,
+        captionBurn,
+        node: captionBurn ? undefined : renderOverlayNode(overlay),
+      },
+    ];
+  });
+}
+
+function renderOverlayNode(overlay: ResolvedComposeOverlay): SceneNode {
+  const frame = 18;
+  return renderResolvedOverlayFrame([overlay], frame);
 }
 
 function remotionSceneSource(durationInFrames: number): string {
@@ -770,7 +820,61 @@ function NextStep({ progress, accent }) {
   );
 }
 
+function OverlayLayer({ overlay }) {
+  if (overlay.captionBurn) {
+    return <CaptionLayer />;
+  }
+
+  return (
+    <div data-overlay-component={overlay.component} data-overlay-registry={overlay.registry} style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+      <SceneNodeLayer node={overlay.node} />
+    </div>
+  );
+}
+
+function SceneNodeLayer({ node }) {
+  if (node === null || node === undefined) {
+    return null;
+  }
+
+  if (typeof node !== "object") {
+    return String(node);
+  }
+
+  const nodeProps = node.props || {};
+  if (node.type === "scene-meta") {
+    return null;
+  }
+
+  const style = nodeProps.style || {};
+  const text = sceneNodeText(node);
+  const children = node.children || [];
+
+  return (
+    <div data-scene-node={node.type} style={style}>
+      {text}
+      {children.map((child, index) => <SceneNodeLayer key={index} node={child} />)}
+    </div>
+  );
+}
+
+function sceneNodeText(node) {
+  const nodeProps = node.props || {};
+  if (nodeProps.text !== undefined) {
+    return String(nodeProps.text);
+  }
+  if (node.type === "provider-chip") {
+    return [nodeProps.provider, nodeProps.model, nodeProps.status].filter(Boolean).join(" ");
+  }
+  if (node.type === "caption-word") {
+    return String(nodeProps.text || "");
+  }
+  return null;
+}
+
 function ShowSidekickSample({ cuts, audioSrc }) {
+  const hasRecipeCaptionBurn = props.overlays.some((overlay) => overlay.captionBurn);
+
   return (
     <AbsoluteFill style={{ backgroundColor: "#0b1020" }}>
       {cuts.map((cut) => (
@@ -779,7 +883,12 @@ function ShowSidekickSample({ cuts, audioSrc }) {
         </Sequence>
       ))}
       {audioSrc ? <Audio src={mediaUrl(audioSrc, props.audioUsesStaticFile)} /> : null}
-      {props.captions.length > 0 ? <CaptionLayer /> : null}
+      {props.overlays.map((overlay) => (
+        <Sequence key={"overlay-" + overlay.index} from={overlay.startFrame} durationInFrames={overlay.durationFrames}>
+          <OverlayLayer overlay={overlay} />
+        </Sequence>
+      ))}
+      {props.captions.length > 0 && !hasRecipeCaptionBurn ? <CaptionLayer /> : null}
     </AbsoluteFill>
   );
 }

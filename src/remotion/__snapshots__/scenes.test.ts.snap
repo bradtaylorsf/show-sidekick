@@ -990,6 +990,101 @@ exports[`remotion scene library > renders line_chart against its fixture 1`] = `
 }
 `;
 
+exports[`remotion scene library > renders overlay caption_burn against its fixture 1`] = `
+{
+  "children": [
+    {
+      "children": [],
+      "props": {
+        "frame": 0,
+        "height": 1080,
+        "name": "caption_burn",
+        "overlay": true,
+        "width": 1920,
+      },
+      "type": "scene-meta",
+    },
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "props": {
+                "active": true,
+                "color": "#38bdf8",
+                "end_s": 0.4,
+                "index": 0,
+                "start_s": 0,
+                "text": "Timing",
+              },
+              "type": "caption-word",
+            },
+            {
+              "children": [],
+              "props": {
+                "active": false,
+                "color": "#cbd5e1",
+                "end_s": 0.8,
+                "index": 1,
+                "start_s": 0.4,
+                "text": "follows",
+              },
+              "type": "caption-word",
+            },
+            {
+              "children": [],
+              "props": {
+                "active": false,
+                "color": "#cbd5e1",
+                "end_s": 1.2,
+                "index": 2,
+                "start_s": 0.8,
+                "text": "narration",
+              },
+              "type": "caption-word",
+            },
+          ],
+          "props": {
+            "index": 0,
+          },
+          "type": "caption-line",
+        },
+      ],
+      "props": {
+        "active_index": 0,
+        "position": "bottom",
+        "style": {
+          "background": "rgba(2, 6, 23, 0.72)",
+          "color": "#f8fafc",
+          "fontFamily": "Inter",
+          "fontSize": 54,
+          "fontWeight": 800,
+          "stroke": "#020617",
+          "strokeWidth": 4,
+        },
+        "time_s": 0,
+      },
+      "type": "caption-box",
+    },
+  ],
+  "props": {
+    "style": {
+      "background": "transparent",
+      "color": "#f8fafc",
+      "fontFamily": "Inter",
+      "height": 1080,
+      "inset": 0,
+      "opacity": 0.01,
+      "overflow": "hidden",
+      "position": "absolute",
+      "width": 1920,
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;
+
 exports[`remotion scene library > renders overlay hero_title against its fixture 1`] = `
 {
   "children": [

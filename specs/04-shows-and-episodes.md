@@ -33,6 +33,7 @@ shows/<show-slug>/
 ├── characters/<name>/                 # voice_id, visual desc, references
 ├── pipelines/                         # optional: per-pipeline playbook overrides + show-specific skill overrides
 │   └── <pipeline>.playbook-overrides.yaml
+├── compose/recipe.yaml                 # optional show-owned renderer overlay recipe
 ├── skills/                            # optional show-wide skill overrides (apply across all pipelines)
 └── episodes/<slug>.yaml               # one episode = one rendered output
 ```
@@ -44,7 +45,7 @@ slug: news-music-studio
 display_name: "News Music Studio"
 description: "Sourced news songs plus evergreen beat-synced music videos"
 created: 2026-05-12
-bake_brand_into_images: false             # optional; default true. False reserves text for renderer overlays.
+bake_brand_into_images: false             # optional; default true. False leaves text to renderer overlays.
 
 # Show-owned content — paths relative to show.yaml.
 brand: ./brand/
@@ -107,7 +108,29 @@ When `slug_from` is `parent_dir`, watch suggestions derive the episode slug from
 
 A single-pipeline show is just a `pipelines:` map with one entry. The model degrades cleanly to "one workflow per show" when that's all the show needs.
 
-`bake_brand_into_images: false` tells paid sample image prompts to avoid readable title pills, headlines, labels, UI chrome, logos, watermarks, and overlay numerals so the renderer can own all typography. Omitting the field preserves the current behavior where generated imagery may include exact show-title branding.
+`bake_brand_into_images: false` tells paid sample image prompts to avoid readable title pills, headlines, labels, UI chrome, logos, watermarks, and overlay numerals so the renderer can own typography through the show compose recipe. Omitting the field preserves the current behavior where generated imagery may include exact show-title branding.
+
+## `compose/recipe.yaml`
+
+Shows may declare renderer overlays without changing harness code:
+
+```yaml
+overlays:
+  - component: hero_title
+    props:
+      title: "{{ show.display_name | upper }}"
+      subtitle: "{{ episode.title }}"
+    timeline:
+      from_s: 0
+      to_s: end
+  - component: caption_burn
+    props:
+      source: script
+    timeline:
+      sync: script
+```
+
+`component` is resolved against the Remotion overlay catalog first, then the scene catalog. `props` are template-resolved against `show`, `episode`, `brand`, `script`, `cuesheet`, and `playbook`, then validated with the chosen component's existing schema. Layout, typography, timeline choices, and whether overlays are used at all remain show-owned.
 
 ## `episode.yaml`
 

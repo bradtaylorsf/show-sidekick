@@ -217,6 +217,54 @@ describe("remotion tool", () => {
     expect(props.showBeatCounter).toBe(true);
   });
 
+  it("maps resolved compose recipe overlays into Remotion composition props", () => {
+    const props = buildRemotionCompositionProps({
+      fps: 30,
+      edit_decisions: {
+        cuts: [{ start_s: 0, end_s: 2, asset_id: "paid_sample_clip", caption: "Script owned captions." }],
+        overlays: [
+          {
+            component: "hero_title",
+            registry: "overlay",
+            props: {
+              title: "SHOW",
+              subtitle: "Episode",
+              fps: 30,
+              duration_frames: 60,
+            },
+            timeline: { from_s: 0, to_s: "end" },
+          },
+          {
+            component: "caption_burn",
+            registry: "overlay",
+            props: {
+              words: [{ text: "Script", start_s: 0, end_s: 0.5, confidence: 1 }],
+              fps: 30,
+              duration_frames: 60,
+            },
+            timeline: { sync: "script" },
+          },
+        ],
+        render_runtime: "remotion",
+        renderer_family: "explainer-teacher",
+      },
+    });
+
+    expect(props.overlays).toHaveLength(2);
+    expect(props.overlays[0]).toMatchObject({
+      component: "hero_title",
+      registry: "overlay",
+      startFrame: 0,
+      durationFrames: 60,
+      captionBurn: false,
+    });
+    expect(JSON.stringify(props.overlays[0]?.node)).toContain("overlay_hero_title");
+    expect(props.overlays[1]).toMatchObject({
+      component: "caption_burn",
+      captionBurn: true,
+    });
+  });
+
   it("refuses to compose when edit decisions lock another runtime", async () => {
     await expect(
       remotion.execute(
