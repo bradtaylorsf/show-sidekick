@@ -213,6 +213,8 @@ jobs:
             exit 1
           fi
 
+          pnpm release:verify:npm --expect-published
+
           NOTES_FILE="/tmp/release-notes.md"
           awk -v version="$VERSION" '
             $0 == "## " version || $0 == "## [" version "]" || index($0, "## [" version "] - ") == 1 {

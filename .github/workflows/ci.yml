@@ -34,22 +34,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Detect no-release label
+      - name: Changeset gate (changesets, version PR, or no-release)
         if: github.event_name == 'pull_request'
-        id: release_label
-        run: |
-          node --input-type=module <<'NODE'
-          import fs from "node:fs";
-
-          const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
-          const labels = event.pull_request?.labels ?? [];
-          const noRelease = labels.some((label) => label.name === "no-release");
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `no_release=${noRelease}\n`);
-          NODE
-
-      - name: Changeset status
-        if: github.event_name == 'pull_request' && steps.release_label.outputs.no_release != 'true'
-        run: pnpm changeset:status
+        run: pnpm changeset:gate
 
       - name: Install media binaries
         run: sudo apt-get update && sudo apt-get install -y ffmpeg

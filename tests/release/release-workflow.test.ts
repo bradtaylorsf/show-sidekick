@@ -46,6 +46,7 @@ describe("release workflow", () => {
     expect(runText).toContain("Create this historical GitHub Release manually so the tag can target the package commit exactly.");
     expect(runText).toContain("npm has not exposed show-sidekick@$VERSION yet; retrying");
     expect(runText).toContain("npm view \"show-sidekick@$VERSION\" version --json");
+    expect(runText).toContain("pnpm release:verify:npm --expect-published");
     expect(runText).toContain("gh release create \"$TAG\" --target \"$VERSION_COMMIT\"");
     expect(runText).toContain("gh release edit \"$TAG\" --title \"$TAG\"");
     expect(runText).toContain("show-type-validation-report");
@@ -57,7 +58,7 @@ describe("release workflow", () => {
     YAML.parse(workflowText);
 
     expect(workflowText).toContain("no-release");
-    expect(workflowText).toContain("pnpm changeset:status");
+    expect(workflowText).toContain("pnpm changeset:gate");
     expect(workflowText).toContain("pnpm release:check");
     expect(workflowText).toContain("fetch-depth: 0");
   });
@@ -74,9 +75,11 @@ describe("release workflow", () => {
     expect(pkg.scripts).toEqual(
       expect.objectContaining({
         changeset: "pnpm dlx @changesets/cli",
+        "changeset:gate": "node --import tsx scripts/changeset-pr-gate.ts",
         "changeset:status": "pnpm dlx @changesets/cli status --since=origin/main",
         "changeset:version": "pnpm dlx @changesets/cli version",
         "changeset:publish": "pnpm build && npm publish --provenance --access public",
+        "release:verify:npm": "node --import tsx scripts/release-npm-version-check.ts",
         "release:smoke:pack": "pnpm build && SHOW_SIDEKICK_PACKED_TARBALL_SMOKE=1 vitest run tests/release/packed-tarball-smoke.test.ts",
         prepublishOnly: "pnpm build",
       }),
