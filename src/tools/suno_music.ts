@@ -6,7 +6,7 @@ const DEFAULT_MODEL = "suno-v3.5";
 const ENDPOINT = "https://api.suno.ai/v1/generate";
 
 /**
- * If SUNO_API_KEY is unavailable, the documented fallback is to drop tracks into `music_library/` and select them via the music-plan skill.
+ * If SUNO_API_KEY is unavailable, the documented fallback is to drop tracks into `inputs/show-slug/episode-slug/` and select them via the music-plan skill.
  */
 export default defineTool({
   name: "suno_music",
@@ -16,9 +16,9 @@ export default defineTool({
   integration: {
     kind: "api",
     env: ["SUNO_API_KEY"],
-    install: "set SUNO_API_KEY (or supply tracks via music_library/)",
+    install: "set SUNO_API_KEY (or supply tracks via inputs/show-slug/episode-slug/)",
   },
-  best_for: "Generated music beds; when unavailable, use user-supplied tracks from music_library/ through the music-plan skill.",
+  best_for: "Generated music beds; when unavailable, use user-supplied tracks from inputs/show-slug/episode-slug/ through the music-plan skill.",
   supports: ["generated-music", "music-bed"],
   cost: { unit: "call", usd: COST_USD },
   agent_skills: ["music"],

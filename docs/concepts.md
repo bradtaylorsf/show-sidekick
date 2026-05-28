@@ -11,6 +11,7 @@ The project owns:
 - `AGENTS.md` and `CLAUDE.md` agent instructions.
 - `.show-sidekick/` bundled cache of pipelines, playbooks, skills, starters, tools, and docs.
 - `shows/` for your editable shows and episodes.
+- `inputs/` for local source PDFs, decks, audio, video, images, and folders copied into episodes.
 - `projects/` for generated workspaces, checkpoints, renders, cost logs, and decisions.
 - `exports/` for Premiere, DaVinci, CapCut, and EDL handoff packages.
 - `.env` for local provider keys. This file is gitignored.
@@ -37,6 +38,14 @@ Build and export commands target episodes as `show/episode`:
 showkick build product-launch/sample-episode --sample
 showkick export product-launch/sample-episode --target premiere
 ```
+
+If you already have a source file or folder, create the episode from it:
+
+```bash
+showkick new episode product-launch investor-update --from ~/Desktop/update-deck.pdf
+```
+
+Show Sidekick copies the source into `inputs/<show>/<episode>/` and writes the matching input path into the episode YAML. Use this for one-off PDFs, PowerPoints, audio files, speech recordings, videos, images, or inspiration folders. Use `showkick import` and `showkick watch` for recurring drop zones declared in a show's `ingest.watch[]`.
 
 ## Pipeline
 
@@ -133,7 +142,7 @@ Provider profiles do not store credentials. Keys live in your shell or local `.e
 | `showkick init` | Scaffold a project in the current folder. |
 | `showkick doctor` | Check local project, provider, and tool readiness. |
 | `showkick new show` | Create a show, optionally from a starter. |
-| `showkick new episode` | Add an episode to a show. |
+| `showkick new episode` | Add an episode to a show, optionally from a source file or folder. |
 | `showkick new pipeline` | Create a project-local pipeline and director skills. |
 | `showkick new playbook` | Create a project-local style playbook. |
 | `showkick build` | Run a pipeline for one episode. |

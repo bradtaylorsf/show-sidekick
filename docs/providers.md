@@ -192,7 +192,7 @@ Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_*` environment pr
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
-| `suno_music` | beta | api | suno | `SUNO_API_KEY` | Generated music beds; when unavailable, use user-supplied tracks from music_library/ through the music-plan skill. | $0.05 / call |
+| `suno_music` | beta | api | suno | `SUNO_API_KEY` | Generated music beds; when unavailable, use user-supplied tracks from inputs/show-slug/episode-slug/ through the music-plan skill. | $0.05 / call |
 | `music_gen` | beta | library | node:fetch | none | Selector wrapper that routes music generation/search to the first configured provider. | $0 / call |
 
 ## music_search

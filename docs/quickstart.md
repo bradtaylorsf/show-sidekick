@@ -82,6 +82,18 @@ exports/
 
 The sample writes a render, checkpoints, decision logs, cost records, and a voiceover cuesheet for editor handoff.
 
+## Start From A Source File
+
+For real work, put one-off source materials through `new episode --from` instead of hand-editing YAML. This copies the source into the gitignored `inputs/<show>/<episode>/` folder and writes the episode input paths for you:
+
+```bash
+showkick new show deck-demo --from presentation-demo
+showkick new episode deck-demo investor-update --from ~/Desktop/update-deck.pdf
+showkick build deck-demo/investor-update --sample
+```
+
+The same pattern works for PowerPoints, audio files, speech recordings, source videos, reference images, or a folder containing several related files. Recurring drop workflows can use `showkick import` and `showkick watch` after the show's `ingest.watch[]` rules are set.
+
 ## Paid Provider Upgrade
 
 You can add paid providers after the no-key sample works. Put keys in `.env` or export them in your shell, then run:

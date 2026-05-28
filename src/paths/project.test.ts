@@ -75,6 +75,7 @@ describe("project paths", () => {
       skills: path.join(root, "skills"),
       cache: path.join(root, BRANDING.cacheDir),
       projects: path.join(root, "projects"),
+      inputs: path.join(root, "inputs"),
       musicLibrary: path.join(root, "music_library"),
     });
   });

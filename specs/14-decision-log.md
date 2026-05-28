@@ -81,7 +81,7 @@ The full enum, used as the `category` field on every decision entry. Naming is n
 | `render_runtime_selection` | Proposal (technical engine; **must list all available runtimes** in `options_considered`) | `remotion` vs `hyperframes` vs `ffmpeg` |
 | `playbook_selection` | Proposal | which style playbook the show/episode runs under |
 | `playbook_override` | Any stage | a show-level or episode-level override of a playbook field |
-| `music_source` | Proposal (mandatory for audio-led pipelines) | track from `music_library/` vs generated vs royalty-free vs none |
+| `music_source` | Proposal (mandatory for audio-led pipelines) | track from `inputs/<show>/<episode>/` vs generated vs royalty-free vs none |
 | `motion_commitment` | Proposal | whether the deliverable is motion-led (locks downstream guardrails) |
 | `voice_selection` | Script or asset stage | which voice (and why this voice for this character) |
 | `concept_selection` | Proposal | which of the proposed concepts the user picked |

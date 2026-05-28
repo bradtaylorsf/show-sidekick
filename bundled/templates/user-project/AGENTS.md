@@ -38,10 +38,11 @@ When a user says "help me make the first video", "what can this project do?", or
 6. Treat Python and uv as optional tool runtimes for specialized providers or local analysis, not prerequisites for the first no-key video. Mention them only when `showkick ls tools --json` reports a missing Python-backed tool the selected workflow actually needs.
 7. If the project has no show yet, scaffold one with `showkick new show <slug> --from <starter>` for starter-backed work, or `showkick new show <slug> --pipelines <pipeline>` for a custom show.
 8. Create or select an episode with `showkick new episode <show> <episode>`.
-9. For a zero-key personalized first video, use the `animated-explainer` starter and rewrite `shows/<show>/inputs/<episode>/script.txt` into four concise narrated scene lines: a tailored hook, one personal-use beat, one workflow beat, and the next step. Keep `duration_s: 30`. Then run `showkick build <show>/<episode> --sample`.
-10. Before spending provider credits, explain the selected pipeline, likely tools, rough cost, and expected output path.
-11. Run `showkick build <show>/<episode> --sample --provider-profile paid-demo` for paid samples, or omit the provider profile for zero-key samples.
-12. Export with `showkick export <show>/<episode> --target premiere` and, when useful, `showkick export <show>/<episode> --format edl`.
+9. When the user provides a PDF, PPTX, audio file, source video, image, or folder of materials, prefer `showkick new episode <show> <episode> --from <path>` so the source is copied into `inputs/<show>/<episode>/` and the episode YAML points at it. Use `showkick import <path> --as <show>/<episode>` only for shows with explicit recurring ingest rules.
+10. For a zero-key personalized first video, use the `animated-explainer` starter and rewrite `shows/<show>/inputs/<episode>/script.txt` into four concise narrated scene lines: a tailored hook, one personal-use beat, one workflow beat, and the next step. Keep `duration_s: 30`. Then run `showkick build <show>/<episode> --sample`.
+11. Before spending provider credits, explain the selected pipeline, likely tools, rough cost, and expected output path.
+12. Run `showkick build <show>/<episode> --sample --provider-profile paid-demo` for paid samples, or omit the provider profile for zero-key samples.
+13. Export with `showkick export <show>/<episode> --target premiere` and, when useful, `showkick export <show>/<episode> --format edl`.
 
 Record any issue, confusing output, failed tool call, or manual fix in `projects/<show>/<episode>/notes.md` so a coding agent can improve the harness later.
 
@@ -66,7 +67,8 @@ Match the user's comfort level without changing the production contract:
 ├── playbooks/                     # optional: project-local playbook overrides
 ├── pipelines/                     # optional: project-local pipeline overrides
 ├── skills/                        # optional: project-local skill overrides
-├── music_library/                 # gitignored — drop audio here
+├── inputs/<show>/<episode>/       # gitignored — local source media/docs copied by --from
+├── music_library/                 # gitignored — legacy/shared music drop zone
 ├── projects/<show>/<episode>/     # gitignored — runtime workspace, generated assets, renders
 ├── exports/                       # gitignored — editor handoff packages
 ├── .env                           # gitignored — local provider keys
@@ -120,6 +122,7 @@ showkick doctor --profile paid-demo --json   # machine-readable provider preflig
 showkick new show <slug> --from <starter>    # scaffold a new show
 showkick new show <slug> --pipelines <list>  # scaffold a show bound to existing pipelines
 showkick new episode <show> [<slug>]         # scaffold a new episode
+showkick new episode <show> <slug> --from <path>  # copy source media/docs into inputs/<show>/<episode>/
 showkick new pipeline <slug>                 # scaffold a project-local pipeline + idea director skill
 showkick build <show>/<episode>              # run the pipeline interactively
 showkick build <show>/<episode> --sample     # 15–20s end-to-end sample run

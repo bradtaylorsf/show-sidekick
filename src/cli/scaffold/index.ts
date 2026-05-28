@@ -3,10 +3,12 @@ import { cp, mkdir, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import YAML from "yaml";
 import { atomicWrite } from "../../checkpoints/io.js";
+import { loadYaml } from "../../config/loader.js";
 import { PipelineManifestSchema } from "../../pipelines/manifest.js";
 import { projectPaths } from "../../paths/project.js";
 import { generatePlaybook } from "../../playbooks/generator.js";
-import { EpisodeSchema, validateEpisodeAgainstShow } from "../../shows/episode.js";
+import { EpisodeSchema, validateEpisodeAgainstShow, type Episode } from "../../shows/episode.js";
+import { deriveInputs } from "../../shows/ingest.js";
 import type { LoadedShow } from "../../shows/load.js";
 import { ShowSchema } from "../../shows/show.js";
 
@@ -29,6 +31,7 @@ export type EpisodeScaffoldOptions = {
   show: LoadedShow;
   slug?: string;
   pipeline?: string;
+  fromPath?: string;
 };
 
 export async function scaffoldShow(projectRoot: string, options: ShowScaffoldOptions): Promise<ScaffoldResult> {
@@ -89,39 +92,183 @@ export async function scaffoldEpisode(
 ): Promise<ScaffoldResult> {
   const slug = safeSlug(options.slug ?? defaultEpisodeSlug(), "episode");
   const pipeline = options.pipeline ?? options.show.defaults.pipeline;
-  const validation = validateEpisodeAgainstShow(
-    EpisodeSchema.parse({
-      slug,
-      title: titleize(slug),
-      created: today(),
-      pipeline,
-      inputs: {},
-      cast: [],
-      tags: [pipeline],
-    }),
-    options.show,
-  );
+  const filePath = path.join(projectPaths(projectRoot).shows, options.show.slug, "episodes", `${slug}.yaml`);
+  await assertMissing(filePath, "episode");
+  assertEpisodePipelineAllowed({ slug, pipeline }, options.show);
+
+  const template = options.fromPath === undefined ? undefined : await loadEpisodeTemplate(options.show);
+  const inputs =
+    options.fromPath === undefined
+      ? {}
+      : await deriveEpisodeInputsFromSource(projectRoot, {
+          show: options.show,
+          episode: slug,
+          sourcePath: options.fromPath,
+          templateInputs: template?.inputs,
+        });
+  const episode = {
+    slug,
+    title: titleize(slug),
+    created: today(),
+    pipeline,
+    inputs,
+    cast: template?.cast ?? [],
+    tags: mergeTags(template?.tags, pipeline),
+  };
+  const parsedEpisode = EpisodeSchema.parse(episode);
+  const validation = validateEpisodeAgainstShow(parsedEpisode, options.show);
 
   if (!validation.ok) {
     throw new Error(validation.errors.map((error) => `${error.path}: ${error.message}`).join("\n"));
   }
 
-  const filePath = path.join(projectPaths(projectRoot).shows, options.show.slug, "episodes", `${slug}.yaml`);
-  await assertMissing(filePath, "episode");
-  await atomicWrite(
-    filePath,
-    YAML.stringify({
-      slug,
-      title: titleize(slug),
-      created: today(),
-      pipeline,
-      inputs: {},
-      cast: [],
-      tags: [pipeline],
-    }),
-  );
+  await atomicWrite(filePath, YAML.stringify(episode));
 
   return { slug, filePath };
+}
+
+function assertEpisodePipelineAllowed(input: { slug: string; pipeline: string }, show: LoadedShow): void {
+  const validation = validateEpisodeAgainstShow(
+    EpisodeSchema.parse({
+      slug: input.slug,
+      title: titleize(input.slug),
+      created: today(),
+      pipeline: input.pipeline,
+      inputs: {},
+      cast: [],
+      tags: [input.pipeline],
+    }),
+    show,
+  );
+
+  if (!validation.ok) {
+    throw new Error(validation.errors.map((error) => `${error.path}: ${error.message}`).join("\n"));
+  }
+}
+
+async function loadEpisodeTemplate(show: LoadedShow): Promise<Episode | undefined> {
+  if (show.ingest?.episode_template === undefined) {
+    return undefined;
+  }
+
+  const templatePath = path.resolve(show.rootDir, show.ingest.episode_template);
+  return EpisodeSchema.parse(await loadYaml(templatePath, EpisodeSchema));
+}
+
+async function deriveEpisodeInputsFromSource(
+  projectRoot: string,
+  input: {
+    show: LoadedShow;
+    episode: string;
+    sourcePath: string;
+    templateInputs?: Record<string, unknown>;
+  },
+): Promise<Record<string, string>> {
+  const copied = await copyEpisodeSource(projectRoot, input);
+  return deriveInputs(copied.primaryFilePath, { show: input.show }, { templateInputs: input.templateInputs });
+}
+
+async function copyEpisodeSource(
+  projectRoot: string,
+  input: {
+    show: LoadedShow;
+    episode: string;
+    sourcePath: string;
+  },
+): Promise<{ primaryFilePath: string }> {
+  const sourcePath = path.resolve(input.sourcePath);
+  const sourceStats = await stat(sourcePath);
+  const inputDir = path.join(projectPaths(projectRoot).inputs, input.show.slug, input.episode);
+
+  await assertMissing(inputDir, "episode input folder");
+  await mkdir(path.dirname(inputDir), { recursive: true });
+
+  if (sourceStats.isDirectory()) {
+    const sourcePrimaryFilePath = await findPrimaryInputFile(sourcePath);
+    if (sourcePrimaryFilePath === undefined) {
+      throw new Error(`source folder contains no input files: ${sourcePath}`);
+    }
+    await cp(sourcePath, inputDir, { recursive: true, errorOnExist: true, force: false });
+    const primaryFilePath = path.join(inputDir, path.relative(sourcePath, sourcePrimaryFilePath));
+    return { primaryFilePath };
+  }
+
+  if (!sourceStats.isFile()) {
+    throw new Error(`source path is not a file or folder: ${sourcePath}`);
+  }
+
+  await mkdir(inputDir, { recursive: true });
+  const copiedPath = path.join(inputDir, path.basename(sourcePath));
+  await cp(sourcePath, copiedPath, { errorOnExist: true, force: false });
+  return { primaryFilePath: copiedPath };
+}
+
+async function findPrimaryInputFile(root: string): Promise<string | undefined> {
+  const files = await listFilesRecursive(root);
+  return files.sort(byInputPriority)[0];
+}
+
+async function listFilesRecursive(root: string): Promise<string[]> {
+  const entries = await readdir(root, { withFileTypes: true });
+  const files: string[] = [];
+
+  for (const entry of entries.sort(byName)) {
+    const absolutePath = path.join(root, entry.name);
+
+    if (entry.isDirectory()) {
+      files.push(...(await listFilesRecursive(absolutePath)));
+      continue;
+    }
+
+    if (entry.isFile()) {
+      files.push(absolutePath);
+    }
+  }
+
+  return files;
+}
+
+function byInputPriority(left: string, right: string): number {
+  const priority = inputPriority(left) - inputPriority(right);
+  return priority === 0 ? left.localeCompare(right) : priority;
+}
+
+function byName(left: { name: string }, right: { name: string }): number {
+  return left.name.localeCompare(right.name);
+}
+
+function inputPriority(filePath: string): number {
+  const extension = path.extname(filePath).toLowerCase();
+
+  if ([".pdf", ".ppt", ".pptx"].includes(extension)) {
+    return 0;
+  }
+
+  if ([".mp3", ".wav", ".m4a", ".aac", ".aiff"].includes(extension)) {
+    return 1;
+  }
+
+  if ([".mp4", ".mov", ".webm", ".mpeg"].includes(extension)) {
+    return 2;
+  }
+
+  if ([".jpg", ".jpeg", ".png", ".gif"].includes(extension)) {
+    return 3;
+  }
+
+  if ([".txt", ".md", ".srt"].includes(extension)) {
+    return 4;
+  }
+
+  if ([".yaml", ".yml", ".json", ".csv", ".tsv"].includes(extension)) {
+    return 5;
+  }
+
+  return 6;
+}
+
+function mergeTags(templateTags: string[] | undefined, pipeline: string): string[] {
+  return [...new Set([pipeline, ...(templateTags ?? [])])];
 }
 
 export async function scaffoldPipeline(projectRoot: string, slugInput: string): Promise<ScaffoldResult> {

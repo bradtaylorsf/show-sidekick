@@ -3,6 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { parse as parseYaml } from "yaml";
 import { BRANDING } from "../../branding.js";
 import { loadPipeline } from "../../pipelines/load.js";
 import { resolveSkill } from "../../skills/resolver.js";
@@ -167,6 +168,66 @@ describe("new command", () => {
     ).rejects.toThrow("episode.pipeline 'missing' is not a key in show.pipelines");
   });
 
+  it("creates an episode from a source file and preserves template input semantics", async () => {
+    const root = await scratchProject();
+    await writeSourceBackedShow(root, "deck-show");
+    const sourcePath = path.join(root, "drop", "quarterly-update.pptx");
+    await mkdir(path.dirname(sourcePath), { recursive: true });
+    await writeFile(sourcePath, "deck", "utf8");
+    process.chdir(root);
+
+    const { program } = captureProgram();
+    await program.parseAsync(["node", "predit", "new", "episode", "deck-show", "launch", "--from", sourcePath], {
+      from: "node",
+    });
+
+    const copiedPath = path.join(root, "inputs", "deck-show", "launch", "quarterly-update.pptx");
+    await expect(readFile(copiedPath, "utf8")).resolves.toBe("deck");
+    const episode = parseYaml(
+      await readFile(path.join(root, "shows", "deck-show", "episodes", "launch.yaml"), "utf8"),
+    ) as Record<string, unknown>;
+    expect(episode).toMatchObject({
+      slug: "launch",
+      pipeline: "presentation-demo",
+      inputs: {
+        deck_source: "inputs/deck-show/launch/quarterly-update.pptx",
+      },
+      cast: [],
+      tags: ["presentation-demo", "sample"],
+    });
+  });
+
+  it("creates an episode from a source folder and includes sibling inputs", async () => {
+    const root = await scratchProject();
+    await writeSourceBackedShow(root, "deck-show");
+    const sourceDir = path.join(root, "drop", "board-update");
+    await mkdir(sourceDir, { recursive: true });
+    await writeFile(path.join(sourceDir, "board-update.pdf"), "deck", "utf8");
+    await writeFile(path.join(sourceDir, "operator-notes.txt"), "notes", "utf8");
+    process.chdir(root);
+
+    const { program } = captureProgram();
+    await program.parseAsync(["node", "predit", "new", "episode", "deck-show", "board-update", "--from", sourceDir], {
+      from: "node",
+    });
+
+    const episode = parseYaml(
+      await readFile(path.join(root, "shows", "deck-show", "episodes", "board-update.yaml"), "utf8"),
+    ) as Record<string, unknown>;
+    expect(episode).toMatchObject({
+      inputs: {
+        deck_source: "inputs/deck-show/board-update/board-update.pdf",
+        operator_notes: "inputs/deck-show/board-update/operator-notes.txt",
+      },
+    });
+    await expect(readFile(path.join(root, "inputs", "deck-show", "board-update", "board-update.pdf"), "utf8")).resolves.toBe(
+      "deck",
+    );
+    await expect(
+      readFile(path.join(root, "inputs", "deck-show", "board-update", "operator-notes.txt"), "utf8"),
+    ).resolves.toBe("notes");
+  });
+
   it("creates pipeline and playbook stubs and refuses to clobber them", async () => {
     const root = await scratchProject();
     process.chdir(root);
@@ -217,6 +278,43 @@ function captureProgram() {
     program,
     output: () => ({ stdout, stderr }),
   };
+}
+
+async function writeSourceBackedShow(root: string, slug: string): Promise<void> {
+  const showDir = path.join(root, "shows", slug);
+  await mkdir(path.join(showDir, "episodes"), { recursive: true });
+  await writeFile(
+    path.join(showDir, "show.yaml"),
+    [
+      `slug: ${slug}`,
+      'display_name: "Deck Show"',
+      "created: 2026-05-12",
+      "pipelines:",
+      "  presentation-demo: {}",
+      "defaults:",
+      "  pipeline: presentation-demo",
+      "ingest:",
+      "  episode_template: ./episode.template.yaml",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  await writeFile(
+    path.join(showDir, "episode.template.yaml"),
+    [
+      "slug: sample-episode",
+      'title: "Template"',
+      "created: 2026-05-12",
+      "pipeline: presentation-demo",
+      "inputs:",
+      "  deck_source: shows/deck-show/inputs/sample-episode/deck.pdf",
+      "  operator_notes: shows/deck-show/inputs/sample-episode/operator-notes.txt",
+      "cast: []",
+      "tags: [sample]",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
 }
 
 async function writeMinimalPipeline(root: string, slug: string): Promise<void> {

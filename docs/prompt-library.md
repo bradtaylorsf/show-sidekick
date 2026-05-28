@@ -63,6 +63,14 @@ Add a new episode to the <show-slug> show.
 Ask me for the episode topic, target length, source inputs, and whether this should be a no-key sample or a paid-provider run. Create it with `showkick new episode <show-slug> <episode-slug> --pipeline <pipeline>`. Then edit the episode YAML to include only the inputs that pipeline needs. Do not run paid tools until I approve.
 ```
 
+## Add An Episode From A Source File
+
+```text
+Create a Show Sidekick episode from this source: <path>.
+
+Inspect the target show and choose the best pipeline it already declares. If the show does not exist, recommend a starter or pipeline first. Then run `showkick new episode <show-slug> <episode-slug> --from <path> --pipeline <pipeline>` if a pipeline override is needed. Confirm that the source was copied into `inputs/<show>/<episode>/`, summarize the inferred inputs, and do not run paid tools until I approve.
+```
+
 ## Build A Sample
 
 ```text
@@ -180,7 +188,7 @@ Run `showkick status <show>/<episode>` first. If it is safe to continue without 
 ```text
 Turn this folder into a Show Sidekick episode: <path>.
 
-Inspect the folder contents and the project's ingest rules. Recommend the target show and episode slug. Then run `showkick import <path> --as <show>/<episode>` only after I confirm. Summarize the episode YAML and missing inputs.
+Inspect the folder contents and the project's ingest rules. If this is a one-off source folder, prefer `showkick new episode <show> <episode> --from <path>`. If the show has a recurring `ingest.watch[]` rule that matches the folder, run `showkick import <path> --as <show>/<episode>` only after I confirm. Summarize the episode YAML and missing inputs.
 ```
 
 ## Watch For Drops

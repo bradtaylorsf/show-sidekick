@@ -143,11 +143,16 @@ function referenceFileCandidates(value: string, options: ResolveReferenceSourceO
   }
 
   const cwd = path.resolve(options.cwd ?? process.cwd());
-  const musicLibrary = projectPaths(options.projectRoot).musicLibrary;
+  const paths = projectPaths(options.projectRoot);
   const candidates = [path.resolve(cwd, value)];
-  const musicCandidate = path.resolve(musicLibrary, value);
+  const inputCandidate = path.resolve(paths.inputs, value);
+  const musicCandidate = path.resolve(paths.musicLibrary, value);
 
-  if (isInsideOrEqual(musicCandidate, musicLibrary)) {
+  if (isInsideOrEqual(inputCandidate, paths.inputs)) {
+    candidates.push(inputCandidate);
+  }
+
+  if (isInsideOrEqual(musicCandidate, paths.musicLibrary)) {
     candidates.push(musicCandidate);
   }
 

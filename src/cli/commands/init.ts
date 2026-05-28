@@ -65,8 +65,8 @@ export function createInitHandler(io: CliIo, deps: InitHandlerDeps = {}) {
     const cacheDir = publicCacheDir(projectRoot);
     await mkdir(cacheDir, { recursive: true });
     await mkdir(path.join(projectRoot, "shows"), { recursive: true });
+    await mkdir(path.join(projectRoot, "inputs"), { recursive: true });
     await mkdir(path.join(projectRoot, "projects"), { recursive: true });
-    await mkdir(path.join(projectRoot, "music_library"), { recursive: true });
     await copyUserProjectTemplates(sourceBundledRoot, projectRoot);
 
     const copyCache = deps.copyBundledInto ?? ((targetCacheDir: string) => copyBundledInto(targetCacheDir, sourceBundledRoot));

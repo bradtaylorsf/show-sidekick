@@ -153,6 +153,7 @@ function registerCommands(program: Command, io: CliIo, options: RegisterCommandO
     .command("episode <show> [slug]")
     .description("scaffold an episode under a show")
     .option("--pipeline <name>", "pipeline key from show.pipelines")
+    .option("--from <path>", "copy a source file or folder into inputs/<show>/<episode>/ and infer episode inputs")
     .action(newHandlers.episode);
   newCommand
     .command("pipeline <slug>")

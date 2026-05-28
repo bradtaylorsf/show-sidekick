@@ -85,11 +85,11 @@ defaults:
 ingest:
   episode_template: ./episode.template.yaml
   watch:
-    - path: ../../music_library/news-music-studio-news
+    - path: ../../inputs/news-music-studio/news
       match: "**/track.mp3"
       pipeline: news-song
       slug_from: parent_dir              # parent_dir | filename | prompt
-    - path: ../../music_library/news-music-studio-songs
+    - path: ../../inputs/news-music-studio/songs
       match: "**/track.mp3"
       pipeline: music-video
       slug_from: parent_dir
@@ -104,7 +104,7 @@ Ingest `path` values resolve relative to `shows/<show>/`. A drop matches when th
 
 When `slug_from` is `parent_dir`, watch suggestions derive the episode slug from the matched file's parent folder. `filename` derives it from the matched file basename. `prompt` requires a human-supplied slug and is rejected by non-interactive ingest.
 
-`showkick import` uses the episode slug from `--as`, the matched watch entry's `pipeline`, and sibling files next to the matched file to populate `inputs`. Audio files become `track`, `.txt` becomes `lyrics`, `.yaml` / `.yml` becomes `sources`, video files become `reference`, and other files become `source`.
+`showkick import` uses the episode slug from `--as`, the matched watch entry's `pipeline`, and sibling files next to the matched file to populate `inputs`. `showkick new episode <show> <episode> --from <file-or-folder>` uses the same input inference without requiring a recurring watch rule, copying the supplied source into `inputs/<show>/<episode>/` first. When an `episode_template` names pipeline-specific inputs, matching source files preserve those names. Otherwise audio files become `track`, PDF/PPT/PPTX files become `deck_source`, images become `reference_image`, video files become `reference`, `.txt` becomes `lyrics`, `.yaml` / `.yml` becomes `sources`, and other files become `source`.
 
 A single-pipeline show is just a `pipelines:` map with one entry. The model degrades cleanly to "one workflow per show" when that's all the show needs.
 
@@ -159,10 +159,10 @@ sample_providers:
 
 # Inputs the pipeline needs.
 inputs:
-  track: music_library/news-music-studio-news/2026-05-12-news-jam/track.mp3
-  reference: music_library/news-music-studio-news/reference-video.mp4
-  lyrics: music_library/news-music-studio-news/2026-05-12-news-jam/lyrics.txt
-  sources: music_library/news-music-studio-news/2026-05-12-news-jam/sources.yaml
+  track: inputs/news-music-studio/news/2026-05-12-news-jam/track.mp3
+  reference: inputs/news-music-studio/news/reference-video.mp4
+  lyrics: inputs/news-music-studio/news/2026-05-12-news-jam/lyrics.txt
+  sources: inputs/news-music-studio/news/2026-05-12-news-jam/sources.yaml
   notes: |
     Hook hits at 0:18. Two evidence beats around 0:42 and 1:55.
 
@@ -173,7 +173,7 @@ cast: [host-mc, ambient-crowd]
 tags: [news-song, ps2, political-rap]
 ```
 
-`inputs.reference` is optional. When present, `showkick build` treats it the same as `--reference`: a URL is parsed with `new URL()`, while local paths resolve against cwd and then `<project>/music_library/`. The resulting `video_analysis_brief` is saved under `projects/<show>/<episode>/artifacts/` and supplied to downstream stages and reviewer checks. Reference analysis happens before pipeline selection; when `episode.pipeline` is omitted, the brief can steer the run from the show default to a declared reference-capable pipeline. An explicit `episode.pipeline` remains authoritative.
+`inputs.reference` is optional. When present, `showkick build` treats it the same as `--reference`: a URL is parsed with `new URL()`, while local paths resolve against cwd, then `<project>/inputs/`, then the legacy `<project>/music_library/` fallback. The resulting `video_analysis_brief` is saved under `projects/<show>/<episode>/artifacts/` and supplied to downstream stages and reviewer checks. Reference analysis happens before pipeline selection; when `episode.pipeline` is omitted, the brief can steer the run from the show default to a declared reference-capable pipeline. An explicit `episode.pipeline` remains authoritative.
 
 ## Resolution order
 

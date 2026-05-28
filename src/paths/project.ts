@@ -10,6 +10,7 @@ export type ResourceKind =
   | "playbooks"
   | "skills"
   | "projects"
+  | "inputs"
   | "music_library";
 
 export type ProjectPaths = {
@@ -19,6 +20,7 @@ export type ProjectPaths = {
   skills: string;
   cache: string;
   projects: string;
+  inputs: string;
   musicLibrary: string;
 };
 
@@ -55,6 +57,7 @@ export function projectPaths(root: string): ProjectPaths {
     skills: path.join(absoluteRoot, "skills"),
     cache: preferredCacheDir(absoluteRoot),
     projects: path.join(absoluteRoot, "projects"),
+    inputs: path.join(absoluteRoot, "inputs"),
     musicLibrary: path.join(absoluteRoot, "music_library"),
   };
 }

@@ -24,8 +24,11 @@ outputs/
 tmp/
 temp/
 
-# Drop zone for input media (audio, source video). Often large binary files;
-# commit them separately if you want them in version control.
+# Drop zone for source media and documents that are not ready to commit. Use
+# inputs/<show>/<episode>/ for files copied by `showkick new episode --from`.
+inputs/
+
+# Legacy/shared music drop zone. Prefer inputs/<show>/<episode>/ for new work.
 music_library/
 
 # Keep source workflows shareable. The following project-local override folders

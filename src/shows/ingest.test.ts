@@ -112,6 +112,24 @@ describe("ingest helpers", () => {
       sources: "music_library/news-song-drops/pilot/sources.yaml",
     });
   });
+
+  it("uses template input names when file extensions identify pipeline-specific roles", async () => {
+    const root = await scratchProject();
+    const dropDir = path.join(root, "inputs", "deck-lab", "launch");
+    await mkdir(dropDir, { recursive: true });
+    const sourcePath = path.join(dropDir, "quarterly-update.pptx");
+    await writeFile(sourcePath, "deck", "utf8");
+
+    await expect(
+      deriveInputs(sourcePath, { show: { projectRoot: root } } as Parameters<typeof deriveInputs>[1], {
+        templateInputs: {
+          deck_source: "shows/deck-lab/inputs/sample-episode/deck.pdf",
+        },
+      }),
+    ).resolves.toEqual({
+      deck_source: "inputs/deck-lab/launch/quarterly-update.pptx",
+    });
+  });
 });
 
 async function writeShow(root: string, slug: string): Promise<void> {

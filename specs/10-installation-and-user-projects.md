@@ -10,7 +10,7 @@ Show Sidekick is installed as a CLI. The user runs the CLI inside their **own** 
 │  ─────────────────────         │         │  ─────────────────────────     │
 │  Source: src/                  │  ───▶   │  shows/, episodes/             │
 │  Bundled: pipelines/,          │ install │  brand/, characters/           │
-│           playbooks/,          │         │  music_library/, projects/     │
+│           playbooks/,          │         │  inputs/, projects/            │
 │           skills/, schemas/,   │         │  CLAUDE.md, AGENTS.md          │
 │           starters/            │         │  .show-sidekick/ cache     │
 │  Apache 2.0, public            │         │  user-owned, user's license    │
@@ -79,7 +79,7 @@ my-shows/
 ├── .agents/skills/          # generated Codex-compatible Layer 3 skill mirror (gitignored)
 ├── .claude/skills/          # generated Claude-compatible Layer 3 skill mirror (gitignored)
 ├── shows/                   # user content (initially empty)
-├── music_library/           # gitignored drop zone
+├── inputs/                  # gitignored source-media/document inbox
 ├── projects/                # gitignored runtime workspace
 └── exports/                 # gitignored editor handoff packages, created on export
 ```
@@ -88,7 +88,7 @@ Every non-`init` command loads environment values from the project root in this 
 
 `showkick init` installs the rich composition runtime dependencies by default when Node 22+ and npm are available: Remotion, `@remotion/cli`, `@remotion/renderer`, React, aligned `zod`, and HyperFrames. These are written as normal project-local npm dependencies so the project actually has the runtimes available after initialization. If the user passes `--no-setup-runtimes`, or if a system prerequisite is missing, the agent should ask before installing system-level prerequisites such as Node/npm and then run `showkick setup runtimes` after approval.
 
-The scaffolded `.gitignore` keeps regenerable output out of source control by default: `.show-sidekick/`, `projects/`, `exports/`, `renders/`, `output/`, `outputs/`, `.show-sidekick-work/`, temp folders, local media drops, logs, `node_modules/`, and secret env files. User-authored workflows stay shareable: `shows/`, `pipelines/`, `playbooks/`, `skills/`, docs, and `.env.example` are not ignored.
+The scaffolded `.gitignore` keeps regenerable output and local source drops out of source control by default: `.show-sidekick/`, `inputs/`, `projects/`, `exports/`, `renders/`, `output/`, `outputs/`, `.show-sidekick-work/`, temp folders, legacy `music_library/` drops, logs, `node_modules/`, and secret env files. User-authored workflows stay shareable: `shows/`, `pipelines/`, `playbooks/`, `skills/`, docs, and `.env.example` are not ignored.
 
 ### Cache restore and `showkick update`
 
@@ -120,6 +120,10 @@ Available starters listed by `showkick ls starters`.
 
 `showkick ls starters` reports each starter's name, description, declared pipeline keys, fixture size, expected sample duration, and whether the referenced pipeline manifests support sample mode. Starter metadata is read from the bundled starter's `show.yaml` when present, with fixture size derived from `inputs/` as a fallback.
 
+### `showkick new episode <show> <slug> --from <file-or-folder>`
+
+Creates `shows/<show>/episodes/<slug>.yaml` from a user-supplied source file or folder. The source is copied into `inputs/<show>/<slug>/` so large or private source media stays gitignored by default. The episode YAML records project-relative input paths. When the show has an `ingest.episode_template`, the scaffold preserves pipeline-specific input names from that template; otherwise it infers common inputs from extensions, such as `deck_source` for PDF/PPT/PPTX, `track` for audio, `reference` or `reference_image` for video/image inspiration, `lyrics` for text, `sources` for structured files, and `source` for everything else.
+
 ### `showkick new pipeline <slug>`
 
 Creates a project-local pipeline manifest at `pipelines/<slug>.yaml` and the first editable director skill at `skills/pipelines/<slug>/idea-director.md`. Additional stages should be added as matching manifest entries plus `skills/pipelines/<slug>/<stage>-director.md` files.
@@ -139,7 +143,7 @@ Creates a project-local pipeline manifest at `pipelines/<slug>.yaml` and the fir
 | Capability-extension scripts/tools | `<project>/projects/<show>/<episode>/scripts/`, `<project>/projects/<show>/<episode>/tools/` | Yes — episode-scoped wrappers created through MET-11 |
 | Env template | `<project>/.env.example` | Yes — blank, shareable setup map |
 | Secret env values | `<project>/.env`, `<project>/.env.local`, `<project>/.env.<command>` | Yes (gitignored) |
-| Music files, render outputs, editor packages | `<project>/music_library/`, `<project>/projects/`, `<project>/exports/`, `<project>/renders/` | Yes (gitignored) |
+| Local source files, render outputs, editor packages | `<project>/inputs/`, legacy `<project>/music_library/`, `<project>/projects/`, `<project>/exports/`, `<project>/renders/` | Yes (gitignored) |
 
 ## Resolution order
 

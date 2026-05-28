@@ -44,7 +44,7 @@ export default defineTool({
 
     if (!selected) {
       throw new Error(
-        "No available music_generation provider; use bundled/skills/meta/music-plan.md to choose music_library/ or configure Suno/Freesound/Pixabay.",
+        "No available music_generation provider; use bundled/skills/meta/music-plan.md to choose inputs/show-slug/episode-slug/ or configure Suno/Freesound/Pixabay.",
       );
     }
 

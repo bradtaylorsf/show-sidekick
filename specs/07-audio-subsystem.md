@@ -99,7 +99,7 @@ Pure functions over the data model. Each is independently usable; pipelines comp
 ```ts
 import * as audio from 'show-sidekick/audio';
 
-const track = await audio.load('music_library/midnight-train/track.mp3');
+const track = await audio.load('inputs/music-videos/midnight-train/track.mp3');
 
 const transcript  = await audio.transcribe(track, { language: 'en' });
 const sections    = await audio.detectSections(track, { min_section_s: 8, transcript_hint: transcript.segments });

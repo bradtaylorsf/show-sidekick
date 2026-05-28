@@ -92,6 +92,7 @@ Use [docs/providers.md](docs/providers.md) to see which env vars or CLI logins u
 - **Project:** the folder where `showkick init` ran. It owns your shows, generated projects, exports, `.env`, and local overrides.
 - **Show:** a reusable video series or channel identity. A show owns brand, characters, pipeline defaults, and episodes.
 - **Episode:** one concrete video output inside a show. Build and export commands target `show/episode`.
+- **Inputs:** local source PDFs, decks, audio, video, images, and inspiration folders copied by `showkick new episode <show> <episode> --from <path>` into `inputs/<show>/<episode>/`.
 - **Pipeline:** the production workflow, such as `animated-explainer`, `music-video`, `screen-demo`, or `documentary-montage`.
 - **Playbook:** the creative/style treatment layered onto a pipeline.
 - **Starter:** a complete example show you can clone to begin quickly.

@@ -161,7 +161,7 @@ export async function deriveInputs(
       continue;
     }
 
-    addInput(inputs, inferInputKey(absolutePath), absolutePath, entry.show.projectRoot);
+    addInput(inputs, inferInputKey(absolutePath, options.templateInputs), absolutePath, entry.show.projectRoot);
   }
 
   return inputs;
@@ -220,11 +220,24 @@ function prioritizeMatchedFile(files: string[], matchedFilePath: string): string
   ];
 }
 
-function inferInputKey(filePath: string): string {
+function inferInputKey(filePath: string, templateInputs: Record<string, unknown> | undefined): string {
+  const templateKey = inferTemplateInputKey(filePath, templateInputs);
+  if (templateKey !== undefined) {
+    return templateKey;
+  }
+
   const extension = path.extname(filePath).toLowerCase();
 
   if ([".mp3", ".wav", ".m4a"].includes(extension)) {
     return "track";
+  }
+
+  if ([".pdf", ".ppt", ".pptx"].includes(extension)) {
+    return "deck_source";
+  }
+
+  if ([".jpg", ".jpeg", ".png", ".gif"].includes(extension)) {
+    return "reference_image";
   }
 
   if (extension === ".txt") {
@@ -240,6 +253,79 @@ function inferInputKey(filePath: string): string {
   }
 
   return "source";
+}
+
+function inferTemplateInputKey(filePath: string, templateInputs: Record<string, unknown> | undefined): string | undefined {
+  const candidates = Object.entries(templateInputs ?? {})
+    .filter(([, value]) => typeof value === "string" && looksLikeFileInput(value))
+    .map(([key, value]) => ({ key, templatePath: value as string }))
+    .filter(({ key, templatePath }) => inputKeyMatchesFile(key, templatePath, filePath));
+
+  return candidates.length === 1 ? candidates[0]?.key : undefined;
+}
+
+function inputKeyMatchesFile(key: string, templatePath: string, filePath: string): boolean {
+  const extension = path.extname(filePath).toLowerCase();
+  const templateExtension = path.extname(templatePath).toLowerCase();
+  const keyTokens = key.split(/[_-]+/u);
+
+  if ([".mp3", ".wav", ".m4a", ".aac", ".aiff"].includes(extension)) {
+    return key === "track" || key.includes("audio") || key.includes("podcast") || sameInputFamily(extension, templateExtension);
+  }
+
+  if ([".mp4", ".mov", ".webm", ".mpeg"].includes(extension)) {
+    return key.includes("video") || key === "source_media" || key === "reference" || sameInputFamily(extension, templateExtension);
+  }
+
+  if ([".pdf", ".ppt", ".pptx"].includes(extension)) {
+    return key.includes("deck") || key.includes("presentation") || sameInputFamily(extension, templateExtension);
+  }
+
+  if ([".jpg", ".jpeg", ".png", ".gif"].includes(extension)) {
+    return keyTokens.includes("image") || key === "screenshot" || key === "reference" || sameInputFamily(extension, templateExtension);
+  }
+
+  if ([".yaml", ".yml", ".json", ".csv", ".tsv"].includes(extension)) {
+    return key === "sources" || sameInputFamily(extension, templateExtension);
+  }
+
+  if ([".txt", ".md", ".srt"].includes(extension)) {
+    return sameInputFamily(extension, templateExtension);
+  }
+
+  return extension !== "" && extension === templateExtension;
+}
+
+function sameInputFamily(left: string, right: string): boolean {
+  return inputFamily(left) !== "unknown" && inputFamily(left) === inputFamily(right);
+}
+
+function inputFamily(extension: string): string {
+  if ([".mp3", ".wav", ".m4a", ".aac", ".aiff"].includes(extension)) {
+    return "audio";
+  }
+
+  if ([".mp4", ".mov", ".webm", ".mpeg"].includes(extension)) {
+    return "video";
+  }
+
+  if ([".pdf", ".ppt", ".pptx"].includes(extension)) {
+    return "deck";
+  }
+
+  if ([".jpg", ".jpeg", ".png", ".gif"].includes(extension)) {
+    return "image";
+  }
+
+  if ([".yaml", ".yml", ".json", ".csv", ".tsv"].includes(extension)) {
+    return "structured";
+  }
+
+  if ([".txt", ".md", ".srt"].includes(extension)) {
+    return "text";
+  }
+
+  return "unknown";
 }
 
 function looksLikeFileInput(value: string): boolean {
