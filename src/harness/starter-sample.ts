@@ -926,6 +926,7 @@ async function renderStarterPreview(input: {
     runtime_used: "ffmpeg",
     asset_count: input.framePaths.length,
     warnings: input.warnings,
+    verification_notes: ["Starter preview rendered with deterministic FFmpeg zoom/pan motion."],
     validation_steps: [
       {
         name: "render_drift",

@@ -27,6 +27,7 @@ type NewShowOptions = GlobalOptions & {
 
 type NewEpisodeOptions = GlobalOptions & {
   pipeline?: string;
+  from?: string;
 };
 
 export function createNewHandlers(io: CliIo) {
@@ -55,6 +56,7 @@ export function createNewHandlers(io: CliIo) {
         show,
         slug,
         pipeline: options.pipeline,
+        fromPath: options.from,
       });
       const episode = await loadEpisode(show, result.slug);
 

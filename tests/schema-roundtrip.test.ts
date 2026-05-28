@@ -14,6 +14,7 @@ import {
   CharacterQaReportSchema,
   CostLogSchema,
   CuesheetSchema,
+  DeckManifestSchema,
   DecisionLogSchema,
   EditDecisionsSchema,
   EndTagPlanSchema,
@@ -50,6 +51,7 @@ const zodSchemasByArtifact = {
   character_qa_report: CharacterQaReportSchema,
   cost_log: CostLogSchema,
   cuesheet: CuesheetSchema,
+  deck_manifest: DeckManifestSchema,
   decision_log: DecisionLogSchema,
   edit_decisions: EditDecisionsSchema,
   end_tag_plan: EndTagPlanSchema,
@@ -114,5 +116,6 @@ async function fixtureArtifactNames(): Promise<string[]> {
   return entries
     .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
     .map((entry) => entry.name.replace(/\.json$/u, ""))
+    .filter((name) => !name.includes("."))
     .sort();
 }

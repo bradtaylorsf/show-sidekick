@@ -121,29 +121,31 @@ export default defineTool({
   output: FfmpegOutputSchema,
 
   async execute(params, ctx) {
-    if (params.operation === "trim" && params.end_s <= params.start_s) {
+    const input = FfmpegInputSchema.parse(params);
+
+    if (input.operation === "trim" && input.end_s <= input.start_s) {
       throw new FfmpegError("trim end_s must be greater than start_s", {
         command: ["ffmpeg"],
-        stderr: `invalid trim range: start_s=${params.start_s}, end_s=${params.end_s}`,
+        stderr: `invalid trim range: start_s=${input.start_s}, end_s=${input.end_s}`,
         exitCode: null,
       });
     }
 
-    switch (params.operation) {
+    switch (input.operation) {
       case "trim":
-        return runOutputOperation(params.operation, trimArgs(params), params.output);
+        return runOutputOperation(input.operation, trimArgs(input), input.output);
       case "concat":
-        return concat(params);
+        return concat(input);
       case "silence_detect":
-        return silenceDetect(params);
+        return silenceDetect(input);
       case "probe":
-        return probe(params.input);
+        return probe(input.input);
       case "audio_extract":
-        return runOutputOperation(params.operation, audioExtractArgs(params), params.output);
+        return runOutputOperation(input.operation, audioExtractArgs(input), input.output);
       case "normalize":
-        return runOutputOperation(params.operation, normalizeArgs(params), params.output);
+        return runOutputOperation(input.operation, normalizeArgs(input), input.output);
       case "compose":
-        return compose(params, ctx);
+        return compose(input, ctx);
     }
   },
 });

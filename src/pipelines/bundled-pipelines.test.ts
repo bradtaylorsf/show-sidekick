@@ -927,6 +927,87 @@ describe("bundled pipeline manifests", () => {
     );
   });
 
+  it("ships the presentation-demo manifest with nine directors plus an executive producer", async () => {
+    const manifest = await loadBundledManifest("presentation-demo");
+    const presentationDemoSkillsDir = path.join(bundledPipelineSkillsDir, "presentation-demo");
+    const directorFiles = [
+      "idea-director.md",
+      "capture-director.md",
+      "script-director.md",
+      "cuesheet-director.md",
+      "scene-director.md",
+      "asset-director.md",
+      "edit-director.md",
+      "compose-director.md",
+      "publish-director.md",
+    ];
+    const expectedRequiredSkills = [
+      "pipelines/presentation-demo/executive-producer.md",
+      "pipelines/presentation-demo/idea-director.md",
+      "pipelines/presentation-demo/capture-director.md",
+      "pipelines/presentation-demo/script-director.md",
+      "pipelines/presentation-demo/cuesheet-director.md",
+      "pipelines/presentation-demo/scene-director.md",
+      "pipelines/presentation-demo/asset-director.md",
+      "pipelines/presentation-demo/edit-director.md",
+      "pipelines/presentation-demo/compose-director.md",
+      "pipelines/presentation-demo/publish-director.md",
+      "meta/reviewer",
+      "meta/checkpoint-protocol",
+    ];
+
+    expect(manifest).toMatchObject({
+      slug: "presentation-demo",
+      status: "experimental",
+      sample_support: "paid",
+      master_clock: "voiceover",
+      stage_order: "manifest",
+      defaults: {
+        aspect: "16:9",
+        duration_strategy: "brief",
+        render_runtime: "remotion",
+      },
+      orchestration: {
+        mode: "executive-producer",
+        skill: "pipelines/presentation-demo/executive-producer.md",
+      },
+    });
+    expect(manifest.stages.map((stage) => stage.slug)).toEqual([
+      "idea",
+      "capture",
+      "script",
+      "cuesheet",
+      "scene_plan",
+      "assets",
+      "edit",
+      "compose",
+      "publish",
+    ]);
+    expect(manifest.stages.map((stage) => [stage.slug, stage.human_approval])).toEqual([
+      ["idea", "required"],
+      ["capture", "optional"],
+      ["script", "required"],
+      ["cuesheet", "optional"],
+      ["scene_plan", "optional"],
+      ["assets", "optional"],
+      ["edit", "optional"],
+      ["compose", "required"],
+      ["publish", "optional"],
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "capture")?.produces).toBe("deck_manifest");
+    expect(manifest.stages.find((stage) => stage.slug === "capture")?.produces_artifacts).toEqual([
+      "deck_manifest",
+    ]);
+    expect(manifest.stages.find((stage) => stage.slug === "cuesheet")?.audio_sync).toBe("build");
+    expect(manifest.required_skills).toEqual(expectedRequiredSkills);
+
+    for (const fileName of directorFiles) {
+      expect(existsSync(path.join(presentationDemoSkillsDir, fileName)), `${fileName} should exist`).toBe(true);
+    }
+    expect(existsSync(path.join(presentationDemoSkillsDir, "executive-producer.md"))).toBe(true);
+    expect(existsSync(path.join(presentationDemoSkillsDir, "__fixtures__", "required-strings.yaml"))).toBe(true);
+  });
+
   it("resolves every declared pipeline director and executive-producer skill", async () => {
     const manifests = await loadAllBundledManifests();
     const missing: string[] = [];

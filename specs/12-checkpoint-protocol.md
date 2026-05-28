@@ -71,6 +71,8 @@ At the start of any `showkick build` or `showkick resume` invocation, the harnes
    - If `in_progress` but no process is running, treat as crashed — surface to the user and let them resume or revise.
 4. Loads prior artifacts from preceding checkpoints into the agent's context for downstream stages.
 
+Explicit stage slices (`showkick build --from <stage>`, `--only <stage>`, or `--to <stage>`) still honor existing checkpoints inside the slice. A `completed` checkpoint is reused as the stage artifact and the runner advances; an `awaiting_human` checkpoint presents the approval gate. Failed checkpoints may be rerun by targeting that stage, while intentional reruns of completed creative stages should go through `showkick revise` so the revision note is audited.
+
 ## Human approval presentation
 
 When a stage's `human_approval` is `required` (or `optional` in interactive mode), the harness prepares a presentation block and either prompts inline (interactive) or exits awaiting `showkick approve` / `showkick revise` (non-interactive).

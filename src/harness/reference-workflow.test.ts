@@ -42,12 +42,14 @@ describe("resolveReferenceSource", () => {
     });
   });
 
-  it("resolves relative paths against cwd before music_library", async () => {
+  it("resolves relative paths against cwd before project input fallbacks", async () => {
     const root = await scratchProject();
     const cwd = path.join(root, "nested");
     const referencePath = path.join(cwd, "relative-reference.mp4");
     await mkdir(cwd, { recursive: true });
     await writeFile(referencePath, "video", "utf8");
+    await mkdir(path.join(root, "inputs"), { recursive: true });
+    await writeFile(path.join(root, "inputs", "relative-reference.mp4"), "input video", "utf8");
     await mkdir(path.join(root, "music_library"), { recursive: true });
     await writeFile(path.join(root, "music_library", "relative-reference.mp4"), "music video", "utf8");
 
@@ -58,7 +60,22 @@ describe("resolveReferenceSource", () => {
     });
   });
 
-  it("falls back to project music_library for relative paths", async () => {
+  it("falls back to project inputs for relative paths", async () => {
+    const root = await scratchProject();
+    const cwd = path.join(root, "shows", "demo");
+    const referencePath = path.join(root, "inputs", "song", "reference.mp4");
+    await mkdir(cwd, { recursive: true });
+    await mkdir(path.dirname(referencePath), { recursive: true });
+    await writeFile(referencePath, "video", "utf8");
+
+    expect(resolveReferenceSource("song/reference.mp4", { projectRoot: root, cwd })).toEqual({
+      kind: "file",
+      original: "song/reference.mp4",
+      absolutePath: referencePath,
+    });
+  });
+
+  it("keeps music_library as a legacy relative-path fallback", async () => {
     const root = await scratchProject();
     const cwd = path.join(root, "shows", "demo");
     const referencePath = path.join(root, "music_library", "song", "reference.mp4");
@@ -85,7 +102,11 @@ describe("resolveReferenceSource", () => {
       expect(error).toMatchObject({
         code: "reference_source_not_found",
         reference: "missing.mp4",
-        candidates: [path.join(cwd, "missing.mp4"), path.join(root, "music_library", "missing.mp4")],
+        candidates: [
+          path.join(cwd, "missing.mp4"),
+          path.join(root, "inputs", "missing.mp4"),
+          path.join(root, "music_library", "missing.mp4"),
+        ],
       });
     }
   });

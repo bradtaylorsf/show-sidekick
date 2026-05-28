@@ -31,6 +31,7 @@ describe("demo-readiness pipeline inventory", () => {
       "music-video",
       "news-song",
       "podcast-repurpose",
+      "presentation-demo",
       "screen-demo",
       "talking-head",
     ]);

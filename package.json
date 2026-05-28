@@ -1,6 +1,6 @@
 {
   "name": "show-sidekick",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Show-first AI pre-production for video — build the rough cut, finish in your NLE.",
   "type": "module",
   "repository": {
@@ -46,6 +46,7 @@
     "typecheck": "tsc --noEmit",
     "release:check": "node --import tsx scripts/public-flip-checklist.ts --with-e2e",
     "release:check:full": "node --import tsx scripts/public-flip-checklist.ts --with-build --with-e2e",
+    "release:verify:npm": "node --import tsx scripts/release-npm-version-check.ts",
     "release:smoke:pack": "pnpm build && SHOW_SIDEKICK_PACKED_TARBALL_SMOKE=1 vitest run tests/release/packed-tarball-smoke.test.ts",
     "demo-matrix": "node --import tsx/esm scripts/demo-matrix.ts",
     "docs:providers": "node --import tsx/esm scripts/generate-providers-doc.ts",
@@ -53,6 +54,7 @@
     "show-types:check": "node --import tsx/esm scripts/show-types-check.ts",
     "show-types:matrix": "node --import tsx/esm scripts/show-types-matrix.ts",
     "changeset": "pnpm dlx @changesets/cli",
+    "changeset:gate": "node --import tsx scripts/changeset-pr-gate.ts",
     "changeset:status": "pnpm dlx @changesets/cli status --since=origin/main",
     "changeset:version": "pnpm dlx @changesets/cli version",
     "changeset:publish": "pnpm build && npm publish --provenance --access public"

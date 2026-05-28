@@ -9,6 +9,7 @@ export const videoProviderInputSchema = z.object({
   image_url: z.string().url().optional(),
   duration: z.number().int().positive().optional(),
   aspect_ratio: z.string().min(1).optional(),
+  model: z.string().min(1).optional(),
 });
 
 export const videoProviderOutputSchema = z.object({

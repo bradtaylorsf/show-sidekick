@@ -25,6 +25,7 @@ Export reads from existing pipeline artifacts — no extra generation. The artif
 | `edit_decisions` | Cut list, scene order, scene durations, asset references |
 | `cuesheet` | Word-level timing for caption tracks, beat grid for audio sync |
 | `asset_manifest` | Absolute paths to images, video clips, audio segments, music track |
+| `deck_manifest` | Source-deck provenance, slide screenshots, slide IDs, text/notes provenance for deck-led demos |
 | `render_report` | Output video path (for embedding in the export package) |
 
 ## Output package shape
@@ -39,6 +40,8 @@ exports/<show>__<episode>.<target>/
 │   └── narration_01.wav
 ├── captions/
 │   └── word_timings.json
+├── source/
+│   └── deck_manifest.json        # present for deck-led presentation-demo exports
 └── README.md                    # how to open this in the target NLE
 ```
 
@@ -59,6 +62,8 @@ export:
 ```
 
 `showkick export --target X` validates against `supported_targets` and refuses if the target is unsupported (with a clear message).
+
+For `presentation-demo`, supported targets are Premiere, DaVinci, CapCut, and EDL. The package must include the rendered animated explainer/demo rough cut, `deck_manifest`, slide screenshots, narration, captions when available, edit decisions, render report, and handoff metadata. Export must not collapse the deliverable into a static slideshow or a folder of slide images; that is a compose failure, not a supported export mode.
 
 ## Asset linkage
 

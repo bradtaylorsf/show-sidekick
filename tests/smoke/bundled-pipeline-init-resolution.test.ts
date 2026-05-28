@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Command } from "commander";
@@ -35,6 +35,27 @@ describe("bundled pipeline init resolution", () => {
       expect(existsSync(path.join(projectRoot, BRANDING.cacheDir, "pipelines", `${slug}.yaml`)), slug).toBe(true);
       expect(existsSync(path.join(projectRoot, BRANDING.cacheDir, "skills", "pipelines", slug)), slug).toBe(true);
     }
+  });
+
+  it("initializes the presentation-demo starter with a resolvable bundled pipeline", async () => {
+    const projectRoot = await mkdtemp(path.join(tmpdir(), "show-sidekick-presentation-demo-init-"));
+    scratchDirs.push(projectRoot);
+    const sourceBundledRoot = bundledRoot();
+
+    await createInitHandler(captureIo(), {
+      bundledRoot: () => sourceBundledRoot,
+      copyBundledInto: (target) => copyBundledInto(target, sourceBundledRoot),
+      computeBundledChecksum: () => computeBundledChecksum(sourceBundledRoot),
+      cwd: () => projectRoot,
+      now: () => new Date("2026-05-23T12:00:00.000Z"),
+      setupRuntimes: async () => undefined,
+    })(command({ starter: "presentation-demo", setupRuntimes: false }));
+
+    const showYaml = await readFile(path.join(projectRoot, "shows", "presentation-demo", "show.yaml"), "utf8");
+    expect(showYaml).toContain("presentation-demo:");
+    expect(showYaml).not.toContain("pending_pipelines");
+    expect(existsSync(path.join(projectRoot, BRANDING.cacheDir, "pipelines", "presentation-demo.yaml"))).toBe(true);
+    expect(existsSync(path.join(projectRoot, "shows", "presentation-demo", "inputs", "sample-episode", "deck.pdf"))).toBe(true);
   });
 });
 

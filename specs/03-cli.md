@@ -26,6 +26,7 @@ showkick update --check                    # verify .show-sidekick/ without writ
 showkick new show <slug>                   # scaffold shows/<slug>/ with the bundled music-video pipeline
 showkick new show <slug> --pipelines a,b   # scaffold a show bound to existing pipeline manifests
 showkick new episode <show> [<slug>]       # scaffold an episode under a show
+showkick new episode <show> <slug> --from <file-or-folder> # copy source inputs and infer episode inputs
 showkick new pipeline <slug>               # scaffold a new pipeline + director skills
 showkick new playbook <slug>               # scaffold a new style playbook
 
@@ -69,6 +70,8 @@ showkick setup runtimes                    # install Remotion CLI stack + HyperF
 showkick tools <name>                      # tool detail (CLI vs API, env vars, cost)
 ```
 
+`--from`, `--only`, and `--to` slice the pipeline by stage slug. When a sliced run encounters an existing `completed` checkpoint for a planned stage, it reuses that checkpoint artifact and advances; when it encounters `awaiting_human`, it surfaces the approval gate instead of silently re-running the stage. Use `showkick revise <show>/<episode> "<note>"` to intentionally rerun a checkpointed creative stage.
+
 ## Global flags
 
 | Flag | Meaning |
@@ -99,7 +102,7 @@ showkick status                            # all episodes under the current show
 
 ## Reference-Driven Builds
 
-`showkick build <show>/<episode> --reference <url-or-path>` analyzes a reference video before pipeline selection and before the Runner starts. When the flag is omitted, `inputs.reference` in `episode.yaml` is used if present. URLs are detected with `new URL()` for `http:`, `https:`, and `file:` protocols; non-URLs resolve first against cwd, then against `<project>/music_library/`.
+`showkick build <show>/<episode> --reference <url-or-path>` analyzes a reference video before pipeline selection and before the Runner starts. When the flag is omitted, `inputs.reference` in `episode.yaml` is used if present. URLs are detected with `new URL()` for `http:`, `https:`, and `file:` protocols; non-URLs resolve first against cwd, then against `<project>/inputs/`, then against the legacy `<project>/music_library/` fallback.
 
 The analysis writes `projects/<show>/<episode>/artifacts/video_analysis_brief.json`, emits a `reference_analysis` event in JSON mode, and threads the `video_analysis_brief` artifact into every stage and reviewer pass. If the episode omits `pipeline`, the brief may steer selection from the show's default to a declared reference-capable pipeline; an explicit `episode.pipeline` remains authoritative.
 
@@ -127,6 +130,8 @@ The analysis writes `projects/<show>/<episode>/artifacts/video_analysis_brief.js
 The matrix records CLI path/version, provider profile, env availability, workdir, per-lane command, exit code, last event, and artifact paths. It exits `0` only when every selected lane completes; otherwise it exits `2`.
 
 ## Ingest Commands
+
+`showkick new episode <show> <episode> --from <file-or-folder>` is the low-ceremony path for one-off source-led work. It copies the source file or folder into `inputs/<show>/<episode>/`, writes `shows/<show>/episodes/<episode>.yaml`, and infers episode input keys from the source files. When the show declares `ingest.episode_template`, the template preserves pipeline-specific input names such as `deck_source`, `source_video`, `reference_image`, or `track`; otherwise common extensions map to defaults such as deck, track, reference image/video, lyrics, sources, or generic source.
 
 `showkick import <path> --as <show>/<episode>` resolves `<path>` as either a dropped file or a folder containing a matching dropped file. It matches the path against the target show's `ingest.watch[]`, uses the matched watch entry's `pipeline`, derives sibling inputs, and writes `shows/<show>/episodes/<episode>.yaml`. It refuses to overwrite an existing episode file.
 

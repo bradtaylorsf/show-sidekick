@@ -30,6 +30,7 @@ export type KnownCapability =
   | "transcript_fetch"
   | "clip_embedding"
   | "corpus_index"
+  | "deck_ingest"
   | "video_analysis"
   | "video_understanding"
   | "video_download"

@@ -7,6 +7,7 @@ export { kpi_grid, KpiGridPropsSchema, type KpiGridProps } from "./kpi_grid.js";
 export { line_chart, LineChartPropsSchema, type LineChartProps } from "./line_chart.js";
 export { pie_chart, PieChartPropsSchema, type PieChartProps } from "./pie_chart.js";
 export { progress_bar, ProgressBarPropsSchema, type ProgressBarProps } from "./progress_bar.js";
+export { slide_scene, SlideScenePropsSchema, type SlideSceneProps } from "./slide_scene.js";
 export { stat_card, StatCardPropsSchema, type StatCardProps } from "./stat_card.js";
 export { terminal_scene, TerminalScenePropsSchema, type TerminalSceneProps } from "./terminal_scene.js";
 export { text_card, TextCardPropsSchema, type TextCardProps } from "./text_card.js";

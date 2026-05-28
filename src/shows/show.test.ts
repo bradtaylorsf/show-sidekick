@@ -107,6 +107,34 @@ describe("ShowSchema", () => {
     expect(show.pipelines["screen-demo"]?.capture_mode).toBe("synthetic_terminal");
   });
 
+  it("accepts sample provider plans at show and pipeline scope", () => {
+    const show = ShowSchema.parse({
+      slug: "provider-flex",
+      display_name: "Provider Flex",
+      created: "2026-05-12",
+      bake_brand_into_images: false,
+      sample_providers: {
+        image: { provider: "google", model: "imagen-3.0-generate-001" },
+        video: { tool: "veo_video", model: "veo-2.0-generate-001" },
+      },
+      pipelines: {
+        explainer: {
+          runtime: "remotion",
+          sample_providers: {
+            tts: { tool: "google_tts", voice_id: "en-US-Chirp3-HD-Charon" },
+          },
+        },
+      },
+      defaults: {
+        pipeline: "explainer",
+      },
+    });
+
+    expect(show.sample_providers?.image?.provider).toBe("google");
+    expect(show.bake_brand_into_images).toBe(false);
+    expect(show.pipelines.explainer?.sample_providers?.tts?.tool).toBe("google_tts");
+  });
+
   it("rejects a show with no pipelines", () => {
     expect(() =>
       ShowSchema.parse({
@@ -182,6 +210,21 @@ describe("EpisodeSchema", () => {
     });
 
     expect(episode.pipeline).toBe("news-song");
+  });
+
+  it("accepts episode sample provider overrides", () => {
+    const episode = EpisodeSchema.parse({
+      slug: "provider-override",
+      title: "Provider Override",
+      created: "2026-05-12",
+      sample_providers: {
+        image: { tool: "flux_image", model: "flux-dev" },
+        voice: { provider: "openai", voice_id: "alloy" },
+      },
+    });
+
+    expect(episode.sample_providers?.image?.tool).toBe("flux_image");
+    expect(episode.sample_providers?.voice?.voice_id).toBe("alloy");
   });
 
   it("falls back to show.defaults.pipeline during show validation", () => {

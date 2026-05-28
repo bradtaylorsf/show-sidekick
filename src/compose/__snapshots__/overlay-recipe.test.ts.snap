@@ -1,0 +1,168 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`compose overlay recipe > loads a show-owned recipe, resolves templates, and renders the declared overlay components 1`] = `
+{
+  "children": [
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "frame": 18,
+            "height": 1920,
+            "name": "overlay_hero_title",
+            "overlay": true,
+            "width": 1080,
+          },
+          "type": "scene-meta",
+        },
+        {
+          "children": [],
+          "props": {
+            "role": "title",
+            "style": {
+              "color": "#f8fafc",
+              "fontFamily": "Inter Tight",
+              "fontSize": 88,
+              "fontWeight": 800,
+              "letterSpacing": 0,
+              "lineHeight": 0.95,
+            },
+            "text": "FIRST 48 HOURS",
+          },
+          "type": "text",
+        },
+        {
+          "children": [],
+          "props": {
+            "role": "subtitle",
+            "style": {
+              "color": "#f8fafc",
+              "fontFamily": "Inter",
+              "fontSize": 34,
+              "lineHeight": 1.25,
+            },
+            "text": "Hospital Discharge",
+          },
+          "type": "text",
+        },
+      ],
+      "props": {
+        "style": {
+          "background": "transparent",
+          "color": "#f8fafc",
+          "fontFamily": "Inter",
+          "height": 1920,
+          "inset": 0,
+          "opacity": 1,
+          "overflow": "hidden",
+          "position": "absolute",
+          "width": 1080,
+        },
+      },
+      "type": "AbsoluteFill",
+    },
+    {
+      "children": [
+        {
+          "children": [],
+          "props": {
+            "frame": 18,
+            "height": 1920,
+            "name": "caption_burn",
+            "overlay": true,
+            "width": 1080,
+          },
+          "type": "scene-meta",
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [],
+                  "props": {
+                    "active": true,
+                    "color": "#38bdf8",
+                    "end_s": 0.6666666666666666,
+                    "index": 0,
+                    "start_s": 0,
+                    "text": "Stay",
+                  },
+                  "type": "caption-word",
+                },
+                {
+                  "children": [],
+                  "props": {
+                    "active": false,
+                    "color": "#cbd5e1",
+                    "end_s": 1.3333333333333333,
+                    "index": 1,
+                    "start_s": 0.6666666666666666,
+                    "text": "ready",
+                  },
+                  "type": "caption-word",
+                },
+                {
+                  "children": [],
+                  "props": {
+                    "active": false,
+                    "color": "#cbd5e1",
+                    "end_s": 2,
+                    "index": 2,
+                    "start_s": 1.3333333333333333,
+                    "text": "now.",
+                  },
+                  "type": "caption-word",
+                },
+              ],
+              "props": {
+                "index": 0,
+              },
+              "type": "caption-line",
+            },
+          ],
+          "props": {
+            "active_index": 0,
+            "position": "center",
+            "style": {
+              "background": "rgba(30, 64, 175, 0.85)",
+              "color": "#f8fafc",
+              "fontFamily": "Helvetica Neue",
+              "fontSize": 54,
+              "fontWeight": 800,
+              "stroke": "#020617",
+              "strokeWidth": 4,
+            },
+            "time_s": 0.6,
+          },
+          "type": "caption-box",
+        },
+      ],
+      "props": {
+        "style": {
+          "background": "transparent",
+          "color": "#f8fafc",
+          "fontFamily": "Inter",
+          "height": 1920,
+          "inset": 0,
+          "opacity": 1,
+          "overflow": "hidden",
+          "position": "absolute",
+          "width": 1080,
+        },
+      },
+      "type": "AbsoluteFill",
+    },
+  ],
+  "props": {
+    "style": {
+      "height": "100%",
+      "inset": 0,
+      "position": "absolute",
+      "width": "100%",
+    },
+  },
+  "type": "AbsoluteFill",
+}
+`;

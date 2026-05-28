@@ -93,7 +93,16 @@ describe("higgsfield tool", () => {
 
     expect(ctx.runCli).toHaveBeenCalledWith(
       "higgsfield",
-      expect.arrayContaining(["generate", "create", "seedance_2_0", "--start-image", "https://cdn.example.com/reference.png", "--wait"]),
+      expect.arrayContaining([
+        "generate",
+        "create",
+        "seedance_2_0",
+        "--start-image",
+        "https://cdn.example.com/reference.png",
+        "--aspect_ratio",
+        "16:9",
+        "--wait",
+      ]),
       expect.objectContaining({
         env: expect.objectContaining({ HIGGSFIELD_RECORD_HTTP: "1" }),
       }),
@@ -108,9 +117,70 @@ describe("higgsfield tool", () => {
       start_image: "https://cdn.example.com/reference.png",
       prompt: "animate the subject with gentle camera drift",
       duration: 5,
+      aspect_ratio: "16:9",
     });
     expect(result.request.body).not.toHaveProperty("parameters");
     expect(result.cost_usd).toBe(0.3);
+  });
+
+  it("passes configured model values to the Higgsfield CLI and wire request", async () => {
+    const ctx = context();
+
+    const result = await higgsfield.execute(
+      higgsfield.input.parse({
+        image_url: "https://cdn.example.com/reference.png",
+        prompt: "animate with a configured model",
+        duration: 5,
+        model: "seedance_3_0",
+      }),
+      ctx,
+    );
+
+    expect(ctx.runCli).toHaveBeenCalledWith(
+      "higgsfield",
+      expect.arrayContaining(["generate", "create", "seedance_3_0"]),
+      expect.any(Object),
+    );
+    expect(result.request.url.endsWith("generate/create/seedance_3_0")).toBe(true);
+    expect(result.request.body.model).toBe("seedance_3_0");
+  });
+
+  it("records model-aware cost for known Higgsfield models", async () => {
+    const ctx = context();
+
+    const result = await higgsfield.execute(
+      higgsfield.input.parse({
+        image_url: "https://cdn.example.com/reference.png",
+        prompt: "animate with kling pricing",
+        duration: 5,
+        model: "kling3_0",
+      }),
+      ctx,
+    );
+
+    expect(result.request.body.model).toBe("kling3_0");
+    expect(result.cost_usd).toBe(0.13);
+  });
+
+  it("passes portrait aspect through to Seedance generations", async () => {
+    const ctx = context();
+
+    const result = await higgsfield.execute(
+      higgsfield.input.parse({
+        image_url: "https://cdn.example.com/reference.png",
+        prompt: "animate the subject with gentle camera drift",
+        duration: 5,
+        aspect_ratio: "9:16",
+      }),
+      ctx,
+    );
+
+    expect(ctx.runCli).toHaveBeenCalledWith(
+      "higgsfield",
+      expect.arrayContaining(["--aspect_ratio", "9:16"]),
+      expect.any(Object),
+    );
+    expect(result.request.body.aspect_ratio).toBe("9:16");
   });
 
   it("uses the recorded CLI request when the CLI returns one", async () => {
@@ -184,6 +254,15 @@ describe("higgsfield tool", () => {
       }),
       ctx,
     );
+    const differentAspect = await higgsfield.execute(
+      higgsfield.input.parse({
+        image_url: "https://cdn.example.com/reference-a.png",
+        prompt: "same prompt",
+        duration: 5,
+        aspect_ratio: "9:16",
+      }),
+      ctx,
+    );
     const differentImage = await higgsfield.execute(
       higgsfield.input.parse({
         image_url: "https://cdn.example.com/reference-b.png",
@@ -193,10 +272,11 @@ describe("higgsfield tool", () => {
       ctx,
     );
 
-    expect(runCli).toHaveBeenCalledTimes(2);
+    expect(runCli).toHaveBeenCalledTimes(3);
     expect(first).toMatchObject({ video_path: "projects/show/episode/clips/higgsfield-1.mp4", cost_usd: 0.3 });
     expect(second).toMatchObject({ video_path: "projects/show/episode/clips/higgsfield-1.mp4", cost_usd: 0 });
-    expect(differentImage).toMatchObject({ video_path: "projects/show/episode/clips/higgsfield-2.mp4", cost_usd: 0.3 });
+    expect(differentAspect).toMatchObject({ video_path: "projects/show/episode/clips/higgsfield-2.mp4", cost_usd: 0.3 });
+    expect(differentImage).toMatchObject({ video_path: "projects/show/episode/clips/higgsfield-3.mp4", cost_usd: 0.3 });
   });
 
   it("passes local image paths directly to the current Higgsfield CLI", async () => {

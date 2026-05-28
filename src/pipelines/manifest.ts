@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SampleProvidersConfigSchema } from "../providers/sample-plan.js";
 import { canonicalIndex } from "./canonical-stages.js";
 import { StageSchema } from "./stage.js";
 
@@ -51,6 +52,7 @@ export const PipelineManifestSchema = z
       })
       .optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
+    sample_providers: SampleProvidersConfigSchema.optional(),
     orchestration: OrchestrationSchema,
     sample: z
       .object({

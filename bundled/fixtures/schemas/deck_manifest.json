@@ -1,0 +1,37 @@
+{
+  "source": {
+    "kind": "pptx",
+    "file_type": "pptx",
+    "source_path": "/Users/example/Desktop/demo-deck.pptx",
+    "working_file_path": "projects/deck-show/pilot/deck/source.pptx",
+    "sha256": "0123456789abcdef",
+    "byte_size": 123456
+  },
+  "slides": [
+    {
+      "id": "slide-001",
+      "order": 1,
+      "image_path": "captures/slides/slide-001.png",
+      "image": {
+        "width": 1920,
+        "height": 1080
+      },
+      "text": "Show Sidekick turns a deck into a narrated demo.",
+      "text_source": "native",
+      "speaker_notes": "Open with the operator's problem and the promised rough cut.",
+      "notes_source": "pptx_notes",
+      "warnings": [],
+      "source": {
+        "slide_number": 1,
+        "source_slide_id": "256"
+      }
+    }
+  ],
+  "extraction": {
+    "text_engine": "pptx-native",
+    "notes_engine": "pptx-notes",
+    "screenshot_engine": "deck-renderer",
+    "extracted_at": "2026-05-23T12:00:00.000Z",
+    "warnings": []
+  }
+}

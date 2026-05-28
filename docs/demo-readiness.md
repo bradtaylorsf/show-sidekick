@@ -109,6 +109,7 @@ Current expected green paths:
 | `music-video` | `music-video` | `both` | Green for zero-key; included in paid-demo | Audio-led beat-synced lyric-video smoke lane. |
 | `news-song` | `news-song` | `paid` | Paid-demo only | Requires paid-demo provider setup. |
 | `podcast-repurpose` | `podcast-repurpose` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
+| `presentation-demo` | `presentation-demo` | `paid` | Paid-demo only | Fixture-backed starter and deck handoff export verified; authenticated online deck links still need exported PDF/PPTX inputs. |
 | `product-demo` | `screen-demo` | `unsupported` | Documented initializer | Extra generalized product/demo starter for the `screen-demo` pipeline. |
 | `screen-demo` | `screen-demo` | `paid` | Paid-demo only | Requires paid-demo provider setup; synthetic terminal fixture. |
 | `talking-head` | `talking-head` | `unsupported` | Documented initializer | Fixture-backed starter; sample provider path still needs implementation. |
@@ -141,6 +142,7 @@ Approved bundled manifest slugs:
 - `music-video`
 - `news-song`
 - `podcast-repurpose`
+- `presentation-demo`
 - `screen-demo`
 - `talking-head`
 

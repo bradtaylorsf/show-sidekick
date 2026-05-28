@@ -4,7 +4,7 @@ import { lstat, mkdir, readdir, readFile, realpath, rm, writeFile } from "node:f
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { readPublishLog } from "../artifacts/index.js";
+import { DeckManifestSchema, readPublishLog } from "../artifacts/index.js";
 import { PipelineManifestSchema, type Pipeline } from "../pipelines/index.js";
 import type { LoadedShow } from "../shows/index.js";
 import { createProgram } from "../cli/program.js";
@@ -17,6 +17,7 @@ import { MissingArtifactError, loadExportArtifacts } from "./load-artifacts.js";
 
 let scratchDirs: string[] = [];
 const originalCwd = process.cwd();
+const repoRoot = process.cwd();
 
 afterEach(async () => {
   process.chdir(originalCwd);
@@ -35,6 +36,17 @@ describe("loadExportArtifacts", () => {
     expect(artifacts.cuesheet.audio.path).toBe("media/narration.wav");
     expect(artifacts.assetManifest.assets.map((asset) => asset.id)).toEqual(["hero", "chart"]);
     expect(artifacts.renderReport.framerate).toBe(30);
+    expect(artifacts.deckManifest).toBeUndefined();
+  });
+
+  it("loads an optional deck manifest for deck-aware exports", async () => {
+    const root = await scratchProject();
+    await writeExportWorkspace(root, { deckManifest: true });
+
+    const artifacts = await loadExportArtifacts(root, "show", "episode");
+
+    expect(artifacts.deckManifest?.slides.map((slide) => slide.id)).toEqual(["slide-001", "slide-002", "slide-003"]);
+    expect(artifacts.paths.deck_manifest).toBe(path.join(root, "projects", "show", "episode", "deck_manifest.json"));
   });
 
   it("throws a typed missing artifact error naming the path", async () => {
@@ -315,6 +327,76 @@ describe("assembleExportPackage", () => {
     expect(await readFile(result.readmePath, "utf8")).toContain("DaVinci Resolve");
   });
 
+  it("packages presentation deck assets and records deck handoff metadata", async () => {
+    const root = await scratchProject();
+    await writeExportWorkspace(root, { deckManifest: true });
+
+    const result = await assembleExportPackage({
+      projectRoot: root,
+      show: loadedShow(root),
+      showSlug: "show",
+      episodeSlug: "episode",
+      pipeline: pipeline({ supportedTargets: ["premiere", "davinci", "capcut", "edl"] }),
+      target: "premiere",
+      assetLinkMode: "copy",
+      now: new Date("2026-05-23T12:00:00.000Z"),
+    });
+
+    const sourceDir = path.join(result.packageDir, "source");
+    const slidesDir = path.join(sourceDir, "slides");
+    const slideEntries = (await readdir(slidesDir)).sort((left, right) => left.localeCompare(right));
+
+    expect(existsSync(path.join(sourceDir, "deck_manifest.json"))).toBe(true);
+    expect(existsSync(path.join(sourceDir, "source-deck-reference.txt"))).toBe(true);
+    expect(existsSync(path.join(sourceDir, "deck", "source.pptx"))).toBe(true);
+    expect(existsSync(path.join(result.packageDir, "metadata", "edit_decisions.json"))).toBe(true);
+    expect(existsSync(path.join(result.packageDir, "metadata", "render_report.json"))).toBe(true);
+    expect(slideEntries).toEqual(["slide-001.png", "slide-002.png", "slide-003.png"]);
+    expect(existsSync(path.join(result.packageDir, "renders", "render.mp4"))).toBe(true);
+    expect(result.publishLog.outputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "deck_manifest", path: path.join(sourceDir, "deck_manifest.json") }),
+        expect.objectContaining({ kind: "slide_screenshots", path: slidesDir }),
+        expect.objectContaining({ kind: "source_deck", path: path.join(sourceDir, "deck", "source.pptx") }),
+        expect.objectContaining({ kind: "edit_decisions", path: path.join(result.packageDir, "metadata", "edit_decisions.json") }),
+        expect.objectContaining({ kind: "render_report", path: path.join(result.packageDir, "metadata", "render_report.json") }),
+        expect.objectContaining({ kind: "rendered_video", path: path.join(result.packageDir, "renders", "render.mp4") }),
+      ]),
+    );
+    expect(result.publishLog.metadata).toMatchObject({
+      exported_at: "2026-05-23T12:00:00.000Z",
+      target: "premiere",
+      asset_link_mode: "copy",
+      deck_asset_link_mode: "copy",
+      captions_path: result.captionsPath,
+      edit_decisions_path: path.join(result.packageDir, "metadata", "edit_decisions.json"),
+      render_report_path: path.join(result.packageDir, "metadata", "render_report.json"),
+      deck_manifest_path: path.join(sourceDir, "deck_manifest.json"),
+      deck_source_path: path.join(sourceDir, "deck", "source.pptx"),
+    });
+    expect((result.publishLog.metadata as { deck_asset_paths?: unknown }).deck_asset_paths).toEqual(
+      slideEntries.map((entry) => path.join(slidesDir, entry)),
+    );
+  });
+
+  it("keeps non-deck export packages free of deck source folders", async () => {
+    const root = await scratchProject();
+    await writeExportWorkspace(root);
+
+    const result = await assembleExportPackage({
+      projectRoot: root,
+      show: loadedShow(root),
+      showSlug: "show",
+      episodeSlug: "episode",
+      pipeline: pipeline(),
+      target: "premiere",
+      assetLinkMode: "copy",
+    });
+
+    expect(existsSync(path.join(result.packageDir, "source"))).toBe(false);
+    expect(result.publishLog.outputs.map((output) => output.kind)).not.toContain("deck_manifest");
+  });
+
   it.each([
     { target: "capcut", timelineName: "draft.json", outputKind: "capcut_draft" },
     { target: "edl", timelineName: "timeline.edl", outputKind: "edl" },
@@ -546,7 +628,7 @@ async function writeProjectFiles(root: string): Promise<void> {
   );
 }
 
-async function writeExportWorkspace(root: string, options: { omit?: string; editDecisions?: unknown } = {}): Promise<void> {
+async function writeExportWorkspace(root: string, options: { omit?: string; editDecisions?: unknown; deckManifest?: boolean } = {}): Promise<void> {
   const projectDir = path.join(root, "projects", "show", "episode");
   const mediaDir = path.join(root, "media");
   await mkdir(projectDir, { recursive: true });
@@ -573,6 +655,31 @@ async function writeExportWorkspace(root: string, options: { omit?: string; edit
 
     await writeFile(path.join(projectDir, `${name}.json`), `${JSON.stringify(value, null, 2)}\n`, "utf8");
   }
+
+  if (options.deckManifest === true) {
+    const deck = await deckManifestFixture(root);
+    await mkdir(path.join(projectDir, "deck"), { recursive: true });
+    await mkdir(path.join(root, "captures", "slides"), { recursive: true });
+    await writeFile(path.join(projectDir, "deck", "source.pptx"), "pptx", "utf8");
+    await Promise.all(
+      deck.slides.map((slide) => writeFile(path.join(root, slide.image_path), `png:${slide.id}`, "utf8")),
+    );
+    await writeFile(path.join(projectDir, "deck_manifest.json"), `${JSON.stringify(deck, null, 2)}\n`, "utf8");
+  }
+}
+
+async function deckManifestFixture(root: string) {
+  const raw = JSON.parse(
+    await readFile(path.join(repoRoot, "bundled", "fixtures", "schemas", "deck_manifest.pptx-with-notes.json"), "utf8"),
+  ) as Record<string, unknown>;
+
+  raw.source = {
+    ...(raw.source as Record<string, unknown>),
+    source_path: path.join(root, "source-inputs", "presentation-demo.pptx"),
+    working_file_path: "projects/show/episode/deck/source.pptx",
+  };
+
+  return DeckManifestSchema.parse(raw);
 }
 
 function assetManifest() {

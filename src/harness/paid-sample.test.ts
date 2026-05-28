@@ -1,15 +1,17 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { readCheckpoint } from "../checkpoints/index.js";
+import { readCheckpoint, writeCheckpoint, type CheckpointStatus } from "../checkpoints/index.js";
 import { readCostLog } from "../cost/tracker.js";
 import { readDecisionLog } from "../decisions/store.js";
 import type { PipelineManifest, Stage } from "../pipelines/index.js";
 import { defineTool, Registry, type Tool } from "../registry/index.js";
 import type { LoadedEpisode, LoadedShow } from "../shows/index.js";
+import ttsSelector from "../tools/tts-selector.js";
 import { createPaidSampleDispatcher } from "./paid-sample.js";
 import { Runner, type StageReviewer } from "./runner.js";
 
@@ -80,6 +82,88 @@ describe("paid sample dispatcher", () => {
     });
   });
 
+  it("uses sample_providers config instead of paid-demo defaults for image, video, and TTS", async () => {
+    const root = await scratchProject();
+    const show: LoadedShow = {
+      ...loadedShow(root),
+      sample_providers: {
+        image: { tool: "google_imagen", model: "imagen-test" },
+        video: { tool: "veo_video", model: "veo-test" },
+        tts: { tool: "google_tts", model: "chirp-test", voice_id: "en-US-Test" },
+      },
+    };
+    const episode = loadedEpisode(show);
+    const pipeline = pipelineManifest();
+    const openAiInputs: unknown[] = [];
+    const higgsfieldInputs: unknown[] = [];
+    const googleImageInputs: unknown[] = [];
+    const veoInputs: unknown[] = [];
+    const googleTtsInputs: unknown[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "paid-demo",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          includeGoogleImage: true,
+          includeGoogleTts: true,
+          includeVeoVideo: true,
+          onGoogleImageInput: (input) => googleImageInputs.push(input),
+          onGoogleTtsInput: (input) => googleTtsInputs.push(input),
+          onHiggsfieldInput: (input) => higgsfieldInputs.push(input),
+          onOpenAiInput: (input) => openAiInputs.push(input),
+          onVeoInput: (input) => veoInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", nonInteractive: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(openAiInputs).toEqual([]);
+    expect(higgsfieldInputs).toEqual([]);
+    expect(googleImageInputs[0]).toMatchObject({
+      model: "imagen-test",
+      aspect_ratio: "16:9",
+      prompt: expect.stringContaining('Show title: "Show"'),
+    });
+    expect(veoInputs[0]).toMatchObject({
+      model: "veo-test",
+      aspect_ratio: "16:9",
+      duration: 10,
+      prompt: expect.stringContaining("Animate"),
+    });
+    expect(veoInputs[0]).not.toHaveProperty("image_url");
+    expect(googleTtsInputs[0]).toMatchObject({
+      model: "chirp-test",
+      voice_id: "en-US-Test",
+      text: expect.stringContaining("paid sample dispatcher"),
+    });
+    await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
+      artifact: {
+        assets: expect.arrayContaining([
+          expect.objectContaining({ id: "paid_sample_image", provider: "google", model: "imagen-test" }),
+          expect.objectContaining({ id: "paid_sample_clip", provider: "google", model: "veo-test" }),
+          expect.objectContaining({ id: "paid_sample_narration", provider: "google", model: "chirp-test" }),
+        ]),
+      },
+    });
+    await expect(readDecisionLog({ show: "show", episode: "episode" }, { root })).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ category: "provider_selection", picked: "google" }),
+        expect.objectContaining({ category: "model_selection", picked: "imagen-test" }),
+        expect.objectContaining({ category: "model_selection", picked: "veo-test" }),
+        expect.objectContaining({ category: "voice_selection", picked: "google_tts" }),
+      ]),
+    );
+  });
+
   it("records zero-cost Higgsfield cache hits", async () => {
     const root = await scratchProject();
     const show = loadedShow(root);
@@ -115,6 +199,628 @@ describe("paid sample dispatcher", () => {
     await expect(readDecisionLog({ show: "show", episode: "episode" }, { root })).resolves.toEqual(
       expect.arrayContaining([expect.objectContaining({ category: "budget_tradeoff", picked: "higgsfield_cache_hit" })]),
     );
+  });
+
+  it("uses Higgsfield still generation instead of code snippets when OpenAI images are unavailable", async () => {
+    const root = await scratchProject();
+    const show = loadedShow(root);
+    const episode = loadedEpisode(show);
+    const pipeline = pipelineManifest();
+    const codeSnippetInputs: unknown[] = [];
+    const higgsfieldImageInputs: unknown[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "paid-demo",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          includeCodeSnippet: true,
+          includeHiggsfieldImage: true,
+          includeOpenAiImage: false,
+          onCodeSnippetInput: (input) => codeSnippetInputs.push(input),
+          onHiggsfieldImageInput: (input) => higgsfieldImageInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", nonInteractive: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(codeSnippetInputs).toEqual([]);
+    expect(higgsfieldImageInputs[0]).toMatchObject({
+      prompt: expect.stringContaining("Asset type: 16:9 keyframe"),
+    });
+    await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
+      artifact: {
+        assets: expect.arrayContaining([
+          expect.objectContaining({ id: "paid_sample_image", provider: "higgsfield", model: "gpt_image_2" }),
+          expect.objectContaining({ id: "paid_sample_clip", provider: "higgsfield", model: "seedance_2_0" }),
+        ]),
+      },
+    });
+  });
+
+  it("drafts presentation-demo scripts from deck slides with slide references and source priority", async () => {
+    const root = await scratchProject();
+    const show = presentationDemoShow(root);
+    const episode = presentationDemoEpisode(show, { operator_notes: "Operator fallback should only be used after slide evidence." });
+    const pipeline = presentationDemoPipeline([
+      stage("capture", "deck_manifest"),
+      { ...stage("script", "script"), required_artifacts_in: ["deck_manifest"], human_approval: "required" },
+    ]);
+    await writeStageCheckpoint(root, "capture", "completed", deckManifestWithNotes());
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "presentation-demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: false, provider_profile: "paid-demo", nonInteractive: true, from: "script" },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("awaiting_human");
+    await expect(readCheckpoint(root, "show", "episode", "script")).resolves.toMatchObject({
+      status: "awaiting_human",
+      artifact: {
+        sections: [
+          expect.objectContaining({
+            slug: "slide-001",
+            slide_ids: ["slide-001"],
+            vo_source: "pptx_notes",
+            narration: expect.stringContaining("teams already have strong deck material"),
+            enhancement_cues: expect.arrayContaining([
+              "Voiceover source priority: pptx_notes > slide_text/OCR > operator > agent.",
+            ]),
+          }),
+          expect.objectContaining({
+            slug: "slide-002",
+            slide_ids: ["slide-002"],
+            vo_source: "pptx_notes",
+          }),
+        ],
+      },
+    });
+  });
+
+  it("captures a presentation-demo fixture deck into a manifest with slide screenshots", async () => {
+    const root = await scratchProject();
+    const show = presentationDemoShow(root);
+    const deckPath = path.join(root, "shows", "show", "inputs", "episode", "deck.pdf");
+    const episode = presentationDemoEpisode(show, { deck_source: "shows/show/inputs/episode/deck.pdf" });
+    const pipeline = presentationDemoPipeline([stage("capture", "deck_manifest")]);
+    await writeFixture(deckPath, "%PDF-1.7\n1 0 obj\n<< /Type /Pages /Count 2 >>\nendobj\n%%EOF\n");
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "presentation-demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: false, provider_profile: "paid-demo", nonInteractive: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    await expect(readCheckpoint(root, "show", "episode", "capture")).resolves.toMatchObject({
+      artifact: {
+        source: {
+          file_type: "pdf",
+          source_path: "shows/show/inputs/episode/deck.pdf",
+          working_file_path: "projects/show/episode/deck/source.pdf",
+          byte_size: expect.any(Number),
+        },
+        slides: [
+          expect.objectContaining({ id: "slide-001", image_path: "projects/show/episode/deck/slides/slide-001.png" }),
+          expect.objectContaining({ id: "slide-002", image_path: "projects/show/episode/deck/slides/slide-002.png" }),
+        ],
+        extraction: {
+          screenshot_engine: "paid-sample-fixture",
+          extracted_at: fixedNow().toISOString(),
+        },
+      },
+    });
+    expect(existsSync(path.join(root, "projects", "show", "episode", "deck", "source.pdf"))).toBe(true);
+    expect(existsSync(path.join(root, "projects", "show", "episode", "deck", "slides", "slide-001.png"))).toBe(true);
+  });
+
+  it("blocks presentation-demo TTS when the script checkpoint is still awaiting approval", async () => {
+    const root = await scratchProject();
+    const show = presentationDemoShow(root);
+    const episode = presentationDemoEpisode(show);
+    const pipeline = presentationDemoPipeline([
+      { ...stage("script", "script"), human_approval: "required" },
+      { ...stage("cuesheet", "cuesheet"), required_artifacts_in: ["script"], optional_artifacts_in: ["deck_manifest"] },
+    ]);
+    const ttsInputs: unknown[] = [];
+    await writeStageCheckpoint(root, "script", "awaiting_human", approvedSlideScript());
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "presentation-demo",
+      registry: new Registry({
+        tools: [
+          ttsSelector,
+          fixtureTool("openai_tts", "tts", "openai", 0.000015, async (input) => {
+            ttsInputs.push(input);
+            return { audio_path: path.join(root, "fixtures", "narration.mp3"), provider: "openai", model: "gpt-4o-mini-tts", cost_usd: 0.000015 };
+          }),
+        ],
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: false, provider_profile: "paid-demo", nonInteractive: true, from: "cuesheet" },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("failed");
+    expect(ttsInputs).toHaveLength(0);
+    await expect(readCheckpoint(root, "show", "episode", "cuesheet")).resolves.toMatchObject({
+      status: "failed",
+      artifact: {
+        error: expect.stringContaining("requires script checkpoint status completed"),
+        last_cost_entries: [],
+      },
+      tool_invocations: [],
+    });
+  });
+
+  it("generates approved presentation-demo narration through registry TTS and writes slide timing anchors", async () => {
+    const root = await scratchProject();
+    const show = presentationDemoShow(root);
+    const episode = presentationDemoEpisode(show, { voice_id: "alloy", tts_provider: "openai" });
+    const pipeline = presentationDemoPipeline([
+      { ...stage("script", "script"), human_approval: "required" },
+      { ...stage("cuesheet", "cuesheet"), required_artifacts_in: ["script"], optional_artifacts_in: ["deck_manifest"] },
+    ]);
+    const ttsInputs: unknown[] = [];
+    const audioPath = path.join(root, "fixtures", "openai-narration.mp3");
+    await writeStageCheckpoint(root, "script", "completed", approvedSlideScript());
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "presentation-demo",
+      registry: new Registry({
+        tools: [
+          ttsSelector,
+          fixtureTool("openai_tts", "tts", "openai", 0.000015, async (input) => {
+            ttsInputs.push(input);
+            await writeFixture(audioPath, "audio");
+            return { audio_path: audioPath, provider: "openai", model: "gpt-4o-mini-tts", voice: "alloy", cost_usd: 0.000015 };
+          }),
+        ],
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: false, provider_profile: "paid-demo", nonInteractive: true, from: "cuesheet" },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(ttsInputs).toEqual([
+      expect.objectContaining({
+        text: expect.stringContaining("Decks already carry the story"),
+        voice_id: "alloy",
+        model: "gpt-4o-mini-tts",
+      }),
+    ]);
+    await expect(readCheckpoint(root, "show", "episode", "cuesheet")).resolves.toMatchObject({
+      artifact: {
+        master_clock: "voiceover",
+        audio: {
+          path: "projects/show/episode/audio/narration.mp3",
+        },
+        scene_anchors: [
+          expect.objectContaining({ scene_id: "slide-001", slide_ids: ["slide-001"], snapped_to: "word" }),
+          expect.objectContaining({ scene_id: "slide-002", slide_ids: ["slide-002"], snapped_to: "word" }),
+        ],
+        voiceover: {
+          provider: "openai",
+          tool: "openai_tts",
+          voice_id: "alloy",
+          model: "gpt-4o-mini-tts",
+          cost_usd: 0.000015,
+        },
+      },
+    });
+    await expect(readCostLog(root, "show", "episode")).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ tool: "openai_tts", provider: "openai", model: "gpt-4o-mini-tts", usd: 0.000015 }),
+      ]),
+    );
+    await expect(readDecisionLog({ show: "show", episode: "episode" }, { root })).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stage: "cuesheet",
+          category: "voice_selection",
+          picked: "openai_tts",
+          reason: expect.stringContaining("voice_id=alloy"),
+          options_considered: expect.arrayContaining([
+            expect.objectContaining({ label: "openai_tts", rejected_because: null, notes: expect.stringContaining("cost_usd=0.000015") }),
+            expect.objectContaining({ label: "attach_existing_voiceover", rejected_because: expect.stringContaining("TTS registry") }),
+          ]),
+        }),
+      ]),
+    );
+  });
+
+  it("renders presentation-demo slide scenes through the locked Remotion runtime", async () => {
+    const root = await scratchProject();
+    const show = presentationDemoShow(root);
+    const episode = presentationDemoEpisode(show);
+    const pipeline = presentationDemoPipeline([
+      stage("capture", "deck_manifest"),
+      { ...stage("script", "script"), human_approval: "required" },
+      stage("cuesheet", "cuesheet"),
+      stage("scene_plan", "scene_plan"),
+      stage("assets", "asset_manifest"),
+      stage("edit", "edit_decisions"),
+      stage("compose", "render_report"),
+    ]);
+    const composeInputs: unknown[] = [];
+
+    await writeStageCheckpoint(root, "capture", "completed", deckManifestWithNotes());
+    await writeStageCheckpoint(root, "script", "completed", approvedSlideScript());
+    await writeStageCheckpoint(root, "cuesheet", "completed", approvedSlideCuesheet());
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "presentation-demo",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          includeRemotionRuntime: true,
+          onVideoComposeInput: (input) => composeInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: false, provider_profile: "paid-demo", nonInteractive: true, from: "scene_plan" },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    await expect(readCheckpoint(root, "show", "episode", "scene_plan")).resolves.toMatchObject({
+      artifact: {
+        scenes: [
+          expect.objectContaining({
+            slug: "slide-001",
+            slide_id: "slide-001",
+            treatment: "zoom_pan",
+            highlights: [expect.objectContaining({ label: "deck evidence" })],
+            callouts: [expect.objectContaining({ text: expect.stringContaining("Decks already") })],
+          }),
+          expect.objectContaining({
+            slug: "slide-002",
+            slide_id: "slide-002",
+          }),
+        ],
+      },
+    });
+    await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
+      artifact: {
+        assets: expect.arrayContaining([
+          expect.objectContaining({ id: "deck_slide_slide_001", kind: "image", provider: "deck_manifest" }),
+          expect.objectContaining({ id: "paid_sample_narration", kind: "audio", provider: "openai" }),
+        ]),
+      },
+    });
+    await expect(readCheckpoint(root, "show", "episode", "edit")).resolves.toMatchObject({
+      artifact: {
+        render_runtime: "remotion",
+        cuts: expect.arrayContaining([
+          expect.objectContaining({
+            scene_kind: "slide_scene",
+            slide_id: "slide-001",
+            asset_id: "deck_slide_slide_001",
+            timing_anchor: "section:slide-001",
+            timing_source: "section",
+            start_ms: 0,
+            transition_in: "fade",
+            transition_out: "dissolve",
+            provider: "remotion",
+          }),
+        ]),
+        audio: { music: { track_path: "projects/show/episode/audio/narration.mp3", ducking: false } },
+      },
+    });
+    await expect(readCheckpoint(root, "show", "episode", "compose")).resolves.toMatchObject({
+      artifact: {
+        runtime_used: "remotion",
+        expected_duration_s: 10,
+        drift_s: 0,
+        verification_notes: expect.arrayContaining(["Fixture Remotion render used slide-aware compose input."]),
+      },
+    });
+    expect(composeInputs).toHaveLength(1);
+    expect(composeInputs[0]).toMatchObject({
+      deck_manifest: { slides: expect.arrayContaining([expect.objectContaining({ id: "slide-001" })]) },
+      scene_plan: { scenes: expect.arrayContaining([expect.objectContaining({ slide_id: "slide-001" })]) },
+      cuesheet: { master_clock: "voiceover" },
+      edit_decisions: {
+        render_runtime: "remotion",
+        cuts: expect.arrayContaining([
+          expect.objectContaining({
+            scene_kind: "slide_scene",
+            slide_id: "slide-001",
+            timing_anchor: "section:slide-001",
+            timing_source: "section",
+          }),
+        ]),
+      },
+    });
+  });
+
+  it("passes show-owned compose recipe overlays into the Remotion compose input", async () => {
+    const root = await scratchProject();
+    const show = loadedShow(root, "remotion");
+    const episode = loadedEpisode(show, "remotion", "Recipe captions should come from the approved script.");
+    const pipeline: PipelineManifest = {
+      ...pipelineManifest(),
+      stages: [stage("script", "script"), stage("assets", "asset_manifest"), stage("edit", "edit_decisions"), stage("compose", "render_report")],
+    };
+    const composeInputs: unknown[] = [];
+
+    await mkdir(path.join(show.rootDir, "compose"), { recursive: true });
+    await writeFile(
+      path.join(show.rootDir, "compose", "recipe.yaml"),
+      [
+        "overlays:",
+        "  - component: hero_title",
+        "    props:",
+        '      title: "{{ show.display_name | upper }}"',
+        '      subtitle: "{{ episode.title }}"',
+        "    timeline:",
+        "      from_s: 0",
+        "      to_s: end",
+        "  - component: caption_burn",
+        "    props:",
+        "      source: script",
+        "    timeline:",
+        "      sync: script",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    await writeStageCheckpoint(root, "script", "completed", {
+      sections: [
+        {
+          slug: "hook",
+          start_s: 0,
+          end_s: 4,
+          narration: "Recipe captions should come from the approved script.",
+          dialogue: [],
+          enhancement_cues: [],
+          slide_ids: [],
+        },
+      ],
+    });
+    await writeStageCheckpoint(root, "assets", "completed", {
+      assets: [{ id: "paid_sample_clip", kind: "video", path: "projects/show/episode/clips/sample.mp4" }],
+    });
+    await writeStageCheckpoint(root, "edit", "completed", {
+      cuts: [{ start_s: 0, end_s: 4, asset_id: "paid_sample_clip", scene_id: "sample-1", scene_kind: "video_clip" }],
+      overlays: [],
+      render_runtime: "remotion",
+      renderer_family: "explainer-teacher",
+    });
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "paid-demo",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          includeRemotionRuntime: true,
+          onVideoComposeInput: (input) => composeInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", nonInteractive: true, from: "compose" },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(composeInputs).toHaveLength(1);
+    expect(composeInputs[0]).toMatchObject({
+      edit_decisions: {
+        overlays: [
+          expect.objectContaining({
+            component: "hero_title",
+            registry: "overlay",
+            props: expect.objectContaining({
+              title: "SHOW",
+              subtitle: "Paid Sample",
+            }),
+          }),
+          expect.objectContaining({
+            component: "caption_burn",
+            registry: "overlay",
+            props: expect.objectContaining({
+              words: expect.arrayContaining([expect.objectContaining({ text: "Recipe" })]),
+            }),
+          }),
+        ],
+      },
+    });
+  });
+
+  it("loads an on-disk cuesheet for compose recipe caption_burn source cuesheet", async () => {
+    const root = await scratchProject();
+    const show = loadedShow(root, "remotion");
+    const episode = loadedEpisode(show, "remotion", "Disk cuesheets should drive captions.");
+    const pipeline: PipelineManifest = {
+      ...pipelineManifest(),
+      stages: [stage("assets", "asset_manifest"), stage("edit", "edit_decisions"), stage("compose", "render_report")],
+    };
+    const composeInputs: unknown[] = [];
+
+    await mkdir(path.join(show.rootDir, "compose"), { recursive: true });
+    await writeFile(
+      path.join(show.rootDir, "compose", "recipe.yaml"),
+      [
+        "overlays:",
+        "  - component: caption_burn",
+        "    props:",
+        "      source: cuesheet",
+        "    timeline:",
+        "      sync: cuesheet",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    await mkdir(path.join(root, "projects", "show", "episode"), { recursive: true });
+    await writeFile(
+      path.join(root, "projects", "show", "episode", "cuesheet.json"),
+      `${JSON.stringify({
+        audio: {
+          path: "projects/show/episode/audio/narration.mp3",
+          duration_s: 2,
+          sample_rate: 44100,
+          channels: 1,
+        },
+        master_clock: "voiceover",
+        words: [
+          { text: "Disk", start_s: 0, end_s: 0.4, confidence: 1 },
+          { text: "timing", start_s: 0.4, end_s: 0.9, confidence: 1 },
+        ],
+        segments: [
+          {
+            start_s: 0,
+            end_s: 0.9,
+            text: "Disk timing",
+            words: [
+              { text: "Disk", start_s: 0, end_s: 0.4, confidence: 1 },
+              { text: "timing", start_s: 0.4, end_s: 0.9, confidence: 1 },
+            ],
+          },
+        ],
+        sections: [{ label: "voiceover", start_s: 0, end_s: 2, kind: "vocal", energy: 0.8 }],
+        beats: [],
+        climax: [],
+        scene_anchors: [],
+      })}\n`,
+      "utf8",
+    );
+    await writeStageCheckpoint(root, "assets", "completed", {
+      assets: [{ id: "paid_sample_clip", kind: "video", path: "projects/show/episode/clips/sample.mp4" }],
+    });
+    await writeStageCheckpoint(root, "edit", "completed", {
+      cuts: [{ start_s: 0, end_s: 2, asset_id: "paid_sample_clip", scene_id: "sample-1", scene_kind: "video_clip" }],
+      overlays: [],
+      render_runtime: "remotion",
+      renderer_family: "explainer-teacher",
+    });
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "paid-demo",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          includeRemotionRuntime: true,
+          onVideoComposeInput: (input) => composeInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", nonInteractive: true, from: "compose" },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(composeInputs[0]).toMatchObject({
+      edit_decisions: {
+        overlays: [
+          expect.objectContaining({
+            component: "caption_burn",
+            props: expect.objectContaining({
+              words: [
+                expect.objectContaining({ text: "Disk", start_s: 0, end_s: 0.4 }),
+                expect.objectContaining({ text: "timing", start_s: 0.4, end_s: 0.9 }),
+              ],
+            }),
+          }),
+        ],
+      },
+    });
+  });
+
+  it("fails presentation-demo compose instead of silently swapping when Remotion is unavailable", async () => {
+    const root = await scratchProject();
+    const show = presentationDemoShow(root);
+    const episode = presentationDemoEpisode(show);
+    const pipeline = presentationDemoPipeline([
+      stage("capture", "deck_manifest"),
+      { ...stage("script", "script"), human_approval: "required" },
+      stage("cuesheet", "cuesheet"),
+      stage("scene_plan", "scene_plan"),
+      stage("assets", "asset_manifest"),
+      stage("edit", "edit_decisions"),
+      stage("compose", "render_report"),
+    ]);
+    const ffmpegInputs: unknown[] = [];
+
+    await writeStageCheckpoint(root, "capture", "completed", deckManifestWithNotes());
+    await writeStageCheckpoint(root, "script", "completed", approvedSlideScript());
+    await writeStageCheckpoint(root, "cuesheet", "completed", approvedSlideCuesheet());
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "presentation-demo",
+      registry: new Registry({ tools: paidSampleTools(root, { onFfmpegInput: (input) => ffmpegInputs.push(input) }) }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: false, provider_profile: "paid-demo", nonInteractive: true, from: "scene_plan" },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.lastStage).toBe("compose");
+    expect(ffmpegInputs).toHaveLength(0);
+    await expect(readCheckpoint(root, "show", "episode", "compose")).resolves.toMatchObject({
+      status: "failed",
+      artifact: {
+        error: expect.stringMatching(/remotion runtime (?:is not registered|unavailable)/u),
+      },
+    });
   });
 
   it("reports the actual ffmpeg sample runtime when a starter is configured for Remotion", async () => {
@@ -160,14 +866,24 @@ describe("paid sample dispatcher", () => {
 
   it("uses available Remotion runtime and creates multiple generated motion clips from script beats", async () => {
     const root = await scratchProject();
-    const show = loadedShow(root, "remotion");
-    const episode = loadedEpisode(show, "remotion", [
-      "Start with the contract: pipeline first.",
-      "Check readiness: doctor, tools, runtimes.",
-      "Build the sample: voice, frame, motion, review.",
-      "Export the handoff: Premiere, EDL, logs.",
-    ].join("\n"));
+    const show = {
+      ...loadedShow(root, "remotion"),
+      display_name: "First 48 Hours",
+      description: "Aging Sidekick hospital-discharge guidance.",
+    };
+    const episode = {
+      ...loadedEpisode(show, "remotion", [
+        "Start with the contract: pipeline first.",
+        "Check readiness: doctor, tools, runtimes.",
+        "Build the sample: voice, frame, motion, review.",
+        "Export the handoff: Premiere, EDL, logs.",
+      ].join("\n")),
+      aspect: "9:16",
+      title: "Hospital Discharge",
+    };
     const pipeline = pipelineManifest();
+    const openAiInputs: unknown[] = [];
+    const higgsfieldInputs: unknown[] = [];
     const videoComposeInputs: unknown[] = [];
 
     const result = await Runner.run({
@@ -179,6 +895,8 @@ describe("paid sample dispatcher", () => {
       registry: new Registry({
         tools: paidSampleTools(root, {
           includeRemotionRuntime: true,
+          onOpenAiInput: (input) => openAiInputs.push(input),
+          onHiggsfieldInput: (input) => higgsfieldInputs.push(input),
           onVideoComposeInput: (input) => videoComposeInputs.push(input),
         }),
       }),
@@ -190,6 +908,20 @@ describe("paid sample dispatcher", () => {
     });
 
     expect(result.status).toBe("completed");
+    expect(openAiInputs).toHaveLength(2);
+    for (const input of openAiInputs) {
+      expect(input).toMatchObject({ size: "1024x1792" });
+      expect(promptFromInput(input)).toContain('Show title: "First 48 Hours"');
+      expect(promptFromInput(input)).toContain('Episode title: "Hospital Discharge"');
+      expect(promptFromInput(input)).toContain('exactly "FIRST 48 HOURS"');
+      expect(promptFromInput(input)).toContain("Do not invent other brand names");
+    }
+    expect(higgsfieldInputs).toHaveLength(2);
+    for (const input of higgsfieldInputs) {
+      expect(input).toMatchObject({ aspect_ratio: "9:16" });
+      expect(promptFromInput(input)).toContain('Show title: "First 48 Hours"');
+      expect(promptFromInput(input)).toContain("Do not add new readable text, logos, or brand names during motion generation.");
+    }
     await expect(readCheckpoint(root, "show", "episode", "assets")).resolves.toMatchObject({
       artifact: {
         assets: expect.arrayContaining([
@@ -202,14 +934,25 @@ describe("paid sample dispatcher", () => {
       artifact: {
         render_runtime: "remotion",
         cuts: [
-          expect.objectContaining({ asset_id: "paid_sample_clip", start_s: 0, end_s: 7.5 }),
-          expect.objectContaining({ asset_id: "paid_sample_clip_2", start_s: 7.5, end_s: 15 }),
+          expect.objectContaining({
+            asset_id: "paid_sample_clip",
+            start_s: 0,
+            end_s: 7.5,
+            caption: "Start with the contract: pipeline first.",
+          }),
+          expect.objectContaining({
+            asset_id: "paid_sample_clip_2",
+            start_s: 7.5,
+            end_s: 15,
+            caption: "Check readiness: doctor, tools, runtimes.",
+          }),
         ],
       },
     });
     await expect(readCheckpoint(root, "show", "episode", "compose")).resolves.toMatchObject({
       artifact: {
         runtime_used: "remotion",
+        resolution: { width: 1080, height: 1920 },
         final_review: {
           checks: {
             promise_preservation: {
@@ -221,8 +964,14 @@ describe("paid sample dispatcher", () => {
     });
     expect(videoComposeInputs).toHaveLength(1);
     expect(videoComposeInputs[0]).toMatchObject({
+      resolution: { width: 1080, height: 1920 },
       edit_decisions: {
         render_runtime: "remotion",
+        cuts: expect.arrayContaining([
+          expect.objectContaining({
+            caption: "Start with the contract: pipeline first.",
+          }),
+        ]),
       },
       asset_manifest: {
         assets: expect.arrayContaining([
@@ -230,6 +979,51 @@ describe("paid sample dispatcher", () => {
         ]),
       },
     });
+  });
+
+  it("omits baked brand text instructions when the show opts out", async () => {
+    const root = await scratchProject();
+    const show: LoadedShow = {
+      ...loadedShow(root),
+      display_name: "First 48 Hours",
+      bake_brand_into_images: false,
+    };
+    const episode = {
+      ...loadedEpisode(show),
+      title: "Hospital Discharge",
+    };
+    const pipeline: PipelineManifest = {
+      ...pipelineManifest(),
+      stages: [stage("assets", "asset_manifest")],
+    };
+    const openAiInputs: unknown[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "paid-demo",
+      registry: new Registry({
+        tools: paidSampleTools(root, {
+          onOpenAiInput: (input) => openAiInputs.push(input),
+        }),
+      }),
+      dispatcher: createPaidSampleDispatcher({ providerProfile: "paid-demo", now: fixedNow }),
+      reviewer: passReviewer,
+      runOptions: { sample: true, provider_profile: "paid-demo", nonInteractive: true },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("completed");
+    expect(openAiInputs).toHaveLength(1);
+    const prompt = promptFromInput(openAiInputs[0]);
+    expect(prompt).toContain('Show title: "First 48 Hours"');
+    expect(prompt).toContain("NO readable text anywhere in the image");
+    expect(prompt).toContain("No title pills");
+    expect(prompt).toContain("Leave show typography and branding decisions to the compose recipe.");
+    expect(prompt).not.toContain('If a show title pill is rendered, it must read exactly "FIRST 48 HOURS"');
   });
 
   it("plans source-free news-song samples from lyrics, skips filler ad-libs, and uses OpenAI GPT Image 2", async () => {
@@ -686,6 +1480,206 @@ function pipelineManifest(): PipelineManifest {
   };
 }
 
+function presentationDemoShow(projectRoot: string): LoadedShow {
+  return {
+    ...loadedShow(projectRoot, "remotion"),
+    pipelines: {
+      "presentation-demo": {
+        runtime: "remotion" as const,
+        aspect: "16:9",
+      },
+    },
+    defaults: {
+      pipeline: "presentation-demo",
+    },
+  };
+}
+
+function presentationDemoEpisode(show: LoadedShow, inputs: Record<string, unknown> = {}): LoadedEpisode {
+  return {
+    ...loadedEpisode(show, "remotion", ""),
+    title: "Deck Demo",
+    pipeline: "presentation-demo",
+    inputs: {
+      deck_source: "shows/show/inputs/episode/deck.pptx",
+      ...inputs,
+    },
+  };
+}
+
+function presentationDemoPipeline(stages: Stage[]): PipelineManifest {
+  return {
+    ...pipelineManifest(),
+    slug: "presentation-demo",
+    sample_support: "paid",
+    master_clock: "voiceover",
+    defaults: {
+      render_runtime: "remotion",
+      aspect: "16:9",
+    },
+    stages,
+  };
+}
+
+async function writeStageCheckpoint(
+  root: string,
+  stageSlug: string,
+  status: CheckpointStatus,
+  artifact: unknown,
+): Promise<void> {
+  await writeCheckpoint(root, "show", "episode", stageSlug, {
+    stage: stageSlug,
+    status,
+    timestamp: fixedNow().toISOString(),
+    artifact,
+    review_summary: {
+      decision: "pass",
+      rounds: 0,
+      critical: 0,
+      suggestions: 0,
+      nitpicks: 0,
+      findings: [],
+    },
+    cost_snapshot: {
+      stage_cost_usd: 0,
+      total_so_far_usd: 0,
+      budget_remaining_usd: 1,
+    },
+    tool_invocations: [],
+  });
+}
+
+function deckManifestWithNotes(): unknown {
+  return {
+    source: {
+      kind: "pptx",
+      file_type: "pptx",
+      source_path: "/Users/example/Desktop/presentation-demo.pptx",
+      working_file_path: "projects/show/episode/deck/source.pptx",
+      sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      byte_size: 245760,
+    },
+    slides: [
+      {
+        id: "slide-001",
+        order: 1,
+        image_path: "captures/slides/slide-001.png",
+        image: { width: 1920, height: 1080 },
+        text: "Your deck is already the source material",
+        text_source: "native",
+        speaker_notes: "Open by naming the pain: teams already have strong deck material but need a video draft.",
+        notes_source: "pptx_notes",
+        warnings: [],
+        source: { slide_number: 1 },
+      },
+      {
+        id: "slide-002",
+        order: 2,
+        image_path: "captures/slides/slide-002.png",
+        image: { width: 1920, height: 1080 },
+        text: "Capture slides, text, and presenter notes",
+        text_source: "native",
+        speaker_notes: "Explain that Show Sidekick extracts slide evidence and drafts a voiceover for review.",
+        notes_source: "pptx_notes",
+        warnings: [],
+        source: { slide_number: 2 },
+      },
+    ],
+    extraction: {
+      text_engine: "pptx-native",
+      notes_engine: "pptx-notes",
+      screenshot_engine: "deck-renderer",
+      extracted_at: fixedNow().toISOString(),
+      warnings: [],
+    },
+  };
+}
+
+function approvedSlideScript(): unknown {
+  return {
+    sections: [
+      {
+        slug: "slide-001",
+        role: "hook",
+        start_s: 0,
+        end_s: 5,
+        narration: "Decks already carry the story. Show Sidekick turns that source material into a reviewable demo.",
+        dialogue: [],
+        enhancement_cues: [],
+        slide_ids: ["slide-001"],
+        vo_source: "pptx_notes",
+      },
+      {
+        slug: "slide-002",
+        role: "resolution",
+        start_s: 5,
+        end_s: 10,
+        narration: "After approval, narration timing gives captions and edit decisions a reliable clock.",
+        dialogue: [],
+        enhancement_cues: [],
+        slide_ids: ["slide-002"],
+        vo_source: "slide_text",
+      },
+    ],
+  };
+}
+
+function approvedSlideCuesheet(): unknown {
+  return {
+    audio: {
+      path: "projects/show/episode/audio/narration.mp3",
+      duration_s: 10,
+      sample_rate: 44100,
+      channels: 1,
+    },
+    master_clock: "voiceover",
+    transcription_confidence: { average: 1, low_confidence: false },
+    words: [
+      { text: "Decks", start_s: 0, end_s: 0.5, confidence: 1 },
+      { text: "already", start_s: 0.5, end_s: 1, confidence: 1 },
+      { text: "carry", start_s: 1, end_s: 1.5, confidence: 1 },
+      { text: "timing", start_s: 5, end_s: 5.5, confidence: 1 },
+    ],
+    segments: [
+      {
+        start_s: 0,
+        end_s: 5,
+        text: "Decks already carry the story.",
+        words: [
+          { text: "Decks", start_s: 0, end_s: 0.5, confidence: 1 },
+          { text: "already", start_s: 0.5, end_s: 1, confidence: 1 },
+          { text: "carry", start_s: 1, end_s: 1.5, confidence: 1 },
+        ],
+      },
+      {
+        start_s: 5,
+        end_s: 10,
+        text: "Timing drives captions.",
+        words: [{ text: "timing", start_s: 5, end_s: 5.5, confidence: 1 }],
+      },
+    ],
+    sections: [
+      { label: "slide-001", start_s: 0, end_s: 5, kind: "vocal", energy: 0.78 },
+      { label: "slide-002", start_s: 5, end_s: 10, kind: "vocal", energy: 0.78 },
+    ],
+    beats: [],
+    climax: [{ time_s: 7.5, type: "arrival", intensity: 0.8, source: "agent" }],
+    scene_anchors: [
+      { scene_id: "slide-001", start_s: 0, end_s: 5, snapped_to: "word", slide_ids: ["slide-001"], source: { section: "slide-001" } },
+      { scene_id: "slide-002", start_s: 5, end_s: 10, snapped_to: "word", slide_ids: ["slide-002"], source: { section: "slide-002" } },
+    ],
+    voiceover: {
+      audio_path: "projects/show/episode/audio/narration.mp3",
+      provider: "openai",
+      tool: "openai_tts",
+      voice_id: "alloy",
+      voice: "alloy",
+      model: "gpt-4o-mini-tts",
+      cost_usd: 0.000015,
+    },
+  };
+}
+
 function stage(slug: string, produces: string): Stage {
   return {
     slug,
@@ -711,42 +1705,124 @@ function paidSampleTools(
   root: string,
   options: {
     higgsfieldCacheHit?: boolean;
+    includeCodeSnippet?: boolean;
+    includeGoogleImage?: boolean;
+    includeGoogleTts?: boolean;
     includeHiggsfieldImage?: boolean;
+    includeOpenAiImage?: boolean;
     includeRemotionRuntime?: boolean;
+    includeVeoVideo?: boolean;
+    onCodeSnippetInput?: (input: unknown) => void;
     onFfmpegInput?: (input: unknown) => void;
+    onGoogleImageInput?: (input: unknown) => void;
+    onGoogleTtsInput?: (input: unknown) => void;
+    onHiggsfieldImageInput?: (input: unknown) => void;
     onHiggsfieldInput?: (input: unknown) => void;
     onOpenAiInput?: (input: unknown) => void;
+    onVeoInput?: (input: unknown) => void;
     onVideoComposeInput?: (input: unknown) => void;
   } = {},
 ): Tool[] {
   const imagePath = path.join(root, "fixtures", "openai.png");
+  const googleImagePath = path.join(root, "fixtures", "google.png");
   const higgsfieldImagePath = path.join(root, "fixtures", "higgsfield.png");
   const audioPath = path.join(root, "fixtures", "narration.mp3");
+  const googleAudioPath = path.join(root, "fixtures", "google-narration.mp3");
   const clipPath = path.join(root, "fixtures", "clip.mp4");
+  const veoClipPath = path.join(root, "fixtures", "veo.mp4");
 
   return [
+    ...(options.includeCodeSnippet
+      ? [
+          defineTool({
+            name: "code_snippet",
+            capability: "image_generation",
+            provider: "local",
+            status: "beta",
+            integration: { kind: "library", package: "fixture", install: "none" },
+            best_for: "code overlay fixture",
+            input: z.object({ code: z.string().min(1) }),
+            output: z.unknown(),
+            async isAvailable() {
+              return { available: true };
+            },
+            async execute(input) {
+              options.onCodeSnippetInput?.(input);
+              throw new Error("code_snippet should not be used for paid-sample motion frames");
+            },
+          }),
+        ]
+      : []),
+    ...(options.includeGoogleImage
+      ? [
+          fixtureTool("google_imagen", "image_generation", "google", 0.04, async (input) => {
+            options.onGoogleImageInput?.(input);
+            await writeFixture(googleImagePath, "google-image");
+            return {
+              image_path: googleImagePath,
+              provider: "google",
+              model: inputProperty(input, "model") ?? "imagen-3.0-generate-001",
+              cost_usd: 0.04,
+            };
+          }),
+        ]
+      : []),
     ...(options.includeHiggsfieldImage
       ? [
-          fixtureTool("higgsfield_image", "image_generation", "higgsfield", 0.04, async () => {
+          fixtureTool("higgsfield_image", "image_generation", "higgsfield", 0.04, async (input) => {
+            options.onHiggsfieldImageInput?.(input);
             await writeFixture(higgsfieldImagePath, "higgsfield-image");
             return { image_path: higgsfieldImagePath, provider: "higgsfield", model: "gpt_image_2", cost_usd: 0.04 };
           }),
         ]
       : []),
-    fixtureTool("openai_image", "image_generation", "openai", 0.04, async (input) => {
-      options.onOpenAiInput?.(input);
-      await writeFixture(imagePath, "image");
-      return { image_path: imagePath, provider: "openai", model: "gpt-image-2", cost_usd: 0.04 };
-    }),
+    ...(options.includeOpenAiImage === false
+      ? []
+      : [
+          fixtureTool("openai_image", "image_generation", "openai", 0.04, async (input) => {
+            options.onOpenAiInput?.(input);
+            await writeFixture(imagePath, "image");
+            return { image_path: imagePath, provider: "openai", model: "gpt-image-2", cost_usd: 0.04 };
+          }),
+        ]),
     fixtureTool("elevenlabs_tts", "tts", "elevenlabs", 0.0003, async () => {
       await writeFixture(audioPath, "audio");
       return { audio_path: audioPath, provider: "elevenlabs", model: "eleven_multilingual_v2", cost_usd: 0.0003 };
     }),
+    ...(options.includeGoogleTts
+      ? [
+          fixtureTool("google_tts", "tts", "google", 0.000016, async (input) => {
+            options.onGoogleTtsInput?.(input);
+            await writeFixture(googleAudioPath, "google-audio");
+            return {
+              audio_path: googleAudioPath,
+              provider: "google",
+              model: inputProperty(input, "model") ?? "chirp3-hd",
+              voice: inputProperty(input, "voice_id") ?? "en-US-Chirp3-HD-Charon",
+              cost_usd: 0.000016,
+            };
+          }),
+        ]
+      : []),
     fixtureTool("higgsfield", "image_to_video", "higgsfield", 0.3, async (input) => {
       options.onHiggsfieldInput?.(input);
       await writeFixture(clipPath, "clip");
       return { video_path: clipPath, cost_usd: options.higgsfieldCacheHit ? 0 : 0.3, cache_hit: options.higgsfieldCacheHit === true };
     }),
+    ...(options.includeVeoVideo
+      ? [
+          fixtureTool("veo_video", "text_to_video", "google", 0.5, async (input) => {
+            options.onVeoInput?.(input);
+            await writeFixture(veoClipPath, "veo-clip");
+            return {
+              video_path: veoClipPath,
+              provider: "google",
+              model: inputProperty(input, "model") ?? "veo-2.0-generate-001",
+              cost_usd: 0.5,
+            };
+          }),
+        ]
+      : []),
     fixtureTool("ffmpeg", "video_compose", "ffmpeg", 0, async (input) => {
       options.onFfmpegInput?.(input);
       const outputPath = path.join(root, "projects", "show", "episode", "renders", "paid-sample.mp4");
@@ -765,7 +1841,29 @@ function paidSampleTools(
     }),
     ...(options.includeRemotionRuntime
       ? [
-          fixtureTool("remotion", "video_compose", "remotion", 0, async () => ({})),
+          fixtureTool("remotion", "video_compose", "remotion", 0, async (input) => {
+            options.onVideoComposeInput?.(input);
+            const outputPath = path.join(root, "projects", "show", "episode", "renders", "paid-sample.mp4");
+            const durationS = composeDuration(input);
+            await writeFixture(outputPath, "render");
+            return {
+              output_path: outputPath,
+              encoding_profile: "remotion/h264-aac",
+              duration_s: durationS,
+              expected_duration_s: durationS,
+              drift_s: 0,
+              drift_frames: 0,
+              drift_tolerance_s: 0.2,
+              within_tolerance: true,
+              resolution: resolutionFromInput(input),
+              framerate: 30,
+              runtime_used: "remotion",
+              asset_count: composeAssetCount(input),
+              warnings: [],
+              verification_notes: ["Fixture Remotion render used slide-aware compose input."],
+              validation_steps: [],
+            };
+          }),
           fixtureTool("video_compose", "video_compose", "predit", 0, async (input) => {
             options.onVideoComposeInput?.(input);
             const outputPath = path.join(root, "projects", "show", "episode", "renders", "paid-sample.mp4");
@@ -822,6 +1920,41 @@ function tinyPngBytes(): Buffer {
 
 function promptFromInput(input: unknown): string {
   return typeof input === "object" && input !== null && "prompt" in input && typeof input.prompt === "string" ? input.prompt : "";
+}
+
+function inputProperty(input: unknown, key: string): string | undefined {
+  if (typeof input !== "object" || input === null || !(key in input)) {
+    return undefined;
+  }
+
+  const value = (input as Record<string, unknown>)[key];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function composeDuration(input: unknown): number {
+  const edit = typeof input === "object" && input !== null && "edit_decisions" in input ? input.edit_decisions : undefined;
+  const cuts = typeof edit === "object" && edit !== null && "cuts" in edit && Array.isArray(edit.cuts) ? edit.cuts : [];
+  return cuts.reduce((max, cut) => {
+    return typeof cut === "object" && cut !== null && "end_s" in cut && typeof cut.end_s === "number" ? Math.max(max, cut.end_s) : max;
+  }, 0);
+}
+
+function composeAssetCount(input: unknown): number {
+  const manifest = typeof input === "object" && input !== null && "asset_manifest" in input ? input.asset_manifest : undefined;
+  return typeof manifest === "object" && manifest !== null && "assets" in manifest && Array.isArray(manifest.assets)
+    ? manifest.assets.length
+    : 0;
+}
+
+function resolutionFromInput(input: unknown): { width: number; height: number } {
+  const resolution = typeof input === "object" && input !== null && "resolution" in input ? input.resolution : undefined;
+  const width = typeof resolution === "object" && resolution !== null && "width" in resolution ? resolution.width : undefined;
+  const height = typeof resolution === "object" && resolution !== null && "height" in resolution ? resolution.height : undefined;
+
+  return {
+    width: typeof width === "number" ? width : 1920,
+    height: typeof height === "number" ? height : 1080,
+  };
 }
 
 const passReviewer: StageReviewer = (stageSlug, _artifact, ctx) => ({

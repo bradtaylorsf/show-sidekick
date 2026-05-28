@@ -28,6 +28,13 @@ defaults:
   max_scene_duration_s: 5
   render_runtime: hyperframes
 
+# Optional sample provider plan. Shows, playbooks, and episodes may override
+# these values without changing the pipeline's stage graph.
+sample_providers:
+  image: { tool: google_imagen, model: imagen-3.0-generate-001 }
+  video: { tool: veo_video, model: veo-2.0-generate-001 }
+  tts: { tool: google_tts, voice_id: en-US-Chirp3-HD-Charon }
+
 orchestration:
   mode: executive-producer
   skill: pipelines/music-video/executive-producer.md
@@ -150,6 +157,12 @@ export:
 | `estimated_cost` | `{ sample: { usd, comment }, full: { usd, comment } }` — used for proposal-time summaries |
 | `requires_runtime` | Forces a specific render runtime (compose stages only) |
 
+## Sample Provider Plans
+
+`sample_providers` keeps paid sample media selection declarative. It can be declared in a pipeline manifest, playbook, `show.yaml`, a `show.pipelines[<pipeline>]` override, or an `episode.yaml`. The paid sample dispatcher resolves those configs before invoking tools, so a sample can use OpenAI + Higgsfield, all Google tools, local/project tools, or any other registered provider mix without changing dispatcher code.
+
+Supported role aliases are `image` / `image_generation`, `video` / `image_to_video` / `text_to_video`, and `tts` / `voice` / `voiceover`. Each role may specify `tool`, `tools`, `provider`, `model`, `voice_id`, `voice_name`, and provider-specific passthrough fields.
+
 ## Stage list
 
 Canonical stages and their relative order:
@@ -168,9 +181,32 @@ Examples:
 - `documentary-montage`: `idea → scene_plan → assets → edit → compose` (skips proposal, script, cuesheet)
 - `daily-news`: `idea → research → capture → script → scene_plan → assets → edit → compose → publish` (`stage_order: manifest`)
 - `character-animation`: `research → proposal → script → character_design → rig_plan → scene_plan → assets → edit → compose → publish`
+- `presentation-demo`: `idea → capture → script → cuesheet → scene_plan → assets → edit → compose → publish` (`stage_order: manifest`; deck is ingested before the script so VO can be slide-aware)
 - `framework-smoke`: `research → script` (test pipeline; minimal)
 
 `cuesheet` is included only by pipelines with `master_clock: audio | voiceover`.
+
+## `presentation-demo` bundled pipeline contract
+
+`presentation-demo` is a generalized bundled show type for turning user-supplied decks into animated explainer/demo rough cuts. It accepts a local PDF, PowerPoint `.ppt`, PowerPoint `.pptx`, or direct downloadable deck URL as the required `deck_source` episode input. Optional episode inputs are operator notes, voice preference, duration, and aspect. Authenticated Google Slides, Google Drive, Microsoft 365, OneDrive, and SharePoint sharing links are unsupported in v1 unless the operator exports a downloadable PDF or PowerPoint file first.
+
+The canonical deck artifact is `deck_manifest`, not `capture_manifest`. `deck_manifest` owns source provenance, normalized project-local working file paths, file type, hash, byte size, stable slide IDs, slide order, slide screenshot paths, dimensions, extracted text, speaker notes, extraction engines, and warnings. `capture_manifest` may still be produced later as a compatibility bridge for screenshot-oriented tools by reusing the deck slide ID as `story_id`, but it is not the deck source of truth.
+
+The stage order is manifest-defined:
+
+```
+idea → capture → script → cuesheet → scene_plan → assets → edit → compose → publish
+```
+
+The human approval gates are:
+
+- `idea`: required before deck ingestion, so source limitations and the animated-demo promise are explicit.
+- `script`: required before any TTS, paid narration, or voiceover timing work.
+- `compose`: required before publish, because the rendered output must be reviewed as an animated explainer/demo and not accepted as static slide playback.
+
+`master_clock: voiceover` is mandatory. The script carries slide-aware `slide_ids` and `vo_source` per section; the cuesheet turns approved narration into the timing grid and may carry `slide_ids` on scene anchors. Scene planning and edit decisions snap visuals to VO timing rather than slide count.
+
+Export targets are Premiere, DaVinci, CapCut, and EDL. The export package must include `deck_manifest`, slide screenshots, narration, captions when available, edit decisions, render report, and NLE handoff files. A `presentation-demo` output is an animated explainer/demo video; static slideshow export is a failed compose outcome.
 
 ## Validation rules
 

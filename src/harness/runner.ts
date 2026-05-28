@@ -42,7 +42,7 @@ import { hasSampleFirstSkipApproval, isSampleFirstFinding } from "../review/samp
 import { PlaybookSchema } from "../shows/playbook.js";
 import type { LoadedEpisode, LoadedShow } from "../shows/index.js";
 import { writeApprovalBlock, type ApprovalAction, type ApprovalContext } from "./approval.js";
-import { createStageContext, loadPriorArtifacts, type StageRunOptions } from "./context.js";
+import { createStageContext, loadPriorArtifacts, withStageArtifactAliases, type StageRunOptions } from "./context.js";
 import type { Dispatcher } from "./dispatcher.js";
 import type { StageResult } from "./result.js";
 import { planStages } from "./plan.js";
@@ -153,7 +153,14 @@ export class Runner {
       const existingStatus = checkpointStatuses.get(stage.slug);
       const queuedRevision = queuedRevisionForStage(state, stage.slug);
 
-      if (existingStatus === "awaiting_human" && shouldResume(opts.runOptions) && queuedRevision === undefined) {
+      if (existingStatus === "completed" && queuedRevision === undefined) {
+        const checkpoint = await readCheckpoint(opts.projectRoot, opts.show.slug, opts.episode.slug, stage.slug);
+        priorArtifacts = withStageArtifactAliases(priorArtifacts, stage, checkpoint.artifact);
+        index += 1;
+        continue;
+      }
+
+      if (existingStatus === "awaiting_human" && queuedRevision === undefined) {
         const checkpoint = await readCheckpoint(opts.projectRoot, opts.show.slug, opts.episode.slug, stage.slug);
         const gate = await handleApprovalGate({
           opts,
@@ -174,7 +181,7 @@ export class Runner {
         if (gate.outcome.kind === "rerun") {
           await clearQueuedRevision(opts);
         } else {
-          priorArtifacts = { ...priorArtifacts, [stage.slug]: gate.outcome.artifact };
+          priorArtifacts = withStageArtifactAliases(priorArtifacts, stage, gate.outcome.artifact);
           checkpointStatuses.set(stage.slug, "completed");
           index += 1;
           continue;
@@ -243,7 +250,7 @@ export class Runner {
         continue;
       }
 
-      priorArtifacts = { ...priorArtifacts, [stage.slug]: outcome.artifact };
+      priorArtifacts = withStageArtifactAliases(priorArtifacts, stage, outcome.artifact);
       checkpointStatuses.set(stage.slug, "completed");
       index += 1;
     }

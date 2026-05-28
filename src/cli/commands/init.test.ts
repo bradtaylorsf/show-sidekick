@@ -53,10 +53,9 @@ describe("init command", () => {
     await expect(readFile(path.join(projectRoot, ".env.example"), "utf8")).resolves.toContain("OPENAI_API_KEY=");
     await expect(readFile(path.join(projectRoot, ".env"), "utf8")).resolves.toContain("OPENAI_API_KEY=");
     await expect(stat(path.join(projectRoot, "shows"))).resolves.toMatchObject({ isDirectory: expect.any(Function) });
+    await expect(stat(path.join(projectRoot, "inputs"))).resolves.toMatchObject({ isDirectory: expect.any(Function) });
     await expect(stat(path.join(projectRoot, "projects"))).resolves.toMatchObject({ isDirectory: expect.any(Function) });
-    await expect(stat(path.join(projectRoot, "music_library"))).resolves.toMatchObject({
-      isDirectory: expect.any(Function),
-    });
+    await expect(stat(path.join(projectRoot, "music_library"))).rejects.toMatchObject({ code: "ENOENT" });
 
     for (const dirname of BUNDLED_CACHE_DIRS) {
       await expect(readFile(path.join(projectRoot, BRANDING.cacheDir, dirname, `${dirname}.txt`), "utf8")).resolves.toBe(

@@ -69,6 +69,215 @@
           "asset_id": {
             "type": "string"
           },
+          "scene_id": {
+            "type": "string"
+          },
+          "scene_kind": {
+            "type": "string",
+            "enum": [
+              "video_clip",
+              "image",
+              "slide_scene",
+              "comparison",
+              "callout",
+              "text_card",
+              "stat_card",
+              "support_visual"
+            ]
+          },
+          "slide_id": {
+            "type": "string"
+          },
+          "slide_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "focus_rect": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "show-sidekick://artifacts/slide_rect",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "width": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1
+              },
+              "height": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "width",
+              "height"
+            ]
+          },
+          "motion": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "show-sidekick://artifacts/edit_decisions.cut.motion",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "push_in",
+                  "pull_out",
+                  "pan_left",
+                  "pan_right",
+                  "pan_up",
+                  "pan_down",
+                  "static"
+                ]
+              },
+              "zoom_start": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "zoom_end": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": []
+          },
+          "highlights": {
+            "type": "array",
+            "items": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "$id": "show-sidekick://artifacts/slide_highlight",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "rect": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$id": "show-sidekick://artifacts/slide_rect",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "x": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "y": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "width": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1
+                    },
+                    "height": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y",
+                    "width",
+                    "height"
+                  ]
+                },
+                "shape": {
+                  "type": "string",
+                  "enum": [
+                    "rect",
+                    "ellipse"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "rect"
+              ]
+            }
+          },
+          "callouts": {
+            "type": "array",
+            "items": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "$id": "show-sidekick://artifacts/slide_callout",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "target_rect": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "$id": "show-sidekick://artifacts/slide_rect",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "x": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "y": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "width": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1
+                    },
+                    "height": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y",
+                    "width",
+                    "height"
+                  ]
+                },
+                "anchor": {
+                  "type": "string",
+                  "enum": [
+                    "top",
+                    "right",
+                    "bottom",
+                    "left"
+                  ]
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          },
+          "caption": {
+            "type": "string"
+          },
           "transition_in": {
             "type": "string"
           },

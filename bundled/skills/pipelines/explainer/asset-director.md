@@ -26,6 +26,7 @@ Layer 3 skills are mandatory before generation. Read `bundled/skills/agents/flux
 3. Reuse diagram, icon, and caption systems across scenes.
 4. Keep every asset linked to a scene id and script section.
 5. Store provider, prompt, seed, dimensions, cost, and approval state in metadata.
+6. Thread show and episode brand context into image and motion prompts: exact show display name, exact episode title, brand notes, allowed on-screen title text, and explicit bans on invented logos, trademarks, alternate titles, or altered numerals.
 
 ## Output Contract
 

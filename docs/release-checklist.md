@@ -15,6 +15,7 @@ This is the human-owned release playbook for maintainers. Automation lives in [`
 
 - Review README, quickstart, provider docs, demo readiness, show types, and changelog for the target version.
 - Review the [public readiness audit](public-readiness-audit.md) and confirm every open blocker is fixed, moved to a tracked release issue, or intentionally deferred.
+- Run `pnpm changeset:gate` on a release branch to confirm it has either a pending changeset, a `no-release` label in CI, or a consumed version bump plus changelog entry.
 - Run `pnpm show-types:check`.
 - Run `pnpm show-types:matrix --zero-key` and archive the generated report.
 - Run the no-key animated explainer path from a fresh user project.
@@ -23,6 +24,7 @@ This is the human-owned release playbook for maintainers. Automation lives in [`
 - Run `pnpm release:check` from a clean checkout after the package has been built.
 - Run `npm publish --dry-run --provenance --access public`.
 - Publish through the Changesets release workflow and confirm the npm package shows provenance.
+- Run `pnpm release:verify:npm --expect-published` or confirm the workflow step passed, so local `package.json` and npm `latest` agree.
 - Verify the workflow-created GitHub Release, including the npm package link and the show-type validation report artifact link.
 - Verify the website install prompt uses the published `show-sidekick` version and the `showkick` binary.
 

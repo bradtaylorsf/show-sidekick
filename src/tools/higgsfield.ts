@@ -7,11 +7,19 @@ import type { ToolContext } from "../registry/tool.js";
 import { defaultRunCli } from "../tool-support/cli-runner.js";
 import { lookupClipCache, rememberClipCache } from "../tool-support/clip-cache.js";
 
-const HIGGSFIELD_COST_USD = 0.3;
-const HIGGSFIELD_GENERATE_CREATE_URL = "https://api.higgsfield.ai/generate/create/seedance_2_0";
-const MODEL = "seedance_2_0";
+const HIGGSFIELD_DEFAULT_COST_USD = 0.3;
+const HIGGSFIELD_MODEL_COST_USD: Record<string, number> = {
+  kling2_6: 0.13,
+  kling3_0: 0.13,
+  seedance_2_0: 0.3,
+  wan2_6: 0.17,
+  wan2_7: 0.1,
+};
+const HIGGSFIELD_GENERATE_CREATE_URL = "https://api.higgsfield.ai/generate/create";
+const DEFAULT_MODEL = "seedance_2_0";
 
 const durationSchema = z.union([z.literal(5), z.literal(10)]);
+const aspectRatioSchema = z.enum(["16:9", "9:16", "1:1"]);
 
 const inputSchema = z
   .object({
@@ -19,6 +27,8 @@ const inputSchema = z
     image_path: z.string().min(1).optional(),
     prompt: z.string().min(1),
     duration: durationSchema.default(5),
+    aspect_ratio: aspectRatioSchema.default("16:9"),
+    model: z.string().min(1).default(DEFAULT_MODEL),
   })
   .superRefine((value, ctx) => {
     if (!value.image_url && !value.image_path) {
@@ -47,6 +57,7 @@ const wireRequestSchema = z.object({
       start_image: z.string(),
       prompt: z.string(),
       duration: durationSchema,
+      aspect_ratio: aspectRatioSchema.optional(),
     })
     .strict(),
 });
@@ -74,8 +85,8 @@ export default defineTool({
     install: "npm i -g @higgsfield/cli && higgsfield auth login",
   },
   best_for: "Seedance 2.0 image-to-video through the current Higgsfield CLI.",
-  supports: ["seedance_2_0", "image-to-video", "reference-image-animation"],
-  cost: { unit: "clip", usd: HIGGSFIELD_COST_USD },
+  supports: ["seedance_2_0", "kling3_0", "kling2_6", "wan2_7", "wan2_6", "image-to-video", "reference-image-animation"],
+  cost: { unit: "clip", usd: HIGGSFIELD_DEFAULT_COST_USD },
   agent_skills: ["higgsfield-generate", "ai-video-gen"],
   input: inputSchema,
   output: outputSchema,
@@ -85,10 +96,10 @@ export default defineTool({
     const cacheKey = {
       prompt: input.prompt,
       provider: "higgsfield",
-      model: MODEL,
+      model: input.model,
       ...imageSource.cacheKey,
       duration: input.duration,
-      aspect_ratio: "16:9",
+      aspect_ratio: input.aspect_ratio,
     };
     const cached = await lookupClipCache(ctx, cacheKey);
     if (cached) {
@@ -109,12 +120,16 @@ export default defineTool({
 
     return outputSchema.parse({
       video_path: videoPath,
-      cost_usd: HIGGSFIELD_COST_USD,
+      cost_usd: higgsfieldCostUsd(input.model),
       request: redactWireRequest(recordedRequest),
       cache_hit: false,
     } satisfies HiggsfieldOutput);
   },
 });
+
+function higgsfieldCostUsd(model: string): number {
+  return HIGGSFIELD_MODEL_COST_USD[model] ?? HIGGSFIELD_DEFAULT_COST_USD;
+}
 
 type PreparedImageSource =
   | {
@@ -163,16 +178,17 @@ function resolvePreparedImageReference(input: PreparedImageSource): string {
 
 function buildWireRequest(input: HiggsfieldInput, imageUrl: string): WireRequest {
   return {
-    url: HIGGSFIELD_GENERATE_CREATE_URL,
+    url: `${HIGGSFIELD_GENERATE_CREATE_URL}/${encodeURIComponent(input.model)}`,
     headers: {
       Authorization: `Key ${nonBlankEnv("HIGGSFIELD_API_KEY") ?? "<key>"}:${nonBlankEnv("HIGGSFIELD_API_SECRET") ?? "<secret>"}`,
       "Content-Type": "application/json",
     },
     body: {
-      model: MODEL,
+      model: input.model,
       start_image: imageUrl,
       prompt: input.prompt,
       duration: input.duration,
+      aspect_ratio: input.aspect_ratio,
     },
   };
 }
@@ -190,13 +206,15 @@ async function runHiggsfield(
     [
       "generate",
       "create",
-      MODEL,
+      input.model,
       "--start-image",
       imageUrl,
       "--prompt",
       input.prompt,
       "--duration",
       String(input.duration),
+      "--aspect_ratio",
+      input.aspect_ratio,
       "--wait",
       "--json",
     ],

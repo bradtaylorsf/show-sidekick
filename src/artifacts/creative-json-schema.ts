@@ -23,6 +23,7 @@ export type JsonSchema = {
   readonly minItems?: number;
   readonly enum?: readonly unknown[];
   readonly minimum?: number;
+  readonly maximum?: number;
   readonly exclusiveMinimum?: number;
   readonly additionalProperties?: boolean | JsonSchema;
   readonly anyOf?: readonly JsonSchema[];
@@ -39,6 +40,10 @@ const timingSourceJson = {
   type: "string",
   enum: ["lyric", "word", "beat", "section", "climax", "manual", "audio_energy"],
 } as const satisfies JsonSchema;
+const voiceoverSourceJson = {
+  type: "string",
+  enum: ["pptx_notes", "slide_text", "ocr", "operator", "agent"],
+} as const satisfies JsonSchema;
 const timingRefJson = objectJson(
   "timing-ref",
   {
@@ -48,6 +53,34 @@ const timingRefJson = objectJson(
     climax_index: nonNegativeIntegerJson,
   },
   [],
+);
+const slideRectJson = objectJson(
+  "slide-rect",
+  {
+    x: { type: "number", minimum: 0, maximum: 1 },
+    y: { type: "number", minimum: 0, maximum: 1 },
+    width: { type: "number", exclusiveMinimum: 0, maximum: 1 },
+    height: { type: "number", exclusiveMinimum: 0, maximum: 1 },
+  },
+  ["x", "y", "width", "height"],
+);
+const slideHighlightJson = objectJson(
+  "slide-highlight",
+  {
+    rect: slideRectJson,
+    shape: { type: "string", enum: ["rect", "ellipse"] },
+    label: stringJson,
+  },
+  ["rect"],
+);
+const slideCalloutJson = objectJson(
+  "slide-callout",
+  {
+    text: stringJson,
+    target_rect: slideRectJson,
+    anchor: { type: "string", enum: ["top", "right", "bottom", "left"] },
+  },
+  ["text"],
 );
 
 function objectJson(
@@ -173,6 +206,8 @@ export const ScriptJsonSchema = objectJson(
           narration: stringJson,
           dialogue: { type: "array", items: dialogueLineJson },
           enhancement_cues: stringArrayJson,
+          slide_ids: stringArrayJson,
+          vo_source: voiceoverSourceJson,
         },
         ["slug", "start_s", "end_s"],
       ),
@@ -202,6 +237,13 @@ export const ScenePlanJsonSchema = objectJson(
           narrative_role: { type: "string", enum: NARRATIVE_ROLE },
           scene_anchor: stringJson,
           hero_moment: booleanJson,
+          slide_id: stringJson,
+          slide_ids: stringArrayJson,
+          treatment: { type: "string", enum: ["slide_image", "zoom_pan", "highlight", "callout", "caption", "support_visual"] },
+          focus_rect: slideRectJson,
+          highlights: { type: "array", items: slideHighlightJson },
+          callouts: { type: "array", items: slideCalloutJson },
+          caption: stringJson,
           texture_keywords: stringArrayJson,
           character_actions: {
             type: "array",

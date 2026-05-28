@@ -153,6 +153,7 @@ function registerCommands(program: Command, io: CliIo, options: RegisterCommandO
     .command("episode <show> [slug]")
     .description("scaffold an episode under a show")
     .option("--pipeline <name>", "pipeline key from show.pipelines")
+    .option("--from <path>", "copy a source file or folder into inputs/<show>/<episode>/ and infer episode inputs")
     .action(newHandlers.episode);
   newCommand
     .command("pipeline <slug>")
@@ -167,7 +168,7 @@ function registerCommands(program: Command, io: CliIo, options: RegisterCommandO
     .command("build <target>")
     .description("run a pipeline")
     .option("--sample", "run a 15-20s sample")
-    .option("--from <stage>", "start at a stage")
+    .option("--from <stage>", "start at a stage, reusing completed checkpoints")
     .option("--only <stage>", "run only one stage")
     .option("--to <stage>", "stop after a stage")
     .option("--budget <usd>", "set a budget in USD")

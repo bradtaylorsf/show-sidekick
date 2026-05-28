@@ -1,9 +1,22 @@
+import { createHash } from "node:crypto";
 import { access, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { CostEntry } from "../artifacts/cost-log.js";
+import { cuesheetPath, readCuesheet } from "../artifacts/cuesheet.js";
+import { DeckManifestSchema, type DeckFileType } from "../artifacts/deck-manifest.js";
 import type { DecisionEntry } from "../artifacts/decision-log.js";
 import type { RenderRuntime } from "../artifacts/enums.js";
-import type { Tool, ToolContext } from "../registry/index.js";
+import { ScriptSchema, type Script } from "../artifacts/script.js";
+import type { Capability, Tool, ToolContext } from "../registry/index.js";
+import { loadShowComposeRecipe } from "../compose/overlay-recipe.js";
+import {
+  SampleProvidersConfigSchema,
+  sampleProviderToolNames,
+  type SampleProviderChoice,
+  type SampleProvidersConfig,
+} from "../providers/sample-plan.js";
+import { encodeRgbaPng } from "../media/png.js";
+import { readCheckpoint } from "../checkpoints/index.js";
 import { projectDir } from "../checkpoints/paths.js";
 import type { StageContext } from "./context.js";
 import type { Dispatcher } from "./dispatcher.js";
@@ -19,6 +32,7 @@ type PaidSampleState = {
   research_brief?: unknown;
   source_media_review?: unknown;
   proposal_packet?: unknown;
+  deck_manifest?: unknown;
   script?: unknown;
   cuesheet?: unknown;
   capture_manifest?: unknown;
@@ -32,6 +46,11 @@ type PaidSampleState = {
   imagePaths?: string[];
   clipPaths?: string[];
   narrationPath?: string;
+  narrationTool?: string;
+  narrationProvider?: string;
+  narrationModel?: string;
+  narrationVoice?: string;
+  narrationCostUsd?: number;
 };
 
 type SampleBeat = {
@@ -58,6 +77,7 @@ const STATE_ARTIFACT_KEYS = [
   "research_brief",
   "source_media_review",
   "proposal_packet",
+  "deck_manifest",
   "script",
   "cuesheet",
   "capture_manifest",
@@ -70,6 +90,27 @@ const STATE_ARTIFACT_KEYS = [
 
 const IMAGE_REFERENCE_EXTENSIONS = new Set([".gif", ".jpeg", ".jpg", ".png", ".webp"]);
 const TEXT_REFERENCE_EXTENSIONS = new Set([".csv", ".json", ".md", ".srt", ".tsv", ".txt", ".yaml", ".yml"]);
+const PAID_SAMPLE_IMAGE_TOOLS = ["openai_image", "higgsfield_image"] as const;
+const PAID_SAMPLE_VIDEO_TOOLS = ["higgsfield", "higgsfield_video"] as const;
+
+type SamplePlanRole = "image" | "video" | "tts";
+
+type ResolvedSampleChoice = {
+  role: SamplePlanRole;
+  source: string;
+  toolNames: string[];
+  provider?: string;
+  model?: string;
+  voiceId?: string;
+  voiceName?: string;
+  raw: SampleProviderChoice;
+};
+
+type ResolvedSamplePlan = {
+  image: ResolvedSampleChoice;
+  video: ResolvedSampleChoice;
+  tts: ResolvedSampleChoice;
+};
 
 export class PaidSampleStageError extends Error {
   readonly lastArtifactPath?: string;
@@ -139,6 +180,20 @@ function hydrateStateFromPriorArtifacts(ctx: StageContext, state: PaidSampleStat
   state.imagePath ??= state.imagePaths[0];
   state.clipPath ??= state.clipPaths[0];
   state.narrationPath ??= assetPath(state.asset_manifest, "paid_sample_narration");
+  hydrateNarrationStateFromCuesheet(state);
+}
+
+function hydrateNarrationStateFromCuesheet(state: PaidSampleState): void {
+  const cuesheet = recordValue(state.cuesheet);
+  const voiceover = recordValue(cuesheet?.voiceover);
+  const audio = recordValue(cuesheet?.audio);
+
+  state.narrationPath ??= stringValue(voiceover?.audio_path) ?? stringValue(audio?.path);
+  state.narrationTool ??= stringValue(voiceover?.tool);
+  state.narrationProvider ??= stringValue(voiceover?.provider);
+  state.narrationModel ??= stringValue(voiceover?.model);
+  state.narrationVoice ??= stringValue(voiceover?.voice) ?? stringValue(voiceover?.voice_id) ?? stringValue(voiceover?.voice_name);
+  state.narrationCostUsd ??= numberValue(voiceover?.cost_usd);
 }
 
 function priorArtifact(ctx: StageContext, produces: (typeof STATE_ARTIFACT_KEYS)[number]): unknown {
@@ -171,11 +226,14 @@ async function artifactForStage(
       state.proposal_packet ??= buildProposalPacket(ctx);
       decisions.push(...proposalDecisions(ctx, options));
       return state.proposal_packet;
+    case "deck_manifest":
+      state.deck_manifest ??= await buildDeckManifest(ctx, options);
+      return state.deck_manifest;
     case "script":
       state.script ??= await buildScript(ctx);
       return state.script;
     case "cuesheet":
-      state.cuesheet ??= await buildCuesheet(ctx);
+      state.cuesheet ??= await buildCuesheet(ctx, state, costEntries, decisions, options);
       return state.cuesheet;
     case "capture_manifest":
       state.capture_manifest ??= await buildCaptureManifest(ctx);
@@ -257,6 +315,10 @@ function buildProposalPacket(ctx: StageContext): unknown {
 }
 
 async function buildScript(ctx: StageContext): Promise<unknown> {
+  if (isPresentationDemo(ctx)) {
+    return buildPresentationDemoScript(ctx);
+  }
+
   const beats = await sampleBeats(ctx);
   const duration = sampleDuration(ctx);
   const cuts = sampleBeatCuts(duration, beats);
@@ -278,7 +340,60 @@ async function buildScript(ctx: StageContext): Promise<unknown> {
   };
 }
 
-async function buildCuesheet(ctx: StageContext): Promise<unknown> {
+async function buildPresentationDemoScript(ctx: StageContext): Promise<unknown> {
+  const deck = recordValue(ctx.priorArtifacts.deck_manifest);
+  const slides = sortedDeckSlides(deck);
+  if (slides.length === 0) {
+    throw new Error("presentation-demo script requires deck_manifest.slides before drafting narration");
+  }
+
+  const operatorNotes = await operatorNotesText(ctx);
+  const slideSources = slides.map((slide, index) => slideNarrationSource(slide, operatorNotes, index));
+  const duration = sampleDuration(ctx);
+  const cuts = sampleBeatCuts(
+    duration,
+    slideSources.map((source, index) => ({
+      index,
+      title: stringValue(slides[index]?.id) ?? `slide-${index + 1}`,
+      body: source.text,
+      narration: source.text,
+    })),
+  );
+
+  return {
+    sections: slides.map((slide, index) => {
+      const slideId = stringValue(slide.id) ?? `slide-${String(index + 1).padStart(3, "0")}`;
+      const source = slideSources[index] ?? slideNarrationSource(slide, operatorNotes, index);
+
+      return {
+        slug: slideId,
+        role: scriptRole(index, slides.length),
+        start_s: cuts[index]?.start_s ?? 0,
+        end_s: cuts[index]?.end_s ?? duration,
+        narration: source.text,
+        dialogue: [],
+        enhancement_cues: [
+          "Voiceover source priority: pptx_notes > slide_text/OCR > operator > agent.",
+          `Selected ${source.vo_source} for ${slideId}.`,
+        ],
+        slide_ids: [slideId],
+        vo_source: source.vo_source,
+      };
+    }),
+  };
+}
+
+async function buildCuesheet(
+  ctx: StageContext,
+  state: PaidSampleState,
+  costEntries: CostEntry[],
+  decisions: DecisionEntry[],
+  options: PaidSampleDispatcherOptions,
+): Promise<unknown> {
+  if (isPresentationDemo(ctx)) {
+    return buildPresentationDemoCuesheet(ctx, state, costEntries, decisions, options);
+  }
+
   const duration = sampleDuration(ctx);
   const beats = lyricMusicMode(ctx) ? await sampleBeats(ctx) : undefined;
   const text = beats === undefined ? await narrationText(ctx) : beats.map((beat) => beat.narration).join(" ");
@@ -340,6 +455,420 @@ async function buildCuesheet(ctx: StageContext): Promise<unknown> {
     scene_anchors: [],
     ...(lyricsAligned === undefined ? {} : { lyrics_aligned: lyricsAligned }),
   };
+}
+
+async function buildPresentationDemoCuesheet(
+  ctx: StageContext,
+  state: PaidSampleState,
+  costEntries: CostEntry[],
+  decisions: DecisionEntry[],
+  options: PaidSampleDispatcherOptions,
+): Promise<unknown> {
+  await assertPresentationDemoScriptApproved(ctx, state);
+  const script = parseScriptArtifact(state.script);
+  const sections = script.sections.filter((section) => narrationForSection(section).length > 0);
+  if (sections.length === 0) {
+    throw new Error("presentation-demo cuesheet requires at least one narrated script section");
+  }
+
+  const text = sections.map(narrationForSection).join("\n\n");
+  const samplePlan = resolveSamplePlan(ctx);
+  const tts = await preferredTtsTool(ctx, samplePlan);
+  const voice = voiceInputForTool(ctx, tts, samplePlan.tts);
+  const model = ttsModelForTool(tts, samplePlan.tts);
+  const ttsInput = {
+    text,
+    ...voice.input,
+    format: ttsFormatForTool(tts),
+    model,
+  };
+  const ttsResult = await tts.execute(
+    ttsInput,
+    toolContext(ctx, {
+      reason: "Generate approved presentation-demo narration after script approval.",
+      model,
+      units: 1,
+    }),
+  );
+  const audio = recordValue(ttsResult);
+  const audioPath = await episodeMediaPath(ctx, stringValue(audio?.audio_path), "audio", "narration.mp3");
+  const costUsd = numberValue(audio?.cost_usd) ?? 0;
+  const resolvedModel = stringValue(audio?.model) ?? model;
+  const resolvedVoice = stringValue(audio?.voice) ?? voice.label;
+
+  state.narrationPath = audioPath;
+  state.narrationTool = tts.name;
+  state.narrationProvider = tts.provider;
+  state.narrationModel = resolvedModel;
+  state.narrationVoice = resolvedVoice;
+  state.narrationCostUsd = costUsd;
+
+  costEntries.push(costEntry(tts.name, tts.provider, resolvedModel, 1, costUsd));
+  decisions.push(
+    voiceDecision(ctx, tts, options, {
+      stage: "cuesheet",
+      voiceLabel: resolvedVoice,
+      voiceId: voice.voiceId,
+      voiceName: voice.voiceName,
+      model: resolvedModel,
+      costUsd,
+    }),
+  );
+
+  const duration = Math.max(...sections.map((section) => section.end_s), sampleDuration(ctx));
+  const segmentWords = sections.map((section) => wordsForSection(section));
+  const words = segmentWords.flat();
+
+  return {
+    audio: {
+      path: audioPath,
+      duration_s: duration,
+      sample_rate: 44100,
+      channels: 1,
+    },
+    master_clock: "voiceover",
+    transcription_confidence: { average: 1, low_confidence: false },
+    words,
+    segments: sections.map((section, index) => ({
+      start_s: section.start_s,
+      end_s: section.end_s,
+      text: narrationForSection(section),
+      words: segmentWords[index] ?? [],
+    })),
+    sections: sections.map((section) => ({
+      label: section.slug,
+      start_s: section.start_s,
+      end_s: section.end_s,
+      kind: "vocal" as const,
+      energy: 0.78,
+    })),
+    beats: [],
+    climax: [{ time_s: roundTime(duration * 0.75), type: "arrival", intensity: 0.8, source: "agent" }],
+    scene_anchors: sections.map((section) => ({
+      scene_id: section.slug,
+      start_s: section.start_s,
+      end_s: section.end_s,
+      snapped_to: "word" as const,
+      slide_ids: section.slide_ids,
+      source: { section: section.slug },
+    })),
+    voiceover: {
+      audio_path: audioPath,
+      provider: tts.provider,
+      tool: tts.name,
+      voice_id: voice.voiceId,
+      voice_name: voice.voiceName,
+      voice: resolvedVoice,
+      model: resolvedModel,
+      cost_usd: roundUsd(costUsd),
+      source_script_sections: sections.map((section) => section.slug),
+    },
+  };
+}
+
+function isPresentationDemo(ctx: StageContext): boolean {
+  return ctx.pipeline.slug === "presentation-demo";
+}
+
+function sortedDeckSlides(deck: Record<string, unknown> | undefined): Record<string, unknown>[] {
+  const slides = deck?.slides;
+  if (!Array.isArray(slides)) {
+    return [];
+  }
+
+  return slides
+    .map(recordValue)
+    .filter((slide): slide is Record<string, unknown> => slide !== undefined)
+    .sort((left, right) => (numberValue(left.order) ?? 0) - (numberValue(right.order) ?? 0));
+}
+
+function slideNarrationSource(
+  slide: Record<string, unknown>,
+  operatorNotes: string | undefined,
+  index: number,
+): { text: string; vo_source: "pptx_notes" | "slide_text" | "ocr" | "operator" | "agent" } {
+  const speakerNotes = trimmedString(slide.speaker_notes);
+  const notesSource = stringValue(slide.notes_source);
+  if (speakerNotes !== undefined && notesSource === "pptx_notes") {
+    return { text: speakerNotes, vo_source: "pptx_notes" };
+  }
+
+  const slideText = trimmedString(slide.text);
+  if (slideText !== undefined) {
+    return {
+      text: slideText,
+      vo_source: stringValue(slide.text_source) === "ocr" ? "ocr" : "slide_text",
+    };
+  }
+
+  if (speakerNotes !== undefined && notesSource === "operator") {
+    return { text: speakerNotes, vo_source: "operator" };
+  }
+
+  if (operatorNotes !== undefined) {
+    const line = meaningfulTextLines(operatorNotes)[index] ?? operatorNotes;
+    return { text: line, vo_source: "operator" };
+  }
+
+  const slideId = stringValue(slide.id) ?? `slide ${index + 1}`;
+  return {
+    text: `Bridge ${slideId} into the approved presentation-demo narration without adding unsupported claims.`,
+    vo_source: "agent",
+  };
+}
+
+async function buildDeckManifest(ctx: StageContext, options: PaidSampleDispatcherOptions): Promise<unknown> {
+  const deckSource = stringInput(ctx, "deck_source");
+  if (deckSource === undefined) {
+    throw new Error("presentation-demo capture requires inputs.deck_source");
+  }
+  if (isHttpUrl(deckSource)) {
+    throw new Error("presentation-demo paid sample requires a local fixture deck; export online decks to PDF/PPTX first");
+  }
+
+  const sourcePath = projectReadPath(ctx, deckSource);
+  const bytes = await readFile(sourcePath);
+  const fileType = deckFileTypeFromPath(sourcePath);
+  const workspace = projectDir(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug);
+  const deckDir = path.join(workspace, "deck");
+  const slidesDir = path.join(deckDir, "slides");
+  const workingDeckPath = path.join(deckDir, `source.${fileType}`);
+  const slideCount = deckSlideCount(fileType, bytes);
+
+  await mkdir(slidesDir, { recursive: true });
+  await copyFile(sourcePath, workingDeckPath);
+
+  const slides = await Promise.all(
+    Array.from({ length: slideCount }, async (_value, index) => {
+      const order = index + 1;
+      const id = `slide-${String(order).padStart(3, "0")}`;
+      const imagePath = path.join(slidesDir, `${id}.png`);
+      await writeFile(imagePath, deckSlideScreenshotPng(index));
+
+      return {
+        id,
+        order,
+        image_path: projectRelativePath(ctx.show.projectRoot, imagePath),
+        image: { width: 640, height: 360 },
+        text: deckSlideText(index),
+        text_source: "native" as const,
+        speaker_notes: deckSlideSpeakerNotes(index),
+        notes_source: "operator" as const,
+        warnings: [],
+        source: { slide_number: order },
+      };
+    }),
+  );
+
+  return DeckManifestSchema.parse({
+    source: {
+      kind: fileType,
+      file_type: fileType,
+      source_path: deckSource,
+      working_file_path: projectRelativePath(ctx.show.projectRoot, workingDeckPath),
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      byte_size: bytes.byteLength,
+    },
+    slides,
+    extraction: {
+      text_engine: "paid-sample-fixture",
+      notes_engine: "operator-notes",
+      screenshot_engine: "paid-sample-fixture",
+      extracted_at: (options.now?.() ?? new Date()).toISOString(),
+      warnings: [],
+    },
+  });
+}
+
+function deckFileTypeFromPath(filePath: string): DeckFileType {
+  const extension = path.extname(filePath).toLowerCase();
+  if (extension === ".pdf") {
+    return "pdf";
+  }
+  if (extension === ".ppt") {
+    return "ppt";
+  }
+  if (extension === ".pptx") {
+    return "pptx";
+  }
+  throw new Error(`unsupported presentation-demo deck extension '${extension || "(none)"}'`);
+}
+
+function deckSlideCount(fileType: DeckFileType, bytes: Buffer): number {
+  if (fileType === "pdf") {
+    const count = Number([...bytes.toString("latin1").matchAll(/\/Type\s*\/Pages\b[\s\S]{0,300}?\/Count\s+(\d+)/gu)].at(-1)?.[1]);
+    if (Number.isInteger(count) && count > 0) {
+      return Math.min(3, Math.max(1, count));
+    }
+  }
+
+  return fileType === "ppt" ? 2 : 3;
+}
+
+function deckSlideText(index: number): string {
+  return [
+    "Frame the deck promise and audience",
+    "Animate highlights, callouts, and narration timing",
+    "Package the rough cut and editor handoff",
+  ][index] ?? `Presentation demo slide ${index + 1}`;
+}
+
+function deckSlideSpeakerNotes(index: number): string {
+  return [
+    "Open with the point of the deck and the viewer problem it solves.",
+    "Explain how the slide becomes an animated beat rather than static playback.",
+    "Close by naming the render, timeline, captions, and deck assets an editor receives.",
+  ][index] ?? "Bridge this slide into the approved narration without adding unsupported claims.";
+}
+
+function deckSlideScreenshotPng(index: number): Buffer {
+  const width = 640;
+  const height = 360;
+  const data = new Uint8Array(width * height * 4);
+  const palette: Array<readonly [number, number, number]> = [
+    [31, 78, 121],
+    [29, 117, 101],
+    [126, 87, 42],
+  ];
+  const accent = palette[index % palette.length] ?? palette[0];
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const offset = (y * width + x) * 4;
+      const shade = Math.round(244 - y * 0.05);
+      data[offset] = shade;
+      data[offset + 1] = shade + 3;
+      data[offset + 2] = 250;
+      data[offset + 3] = 255;
+    }
+  }
+
+  deckPngRect(data, width, 48, 54, 120 + index * 32, 12, accent);
+  deckPngRect(data, width, 48, 96, 360, 22, [40, 48, 60]);
+  deckPngRect(data, width, 48, 140, 440, 12, [89, 99, 112]);
+  deckPngRect(data, width, 48, 166, 320, 12, [123, 133, 146]);
+  deckPngRect(data, width, 390, 190, 160, 82, accent);
+  deckPngRect(data, width, 414, 216, 112, 12, [255, 255, 255]);
+  deckPngRect(data, width, 414, 244, 76, 10, [232, 238, 246]);
+
+  return encodeRgbaPng({ width, height, data });
+}
+
+function deckPngRect(
+  data: Uint8Array,
+  imageWidth: number,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  color: readonly [number, number, number],
+): void {
+  for (let py = y; py < y + height; py += 1) {
+    for (let px = x; px < x + width; px += 1) {
+      const offset = (py * imageWidth + px) * 4;
+      data[offset] = color[0];
+      data[offset + 1] = color[1];
+      data[offset + 2] = color[2];
+      data[offset + 3] = 255;
+    }
+  }
+}
+
+function trimmedString(value: unknown): string | undefined {
+  const trimmed = stringValue(value)?.trim();
+  return trimmed === undefined || trimmed.length === 0 ? undefined : trimmed;
+}
+
+async function operatorNotesText(ctx: StageContext): Promise<string | undefined> {
+  return (await textInput(ctx, "operator_notes")) ?? (await textInput(ctx, "notes"));
+}
+
+async function assertPresentationDemoScriptApproved(ctx: StageContext, state: PaidSampleState): Promise<void> {
+  if (state.script === undefined) {
+    throw new Error("presentation-demo cuesheet requires an approved script artifact before TTS generation");
+  }
+
+  let checkpointStatus: string | undefined;
+  try {
+    checkpointStatus = (await readCheckpoint(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug, "script")).status;
+  } catch {
+    throw new Error("presentation-demo cuesheet requires a completed script checkpoint before TTS generation");
+  }
+
+  if (checkpointStatus !== "completed") {
+    throw new Error(
+      `presentation-demo cuesheet requires script checkpoint status completed before TTS generation; found ${checkpointStatus}`,
+    );
+  }
+}
+
+function parseScriptArtifact(value: unknown): Script {
+  const parsed = ScriptSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new Error(`presentation-demo cuesheet requires a schema-valid approved script: ${parsed.error.message}`);
+  }
+
+  return parsed.data;
+}
+
+function narrationForSection(section: Script["sections"][number]): string {
+  const dialogue = section.dialogue.map((line) => line.line).join(" ");
+  return (section.narration ?? dialogue).replace(/\s+/gu, " ").trim();
+}
+
+function sectionsFromScript(value: unknown): Script["sections"] {
+  const parsed = ScriptSchema.safeParse(value);
+  return parsed.success ? parsed.data.sections : [];
+}
+
+function captionForScene(
+  sections: Script["sections"],
+  fallbackCaptions: readonly string[],
+  sceneId: string,
+  index: number,
+): string | undefined {
+  const section = sections.find((candidate) => candidate.slug === sceneId) ?? sections[index];
+  const caption = section === undefined ? fallbackCaptions[index] : narrationForSection(section);
+  return caption && caption.length > 0 ? caption : undefined;
+}
+
+function captionFallbacksFromInputs(ctx: StageContext): string[] {
+  for (const key of ["narration", "script", "host_script", "brief", "notes"]) {
+    const value = stringInput(ctx, key);
+    if (value === undefined || looksLikeInputPath(value)) {
+      continue;
+    }
+
+    const lines = meaningfulTextLines(value);
+    return lines.length > 0 ? lines : splitSentences(value);
+  }
+
+  return [];
+}
+
+function looksLikeInputPath(value: string): boolean {
+  if (isHttpUrl(value) || path.isAbsolute(value) || value.startsWith("./") || value.startsWith("../")) {
+    return true;
+  }
+  if (value.includes("/") || value.includes("\\")) {
+    return true;
+  }
+
+  const extension = path.extname(value).toLowerCase();
+  return TEXT_REFERENCE_EXTENSIONS.has(extension) || IMAGE_REFERENCE_EXTENSIONS.has(extension);
+}
+
+function wordsForSection(section: Script["sections"][number]): Array<{ text: string; start_s: number; end_s: number; confidence: number }> {
+  const words = narrationForSection(section).match(/[A-Za-z0-9']+/gu) ?? [];
+  const duration = Math.max(0.001, section.end_s - section.start_s);
+  const wordDuration = duration / Math.max(1, words.length);
+
+  return words.map((word, index) => ({
+    text: word,
+    start_s: roundTime(section.start_s + index * wordDuration),
+    end_s: roundTime(Math.min(section.end_s, section.start_s + (index + 1) * wordDuration)),
+    confidence: 1,
+  }));
 }
 
 async function buildSourceMediaReview(ctx: StageContext): Promise<unknown> {
@@ -595,9 +1124,16 @@ async function buildCaptureManifest(ctx: StageContext): Promise<unknown> {
 }
 
 async function buildScenePlan(ctx: StageContext): Promise<unknown> {
+  if (isPresentationDemo(ctx)) {
+    return buildPresentationDemoScenePlan(ctx);
+  }
+
   const duration = sampleDuration(ctx);
   const beats = await sampleBeats(ctx);
   const cuts = sampleBeatCuts(duration, beats);
+  const samplePlan = resolveSamplePlan(ctx);
+  const imageProviderLabel = sampleChoiceLabel(samplePlan.image);
+  const videoProviderLabel = sampleChoiceLabel(samplePlan.video);
   if (!lyricMusicMode(ctx)) {
     return {
       scenes: beats.map((beat, index) => ({
@@ -625,7 +1161,7 @@ async function buildScenePlan(ctx: StageContext): Promise<unknown> {
           {
             id: clipAssetId(index),
             source: "generated",
-            notes: `Generated start frame plus Higgsfield motion clip for this ${readableSlug(ctx.pipeline.slug)} beat.`,
+            notes: `Generated start frame (${imageProviderLabel}) plus motion clip (${videoProviderLabel}) for this ${readableSlug(ctx.pipeline.slug)} beat.`,
           },
         ],
       })),
@@ -669,7 +1205,7 @@ async function buildScenePlan(ctx: StageContext): Promise<unknown> {
         {
           id: clipAssetId(index),
           source: "generated",
-          notes: "Higgsfield GPT Image 2 start frame plus Higgsfield motion clip reused across split <=5s sample scenes.",
+          notes: `Generated start frame (${imageProviderLabel}) plus motion clip (${videoProviderLabel}) reused across split <=5s sample scenes.`,
         },
       ],
     }));
@@ -680,6 +1216,123 @@ async function buildScenePlan(ctx: StageContext): Promise<unknown> {
   return { scenes };
 }
 
+function buildPresentationDemoScenePlan(ctx: StageContext): unknown {
+  const deck = recordValue(ctx.priorArtifacts.deck_manifest);
+  const slides = sortedDeckSlides(deck);
+  if (slides.length === 0) {
+    throw new Error("presentation-demo scene_plan requires deck_manifest.slides");
+  }
+
+  const script = parseScriptArtifact(ctx.priorArtifacts.script);
+  const cuesheet = recordValue(ctx.priorArtifacts.cuesheet);
+  const anchors = presentationDemoSceneAnchors(script, cuesheet);
+  const slidesById = new Map(
+    slides.map((slide, index) => [stringValue(slide.id) ?? `slide-${String(index + 1).padStart(3, "0")}`, slide]),
+  );
+
+  return {
+    scenes: anchors.map((anchor, index) => {
+      const slideId = anchor.slideIds[0] ?? `slide-${String(index + 1).padStart(3, "0")}`;
+      const slide = slidesById.get(slideId) ?? slides[index % slides.length];
+      const resolvedSlideId = stringValue(slide?.id) ?? slideId;
+      const treatment = index % 3 === 0 ? "zoom_pan" : index % 3 === 1 ? "highlight" : "callout";
+      const caption = anchor.caption ?? stringValue(slide?.text) ?? resolvedSlideId;
+
+      return {
+        slug: anchor.sceneId,
+        order: index,
+        start_s: anchor.startS,
+        end_s: anchor.endS,
+        narrative_role: scriptRole(index, anchors.length),
+        scene_anchor: `${resolvedSlideId} voiceover`,
+        hero_moment: index === 0,
+        slide_id: resolvedSlideId,
+        slide_ids: [resolvedSlideId],
+        timing_anchor: `section:${anchor.sceneId}`,
+        timing_source: "section",
+        start_ms: Math.round(anchor.startS * 1000),
+        end_ms: Math.round(anchor.endS * 1000),
+        treatment,
+        focus_rect: focusRectForSlide(index),
+        highlights: [
+          {
+            rect: highlightRectForSlide(index),
+            shape: index % 2 === 0 ? "rect" : "ellipse",
+            label: "deck evidence",
+          },
+        ],
+        callouts: [
+          {
+            text: shortCallout(caption),
+            target_rect: highlightRectForSlide(index),
+            anchor: index % 2 === 0 ? "right" : "left",
+          },
+        ],
+        caption,
+        description: `Animate ${resolvedSlideId} with ${treatment.replace("_", " ")} treatment tied to the approved voiceover.`,
+        shot_intent: "Turn the source slide into an animated explainer beat with readable text and narration-aligned emphasis.",
+        information_role: index === 0 ? "hook setup" : index === anchors.length - 1 ? "takeaway" : "explanatory beat",
+        texture_keywords: ["deck-source", "presentation-demo", "motion-led", treatment],
+        character_actions: [],
+        shot_language: {
+          shot_size: "MS",
+          camera_movement: index % 2 === 0 ? "push_in" : "pan_right",
+          lighting_key: "soft",
+          lens_mm: 35,
+          depth_of_field: "deep",
+          color_temperature: "daylight",
+        },
+        required_assets: [
+          {
+            id: slideAssetId(resolvedSlideId),
+            source: "supplied",
+            notes: `Deck screenshot for ${resolvedSlideId}; compose must animate it instead of exporting a static slide.`,
+          },
+        ],
+      };
+    }),
+  };
+}
+
+function presentationDemoSceneAnchors(
+  script: Script,
+  cuesheet: Record<string, unknown> | undefined,
+): Array<{ sceneId: string; startS: number; endS: number; slideIds: string[]; caption?: string }> {
+  const rawAnchors = cuesheet?.scene_anchors;
+  const anchors = Array.isArray(rawAnchors)
+    ? rawAnchors.map(recordValue).filter((anchor): anchor is Record<string, unknown> => anchor !== undefined)
+    : [];
+
+  if (anchors.length > 0) {
+    return anchors.map((anchor, index) => {
+      const section = script.sections.find((candidate) => candidate.slug === stringValue(anchor.scene_id)) ?? script.sections[index];
+      const slideIds = Array.isArray(anchor.slide_ids)
+        ? anchor.slide_ids.filter((value): value is string => typeof value === "string" && value.length > 0)
+        : section?.slide_ids ?? [];
+
+      return {
+        sceneId: stringValue(anchor.scene_id) ?? section?.slug ?? `slide-scene-${index + 1}`,
+        startS: numberValue(anchor.start_s) ?? section?.start_s ?? 0,
+        endS: numberValue(anchor.end_s) ?? section?.end_s ?? sampleDurationFallback(index, script.sections.length),
+        slideIds,
+        caption: section === undefined ? undefined : narrationForSection(section),
+      };
+    });
+  }
+
+  return script.sections.map((section, index) => ({
+    sceneId: section.slug,
+    startS: section.start_s,
+    endS: section.end_s,
+    slideIds: section.slide_ids,
+    caption: narrationForSection(section),
+  }));
+}
+
+function sampleDurationFallback(index: number, count: number): number {
+  return index + 1 >= count ? Math.max(1, count) : index + 1;
+}
+
 async function buildAssets(
   ctx: StageContext,
   state: PaidSampleState,
@@ -687,8 +1340,23 @@ async function buildAssets(
   decisions: DecisionEntry[],
   options: PaidSampleDispatcherOptions,
 ): Promise<unknown> {
-  const imageTool = await toolFor(ctx, "openai_image", "image_generation");
-  const videoTool = await toolFor(ctx, "higgsfield", "image_to_video");
+  if (isPresentationDemo(ctx)) {
+    return buildPresentationDemoAssets(ctx, state);
+  }
+
+  const samplePlan = resolveSamplePlan(ctx);
+  const imageTool = await sampleToolFor(ctx, {
+    role: "image",
+    capabilities: ["image_generation"],
+    choice: samplePlan.image,
+  });
+  const videoTool = await sampleToolFor(ctx, {
+    role: "video",
+    capabilities: ["image_to_video", "text_to_video"],
+    choice: samplePlan.video,
+  });
+  const imageModel = sampleModelForTool(imageTool, samplePlan.image);
+  const videoModel = sampleModelForTool(videoTool, samplePlan.video);
   const beats = await sampleBeats(ctx);
   const imageAssets: Array<Record<string, unknown>> = [];
   const clipAssets: Array<Record<string, unknown>> = [];
@@ -696,22 +1364,10 @@ async function buildAssets(
   const clipPaths: string[] = [];
 
   for (const beat of beats) {
-    const imagePromptText = imagePrompt(ctx, beat);
-    const imageModel = imageTool.name === "higgsfield_image" ? "gpt_image_2" : "gpt-image-2";
+    const imagePromptText = await imagePrompt(ctx, beat);
+    const motionPromptText = await motionPrompt(ctx, beat);
     const imageResult = await imageTool.execute(
-      imageTool.name === "higgsfield_image"
-        ? {
-            prompt: imagePromptText,
-            aspect_ratio: aspect(ctx).startsWith("9:16") ? "9:16" : "16:9",
-            quality: "low",
-            resolution: "2k",
-          }
-        : {
-            prompt: imagePromptText,
-            model: imageModel,
-            size: imageSize(ctx),
-            quality: "low",
-          },
+      imageInputForTool(ctx, imageTool, samplePlan.image, imagePromptText),
       toolContext(ctx, {
         reason: `Generate paid-demo explainer start frame ${beat.index + 1}.`,
         model: imageModel,
@@ -719,33 +1375,32 @@ async function buildAssets(
       }),
     );
     const image = recordValue(imageResult);
-    const imagePrefix = imageTool.name === "higgsfield_image" ? "higgsfield" : "openai";
+    const imagePrefix = providerFilePrefix(imageTool);
     const imageFileName = beat.index === 0 ? `${imagePrefix}-sample.png` : `${imagePrefix}-sample-${beat.index + 1}.png`;
     const imagePath = await episodeMediaPath(ctx, stringValue(image?.image_path), "assets", imageFileName);
+    const resolvedImageModel = stringValue(image?.model) ?? imageModel;
     imagePaths.push(imagePath);
     costEntries.push(
-      costEntry(imageTool.name, imageTool.provider, stringValue(image?.model) ?? imageModel, 1, numberValue(image?.cost_usd) ?? 0),
+      costEntry(imageTool.name, imageTool.provider, resolvedImageModel, 1, numberValue(image?.cost_usd) ?? 0),
     );
 
-    const videoInput =
-      videoTool.name === "higgsfield" || typeof image?.url !== "string"
-        ? { image_path: imagePath, prompt: motionPrompt(ctx, beat), duration: higgsfieldDuration(ctx) }
-        : { image_url: image.url, prompt: motionPrompt(ctx, beat), duration: higgsfieldDuration(ctx) };
     const videoResult = await videoTool.execute(
-      videoInput,
+      videoInputForTool(ctx, videoTool, samplePlan.video, image, imagePath, motionPromptText),
       toolContext(ctx, {
         reason: `Generate paid-demo explainer motion clip ${beat.index + 1}.`,
-        model: "seedance_2_0",
+        model: videoModel,
         units: 1,
       }),
     );
     const video = recordValue(videoResult);
-    const clipFileName = beat.index === 0 ? "higgsfield-sample.mp4" : `higgsfield-sample-${beat.index + 1}.mp4`;
+    const videoPrefix = providerFilePrefix(videoTool);
+    const clipFileName = beat.index === 0 ? `${videoPrefix}-sample.mp4` : `${videoPrefix}-sample-${beat.index + 1}.mp4`;
     const clipPath = await episodeMediaPath(ctx, stringValue(video?.video_path), "clips", clipFileName);
     clipPaths.push(clipPath);
     const cacheHit = video?.cache_hit === true || numberValue(video?.cost_usd) === 0;
+    const resolvedVideoModel = stringValue(video?.model) ?? videoModel;
     costEntries.push(
-      costEntry("higgsfield", "higgsfield", "seedance_2_0", cacheHit ? 0 : 1, numberValue(video?.cost_usd) ?? 0, cacheHit),
+      costEntry(videoTool.name, videoTool.provider, resolvedVideoModel, cacheHit ? 0 : 1, numberValue(video?.cost_usd) ?? 0, cacheHit),
     );
 
     imageAssets.push({
@@ -754,7 +1409,7 @@ async function buildAssets(
       path: imagePath,
       scene_ref: `sample-${beat.index + 1}`,
       provider: imageTool.provider,
-      model: stringValue(image?.model) ?? imageModel,
+      model: resolvedImageModel,
       prompt: imagePromptText,
       cost_usd: numberValue(image?.cost_usd) ?? 0,
     });
@@ -763,14 +1418,14 @@ async function buildAssets(
       kind: "video",
       path: clipPath,
       scene_ref: `sample-${beat.index + 1}`,
-      provider: "higgsfield",
-      model: "seedance_2_0",
-      prompt: motionPrompt(ctx, beat),
+      provider: videoTool.provider,
+      model: resolvedVideoModel,
+      prompt: motionPromptText,
       cost_usd: numberValue(video?.cost_usd) ?? 0,
     });
 
     if (cacheHit) {
-      decisions.push(cacheHitDecision(ctx, options));
+      decisions.push(cacheHitDecision(ctx, options, videoTool));
     }
   }
 
@@ -779,40 +1434,57 @@ async function buildAssets(
   state.imagePath = imagePaths[0];
   state.clipPath = clipPaths[0];
 
-  if (ctx.pipeline.master_clock === "voiceover" || hasNarrationInput(ctx)) {
-    const tts = await preferredTtsTool(ctx);
+  if (state.narrationPath === undefined && (ctx.pipeline.master_clock === "voiceover" || hasNarrationInput(ctx))) {
+    const tts = await preferredTtsTool(ctx, samplePlan);
     const text = await narrationText(ctx);
+    const voice = voiceInputForTool(ctx, tts, samplePlan.tts);
+    const model = ttsModelForTool(tts, samplePlan.tts);
     const ttsResult = await tts.execute(
       {
         text,
-        voice_id: voiceId(ctx),
-        format: tts.name === "elevenlabs_tts" ? "mp3_44100_128" : "mp3",
+        ...voice.input,
+        format: ttsFormatForTool(tts),
+        model,
       },
       toolContext(ctx, {
         reason: "Generate narration audio for the paid-demo sample.",
-        model: tts.name === "elevenlabs_tts" ? "eleven_multilingual_v2" : "gpt-4o-mini-tts",
+        model,
         units: 1,
       }),
     );
     const audio = recordValue(ttsResult);
     state.narrationPath = await episodeMediaPath(ctx, stringValue(audio?.audio_path), "audio", "narration.mp3");
+    state.narrationTool = tts.name;
+    state.narrationProvider = tts.provider;
+    state.narrationModel = stringValue(audio?.model) ?? model;
+    state.narrationVoice = stringValue(audio?.voice) ?? voice.label;
+    state.narrationCostUsd = numberValue(audio?.cost_usd) ?? 0;
     costEntries.push(
       costEntry(
         tts.name,
         tts.provider,
-        stringValue(audio?.model) ?? (tts.name === "elevenlabs_tts" ? "eleven_multilingual_v2" : "gpt-4o-mini-tts"),
+        state.narrationModel,
         1,
-        numberValue(audio?.cost_usd) ?? 0,
+        state.narrationCostUsd,
       ),
     );
-    decisions.push(voiceDecision(ctx, tts, options));
+    decisions.push(
+      voiceDecision(ctx, tts, options, {
+        stage: "script",
+        voiceLabel: state.narrationVoice,
+        voiceId: voice.voiceId,
+        voiceName: voice.voiceName,
+        model: state.narrationModel,
+        costUsd: state.narrationCostUsd,
+      }),
+    );
   }
 
   decisions.push(
-    providerDecision(ctx, "image_generation", imageTool.provider, options),
-    modelDecision(ctx, imageTool.provider, imageTool.name === "higgsfield_image" ? "gpt_image_2" : "gpt-image-2", options),
-    providerDecision(ctx, "image_to_video", "higgsfield", options),
-    modelDecision(ctx, "higgsfield", "seedance_2_0", options),
+    providerDecision(ctx, imageTool.capability, imageTool.provider, options, samplePlan.image),
+    modelDecision(ctx, imageTool.provider, imageModel, options, samplePlan.image),
+    providerDecision(ctx, videoTool.capability, videoTool.provider, options, samplePlan.video),
+    modelDecision(ctx, videoTool.provider, videoModel, options, samplePlan.video),
   );
 
   return {
@@ -826,10 +1498,54 @@ async function buildAssets(
               id: "paid_sample_narration",
               kind: "audio",
               path: state.narrationPath,
-              provider: "elevenlabs",
-              model: "eleven_multilingual_v2",
+              provider: state.narrationProvider ?? "unknown",
+              model: state.narrationModel ?? "unknown",
               prompt: "Narration generated from episode script input.",
-              cost_usd: 0,
+              cost_usd: state.narrationCostUsd ?? 0,
+            },
+          ]),
+    ],
+  };
+}
+
+function buildPresentationDemoAssets(ctx: StageContext, state: PaidSampleState): unknown {
+  const deck = recordValue(state.deck_manifest ?? ctx.priorArtifacts.deck_manifest);
+  const slides = sortedDeckSlides(deck);
+  if (slides.length === 0) {
+    throw new Error("presentation-demo asset_manifest requires deck_manifest.slides");
+  }
+
+  const slideAssets = slides.map((slide, index) => {
+    const slideId = stringValue(slide.id) ?? `slide-${String(index + 1).padStart(3, "0")}`;
+    return {
+      id: slideAssetId(slideId),
+      kind: "image",
+      path: stringValue(slide.image_path) ?? `captures/slides/${slideId}.png`,
+      scene_ref: slideId,
+      provider: "deck_manifest",
+      model: stringValue(recordValue(deck?.extraction)?.screenshot_engine) ?? "deck-renderer",
+      prompt: `Source slide screenshot for ${slideId}; preserve readability and animate in compose.`,
+      cost_usd: 0,
+    };
+  });
+
+  state.imagePaths = slideAssets.map((asset) => asset.path);
+  state.imagePath = slideAssets[0]?.path;
+
+  return {
+    assets: [
+      ...slideAssets,
+      ...(state.narrationPath === undefined
+        ? []
+        : [
+            {
+              id: "paid_sample_narration",
+              kind: "audio",
+              path: state.narrationPath,
+              provider: state.narrationProvider ?? "unknown",
+              model: state.narrationModel ?? "unknown",
+              prompt: "Approved presentation-demo voiceover generated at cuesheet stage.",
+              cost_usd: state.narrationCostUsd ?? 0,
             },
           ]),
     ],
@@ -837,20 +1553,33 @@ async function buildAssets(
 }
 
 function buildEditDecisions(ctx: StageContext, state: PaidSampleState): unknown {
+  if (isPresentationDemo(ctx)) {
+    return buildPresentationDemoEditDecisions(ctx, state);
+  }
+
   const duration = sampleDuration(ctx);
   const clipPaths = state.clipPaths && state.clipPaths.length > 0 ? state.clipPaths : state.clipPath ? [state.clipPath] : [];
   const scenes = recordValue(state.scene_plan)?.scenes;
+  const scriptSections = sectionsFromScript(state.script ?? ctx.priorArtifacts.script);
+  const fallbackCaptions = captionFallbacksFromInputs(ctx);
+  const assetProviders = assetProviderMap(state.asset_manifest);
   const sceneCuts = Array.isArray(scenes)
     ? scenes.map((scene, index) => {
         const record = recordValue(scene);
         const requiredAssets = record?.required_assets;
         const firstAsset = Array.isArray(requiredAssets) ? recordValue(requiredAssets[0]) : undefined;
+        const sceneId = stringValue(record?.slug) ?? `sample-${index + 1}`;
+        const caption = captionForScene(scriptSections, fallbackCaptions, sceneId, index);
+        const assetId = stringValue(firstAsset?.id) ?? clipAssetId(index % Math.max(1, clipPaths.length));
 
         return {
           start_s: numberValue(record?.start_s) ?? 0,
           end_s: numberValue(record?.end_s) ?? duration,
-          asset_id: stringValue(firstAsset?.id) ?? clipAssetId(index % Math.max(1, clipPaths.length)),
-          provider: "higgsfield",
+          asset_id: assetId,
+          scene_id: sceneId,
+          scene_kind: "video_clip",
+          caption,
+          provider: assetProviders.get(assetId) ?? "generated",
         };
       })
     : undefined;
@@ -864,7 +1593,10 @@ function buildEditDecisions(ctx: StageContext, state: PaidSampleState): unknown 
         start_s: roundTime(index * cutDuration),
         end_s: roundTime(index === clipCount - 1 ? duration : (index + 1) * cutDuration),
         asset_id: clipAssetId(index),
-        provider: "higgsfield",
+        scene_id: `sample-${index + 1}`,
+        scene_kind: "video_clip",
+        caption: captionForScene(scriptSections, fallbackCaptions, `sample-${index + 1}`, index),
+        provider: assetProviders.get(clipAssetId(index)) ?? "generated",
       })),
     overlays: [],
     audio:
@@ -882,6 +1614,59 @@ function buildEditDecisions(ctx: StageContext, state: PaidSampleState): unknown 
   };
 }
 
+function buildPresentationDemoEditDecisions(ctx: StageContext, state: PaidSampleState): unknown {
+  const duration = sampleDuration(ctx);
+  const runtime = renderRuntime(ctx);
+  const scenes = recordArray(recordValue(state.scene_plan ?? ctx.priorArtifacts.scene_plan)?.scenes);
+  if (scenes.length === 0) {
+    throw new Error("presentation-demo edit_decisions requires scene_plan.scenes");
+  }
+
+  const cuts = scenes.map((scene, index) => {
+    const requiredAssets = recordArray(scene.required_assets);
+    const firstAsset = requiredAssets[0];
+    const slideId = stringValue(scene.slide_id) ?? stringArray(scene.slide_ids)[0] ?? `slide-${String(index + 1).padStart(3, "0")}`;
+
+    return {
+      start_s: numberValue(scene.start_s) ?? 0,
+      end_s: numberValue(scene.end_s) ?? duration,
+      asset_id: stringValue(firstAsset?.id) ?? slideAssetId(slideId),
+      scene_id: stringValue(scene.slug) ?? slideId,
+      scene_kind: "slide_scene",
+      slide_id: slideId,
+      slide_ids: [slideId],
+      timing_anchor: stringValue(scene.timing_anchor) ?? `section:${stringValue(scene.slug) ?? slideId}`,
+      timing_source: stringValue(scene.timing_source) ?? "section",
+      timing_ref: recordValue(scene.timing_ref),
+      start_ms: numberValue(scene.start_ms) ?? Math.round((numberValue(scene.start_s) ?? 0) * 1000),
+      end_ms: numberValue(scene.end_ms) ?? Math.round((numberValue(scene.end_s) ?? duration) * 1000),
+      focus_rect: recordValue(scene.focus_rect),
+      motion: cutMotionForScene(scene),
+      highlights: recordArray(scene.highlights),
+      callouts: recordArray(scene.callouts),
+      caption: stringValue(scene.caption),
+      transition_in: index === 0 ? "fade" : "slide-left",
+      transition_out: index === scenes.length - 1 ? "fade" : "dissolve",
+      provider: runtime,
+    };
+  });
+
+  const narrationPath = state.narrationPath ?? stringValue(recordValue(recordValue(state.cuesheet)?.audio)?.path);
+
+  return {
+    cuts,
+    overlays: [],
+    subtitles: state.cuesheet === undefined ? undefined : { enabled: true, source: "cuesheet.words" },
+    audio: narrationPath === undefined ? undefined : { music: { track_path: narrationPath, ducking: false } },
+    render_runtime: runtime,
+    renderer_family: rendererFamily(ctx),
+    brand: {
+      slug: ctx.show.slug,
+      name: ctx.show.display_name,
+    },
+  };
+}
+
 async function buildRenderReport(
   ctx: StageContext,
   state: PaidSampleState,
@@ -890,23 +1675,31 @@ async function buildRenderReport(
   options: PaidSampleDispatcherOptions,
 ): Promise<unknown> {
   const runtime = renderRuntime(ctx);
-  const composeTool = runtime === "ffmpeg" ? await toolFor(ctx, "ffmpeg", "video_compose") : await toolFor(ctx, "video_compose", "video_compose");
+  const composeTool = await composeToolForRuntime(ctx, runtime);
   const outputPath = `projects/${ctx.show.slug}/${ctx.episode.slug}/renders/paid-sample.mp4`;
+  const expectedDuration = plannedComposeDuration(ctx, state);
+  const editDecisions = runtime === "remotion" ? await editDecisionsWithComposeRecipe(ctx, state, expectedDuration) : state.edit_decisions;
   const composeInput =
     runtime === "ffmpeg"
       ? {
           operation: "compose",
           asset_manifest: state.asset_manifest,
-          edit_decisions: state.edit_decisions,
+          edit_decisions: editDecisions,
           output_path: outputPath,
+          expected_duration_s: expectedDuration,
         }
       : {
           asset_manifest: state.asset_manifest,
-          edit_decisions: state.edit_decisions,
+          deck_manifest: state.deck_manifest,
+          edit_decisions: editDecisions,
+          scene_plan: state.scene_plan,
+          cuesheet: state.cuesheet,
           proposal_packet: state.proposal_packet,
           decision_log: [renderRuntimeDecision(ctx, "compose", options)],
           output_path: outputPath,
-          planned_duration_s: sampleDuration(ctx),
+          planned_duration_s: expectedDuration,
+          expected_duration_s: expectedDuration,
+          resolution: resolutionObject(ctx),
         };
   const renderResult = await composeTool.execute(
     composeInput,
@@ -924,6 +1717,50 @@ async function buildRenderReport(
     ...report,
     final_review: finalReview(ctx, report, state),
   };
+}
+
+async function editDecisionsWithComposeRecipe(ctx: StageContext, state: PaidSampleState, durationS: number): Promise<unknown> {
+  const overlays = await loadShowComposeRecipe({
+    projectRoot: ctx.show.projectRoot,
+    show: ctx.show,
+    episode: ctx.episode,
+    script: state.script ?? ctx.priorArtifacts.script,
+    cuesheet: await cuesheetForComposeRecipe(ctx, state),
+    playbook: ctx.playbook,
+    fps: 30,
+    resolution: resolutionObject(ctx),
+    durationS,
+  });
+
+  if (overlays.length === 0) {
+    return state.edit_decisions;
+  }
+
+  const editDecisions = recordValue(state.edit_decisions);
+  if (editDecisions === undefined) {
+    return state.edit_decisions;
+  }
+
+  return {
+    ...editDecisions,
+    overlays: [...recordArray(editDecisions.overlays), ...overlays],
+  };
+}
+
+async function cuesheetForComposeRecipe(ctx: StageContext, state: PaidSampleState): Promise<unknown> {
+  const inMemory = state.cuesheet ?? ctx.priorArtifacts.cuesheet ?? ctx.cuesheet;
+  if (inMemory !== undefined) {
+    return inMemory;
+  }
+
+  const filePath = cuesheetPath(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug);
+  try {
+    await access(filePath);
+  } catch {
+    return undefined;
+  }
+
+  return readCuesheet(ctx.show.projectRoot, ctx.show.slug, ctx.episode.slug);
 }
 
 function buildPublishLog(ctx: StageContext, state: PaidSampleState): unknown {
@@ -947,20 +1784,40 @@ function normalizeRenderReport(ctx: StageContext, renderResult: unknown, state: 
   const record = recordValue(renderResult);
   const duration = sampleDuration(ctx);
   const [width, height] = resolution(ctx);
+  const actualDuration = numberValue(record?.duration_s) ?? duration;
+  const expectedDuration = numberValue(record?.expected_duration_s) ?? plannedComposeDuration(ctx, state);
+  const driftS = numberValue(record?.drift_s) ?? roundTime(Math.abs(actualDuration - expectedDuration));
+  const framerate = numberValue(record?.framerate) ?? 30;
 
   return {
     output_path: stringValue(record?.output_path) ?? `projects/${ctx.show.slug}/${ctx.episode.slug}/renders/paid-sample.mp4`,
     encoding_profile: stringValue(record?.encoding_profile) ?? "ffmpeg/h264-aac",
-    duration_s: numberValue(record?.duration_s) ?? duration,
+    duration_s: actualDuration,
+    expected_duration_s: expectedDuration,
+    drift_s: driftS,
+    drift_frames: numberValue(record?.drift_frames) ?? Math.round(driftS * framerate),
+    drift_tolerance_s: numberValue(record?.drift_tolerance_s) ?? 0.2,
+    within_tolerance: typeof record?.within_tolerance === "boolean" ? record.within_tolerance : driftS <= 0.2,
     resolution: recordValue(record?.resolution) ?? { width, height },
-    framerate: numberValue(record?.framerate) ?? 30,
-    runtime_used: renderRuntime(ctx),
+    framerate,
+    runtime_used: stringValue(record?.runtime_used) ?? renderRuntime(ctx),
     asset_count: numberValue(record?.asset_count) ?? assetCount(state.asset_manifest),
     warnings: Array.isArray(record?.warnings) ? record.warnings : [],
+    verification_notes: Array.isArray(record?.verification_notes)
+      ? record.verification_notes
+      : [
+          `Runtime ${renderRuntime(ctx)} confirmed against edit_decisions.render_runtime.`,
+          state.cuesheet === undefined ? "No cuesheet was available for caption/audio verification." : "Narration timing and captions were available to compose.",
+        ],
     validation_steps: Array.isArray(record?.validation_steps)
       ? record.validation_steps
       : [{ name: "paid-sample-compose", status: "pass", notes: "Render assembled through the paid sample dispatcher." }],
   };
+}
+
+function resolutionObject(ctx: StageContext): { width: number; height: number } {
+  const [width, height] = resolution(ctx);
+  return { width, height };
 }
 
 function finalReview(ctx: StageContext, renderReport: Record<string, unknown>, state: PaidSampleState): unknown {
@@ -1017,31 +1874,430 @@ function finalReview(ctx: StageContext, renderReport: Record<string, unknown>, s
   };
 }
 
-async function preferredTtsTool(ctx: StageContext): Promise<Tool> {
-  const elevenLabs = ctx.registry.get("elevenlabs_tts");
-  if (elevenLabs !== undefined) {
-    return elevenLabs;
-  }
-
-  return toolFor(ctx, "openai_tts", "tts");
+async function composeToolForRuntime(ctx: StageContext, runtime: RenderRuntime): Promise<Tool> {
+  return exactAvailableTool(ctx, runtime);
 }
 
-async function toolFor(ctx: StageContext, name: string, capability: string): Promise<Tool> {
+async function exactAvailableTool(ctx: StageContext, name: string): Promise<Tool> {
   const named = ctx.registry.get(name);
-  if (named !== undefined) {
-    const cached = ctx.registry.getAvailability(name);
-    if (cached?.available === true) {
-      return named;
-    }
-    if (cached === undefined) {
-      const availability = await named.isAvailable({ projectRoot: ctx.show.projectRoot });
-      if (availability.available) {
-        return named;
-      }
-    }
+  if (named === undefined) {
+    throw new Error(`${name} runtime is not registered`);
   }
 
-  return ctx.registry.select(capability, { prefer: [name], context: { projectRoot: ctx.show.projectRoot } });
+  const cached = ctx.registry.getAvailability(name);
+  if (cached?.available === true) {
+    return named;
+  }
+
+  const availability = cached ?? (await named.isAvailable({ projectRoot: ctx.show.projectRoot }));
+  if (availability.available) {
+    return named;
+  }
+
+  throw new Error(`${name} runtime unavailable: ${availability.reason}`);
+}
+
+function plannedComposeDuration(ctx: StageContext, state: PaidSampleState): number {
+  const cuts = recordArray(recordValue(state.edit_decisions)?.cuts);
+  const cutDuration = cuts.reduce((max, cut) => Math.max(max, numberValue(cut.end_s) ?? 0), 0);
+  if (cutDuration > 0) {
+    return roundTime(cutDuration);
+  }
+
+  const cuesheetAudio = recordValue(recordValue(state.cuesheet)?.audio);
+  const cueDuration = numberValue(cuesheetAudio?.duration_s);
+  return cueDuration === undefined ? sampleDuration(ctx) : roundTime(cueDuration);
+}
+
+function resolveSamplePlan(ctx: StageContext): ResolvedSamplePlan {
+  const base = {
+    image: sampleChoice("image", "fallback", {
+      tools: [...PAID_SAMPLE_IMAGE_TOOLS],
+    }),
+    video: sampleChoice("video", "fallback", {
+      tools: [...PAID_SAMPLE_VIDEO_TOOLS],
+      model: "seedance_2_0",
+    }),
+    tts: sampleChoice("tts", "fallback", {
+      tools: ttsPreferenceList(ctx),
+    }),
+  };
+  const sources: Array<[string, SampleProvidersConfig | undefined]> = [
+    ["pipeline", sampleProvidersFrom(ctx.pipeline.sample_providers, "pipeline.sample_providers")],
+    ["playbook", sampleProvidersFrom(recordValue(ctx.playbook)?.sample_providers, "playbook.sample_providers")],
+    ["show", sampleProvidersFrom(ctx.show.sample_providers, "show.sample_providers")],
+    [
+      `show.pipelines.${ctx.pipeline.slug}`,
+      sampleProvidersFrom(ctx.show.pipelines[ctx.pipeline.slug]?.sample_providers, `show.pipelines.${ctx.pipeline.slug}.sample_providers`),
+    ],
+    ["episode", sampleProvidersFrom(ctx.episode.sample_providers, "episode.sample_providers")],
+  ];
+
+  return sources.reduce((plan, [source, config]) => mergeSamplePlan(plan, config, source), base);
+}
+
+function sampleProvidersFrom(value: unknown, source: string): SampleProvidersConfig | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = SampleProvidersConfigSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new Error(`${source} is invalid: ${parsed.error.message}`);
+  }
+
+  return parsed.data;
+}
+
+function mergeSamplePlan(plan: ResolvedSamplePlan, config: SampleProvidersConfig | undefined, source: string): ResolvedSamplePlan {
+  if (config === undefined) {
+    return plan;
+  }
+
+  return {
+    image: mergeSampleChoice(plan.image, sampleChoiceForRole(config, "image"), source),
+    video: mergeSampleChoice(plan.video, sampleChoiceForRole(config, "video"), source),
+    tts: mergeSampleChoice(plan.tts, sampleChoiceForRole(config, "tts"), source),
+  };
+}
+
+function sampleChoiceForRole(config: SampleProvidersConfig, role: SamplePlanRole): SampleProviderChoice | undefined {
+  if (role === "image") {
+    return config.image ?? config.image_generation;
+  }
+  if (role === "video") {
+    return config.video ?? config.image_to_video ?? config.text_to_video;
+  }
+
+  return config.tts ?? config.voice ?? config.voiceover;
+}
+
+function mergeSampleChoice(
+  current: ResolvedSampleChoice,
+  next: SampleProviderChoice | undefined,
+  source: string,
+): ResolvedSampleChoice {
+  if (next === undefined) {
+    return current;
+  }
+
+  const nextToolNames = sampleProviderToolNames(next);
+  const raw: SampleProviderChoice = { ...current.raw, ...next };
+  if (nextToolNames.length > 0) {
+    raw.tools = nextToolNames;
+  } else if (next.provider !== undefined) {
+    delete raw.tool;
+    raw.tools = [];
+  } else {
+    raw.tools = current.toolNames;
+  }
+
+  return sampleChoice(current.role, source, raw);
+}
+
+function sampleChoice(role: SamplePlanRole, source: string, raw: SampleProviderChoice): ResolvedSampleChoice {
+  return {
+    role,
+    source,
+    toolNames: sampleProviderToolNames(raw),
+    provider: raw.provider,
+    model: raw.model,
+    voiceId: raw.voice_id,
+    voiceName: raw.voice_name,
+    raw,
+  };
+}
+
+async function preferredTtsTool(ctx: StageContext, samplePlan: ResolvedSamplePlan): Promise<Tool> {
+  return sampleToolFor(ctx, {
+    role: "tts",
+    capabilities: ["tts"],
+    choice: samplePlan.tts,
+  });
+}
+
+function ttsPreferenceList(ctx: StageContext): string[] {
+  const configured = [stringInput(ctx, "tts_provider"), stringInput(ctx, "voice_provider")]
+    .map((value) => value?.trim())
+    .filter((value): value is string => value !== undefined && value.length > 0)
+    .map((value) => (value.endsWith("_tts") ? value : `${value}_tts`));
+
+  return [...configured, "elevenlabs_tts", "openai_tts", "google_tts", "piper_tts"];
+}
+
+function imageInputForTool(
+  ctx: StageContext,
+  tool: Tool,
+  choice: ResolvedSampleChoice,
+  prompt: string,
+): Record<string, unknown> {
+  const model = sampleModelForTool(tool, choice);
+  const extra = sampleChoiceExtra(choice);
+
+  if (tool.name === "higgsfield_image") {
+    return {
+      prompt,
+      aspect_ratio: providerAspectRatio(ctx),
+      quality: "low",
+      resolution: "2k",
+      ...extra,
+    };
+  }
+
+  if (tool.name === "openai_image") {
+    return {
+      prompt,
+      model,
+      size: imageSize(ctx),
+      quality: "low",
+      ...extra,
+    };
+  }
+
+  return {
+    prompt,
+    model,
+    aspect_ratio: providerAspectRatio(ctx),
+    size: imageSize(ctx),
+    quality: "low",
+    ...extra,
+  };
+}
+
+function videoInputForTool(
+  ctx: StageContext,
+  tool: Tool,
+  choice: ResolvedSampleChoice,
+  image: Record<string, unknown> | undefined,
+  imagePath: string,
+  prompt: string,
+): Record<string, unknown> {
+  const model = sampleModelForTool(tool, choice);
+  const base = {
+    prompt,
+    duration: higgsfieldDuration(ctx),
+    aspect_ratio: providerAspectRatio(ctx),
+    ...(choice.model === undefined && tool.name !== "higgsfield" && tool.name !== "higgsfield_video" ? {} : { model }),
+    ...sampleChoiceExtra(choice),
+  };
+
+  if (tool.capability === "text_to_video") {
+    return base;
+  }
+
+  const imageUrl = stringValue(image?.url) ?? stringValue(image?.image_url);
+  if (imageUrl !== undefined && tool.provider !== "higgsfield") {
+    return {
+      ...base,
+      image_url: imageUrl,
+    };
+  }
+
+  return {
+    ...base,
+    image_path: imagePath,
+  };
+}
+
+function voiceInputForTool(
+  ctx: StageContext,
+  tool: Tool,
+  choice?: ResolvedSampleChoice,
+): {
+  input: { voice_id?: string; voice_name?: string };
+  label: string;
+  voiceId?: string;
+  voiceName?: string;
+} {
+  const voiceIdInput = choice?.voiceId ?? stringInput(ctx, "voice_id");
+  const voiceName = choice?.voiceName ?? stringInput(ctx, "voice_name") ?? stringInput(ctx, "voice_preference");
+
+  if (voiceIdInput !== undefined) {
+    return { input: { voice_id: voiceIdInput }, label: voiceIdInput, voiceId: voiceIdInput, voiceName };
+  }
+
+  if (voiceName !== undefined && tool.name === "elevenlabs_tts") {
+    return { input: { voice_name: voiceName }, label: voiceName, voiceName };
+  }
+
+  const fallbackVoiceId =
+    tool.name === "openai_tts"
+      ? "alloy"
+      : tool.name === "google_tts"
+        ? "en-US-Chirp3-HD-Charon"
+        : tool.name === "piper_tts"
+          ? "en_US-lessac-medium"
+          : "21m00Tcm4TlvDq8ikWAM";
+
+  return {
+    input: { voice_id: fallbackVoiceId },
+    label: voiceName ?? fallbackVoiceId,
+    voiceId: fallbackVoiceId,
+    voiceName,
+  };
+}
+
+function ttsModelForTool(tool: Tool, choice?: ResolvedSampleChoice): string {
+  return choice?.model ?? defaultModelForTool(tool);
+}
+
+function sampleModelForTool(tool: Tool, choice: ResolvedSampleChoice): string {
+  return choice.model ?? defaultModelForTool(tool);
+}
+
+function defaultModelForTool(tool: Tool): string {
+  const knownDefaults: Record<string, string> = {
+    elevenlabs_tts: "eleven_multilingual_v2",
+    flux_image: "flux-pro-1.1",
+    google_imagen: "imagen-3.0-generate-001",
+    google_tts: "chirp3-hd",
+    grok_image: "grok-2-image",
+    grok_video: "grok-video-1",
+    higgsfield: "seedance_2_0",
+    higgsfield_image: "gpt_image_2",
+    higgsfield_video: "seedance_2_0",
+    openai_image: "gpt-image-2",
+    openai_tts: "gpt-4o-mini-tts",
+    piper_tts: "en_US-lessac-medium",
+    recraft_image: "recraftv3",
+    veo_video: "veo-2.0-generate-001",
+  };
+  if (knownDefaults[tool.name] !== undefined) {
+    return knownDefaults[tool.name];
+  }
+
+  const genericSupports = new Set([
+    "image-to-video",
+    "text-to-video",
+    "text-to-image",
+    "reference-image-animation",
+    "still-assets",
+    "narration-audio",
+    "premium-voices",
+    "voice-cloning",
+    "legible-text",
+    "vertex-ai",
+    "image-prompt",
+  ]);
+  return tool.supports?.find((item) => !genericSupports.has(item)) ?? tool.name;
+}
+
+function ttsFormatForTool(tool: Tool): string {
+  return tool.name === "elevenlabs_tts" ? "mp3_44100_128" : "mp3";
+}
+
+function sampleChoiceExtra(choice: ResolvedSampleChoice): Record<string, unknown> {
+  const raw = recordValue(choice.raw) ?? {};
+  const {
+    tool: _tool,
+    tools: _tools,
+    provider: _provider,
+    model: _model,
+    voice_id: _voiceId,
+    voice_name: _voiceName,
+    ...extra
+  } = raw;
+
+  return extra;
+}
+
+function providerFilePrefix(tool: Tool): string {
+  return safeFileSlug(tool.provider || tool.name.replace(/_(?:image|video|tts)$/u, ""));
+}
+
+function sampleProviderSummaries(
+  ctx: StageContext,
+  choice: ResolvedSampleChoice,
+  capabilities: readonly Capability[],
+): Array<{ provider: string; tool?: string; model: string; execution_path: string; source: string }> {
+  const tools =
+    choice.toolNames.length > 0
+      ? choice.toolNames.map((name) => ctx.registry.get(name)).filter((tool): tool is Tool => tool !== undefined)
+      : ctx.registry
+          .all()
+          .filter((tool) => !isProviderSelectionMarker(tool))
+          .filter((tool) => capabilities.includes(tool.capability))
+          .filter((tool) => choice.provider === undefined || tool.provider === choice.provider);
+
+  return tools
+    .filter((tool) => choice.provider === undefined || tool.provider === choice.provider)
+    .filter((tool) => capabilities.includes(tool.capability))
+    .map((tool) => ({
+      provider: tool.provider,
+      tool: tool.name,
+      model: sampleModelForTool(tool, choice),
+      execution_path: `${tool.integration.kind}:${tool.name}`,
+      source: choice.source,
+    }));
+}
+
+function sampleProviderSummaryFromChoice(choice: ResolvedSampleChoice): {
+  provider: string;
+  model: string;
+  source: string;
+} {
+  return {
+    provider: choice.provider ?? choice.toolNames[0] ?? "registry",
+    model: choice.model ?? "tool-default",
+    source: choice.source,
+  };
+}
+
+function sampleChoiceLabel(choice: ResolvedSampleChoice): string {
+  return choice.provider ?? (choice.toolNames.join("/") || choice.source);
+}
+
+async function sampleToolFor(
+  ctx: StageContext,
+  input: { role: SamplePlanRole; capabilities: readonly Capability[]; choice: ResolvedSampleChoice },
+): Promise<Tool> {
+  const unavailable: string[] = [];
+  const candidateTools =
+    input.choice.toolNames.length > 0
+      ? input.choice.toolNames
+          .map((name) => {
+            const tool = ctx.registry.get(name);
+            if (tool === undefined) {
+              unavailable.push(`${name}: not registered`);
+            }
+            return tool;
+          })
+          .filter((tool): tool is Tool => tool !== undefined)
+      : ctx.registry
+          .all()
+          .filter((tool) => !isProviderSelectionMarker(tool))
+          .filter((tool) => input.capabilities.includes(tool.capability))
+          .filter((tool) => input.choice.provider === undefined || tool.provider === input.choice.provider);
+
+  for (const tool of candidateTools) {
+    if (!input.capabilities.includes(tool.capability)) {
+      unavailable.push(`${tool.name}: registered as ${tool.capability}, expected ${input.capabilities.join(" or ")}`);
+      continue;
+    }
+
+    if (input.choice.provider !== undefined && tool.provider !== input.choice.provider) {
+      unavailable.push(`${tool.name}: provider is ${tool.provider}, expected ${input.choice.provider}`);
+      continue;
+    }
+
+    const cached = ctx.registry.getAvailability(tool.name);
+    const availability = cached ?? (await tool.isAvailable({ projectRoot: ctx.show.projectRoot }));
+    if (availability.available) {
+      return tool;
+    }
+
+    unavailable.push(`${tool.name}: ${availability.reason}`);
+  }
+
+  const providerHint = input.choice.provider === undefined ? "" : ` provider ${input.choice.provider}`;
+  const toolHint = input.choice.toolNames.length === 0 ? "" : ` tools ${input.choice.toolNames.join(", ")}`;
+  const details = unavailable.length === 0 ? "no matching registered tools" : unavailable.join("; ");
+
+  throw new Error(
+    `no sample ${input.role}${providerHint} provider available from ${input.choice.source}; expected ${input.capabilities.join(
+      " or ",
+    )}${toolHint} (${details})`,
+  );
 }
 
 function toolContext(
@@ -1120,6 +2376,9 @@ async function writeLyricPlanningArtifacts(
   beats: readonly SampleBeat[],
   scenes: readonly unknown[],
 ): Promise<void> {
+  const samplePlan = resolveSamplePlan(ctx);
+  const imageProviders = sampleProviderSummaries(ctx, samplePlan.image, ["image_generation"]);
+  const videoProviders = sampleProviderSummaries(ctx, samplePlan.video, ["image_to_video", "text_to_video"]);
   const fullScenes = scenes.map((scene, index) => {
     const record = recordValue(scene);
     const slug = stringValue(record?.slug) ?? `sample-${index + 1}`;
@@ -1164,9 +2423,9 @@ async function writeLyricPlanningArtifacts(
     duration_seconds: sampleDuration(ctx),
     scene_count: fullScenes.length,
     max_scene_duration: Math.max(...fullScenes.map((scene) => numberValue(scene.duration) ?? 0)),
-    image_provider: { provider: "openai", model: "gpt-image-2", execution_path: "OpenAI Image API" },
-    alternate_image_provider: { provider: "higgsfield", model: "gpt_image_2", execution_path: "higgsfield CLI" },
-    video_provider: { provider: "higgsfield", model: "seedance_2_0", execution_path: "higgsfield CLI image-to-video" },
+    image_provider: imageProviders[0] ?? sampleProviderSummaryFromChoice(samplePlan.image),
+    ...(imageProviders[1] === undefined ? {} : { alternate_image_provider: imageProviders[1] }),
+    video_provider: videoProviders[0] ?? sampleProviderSummaryFromChoice(samplePlan.video),
     storyboard_first: true,
     scenes: fullScenes,
   });
@@ -1412,6 +2671,54 @@ function clipAssetId(index: number): string {
   return index === 0 ? "paid_sample_clip" : `paid_sample_clip_${index + 1}`;
 }
 
+function slideAssetId(slideId: string): string {
+  return `deck_slide_${safeFileSlug(slideId)}`;
+}
+
+function focusRectForSlide(index: number): { x: number; y: number; width: number; height: number } {
+  const presets = [
+    { x: 0.08, y: 0.12, width: 0.46, height: 0.34 },
+    { x: 0.46, y: 0.18, width: 0.42, height: 0.32 },
+    { x: 0.2, y: 0.5, width: 0.56, height: 0.24 },
+  ];
+
+  return presets[index % presets.length] ?? presets[0];
+}
+
+function highlightRectForSlide(index: number): { x: number; y: number; width: number; height: number } {
+  const presets = [
+    { x: 0.1, y: 0.16, width: 0.42, height: 0.18 },
+    { x: 0.52, y: 0.2, width: 0.34, height: 0.22 },
+    { x: 0.22, y: 0.56, width: 0.52, height: 0.16 },
+  ];
+
+  return presets[index % presets.length] ?? presets[0];
+}
+
+function shortCallout(value: string): string {
+  const cleaned = value.replace(/\s+/gu, " ").trim();
+  return cleaned.length <= 48 ? cleaned : `${cleaned.slice(0, 45).trim()}...`;
+}
+
+function cutMotionForScene(scene: Record<string, unknown>): Record<string, unknown> {
+  const shotLanguage = recordValue(scene.shot_language);
+  const movement = stringValue(shotLanguage?.camera_movement);
+  if (movement === "pan_left" || movement === "pan_right" || movement === "push_in" || movement === "pull_out") {
+    return { type: movement, zoom_start: 1, zoom_end: movement === "pull_out" ? 1.08 : 1.1 };
+  }
+  if (movement === "tilt_up") {
+    return { type: "pan_up", zoom_start: 1, zoom_end: 1.08 };
+  }
+  if (movement === "tilt_down") {
+    return { type: "pan_down", zoom_start: 1, zoom_end: 1.08 };
+  }
+  if (stringValue(scene.treatment) === "slide_image") {
+    return { type: "static", zoom_start: 1, zoom_end: 1 };
+  }
+
+  return { type: "push_in", zoom_start: 1, zoom_end: 1.08 };
+}
+
 async function textInput(ctx: StageContext, key: string): Promise<string | undefined> {
   const value = ctx.episode.inputs[key];
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -1460,18 +2767,20 @@ function trimForNarration(value: string): string {
   return value.replace(/\s+/gu, " ").trim().slice(0, 700);
 }
 
-function imagePrompt(ctx: StageContext, beat?: SampleBeat): string {
+async function imagePrompt(ctx: StageContext, beat?: SampleBeat): Promise<string> {
   if (lyricMusicMode(ctx)) {
     return lyricArtImagePrompt(ctx, beat);
   }
 
   const pipelineLabel = readableSlug(ctx.pipeline.slug);
   const style = visualStyleDirection(ctx);
+  const brandContext = await brandContextForPrompt(ctx);
   return [
     `Use case: ${pipelineLabel}.`,
     `Asset type: ${aspect(ctx)} keyframe for a ${pipelineLabel} sample.`,
     `Primary request: Create a polished provider-backed start frame for ${ctx.episode.title}.`,
     `Pipeline: ${ctx.pipeline.slug}.`,
+    brandContext,
     beat === undefined ? undefined : `Scene beat: ${beat.title}. ${beat.body}`,
     style === undefined ? undefined : `Style direction: ${style}.`,
     `Aspect ratio: ${aspect(ctx)}.`,
@@ -1482,7 +2791,7 @@ function imagePrompt(ctx: StageContext, beat?: SampleBeat): string {
     .join(" ");
 }
 
-function motionPrompt(ctx: StageContext, beat?: SampleBeat): string {
+async function motionPrompt(ctx: StageContext, beat?: SampleBeat): Promise<string> {
   if (lyricMusicMode(ctx)) {
     return lyricArtMotionPrompt(ctx, beat);
   }
@@ -1490,13 +2799,88 @@ function motionPrompt(ctx: StageContext, beat?: SampleBeat): string {
   const pipelineLabel = readableSlug(ctx.pipeline.slug);
   const style = visualStyleDirection(ctx);
   const beatText = beat === undefined ? "the sample frame" : `"${beat.title}"`;
+  const brandContext = await brandContextForPrompt(ctx);
   return [
     `Animate ${beatText} as a short ${rendererFamily(ctx)} ${pipelineLabel} beat.`,
+    brandContext,
     style === undefined ? undefined : `Preserve this style: ${style}.`,
     "Use distinct subject motion, foreground/background parallax, motivated camera drift, and readable demo-safe pacing.",
+    "Do not add new readable text, logos, or brand names during motion generation.",
   ]
     .filter((part): part is string => typeof part === "string")
     .join(" ");
+}
+
+async function brandContextForPrompt(ctx: StageContext): Promise<string> {
+  const notes = await brandReferenceForPrompt(ctx);
+  const showTitle = ctx.show.display_name;
+  const exactTitle = showTitle.toUpperCase();
+  const base = [
+    `Brand context: Show title: "${showTitle}". Episode title: "${ctx.episode.title}".`,
+    ctx.show.description === undefined ? undefined : `Show description: ${trimForNarration(ctx.show.description)}.`,
+    notes === undefined ? undefined : `Brand notes: ${notes}`,
+  ];
+
+  if (ctx.show.bake_brand_into_images === false) {
+    return [
+      ...base,
+      [
+        "On-screen text policy: NO readable text anywhere in the image.",
+        "No title pills, headers, captions, labels, UI chrome, logos, watermarks, or overlay numerals.",
+        "Background ambient signage may exist only when it is in-scene and not the headline of the frame.",
+        "Leave show typography and branding decisions to the compose recipe.",
+      ].join(" "),
+    ]
+      .filter((part): part is string => typeof part === "string")
+      .join(" ");
+  }
+
+  return [
+    ...base,
+    [
+      `On-screen text policy: If a show title pill is rendered, it must read exactly "${exactTitle}".`,
+      "Do not invent other brand names, logos, trademarks, title variants, or altered numerals.",
+      "If uncertain, render brand-neutral with no readable text.",
+    ].join(" "),
+  ]
+    .filter((part): part is string => typeof part === "string")
+    .join(" ");
+}
+
+async function brandReferenceForPrompt(ctx: StageContext): Promise<string | undefined> {
+  const inputNotes = await firstTextInput(ctx, ["brand_notes", "brand_context", "brand_guide"]);
+  if (inputNotes !== undefined) {
+    return trimForNarration(inputNotes);
+  }
+
+  const brandPath = ctx.show.brandPath ?? (typeof ctx.show.brand === "string" ? ctx.show.brand : undefined);
+  if (brandPath === undefined) {
+    return undefined;
+  }
+
+  for (const filename of ["brand.md", "brand.yaml", "brand.yml", "README.md", "style.md", "voice.md"]) {
+    try {
+      const contents = await readFile(path.join(brandPath, filename), "utf8");
+      if (contents.trim().length > 0) {
+        return trimForNarration(contents);
+      }
+    } catch {
+      // Brand folders are optional; absent files just mean there are no extra prompt notes.
+    }
+  }
+
+  return undefined;
+}
+
+async function firstTextInput(ctx: StageContext, keys: readonly string[]): Promise<string | undefined> {
+  for (const key of keys) {
+    const value = await textInput(ctx, key);
+    if (value !== undefined) {
+      return value;
+    }
+  }
+
+  return undefined;
 }
 
 function genericTextureKeywords(ctx: StageContext): string[] {
@@ -1583,15 +2967,47 @@ function aspect(ctx: StageContext): string {
 }
 
 function imageSize(ctx: StageContext): string {
-  return aspect(ctx).startsWith("9:16") ? "1024x1536" : "1536x1024";
+  const targetAspect = providerAspectRatio(ctx);
+  if (targetAspect === "9:16") {
+    return "1024x1792";
+  }
+  if (targetAspect === "1:1") {
+    return "1024x1024";
+  }
+
+  return "1792x1024";
 }
 
 function resolution(ctx: StageContext): [number, number] {
-  return aspect(ctx).startsWith("9:16") ? [1080, 1920] : [1920, 1080];
+  const targetAspect = providerAspectRatio(ctx);
+  if (targetAspect === "9:16") {
+    return [1080, 1920];
+  }
+  if (targetAspect === "1:1") {
+    return [1080, 1080];
+  }
+
+  return [1920, 1080];
+}
+
+function providerAspectRatio(ctx: StageContext): "16:9" | "9:16" | "1:1" {
+  const value = aspect(ctx);
+  if (value.startsWith("9:16")) {
+    return "9:16";
+  }
+  if (value.startsWith("1:1")) {
+    return "1:1";
+  }
+
+  return "16:9";
 }
 
 function renderRuntime(ctx: StageContext): RenderRuntime {
   const configured = configuredRenderRuntime(ctx);
+  if (isPresentationDemo(ctx)) {
+    return configured === "ffmpeg" ? "remotion" : configured;
+  }
+
   if (runtimeAvailable(ctx, configured)) {
     return configured;
   }
@@ -1644,11 +3060,6 @@ function higgsfieldDuration(ctx: StageContext): 5 | 10 {
   return sampleDuration(ctx) > 7 ? 10 : 5;
 }
 
-function voiceId(ctx: StageContext): string {
-  const value = ctx.episode.inputs.voice_id;
-  return typeof value === "string" && value.trim().length > 0 ? value : "21m00Tcm4TlvDq8ikWAM";
-}
-
 function assetCount(assetManifest: unknown): number {
   const assets = recordValue(assetManifest)?.assets;
   return Array.isArray(assets) ? assets.length : 0;
@@ -1676,6 +3087,15 @@ function assetPaths(assetManifest: unknown, idPattern: RegExp): string[] {
     .sort((left, right) => String(left.id).localeCompare(String(right.id), undefined, { numeric: true }))
     .map((asset) => stringValue(asset.path))
     .filter((value): value is string => value !== undefined);
+}
+
+function assetProviderMap(assetManifest: unknown): Map<string, string> {
+  const assets = recordArray(recordValue(assetManifest)?.assets);
+  return new Map(
+    assets
+      .map((asset) => [stringValue(asset.id), stringValue(asset.provider)] as const)
+      .filter((entry): entry is readonly [string, string] => entry[0] !== undefined && entry[1] !== undefined),
+  );
 }
 
 function costEntry(
@@ -1708,7 +3128,7 @@ function proposalDecisions(ctx: StageContext, options: PaidSampleDispatcherOptio
       "proposal",
       "concept_selection",
       "provider-sample",
-      "The provider sample concept validates OpenAI, ElevenLabs, Higgsfield, and the selected composition runtime.",
+      "The provider sample concept validates the resolved sample provider plan and the selected composition runtime.",
       options,
     ),
     ...(ctx.pipeline.master_clock === "audio"
@@ -1722,9 +3142,11 @@ function providerDecision(
   capability: string,
   provider: string,
   options: PaidSampleDispatcherOptions,
+  choice?: ResolvedSampleChoice,
 ): DecisionEntry {
+  const source = choice?.source ?? options.providerProfile;
   return {
-    ...decision(ctx, "assets", "provider_selection", provider, `${provider} is selected by the ${options.providerProfile} profile for ${capability}.`, options),
+    ...decision(ctx, "assets", "provider_selection", provider, `${provider} is selected by ${source} for ${capability}.`, options),
     scope: { capability, provider },
   };
 }
@@ -1734,15 +3156,47 @@ function modelDecision(
   provider: string,
   model: string,
   options: PaidSampleDispatcherOptions,
+  choice?: ResolvedSampleChoice,
 ): DecisionEntry {
+  const source = choice?.source ?? options.providerProfile;
   return {
-    ...decision(ctx, "assets", "model_selection", model, `${model} is the configured ${options.providerProfile} model for ${provider}.`, options),
+    ...decision(ctx, "assets", "model_selection", model, `${model} is the configured ${source} model for ${provider}.`, options),
     scope: { provider },
   };
 }
 
-function voiceDecision(ctx: StageContext, tool: Tool, options: PaidSampleDispatcherOptions): DecisionEntry {
-  return decision(ctx, "script", "voice_selection", tool.name, `${tool.name} is the configured narration lane for the paid sample.`, options);
+function voiceDecision(
+  ctx: StageContext,
+  tool: Tool,
+  options: PaidSampleDispatcherOptions,
+  details: {
+    stage: string;
+    voiceLabel?: string;
+    voiceId?: string;
+    voiceName?: string;
+    model?: string;
+    costUsd?: number;
+  },
+): DecisionEntry {
+  const voiceParts = [
+    details.voiceId === undefined ? undefined : `voice_id=${details.voiceId}`,
+    details.voiceName === undefined ? undefined : `voice_name=${details.voiceName}`,
+    details.model === undefined ? undefined : `model=${details.model}`,
+    details.costUsd === undefined ? undefined : `cost_usd=${roundUsd(details.costUsd)}`,
+  ].filter((part): part is string => part !== undefined);
+
+  return {
+    ...decision(
+      ctx,
+      details.stage,
+      "voice_selection",
+      tool.name,
+      `${tool.name} (${tool.provider}) is the selected narration lane${voiceParts.length > 0 ? `; ${voiceParts.join(", ")}` : ""}.`,
+      options,
+    ),
+    scope: { capability: "tts", provider: tool.provider },
+    options_considered: ttsOptionsConsidered(ctx, tool, details),
+  };
 }
 
 function renderRuntimeDecision(ctx: StageContext, stage: string, options: PaidSampleDispatcherOptions): DecisionEntry {
@@ -1753,8 +3207,15 @@ function renderRuntimeDecision(ctx: StageContext, stage: string, options: PaidSa
   };
 }
 
-function cacheHitDecision(ctx: StageContext, options: PaidSampleDispatcherOptions): DecisionEntry {
-  return decision(ctx, "assets", "budget_tradeoff", "higgsfield_cache_hit", "A repeated Higgsfield prompt/input reused the cached clip with zero new provider cost.", options);
+function cacheHitDecision(ctx: StageContext, options: PaidSampleDispatcherOptions, tool: Tool): DecisionEntry {
+  return decision(
+    ctx,
+    "assets",
+    "budget_tradeoff",
+    `${tool.name}_cache_hit`,
+    `A repeated ${tool.provider} prompt/input reused the cached clip with zero new provider cost.`,
+    options,
+  );
 }
 
 function decision(
@@ -1787,6 +3248,10 @@ function decision(
 
 function runtimeDecisionReason(ctx: StageContext, picked: RenderRuntime): string {
   const configured = configuredRenderRuntime(ctx);
+  if (isPresentationDemo(ctx)) {
+    return `Presentation-demo locks ${picked} for compose; do not silently swap runtimes after proposal/edit approval.`;
+  }
+
   if (picked === configured) {
     return `Use the configured ${picked} sample render runtime for editor handoff.`;
   }
@@ -1802,10 +3267,12 @@ function runtimeOptionsConsidered(ctx: StageContext, picked: RenderRuntime): Dec
     const rejected =
       runtime === picked
         ? null
+        : isPresentationDemo(ctx) && runtime === "ffmpeg"
+          ? "static slideshow/ffmpeg downgrade is not allowed for presentation-demo"
         : !available
           ? "runtime not available on this machine"
           : runtime === "ffmpeg" && motionLed
-          ? "rough-cut fallback; richer composition runtime was available"
+            ? "rough-cut fallback; richer composition runtime was available"
             : runtime === configured
               ? "configured runtime not selected"
               : "not selected for this sample";
@@ -1820,6 +3287,59 @@ function runtimeOptionsConsidered(ctx: StageContext, picked: RenderRuntime): Dec
             : null,
     };
   });
+}
+
+function ttsOptionsConsidered(
+  ctx: StageContext,
+  selected: Tool,
+  details: { voiceLabel?: string; voiceId?: string; voiceName?: string; model?: string; costUsd?: number },
+): DecisionEntry["options_considered"] {
+  const options = ctx.registry
+    .byCapability("tts")
+    .filter((tool) => !isProviderSelectionMarker(tool))
+    .map((tool) => {
+      const selectedTool = tool.name === selected.name;
+      const availability = ctx.registry.getAvailability(tool.name);
+      const rejected =
+        selectedTool
+          ? null
+          : availability?.available === false
+            ? `not configured: ${availability.reason}`
+            : "not selected by the configured voice/provider preference";
+
+      return {
+        label: tool.name,
+        rejected_because: rejected,
+        notes: selectedTool
+          ? [
+              details.voiceLabel === undefined ? undefined : `voice=${details.voiceLabel}`,
+              details.voiceId === undefined ? undefined : `voice_id=${details.voiceId}`,
+              details.voiceName === undefined ? undefined : `voice_name=${details.voiceName}`,
+              details.model === undefined ? undefined : `model=${details.model}`,
+              details.costUsd === undefined ? undefined : `cost_usd=${roundUsd(details.costUsd)}`,
+            ]
+              .filter((part): part is string => part !== undefined)
+              .join("; ")
+          : null,
+      };
+    });
+
+  if (options.length >= 2) {
+    return options;
+  }
+
+  return [
+    ...options,
+    {
+      label: "attach_existing_voiceover",
+      rejected_because: "this run is configured to generate approved narration through the TTS registry",
+      notes: null,
+    },
+  ];
+}
+
+function isProviderSelectionMarker(tool: Tool): boolean {
+  return tool.provider === "show-sidekick" && (tool.supports ?? []).includes("provider-selection");
 }
 
 function projectRelativePath(projectRoot: string, absolutePath: string): string {
@@ -1852,6 +3372,16 @@ function errorMessage(error: unknown): string {
 
 function recordValue(value: unknown): Record<string, unknown> | undefined {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+}
+
+function recordArray(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.map(recordValue).filter((record): record is Record<string, unknown> => record !== undefined)
+    : [];
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
 }
 
 function stringValue(value: unknown): string | undefined {

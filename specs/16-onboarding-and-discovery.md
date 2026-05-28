@@ -120,7 +120,7 @@ Tier-specific examples:
 > "Make my first no-key Show Sidekick video: ask what I do, suggest three video ideas tailored to that answer, pick the strongest one, and render a 30-second animated explainer with local narration." (animated-explainer starter)
 
 **Starter:**
-> "Make a music video for the track I just dropped in `music_library/midnight-train/`." (music-video pipeline)
+> "Make a music video for the track I just dropped in `inputs/music-videos/midnight-train/`." (music-video pipeline)
 
 **Full:**
 > "Make a cinematic 30-second trailer: humanity receives a warning from 1000 years in the future." (cinematic pipeline)

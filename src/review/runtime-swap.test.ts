@@ -70,6 +70,7 @@ function renderReport(runtime: RenderReport["runtime_used"]): RenderReport {
     runtime_used: runtime,
     asset_count: 8,
     warnings: [],
+    verification_notes: [],
     validation_steps: [],
   };
 }

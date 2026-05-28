@@ -233,6 +233,20 @@ describe("premium video provider tools", () => {
     });
   });
 
+  it("passes configured Veo models through to the Google endpoint", async () => {
+    stubProviderEnv();
+    const fetchMock = vi.fn(async () => {
+      return new Response(JSON.stringify({ video_path: "projects/show/episode/clips/out.mp4" }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await veoVideo.execute(veoVideo.input.parse({ prompt: "veo scene", model: "veo-3.0-generate-preview" }), context());
+
+    expect((fetchMock.mock.calls[0] as FetchCall)[0]).toBe(
+      "https://generativelanguage.googleapis.com/v1beta/models/veo-3.0-generate-preview:predict",
+    );
+  });
+
   it("surfaces non-2xx provider responses with the response body", async () => {
     stubProviderEnv();
     vi.stubGlobal(
