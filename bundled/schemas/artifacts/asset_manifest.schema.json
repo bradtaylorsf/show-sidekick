@@ -39,6 +39,37 @@
           "cost_usd": {
             "type": "number",
             "minimum": 0
+          },
+          "width": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "height": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "attribution": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "show-sidekick://artifacts/asset-attribution",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "source_url": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "source_domain": {
+                "type": "string"
+              },
+              "license": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_url"
+            ]
           }
         },
         "required": [

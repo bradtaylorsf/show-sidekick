@@ -308,6 +308,18 @@ export const AssetManifestJsonSchema = objectJson(
           seed: { type: "integer" },
           prompt: stringJson,
           cost_usd: nonNegativeNumberJson,
+          width: { type: "integer", exclusiveMinimum: 0 },
+          height: { type: "integer", exclusiveMinimum: 0 },
+          attribution: objectJson(
+            "asset-attribution",
+            {
+              source_url: stringJson,
+              source: stringJson,
+              source_domain: stringJson,
+              license: stringJson,
+            },
+            ["source_url"],
+          ),
         },
         ["id", "kind", "path"],
       ),
