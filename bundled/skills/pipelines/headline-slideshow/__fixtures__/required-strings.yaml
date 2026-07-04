@@ -1,0 +1,35 @@
+pipeline: headline-slideshow
+required_sections:
+  - file: research-director.md
+    section: "## Purpose"
+  - file: research-director.md
+    section: "## Output Contract"
+  - file: asset-director.md
+    section: "## Purpose"
+  - file: asset-director.md
+    section: "## Output Contract"
+  - file: edit-director.md
+    section: "## Purpose"
+  - file: edit-director.md
+    section: "## Output Contract"
+  - file: compose-director.md
+    section: "## Purpose"
+  - file: compose-director.md
+    section: "## Output Contract"
+required_phrases:
+  - file: research-director.md
+    phrase: "brave_search"
+  - file: research-director.md
+    phrase: "never invent or paraphrase headlines"
+  - file: asset-director.md
+    phrase: "brave_image_search"
+  - file: asset-director.md
+    phrase: "Unknown license — verify before publication"
+  - file: edit-director.md
+    phrase: "no music, no voiceover"
+  - file: compose-director.md
+    phrase: "no audio stream"
+required_numerics:
+  - file: edit-director.md
+    numeric: "4 seconds"
+required_modules: []
