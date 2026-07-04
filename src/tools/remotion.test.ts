@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import remotion, { buildRemotionCompositionProps, buildRemotionSlideSceneProps } from "./remotion.js";
+import remotion, { buildRemotionCompositionProps, buildRemotionSlideSceneProps, compositionHasAudio } from "./remotion.js";
 
 let scratchDirs: string[] = [];
 
@@ -288,6 +288,35 @@ describe("remotion tool", () => {
         testContext(),
       ),
     ).rejects.toThrow(/refuses runtime swap/u);
+  });
+
+  it("treats an image-only composition as silent and a music-backed one as audible", () => {
+    const imageOnly = {
+      fps: 30,
+      edit_decisions: {
+        cuts: [{ start_s: 0, end_s: 4, asset_id: "still-1", scene_kind: "image" }],
+        overlays: [],
+        render_runtime: "remotion",
+        renderer_family: "documentary-montage",
+      },
+      asset_manifest: {
+        assets: [{ id: "still-1", kind: "image", path: "https://example.com/still-1.jpg" }],
+      },
+    } as const;
+
+    expect(compositionHasAudio(imageOnly, "/project")).toBe(false);
+    expect(
+      compositionHasAudio(
+        {
+          ...imageOnly,
+          edit_decisions: {
+            ...imageOnly.edit_decisions,
+            audio: { music: { track_path: "https://example.com/track.mp3" } },
+          },
+        },
+        "/project",
+      ),
+    ).toBe(true);
   });
 });
 

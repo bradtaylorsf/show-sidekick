@@ -8,8 +8,8 @@ import { BRANDING } from "../../branding.js";
 import { loadYaml } from "../../config/loader.js";
 import {
   analyzeReference,
-  awaitStageEvent,
   createExternalAgentDispatcher,
+  createStageEventWaiter,
   resolveReferenceSource,
   Runner,
   type ApprovalAction,
@@ -202,13 +202,14 @@ function defaultDispatcherFactory(input: {
     return createStarterSampleDispatcher();
   }
 
+  const waitForStageEvent = createStageEventWaiter(process.stdin);
   return createExternalAgentDispatcher({
     now: input.now,
     emit(event) {
       input.io.stdout.write(`${JSON.stringify(event)}\n`);
     },
     wait(predicate) {
-      return awaitStageEvent(process.stdin, predicate);
+      return waitForStageEvent(predicate);
     },
   });
 }

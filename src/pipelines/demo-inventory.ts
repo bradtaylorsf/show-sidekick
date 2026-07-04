@@ -23,6 +23,7 @@ export const DEMO_READINESS_INVENTORY = {
   "daily-news": { classification: "seeded_extension", defaultStarterTarget: true },
   "documentary-montage": { classification: "core_default", defaultStarterTarget: true },
   "framework-smoke": { classification: "test_only", defaultStarterTarget: false },
+  "headline-slideshow": { classification: "test_only", defaultStarterTarget: false },
   hybrid: { classification: "seeded_extension", defaultStarterTarget: true },
   "localization-dub": { classification: "seeded_extension", defaultStarterTarget: true },
   "music-video": { classification: "core_default", defaultStarterTarget: true },
@@ -57,6 +58,7 @@ export const APPROVED_BUNDLED_PIPELINE_SLUGS = [
 export const BUNDLED_MANIFEST_INVENTORY_SLUGS = [
   ...APPROVED_BUNDLED_PIPELINE_SLUGS,
   "framework-smoke",
+  "headline-slideshow",
 ] as const;
 
 export const SHOW_ONLY_DENYLIST = [] as const;

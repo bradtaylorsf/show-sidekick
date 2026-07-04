@@ -244,6 +244,29 @@ describe("creative artifact schemas", () => {
     expect(manifest.assets[0]?.id).toBe("hero");
   });
 
+  it("accepts asset dimensions and attribution for search-sourced imagery", () => {
+    const manifest = AssetManifestSchema.parse({
+      assets: [
+        {
+          id: "headline-1",
+          kind: "image",
+          path: "assets/headline-1.png",
+          provider: "brave",
+          width: 1280,
+          height: 720,
+          attribution: {
+            source_url: "https://example.com/article",
+            source: "brave",
+            source_domain: "example.com",
+            license: "Unknown license — verify before publication",
+          },
+        },
+      ],
+    });
+
+    expect(manifest.assets[0]?.attribution?.source_domain).toBe("example.com");
+  });
+
   it("accepts an end tag plan fixture", () => {
     expect(
       EndTagPlanSchema.parse({

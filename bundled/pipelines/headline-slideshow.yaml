@@ -1,0 +1,139 @@
+slug: headline-slideshow
+display_name: Headline Slideshow
+description: Test-only smoke pipeline for search-backed still imagery. Fetches current news headlines via brave_search, sources one still image per headline via brave_image_search, and composes a silent timed slideshow (headline text over its image). No music, no voiceover, no TTS — proves the web_search and stock_image search tools work end to end with a rendered artifact.
+status: beta
+sample_support: paid
+master_clock: none
+stage_order: manifest
+default_checkpoint_policy: autonomous
+reference_input:
+  supported: false
+required_skills:
+  - pipelines/headline-slideshow/research-director.md
+  - pipelines/headline-slideshow/asset-director.md
+  - pipelines/headline-slideshow/edit-director.md
+  - pipelines/headline-slideshow/compose-director.md
+stages:
+  - slug: research
+    skill: pipelines/headline-slideshow/research-director.md
+    produces: research_brief
+    produces_artifacts:
+      - research_brief
+    required_artifacts_in: []
+    optional_artifacts_in: []
+    required_tools:
+      - brave_search
+    optional_tools: []
+    tools_available:
+      - brave_search
+    human_approval: never
+    checkpoint_required: false
+    review_focus:
+      - Headlines are current, distinct, and phrased as published
+      - Every headline records its source URL
+    success_criteria:
+      - Schema-valid research_brief artifact
+      - research_brief lists 3-7 headlines, each with a source URL
+    estimated_cost:
+      sample:
+        usd: 0.005
+        comment: one brave_search call
+      full:
+        usd: 0.01
+        comment: one or two brave_search calls
+    sample_mode_supported: true
+  - slug: assets
+    skill: pipelines/headline-slideshow/asset-director.md
+    produces: asset_manifest
+    produces_artifacts:
+      - asset_manifest
+    required_artifacts_in:
+      - research_brief
+    optional_artifacts_in: []
+    required_tools:
+      - brave_image_search
+    optional_tools:
+      - stock_cross_search
+    tools_available:
+      - brave_image_search
+      - stock_cross_search
+    human_approval: never
+    checkpoint_required: false
+    review_focus:
+      - Exactly one downloaded still per headline
+      - Every still keeps its attribution metadata and license flag
+    success_criteria:
+      - Schema-valid asset_manifest artifact
+      - One image file on disk per headline with attribution recorded
+    estimated_cost:
+      sample:
+        usd: 0.01
+        comment: one brave_image_search call per headline (sample uses 2 headlines)
+      full:
+        usd: 0.04
+        comment: one brave_image_search call per headline
+    sample_mode_supported: true
+  - slug: edit
+    skill: pipelines/headline-slideshow/edit-director.md
+    produces: edit_decisions
+    produces_artifacts:
+      - edit_decisions
+    required_artifacts_in:
+      - research_brief
+      - asset_manifest
+    optional_artifacts_in: []
+    required_tools: []
+    optional_tools: []
+    tools_available: []
+    human_approval: never
+    checkpoint_required: false
+    review_focus:
+      - One slide per headline, fixed duration, hard cuts
+      - No audio track of any kind is planned
+    success_criteria:
+      - Schema-valid edit_decisions artifact
+      - edit_decisions.render_runtime present
+    estimated_cost:
+      sample:
+        usd: 0
+        comment: agent-authored planning only
+      full:
+        usd: 0
+        comment: agent-authored planning only
+    sample_mode_supported: true
+  - slug: compose
+    skill: pipelines/headline-slideshow/compose-director.md
+    produces: render_report
+    produces_artifacts:
+      - render_report
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+    optional_artifacts_in: []
+    required_tools:
+      - video_compose
+    optional_tools:
+      - remotion
+      - ffmpeg
+      - video_stitch
+    tools_available:
+      - video_compose
+      - remotion
+      - ffmpeg
+      - video_stitch
+    human_approval: never
+    checkpoint_required: false
+    review_focus:
+      - Output is silent (no audio stream) and duration matches slide plan
+      - Headline text is legible over every image
+    success_criteria:
+      - Schema-valid render_report artifact
+      - Output file exists, passes ffprobe validation, and has no audio stream
+    estimated_cost:
+      sample:
+        usd: 0.02
+        comment: local silent render validation
+      full:
+        usd: 0.05
+        comment: full local silent render
+    sample_mode_supported: true

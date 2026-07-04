@@ -36,6 +36,74 @@ export async function awaitStageEvent(
   throw new Error("stream ended before a matching stage event was emitted");
 }
 
+export type StageEventWaiter = (predicate: (event: StageEvent) => boolean) => Promise<StageEvent>;
+
+/**
+ * Persistent multi-wait reader over one NDJSON stream. Unlike awaitStageEvent,
+ * which closes the stream's iterator when its `for await` returns, this keeps a
+ * single iterator alive across calls so revision rounds and later stages can
+ * keep reading the same stdin. Non-matching events are buffered for future waits.
+ */
+export function createStageEventWaiter(stream: AsyncIterable<string | Uint8Array>): StageEventWaiter {
+  const iterator = stream[Symbol.asyncIterator]();
+  const pending: StageEvent[] = [];
+  let buffer = "";
+  let ended = false;
+
+  return async function waitForStageEvent(predicate) {
+    const buffered = takeMatching(pending, predicate);
+    if (buffered !== undefined) {
+      return buffered;
+    }
+
+    while (!ended) {
+      const { value, done } = await iterator.next();
+      if (done) {
+        ended = true;
+        break;
+      }
+
+      buffer += typeof value === "string" ? value : new TextDecoder().decode(value);
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        const event = parseEventLine(line);
+        if (event) {
+          pending.push(event);
+        }
+      }
+
+      const match = takeMatching(pending, predicate);
+      if (match !== undefined) {
+        return match;
+      }
+    }
+
+    const trailingEvent = parseEventLine(buffer);
+    buffer = "";
+    if (trailingEvent) {
+      pending.push(trailingEvent);
+    }
+
+    const match = takeMatching(pending, predicate);
+    if (match !== undefined) {
+      return match;
+    }
+
+    throw new Error("stream ended before a matching stage event was emitted");
+  };
+}
+
+function takeMatching(pending: StageEvent[], predicate: (event: StageEvent) => boolean): StageEvent | undefined {
+  const index = pending.findIndex(predicate);
+  if (index === -1) {
+    return undefined;
+  }
+
+  return pending.splice(index, 1)[0];
+}
+
 function parseEventLine(line: string): StageEvent | undefined {
   const trimmed = line.trim();
 
