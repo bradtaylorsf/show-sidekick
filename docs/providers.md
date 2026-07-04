@@ -234,6 +234,7 @@ Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_*` environment pr
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
+| `brave_image_search` | beta | api | brave | `BRAVE_SEARCH_API_KEY` | searching the whole web for topical or niche image assets beyond stock catalogs; results need a license check before publication | $0.005 / call |
 | `pexels_stock` | beta | api | pexels | `PEXELS_API_KEY` | searching Pexels for production-ready editorial and commercial stock images | $0 / call |
 | `pixabay_stock` | beta | api | pixabay | `PIXABAY_API_KEY` | searching Pixabay for broad stock images with attribution metadata | $0 / call |
 | `unsplash` | beta | api | unsplash | `UNSPLASH_ACCESS_KEY` | Searching Unsplash image assets for documentary and explainer visual coverage. | $0 / call |
@@ -358,6 +359,7 @@ Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_*` environment pr
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
+| `brave_search` | beta | api | brave | `BRAVE_SEARCH_API_KEY` | API-backed web search for episode research and context gathering with attributed results | $0.005 / call |
 | `web_search` | beta | library | show-sidekick | none | Agent-side research capability marker for browser-backed web search | not declared |
 
 ## whisper
