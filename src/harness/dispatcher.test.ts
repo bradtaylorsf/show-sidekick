@@ -4,7 +4,7 @@ import { Registry } from "../registry/index.js";
 import type { LoadedEpisode, LoadedShow } from "../shows/index.js";
 import { createStageContext } from "./context.js";
 import { createExternalAgentDispatcher, createStubDispatcher } from "./dispatcher.js";
-import { awaitStageEvent, type StageEvent } from "./events.js";
+import { awaitStageEvent, createStageEventWaiter, type StageEvent } from "./events.js";
 import type { StageResult } from "./result.js";
 
 describe("stage dispatchers", () => {
@@ -87,6 +87,44 @@ describe("stage events", () => {
     );
 
     expect(event.payload).toEqual(result);
+  });
+
+  it("resolves multiple sequential waits over a single stream", async () => {
+    const first = stageResult({ round: 1 });
+    const second = stageResult({ round: 2 });
+    const wait = createStageEventWaiter(
+      chunks([
+        `${JSON.stringify({ event: "stage_completed", stage: "script", timestamp: "2026-05-12T15:43:00Z", payload: first })}\n`,
+        `${JSON.stringify({ event: "stage_completed", stage: "script", timestamp: "2026-05-12T15:44:00Z", payload: second })}\n`,
+      ]),
+    );
+    const isScriptCompletion = (event: StageEvent) => event.event === "stage_completed" && event.stage === "script";
+
+    await expect(wait(isScriptCompletion)).resolves.toMatchObject({ payload: first });
+    await expect(wait(isScriptCompletion)).resolves.toMatchObject({ payload: second });
+  });
+
+  it("buffers non-matching events for later waits", async () => {
+    const editResult = stageResult({ stage: "edit" });
+    const composeResult = stageResult({ stage: "compose" });
+    const wait = createStageEventWaiter(
+      chunks([
+        `${JSON.stringify({ event: "stage_completed", stage: "edit", timestamp: "2026-05-12T15:43:00Z", payload: editResult })}\n${JSON.stringify({ event: "stage_completed", stage: "compose", timestamp: "2026-05-12T15:44:00Z", payload: composeResult })}\n`,
+      ]),
+    );
+
+    await expect(
+      wait((event) => event.event === "stage_completed" && event.stage === "compose"),
+    ).resolves.toMatchObject({ payload: composeResult });
+    await expect(
+      wait((event) => event.event === "stage_completed" && event.stage === "edit"),
+    ).resolves.toMatchObject({ payload: editResult });
+  });
+
+  it("throws when the stream ends without a matching event", async () => {
+    const wait = createStageEventWaiter(chunks([]));
+
+    await expect(wait(() => true)).rejects.toThrow("stream ended before a matching stage event was emitted");
   });
 });
 
