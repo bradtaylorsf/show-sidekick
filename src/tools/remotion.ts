@@ -281,8 +281,9 @@ async function renderWithRemotionCli(
       outputPath,
       "--codec",
       "h264",
-      "--audio-codec",
-      "aac",
+      // Forcing an audio codec makes Remotion mux a silent AAC track even when the
+      // composition has no sound source; silent pipelines must yield zero audio streams.
+      ...(compositionHasAudio(input, projectRoot, media) ? ["--audio-codec", "aac"] : ["--muted"]),
       "--overwrite",
       "--public-dir",
       publicDir,
@@ -310,6 +311,15 @@ async function renderWithRemotionCli(
       input.cuesheet === undefined ? "No cuesheet supplied; captions/audio timing not embedded." : "Cuesheet supplied; captions and narration timing embedded.",
     ],
   };
+}
+
+export function compositionHasAudio(
+  input: RemotionComposeInput,
+  projectRoot: string,
+  media: RemotionMediaMap = new Map(),
+): boolean {
+  const props = buildRemotionCompositionProps(input, projectRoot, undefined, media);
+  return props.audioSrc !== undefined || props.cuts.some((cut) => cut.kind !== "image" && cut.src !== undefined);
 }
 
 function remotionEntrySource(
@@ -456,7 +466,7 @@ function Scene({ cut, total }) {
   const scale = 1.02 + progress * (cut.index % 2 === 0 ? 0.08 : 0.04);
   const x = (cut.index % 2 === 0 ? -1 : 1) * progress * 36;
   const y = Math.sin(progress * Math.PI) * -18;
-  const title = String(cut.label || "").replace(/^Generated deterministic /, "").slice(0, 96);
+  const title = String(cut.label || "").replace(/^Generated deterministic /, "").slice(0, 160);
   const mediaStyle = {
     width: "100%",
     height: "100%",
