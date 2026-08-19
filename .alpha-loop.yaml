@@ -79,7 +79,7 @@ pipeline:
   verify:
     agent: codex
   learn:
-    agent: codex
+    agent: claude
 
 # === Routing (advanced, hybrid local/cloud) =================================
 # Route Loop stages to specific models on specific endpoints. Powerful for
@@ -112,7 +112,7 @@ pipeline:
 # Process multiple issues in a single agent call. Faster + fewer tokens, but
 # less isolation between issues — best for small, mechanical tasks.
 batch: true
-batch_size: 5
+batch_size: 3
 
 # === Evaluation =============================================================
 # Settings for the eval harness used by `alpha-loop review` and CI eval runs.

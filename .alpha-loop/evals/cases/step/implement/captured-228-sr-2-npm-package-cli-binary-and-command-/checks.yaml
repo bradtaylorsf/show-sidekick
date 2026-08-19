@@ -1,0 +1,10 @@
+type: step
+step: implement
+eval_method: pending
+status: needs-annotation
+source: auto-captured
+captured_from:
+  issue: 228
+  session: session/epic-240-epic-show-sidekick-public-rebrand-and-release-automation
+  date: 2026-05-19
+checks: []

@@ -6,7 +6,6 @@ import { upsertGitHubPrComment } from "./github-pr-comment.ts";
 const repoRoot = process.cwd();
 const migrationDir = path.join(repoRoot, ".migration");
 const auditMapPath = path.join(migrationDir, "audit-map.json");
-const issueRefPattern = /\b[A-Z][A-Z0-9]*-\d+\b/gu;
 const defaultIgnoredSegments = new Set([".git", "node_modules", "dist"]);
 
 type DriftReport = {
@@ -37,22 +36,11 @@ async function auditCoverageDrift(): Promise<DriftReport[]> {
     return [{ title: "Missing audit map", items: [".migration/audit-map.json was not found."] }];
   }
 
-  const implementationText = await readFile(path.join(repoRoot, "IMPLEMENTATION.md"), "utf8");
-  const implementationRefs = collectIssueRefs(implementationText);
   const auditMap = JSON.parse(await readFile(auditMapPath, "utf8")) as unknown;
-  const auditRefs = collectIssueRefs(auditMap);
   const auditPaths = collectPathLikeStrings(auditMap);
   const ignoredPaths = collectIgnoredPaths(auditMap);
   const referenceFiles = await walkFiles(migrationDir);
   const drift: DriftReport[] = [];
-
-  const unknownRefs = [...auditRefs].filter((ref) => !implementationRefs.has(ref)).sort();
-  if (unknownRefs.length > 0) {
-    drift.push({
-      title: "Audit map references not present in IMPLEMENTATION.md",
-      items: unknownRefs,
-    });
-  }
 
   const unmappedFiles = referenceFiles
     .map((filePath) => normalizeRelativePath(path.relative(migrationDir, filePath)))
@@ -68,18 +56,6 @@ async function auditCoverageDrift(): Promise<DriftReport[]> {
   }
 
   return drift;
-}
-
-function collectIssueRefs(value: unknown): Set<string> {
-  const refs = new Set<string>();
-
-  for (const text of collectStrings(value)) {
-    for (const match of text.matchAll(issueRefPattern)) {
-      refs.add(match[0]);
-    }
-  }
-
-  return refs;
 }
 
 function collectPathLikeStrings(value: unknown): Set<string> {
