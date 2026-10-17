@@ -2,6 +2,17 @@
 
 Provider profiles are named setup lanes for demos and repeatable validation runs.
 
+## local-comfy (default local route)
+
+`local-comfy` describes the default, free route: your own ComfyUI (default `http://127.0.0.1:8188`, override with `COMFY_URL`).
+
+- Stills and edits: `comfy_image` (Z-Image-Turbo, Qwen-Image-Edit-2511, Qwen-Image-2.1)
+- Image-to-video and first/last frame: `comfy_video` (Wan 2.2 I2V-A14B, Wan 2.2 TI2V-5B, LTX-2.5)
+- Text-to-video: `comfy_text_to_video` (Wan 2.2 TI2V-5B, LTX-2.5)
+- Upscale and frame interpolation: `comfy_upscale` (SeedVR2 3B/7B, RIFE 4.7)
+
+The registry prefers these tools whenever an engine is ready and falls back to paid providers when it is not. Check readiness with `showkick doctor --profile local-comfy` and install with `showkick setup comfy`. See [ComfyUI](comfyui.md). It is a doctor profile only; `build --provider-profile` still means the paid-sample lane.
+
 ## paid-demo
 
 `paid-demo` validates the first paid-provider lane:
