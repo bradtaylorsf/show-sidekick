@@ -15,6 +15,7 @@ issue: 73
 - Announce paid or externally visible generation before running it, and log provider/model decisions when they affect output.
 - Keep this skill aligned with `bundled/templates/user-project/AGENTS.md`, `specs/06-tool-registry.md`, `specs/08-skills.md`.
 - The source body below is normalized for Show Sidekick paths and terminology while preserving the original operational details.
+- **Local first.** When `showkick doctor` shows a ready local ComfyUI engine, the registry selects `comfy_video` (image-to-video, first/last frame) and `comfy_text_to_video` before any paid gateway below. Read `comfyui-local` for those tools. Switching from the local route to a paid provider is a provider swap: ask first (spec 15).
 
 ## Model Identity
 

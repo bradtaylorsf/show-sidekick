@@ -76,6 +76,23 @@ Free/no-key work includes project scaffolding, preflight checks, bundled starter
 
 Agents must ask before paid generation. They should state the provider, model or tool, why it is needed, whether it is a sample or full run, and the rough cost before continuing.
 
+## Local by default: ComfyUI
+
+Stills, image edits, video clips, and upscales route to a ComfyUI server you run yourself whenever it has a ready engine — $0 per call, media stays on your machine. Paid providers are the fallback, and switching to one is always an ask.
+
+```bash
+showkick doctor --profile local-comfy   # server, node packs, and each engine: ready or the exact missing file + fix
+showkick setup comfy                    # guided install; asks before every install, launch, node pack, and download
+```
+
+| Tool | Engines |
+|---|---|
+| `comfy_image` | Z-Image-Turbo (text-to-image), Qwen-Image-Edit-2511 (edits), Qwen-Image-2.1 |
+| `comfy_video` / `comfy_text_to_video` | Wan 2.2 I2V-A14B (GGUF, 4-step), Wan 2.2 TI2V-5B, LTX-2.5 (native audio) |
+| `comfy_upscale` | SeedVR2 3B / 7B, RIFE 4.7 frame interpolation |
+
+On Apple Silicon everything is bf16/fp16 or GGUF (no fp8 on MPS). Qwen-Image-2.1 is research/non-commercial and LTX-2.5 is gated with a revenue-capped licence, so both are opt-in. Set `COMFY_URL` if ComfyUI is not at `http://127.0.0.1:8188`. Details, model files, and licences: [docs/comfyui.md](docs/comfyui.md).
+
 ## Paid Provider Upgrade
 
 After the no-key sample works, add provider keys to the generated `.env` file or export them in your shell. Then run:
@@ -123,6 +140,7 @@ pnpm show-types:matrix --paid-demo
 - [Concepts](docs/concepts.md)
 - [Prompt library](docs/prompt-library.md)
 - [Providers](docs/providers.md)
+- [Local ComfyUI](docs/comfyui.md)
 - [Show types](docs/show-types.md)
 - [Troubleshooting](docs/quickstart.md#troubleshooting)
 - [Contributing](CONTRIBUTING.md)

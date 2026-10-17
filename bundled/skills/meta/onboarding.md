@@ -31,6 +31,7 @@ Before saying anything creative, make sure the project-local harness cache is cu
 
 ```bash
 showkick update --check --json
+showkick doctor --profile local-comfy --json
 showkick doctor --profile paid-demo --json
 showkick ls tools --json
 ```
@@ -48,6 +49,8 @@ Parse the result into:
 Composition runtimes are their own discovery block: Remotion, HyperFrames, and FFmpeg. Do not bury them inside a generic "video tools" list.
 
 If Remotion or HyperFrames is unavailable, offer `showkick setup runtimes` before the first video that would benefit from motion graphics, animated overlays, or runtime choice. Explain that it installs project-local Remotion, the Remotion CLI, aligned support deps, and HyperFrames; only run it after user approval.
+
+The local ComfyUI route is the default for stills, edits, clips, and upscales. If `showkick doctor --profile local-comfy --json` shows ready engines, plan generation around them first ($0 per call). If ComfyUI is missing or has no engine, offer `showkick setup comfy` as a **complex unlock** (it detects the machine, recommends an engine tier, and asks before each install and download); only after that, or if the user declines, suggest paid providers. Mention that Qwen-Image-2.1 (research licence) and LTX-2.5 (gated, revenue-capped licence) are opt-in.
 
 Python and uv are optional tool runtimes. They can unlock local analysis, transcription, or model-backed tools, but they are not prerequisites for the first no-key animated explainer. Only ask to install or configure them when the selected workflow needs a Python-backed tool.
 

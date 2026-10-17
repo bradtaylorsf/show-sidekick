@@ -31,7 +31,7 @@ The intelligence is in the skills, not in improvised code. An agent that reads t
 When a user says "help me make the first video", "what can this project do?", or gives a broad creative goal, guide them through this path:
 
 1. Run `showkick update --check --json`. If the bundled cache is stale or missing, run `showkick update` before reading `.show-sidekick/` skills, pipelines, playbooks, schemas, or starters. This keeps the project-local agent instructions aligned with the installed harness.
-2. Run `showkick doctor --profile paid-demo --json` and `showkick ls tools --json`, then summarize what is ready, what needs env vars, what needs CLI login, and which composition runtimes are available. If env vars are missing, point the user at the scaffolded `.env` file and the committed `.env.example`; shell exports are also valid and win over file values.
+2. Run `showkick doctor --profile local-comfy --json`, `showkick doctor --profile paid-demo --json`, and `showkick ls tools --json`, then summarize what is ready, what needs env vars, what needs CLI login, and which composition runtimes are available. The local ComfyUI route (`comfy_image`, `comfy_video`, `comfy_text_to_video`, `comfy_upscale`) is the default for stills, edits, clips, and upscales whenever doctor shows a ready engine; it costs nothing per call. If it is not ready, offer `showkick setup comfy` (it asks before each install and download) before suggesting paid providers. If env vars are missing, point the user at the scaffolded `.env` file and the committed `.env.example`; shell exports are also valid and win over file values.
 3. For a broad first-video request, ask one short question before proposing: "What do you do, and what kind of videos would be useful for you?" Use only safe context the user answers with in this session or project. Do not infer or reveal sensitive personal attributes. Offer exactly three specific video ideas, then pick the strongest one if the user asked you to proceed without another choice.
 4. Run `showkick ls starters` and recommend one starter or one pipeline based on the user's goal. For the default first run, use `animated-explainer` so the output is a narrated motion-graphics explainer, not a music-video smoke test.
 5. If Remotion or HyperFrames is unavailable and the video would benefit from motion graphics, animated overlays, or runtime choice, explain that runtime setup may have been skipped or blocked by missing npm. Ask before installing system-level prerequisites such as Node/npm; after approval, run `showkick setup runtimes`. The default first-video path uses Remotion when available and falls back only when the runtime is unavailable.
@@ -91,6 +91,7 @@ When resolving any resource (pipeline, playbook, skill, schema), check the proje
 ## Operating principles
 
 - **Announce before paid execution.** Before any paid generation call, state the tool, provider, model, reason, and whether it is sample or batch. The user is never surprised by a charge.
+- **Local first, and announced.** The registry picks the local ComfyUI tools ahead of paid providers when an engine is ready. They announce tool, model, engine, and licence before running, with no approval prompt. Moving from the local route to a paid provider is a provider switch: ask first. Read `.show-sidekick/skills/agents/comfyui-local.md` before calling a `comfy_*` tool.
 - **Sample-first for any production over $0.50 or 15 minutes.** Render a 15–20 second sample end-to-end before committing to the full run.
 - **Master clock is sacred.** For audio-led pipelines, scenes snap to musical structure (sections, beats, climax). For VO-led pipelines, scenes snap to voiceover structure. Visual cadence never overrides the master clock.
 - **Present both composition runtimes** when both Remotion and HyperFrames are available. Recommend one with rationale; never silently default.
@@ -134,6 +135,8 @@ showkick export <show>/<episode> --format edl        # raw CMX 3600 EDL
 showkick ls pipelines | playbooks | tools | starters | shows
 showkick ls tools --json                    # machine-readable tool availability + install hints
 showkick setup runtimes                     # install Remotion + HyperFrames locally after approval
+showkick doctor --profile local-comfy       # local ComfyUI readiness: server, node packs, engines
+showkick setup comfy                        # guided ComfyUI install; asks before every step
 showkick update                              # refresh .show-sidekick/ cache from the installed harness
 ```
 

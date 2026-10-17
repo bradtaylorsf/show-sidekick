@@ -129,6 +129,7 @@ export class Registry {
       return (
         preferenceRank(left.name, prefs.prefer) - preferenceRank(right.name, prefs.prefer) ||
         availabilityRank(this.availabilityCache.get(left.name)) - availabilityRank(this.availabilityCache.get(right.name)) ||
+        localDefaultRank(left) - localDefaultRank(right) ||
         (discoveryIndex.get(left.name) ?? Number.MAX_SAFE_INTEGER) -
           (discoveryIndex.get(right.name) ?? Number.MAX_SAFE_INTEGER)
       );
@@ -180,6 +181,21 @@ function preferenceRank(name: string, prefer: string[] | undefined): number {
 
 function availabilityRank(availability: Availability | undefined): number {
   return availability?.available === true ? 0 : 1;
+}
+
+/**
+ * Zero-cost local providers tagged `local-default` (the ComfyUI tools) outrank paid
+ * providers once both are available. An explicit `prefer` list still wins, and an
+ * unavailable local tool never blocks a paid fallback.
+ */
+export const LOCAL_DEFAULT_SUPPORT_TAG = "local-default";
+
+export function isLocalDefaultTool(tool: Tool): boolean {
+  return (tool.supports ?? []).includes(LOCAL_DEFAULT_SUPPORT_TAG) && (tool.cost === undefined || tool.cost.usd === 0);
+}
+
+function localDefaultRank(tool: Tool): number {
+  return isLocalDefaultTool(tool) ? 0 : 1;
 }
 
 function unavailableReason(availability: Availability | undefined): string {

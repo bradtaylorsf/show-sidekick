@@ -153,4 +153,26 @@ describe("setup command", () => {
       status: "completed",
     });
   });
+
+  it("routes `setup comfy` (and the comfy tool names) to the guided ComfyUI setup without a one-line install", async () => {
+    const capture = io();
+    const runInstall = vi.fn(async () => undefined);
+    const comfySetup = vi.fn(async () => []);
+    const createRegistry = vi.fn(async () => new Registry({ tools: [] }));
+
+    for (const name of ["comfy", "comfy_video"]) {
+      await createSetupHandler(capture.io, {
+        createRegistry,
+        runInstall,
+        commandExists: async () => true,
+        cwd: () => "/project",
+        comfySetup,
+      })(name, command({ engines: "z-image-turbo", dryRun: true }));
+    }
+
+    expect(comfySetup).toHaveBeenCalledTimes(2);
+    expect(comfySetup).toHaveBeenCalledWith(expect.objectContaining({ engines: "z-image-turbo", dryRun: true }), capture.io);
+    expect(runInstall).not.toHaveBeenCalled();
+    expect(createRegistry).not.toHaveBeenCalled();
+  });
 });

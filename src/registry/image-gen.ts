@@ -28,13 +28,16 @@ type ImageGenContext = ToolContext & {
 type Adapter = (options: ImageGenerateOptions) => Record<string, unknown>;
 
 const adapters: Record<string, Adapter> = {
+  comfy_image: (options) => withCommon(options, { size: options.size, aspect_ratio: options.aspect_ratio, seed: options.seed }),
   openai_image: (options) => withCommon(options, { size: options.size }),
   flux_image: (options) => withCommon(options, { aspect_ratio: options.aspect_ratio, seed: options.seed }),
   google_imagen: (options) => withCommon(options, { aspect_ratio: options.aspect_ratio, seed: options.seed }),
   grok_image: (options) => withCommon(options, { aspect_ratio: options.aspect_ratio }),
   recraft_image: (options) => withCommon(options, { size: options.size }),
 };
-const defaultPromptToolOrder = ["openai_image", "flux_image", "google_imagen", "grok_image", "recraft_image"];
+// The local ComfyUI tool leads: it costs nothing, and firstAvailable() falls through to
+// the paid providers when ComfyUI is not running or has no image engine installed.
+const defaultPromptToolOrder = ["comfy_image", "openai_image", "flux_image", "google_imagen", "grok_image", "recraft_image"];
 
 export const imageGen = {
   generate,

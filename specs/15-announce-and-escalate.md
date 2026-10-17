@@ -19,6 +19,10 @@ Example:
 > Generating 8 hero clips via the `higgsfield` tool (provider: higgsfield, model: kling-v2.1-pro). Reason: the brief is image-to-video for music-video hero shots, and this is the only provider configured for it on this machine. This is the full batch run; sample mode was already approved.
 > Estimated cost: $2.40. Budget remaining: $3.82.
 
+### Local runs announce too
+
+Zero-cost local generation (the ComfyUI `comfy_*` tools) skips the approval prompt but not the announcement: before queueing, the tool states the same block — tool, provider (`comfyui`), model, engine, reason, sample or batch — with an estimate of $0.00 and the engine's licence, through `announceLocalRun()` (an `announce` NDJSON event with `approval: "not_required_local"` in non-interactive mode). A local tool given an `engine` never substitutes a different engine; when that engine is missing a node or model file it fails with the exact item and the fix. Moving from the local route to a paid provider is a provider switch and needs approval like any other.
+
 ## Ask before major changes
 
 The agent must ask the human before changing any of the following:

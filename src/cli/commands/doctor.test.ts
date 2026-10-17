@@ -1,7 +1,8 @@
 import type { Command } from "commander";
 import { describe, expect, it, vi } from "vitest";
 import { Registry, defineTool, type Availability, type Integration } from "../../registry/index.js";
-import { createDoctorHandler } from "./doctor.js";
+import { fakeComfy, installedModels } from "../../comfy/__fixtures__/fake-comfy.js";
+import { checkLocalComfy, createDoctorHandler, type DoctorRow } from "./doctor.js";
 import { z } from "zod";
 
 function captureIo() {
@@ -93,6 +94,68 @@ describe("doctor command", () => {
 
     expect(events).toHaveLength(6);
     expect(events[0]).toMatchObject({ event: "doctor", profile: "paid-demo", status: "ok" });
+  });
+});
+
+describe("doctor local-comfy route", () => {
+  const localRow: DoctorRow = { event: "doctor", profile: "local-comfy", check: "ComfyUI server", description: "x", status: "ok", tools: ["comfy_image"] };
+
+  it("reports the local ComfyUI route first, then the paid profile, by default", async () => {
+    const capture = captureIo();
+
+    await createDoctorHandler(capture.io, {
+      createRegistry: async () => paidDemoRegistry(),
+      probeIntegration: async () => ({ available: true }),
+      localComfy: async () => [localRow],
+    })(command());
+
+    const output = capture.stdout();
+    expect(output.indexOf("doctor: local-comfy (default local route)")).toBe(0);
+    expect(output).toContain("ok ComfyUI server - x");
+    expect(output.indexOf("doctor: paid-demo provider profile")).toBeGreaterThan(0);
+  });
+
+  it("limits --profile local-comfy to the local rows", async () => {
+    const capture = captureIo();
+    const createRegistry = vi.fn(async () => paidDemoRegistry());
+
+    await createDoctorHandler(capture.io, {
+      createRegistry,
+      probeIntegration: async () => ({ available: true }),
+      localComfy: async () => [localRow],
+    })(command({ json: true, profile: "local-comfy" }));
+
+    expect(capture.stdout().trim().split("\n").map((line) => JSON.parse(line) as DoctorRow)).toEqual([localRow]);
+    expect(createRegistry).not.toHaveBeenCalled();
+  });
+
+  it("checks server, node packs, and each engine against a live-shaped ComfyUI", async () => {
+    const comfy = fakeComfy({ models: installedModels() });
+    delete comfy.state.objectInfo.TextEncodeQwenImage21;
+
+    const rows = await checkLocalComfy(comfy.client, async () => ({ available: true }));
+    const byCheck = Object.fromEntries(rows.map((row) => [row.check, row]));
+
+    expect(byCheck["ComfyUI server"]).toMatchObject({ status: "ok", description: "ComfyUI 0.33.0 answering at http://comfy.test:8188" });
+    expect(byCheck["node pack comfyui-gguf"]).toMatchObject({ status: "ok" });
+    expect(byCheck["ComfyUI version"]).toMatchObject({ status: "missing", reason: "missing core node class TextEncodeQwenImage21" });
+    expect(byCheck["engine z-image-turbo"]).toMatchObject({ status: "ok", tools: ["comfy_image"] });
+    expect(byCheck["engine ltx-2.5"]).toMatchObject({
+      status: "missing",
+      setup: "`showkick setup comfy --engines ltx-2.5`",
+      tools: ["comfy_video", "comfy_text_to_video"],
+    });
+    expect(byCheck["engine ltx-2.5"]?.reason).toMatch(/^missing model diffusion_models\/ltx-2\.5-22b-distilled-transformer-bf16\.safetensors/u);
+  });
+
+  it("tells the user how to start ComfyUI when it is not running", async () => {
+    const rows = await checkLocalComfy(fakeComfy({ reachable: false }).client, async () => ({ available: false, reason: "binary not on PATH: comfy" }));
+
+    expect(rows.map((row) => [row.check, row.status])).toEqual([
+      ["comfy-cli", "missing"],
+      ["ComfyUI server", "missing"],
+    ]);
+    expect(rows[1]?.setup).toContain("comfy launch --background");
   });
 });
 

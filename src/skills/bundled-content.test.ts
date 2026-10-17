@@ -36,6 +36,7 @@ const agentSkills = [
   "canvas-procedural-animation",
   "character-animation-qa",
   "character-rigging",
+  "comfyui-local",
   "create-video",
   "d3-viz",
   "doubao-tts",
