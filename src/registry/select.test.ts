@@ -9,7 +9,7 @@ function testTool(
   name: string,
   availability: Availability,
   integration: Integration = { kind: "api", env: [`${name.toUpperCase()}_KEY`], install: "set env" },
-  overrides: Partial<Pick<Tool, "provider" | "supports">> = {},
+  overrides: Partial<Pick<Tool, "provider" | "supports" | "cost">> = {},
 ): Tool {
   return defineTool({
     name,
@@ -19,6 +19,7 @@ function testTool(
     integration,
     best_for: "select tests",
     supports: overrides.supports,
+    cost: overrides.cost,
     input: z.object({ text: z.string() }),
     output: z.object({ path: z.string() }),
     isAvailable: async () => availability,
@@ -109,5 +110,52 @@ describe("Registry.select", () => {
     });
 
     await expect(registry.select("tts")).resolves.toMatchObject({ name: "tts_selector" });
+  });
+
+  it("prefers an available zero-cost local-default tool over paid providers discovered earlier", async () => {
+    const registry = new Registry({
+      tools: [
+        testTool("paid", { available: true }, undefined, { cost: { unit: "clip", usd: 0.5 } }),
+        testTool("local", { available: true }, undefined, { supports: ["local-default"], cost: { unit: "clip", usd: 0 } }),
+      ],
+    });
+
+    await expect(registry.select("tts")).resolves.toMatchObject({ name: "local" });
+  });
+
+  it("falls back to the paid provider when the local-default tool is unavailable", async () => {
+    const registry = new Registry({
+      tools: [
+        testTool("local", { available: false, reason: "ComfyUI not reachable", fix: "install" }, undefined, {
+          supports: ["local-default"],
+          cost: { unit: "clip", usd: 0 },
+        }),
+        testTool("paid", { available: true }, undefined, { cost: { unit: "clip", usd: 0.5 } }),
+      ],
+    });
+
+    await expect(registry.select("tts")).resolves.toMatchObject({ name: "paid" });
+  });
+
+  it("lets an explicit preference pick the paid provider over the local default", async () => {
+    const registry = new Registry({
+      tools: [
+        testTool("local", { available: true }, undefined, { supports: ["local-default"], cost: { unit: "clip", usd: 0 } }),
+        testTool("paid", { available: true }, undefined, { cost: { unit: "clip", usd: 0.5 } }),
+      ],
+    });
+
+    await expect(registry.select("tts", { prefer: ["paid"] })).resolves.toMatchObject({ name: "paid" });
+  });
+
+  it("never treats a paid tool as local-default even if it carries the tag", async () => {
+    const registry = new Registry({
+      tools: [
+        testTool("first", { available: true }),
+        testTool("tagged_paid", { available: true }, undefined, { supports: ["local-default"], cost: { unit: "clip", usd: 1 } }),
+      ],
+    });
+
+    await expect(registry.select("tts")).resolves.toMatchObject({ name: "first" });
   });
 });

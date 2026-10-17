@@ -180,3 +180,25 @@ function testContext(registry: Registry) {
     },
   };
 }
+
+describe("local-first image generation", () => {
+  it("leads with the local comfy_image tool and falls back to paid providers when ComfyUI is not ready", async () => {
+    const localExecute = vi.fn(async () => ({ image_path: "local.png" }));
+    const paidExecute = vi.fn(async () => ({ image_path: "paid.png" }));
+    const ready = new Registry({
+      tools: [imageTool("openai_image", "openai", { execute: paidExecute }), imageTool("comfy_image", "comfyui", { execute: localExecute })],
+    });
+    const down = new Registry({
+      tools: [
+        imageTool("openai_image", "openai", { execute: paidExecute }),
+        imageTool("comfy_image", "comfyui", { availability: { available: false, reason: "ComfyUI not reachable" } }),
+      ],
+    });
+
+    await expect(imageGen.generate({ prompt: "a still", aspect_ratio: "16:9" }, testContext(ready))).resolves.toMatchObject({
+      image_path: "local.png",
+    });
+    expect(localExecute).toHaveBeenCalledWith({ prompt: "a still", aspect_ratio: "16:9" }, expect.anything());
+    await expect(imageGen.generate({ prompt: "a still" }, testContext(down))).resolves.toMatchObject({ image_path: "paid.png" });
+  });
+});

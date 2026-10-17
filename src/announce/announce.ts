@@ -68,6 +68,44 @@ export async function announceBeforeExecute<I, O>(
   return await runner();
 }
 
+export type LocalRunAnnouncement = {
+  tool: string;
+  provider: string;
+  model: string;
+  engine?: string;
+  reason: string;
+  sample_or_batch: SampleOrBatch;
+  endpoint?: string;
+  licence?: string;
+};
+
+/**
+ * Spec 15 asks for the tool, provider, and model to be stated before every
+ * consequential generation, not only paid ones. Zero-cost local runs (ComfyUI)
+ * announce through here: same block, $0.00 estimate, no approval prompt.
+ */
+export function announceLocalRun(block: LocalRunAnnouncement, options: { mode?: InteractionMode; io?: AnnounceIO } = {}): void {
+  const payload = { ...block, estimate_usd: 0, cost_unit: "local", approval: "not_required_local" };
+
+  if (isNonInteractive(options.mode)) {
+    emitNdjson(options.io, "announce", payload);
+    return;
+  }
+
+  const where = block.endpoint === undefined ? "" : ` on the local ComfyUI at ${block.endpoint}`;
+  const engine = block.engine === undefined || block.engine === block.model ? "" : `, engine: ${block.engine}`;
+  const licence = block.licence === undefined ? "" : `\nLicence: ${block.licence}${/[.!?]$/u.test(block.licence) ? "" : "."}`;
+  writeHuman(
+    options.io,
+    [
+      `Generating via the \`${block.tool}\` tool (provider: ${block.provider}, model: ${block.model}${engine})${where}.`,
+      `Reason: ${block.reason}`,
+      `This is the ${block.sample_or_batch} run.`,
+      `Estimated cost: $0.00 (local; no provider charge).${licence}`,
+    ].join("\n"),
+  );
+}
+
 async function recordProceedWithoutApproval<I, O>(
   input: AnnounceBeforeExecuteInput<I, O>,
   block: AnnounceBlock,
