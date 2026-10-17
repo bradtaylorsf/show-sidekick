@@ -311,6 +311,7 @@ function emitInitialized(io: CliIo, options: InitOptions, event: InitEvent): voi
           : [`  ${BRANDING.primaryCli} setup runtimes  # optional: install Remotion + HyperFrames locally`]),
         `  ${BRANDING.primaryCli} build ${event.starter}/sample-episode --sample`,
         `  ${BRANDING.primaryCli} export ${event.starter}/sample-episode --target premiere`,
+        `  local generation (default, free): ${BRANDING.primaryCli} setup comfy  # ComfyUI stills, edits, clips, upscales`,
         `  paid upgrade: edit .env, then run ${BRANDING.primaryCli} doctor --profile paid-demo`,
       ]
     : [
@@ -321,6 +322,7 @@ function emitInitialized(io: CliIo, options: InitOptions, event: InitEvent): voi
           : [`  ${BRANDING.primaryCli} setup runtimes  # optional: install Remotion + HyperFrames locally`]),
         `  ${BRANDING.primaryCli} ls starters`,
         `  ${BRANDING.primaryCli} new show first-video --from animated-explainer`,
+        `  local generation (default, free): ${BRANDING.primaryCli} setup comfy  # ComfyUI stills, edits, clips, upscales`,
         `  paid upgrade: edit .env, then run ${BRANDING.primaryCli} doctor --profile paid-demo`,
       ];
   const agentPrompt = [

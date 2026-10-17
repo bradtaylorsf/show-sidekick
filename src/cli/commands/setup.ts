@@ -2,6 +2,7 @@ import { exec } from "node:child_process";
 import type { Command } from "commander";
 import { Registry } from "../../registry/index.js";
 import type { Integration } from "../../registry/tool.js";
+import { COMFY_SETUP_NAMES, createComfySetupRunner, type ComfySetupCliOptions, type ComfySetupRunner } from "./comfy-setup.js";
 import type { CliIo, GlobalOptions } from "./stub.js";
 
 export type SetupDeps = {
@@ -9,6 +10,7 @@ export type SetupDeps = {
   runInstall: (command: string, options: { cwd: string }) => Promise<void>;
   commandExists: (binary: string, options: { cwd: string }) => Promise<boolean>;
   cwd: () => string;
+  comfySetup?: ComfySetupRunner;
 };
 
 type SetupEvent = {
@@ -34,6 +36,13 @@ export function createSetupHandler(io: CliIo, deps: SetupDeps = defaultDeps) {
   return async (...actionArgs: unknown[]): Promise<void> => {
     const toolName = readToolName(actionArgs);
     const options = readGlobalOptions(actionArgs.at(-1));
+
+    if (COMFY_SETUP_NAMES.has(toolName)) {
+      const runner = deps.comfySetup ?? createComfySetupRunner();
+      await runner(options as ComfySetupCliOptions, io);
+      return;
+    }
+
     const registry = await deps.createRegistry();
     const toolNames = SETUP_ALIASES[toolName] ?? [toolName];
     const tools = toolNames.map((name) => {
