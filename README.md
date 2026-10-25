@@ -141,6 +141,7 @@ pnpm show-types:matrix --paid-demo
 - [Prompt library](docs/prompt-library.md)
 - [Providers](docs/providers.md)
 - [Local ComfyUI](docs/comfyui.md)
+- [All-local production: Blender, Voicebox, local sound](docs/local-production.md)
 - [Show types](docs/show-types.md)
 - [Troubleshooting](docs/quickstart.md#troubleshooting)
 - [Contributing](CONTRIBUTING.md)
