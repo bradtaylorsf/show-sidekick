@@ -51,5 +51,12 @@ describe("tool discovery", () => {
     expect(registry.get("video_selector")?.capability).toBe("image_to_video");
     expect(registry.get("web_search")?.capability).toBe("web_search");
     expect(registry.get("hyperframes_compose")?.capability).toBe("video_compose");
+    expect(registry.get("comfy_image")?.capability).toBe("image_generation");
+    expect(registry.get("comfy_video")?.capability).toBe("image_to_video");
+    expect(registry.get("comfy_text_to_video")?.capability).toBe("text_to_video");
+    expect(registry.get("comfy_upscale")?.capability).toBe("upscale");
+    for (const name of ["comfy_image", "comfy_video", "comfy_text_to_video", "comfy_upscale"]) {
+      expect(registry.get(name)).toMatchObject({ provider: "comfyui", cost: { usd: 0 }, supports: expect.arrayContaining(["local-default"]) });
+    }
   });
 });

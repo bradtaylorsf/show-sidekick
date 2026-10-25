@@ -130,6 +130,8 @@ Routing across providers for a capability (TTS, image, video, music, capture) is
 
 Some capabilities also expose a Show Sidekick provider-selection marker tool for discovery when no concrete provider is bundled yet, or when a manifest needs a stable capability entry. Marker tools use `supports: ['provider-selection']` and throw a clear error if executed directly. When concrete providers exist for the same capability, `registry.select()` ignores the marker and ranks only executable providers.
 
+`registry.select()` ranks candidates by: the caller's `prefer` list, then availability, then **local default**, then discovery order. A tool is a local default when it carries `supports: ['local-default']` **and** costs $0 (`cost` absent or `usd: 0`); the bundled ComfyUI tools (`comfy_image`, `comfy_video`, `comfy_text_to_video`, `comfy_upscale`) are the only ones today. So when the user's ComfyUI is running with a ready engine, stills, edits, clips, and upscales route locally for free; when it is not, the same `select()` falls through to the paid providers. A paid tool carrying the tag is not treated as local. `imageGen.generate()` applies the same rule by listing `comfy_image` first in its prompt-tool order. Leaving the local route for a paid provider mid-run is still a provider swap under spec 15.
+
 Runner preflight treats marker tools as presence-only entries. It may validate
 that the marker is registered and that `isAvailable()` reports true, but it
 must not call `execute({})` as a health probe. Direct execution is reserved for
@@ -139,6 +141,7 @@ agent or runner selects the real provider for the stage.
 ## Setup UX
 
 - `showkick setup <tool>` reads the tool's setup metadata and shells out to the tool's own login/install commands. For `cli-login` tools whose binary is already installed, setup may run the login refresh command directly instead of repeating the install step. `showkick setup runtimes` is a built-in setup alias for installing the rich composition runtimes `remotion` and `hyperframes` as project-local dev dependencies, including the Remotion CLI and aligned support packages.
+- `showkick setup comfy` (also reached through any `comfy_*` tool name) is a guided local-ComfyUI setup rather than a one-line install: it detects the hardware tier (Apple Silicon unified memory vs CUDA VRAM), then prints and — only after a yes at its own prompt — runs `uv tool install comfy-cli`, `comfy --skip-prompt install --m-series|--nvidia|--cpu`, `comfy launch --background`, `comfy node install <packs>`, and per-file model downloads with size, source repo, and licence listed first. Non-TTY, `--json`, and `--dry-run` runs print the plan and execute nothing. It never installs uv or other system tools, never runs `comfy update`, and never passes a Hugging Face token; gated files wait for the user's own `hf auth login`. `showkick doctor` reports the `local-comfy` route (server, comfy-cli, node packs, each engine's missing node class or model file) before the paid profile; `--profile local-comfy` limits it to that section.
 - `showkick ls tools --json` includes each tool's `install` string so agents can offer exact setup commands instead of paraphrasing registry metadata.
 - Show Sidekick never collects, stores, or transmits credentials. CLI tools own their own auth (e.g. `higgsfield auth login` keeps a token in the CLI's own config dir; API tools rely on env vars in the user's shell).
 - The provider menu groups setup offers by 1-minute fixes (env var or `cli-login`), 5-minute installs, and complex setups (GPU, model downloads).
@@ -146,6 +149,8 @@ agent or runner selects the real provider for the stage.
 ## Provider profiles
 
 Provider profiles are named setup lanes that group concrete tools and preflight checks for repeatable demos. The first shipped profile is `paid-demo`: OpenAI GPT Image 2 still generation (`openai_image` through the Image API with `OPENAI_API_KEY`), OpenAI TTS fallback (`OPENAI_API_KEY`), ElevenLabs TTS (`ELEVENLABS_API_KEY`), Higgsfield image-to-video (`higgsfield` plus `higgsfield account status --json`), optional Higgsfield GPT Image 2 still generation (`higgsfield_image` through the `higgsfield` CLI), and local `ffmpeg` / `ffprobe`.
+
+`local-comfy` is a doctor-only profile (`showkick doctor --profile local-comfy`) that describes the default local route; it is deliberately not accepted by `build --provider-profile`, which drives the paid-sample lane. A paid sample can still use the local tools by naming them in `sample_providers` (for example `image: { tools: [comfy_image] }`, `video: { tools: [comfy_video] }`).
 
 A provider profile is not a hard provider lock. Paid samples resolve actual image, video, and TTS tools from `sample_providers` in pipeline, playbook, show, per-pipeline show config, and episode config. If no sample provider plan is declared, the dispatcher falls back to the profile's default sample stack.
 

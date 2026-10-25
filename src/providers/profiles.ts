@@ -145,6 +145,29 @@ export const PAID_DEMO_PROFILE: ProviderProfile = {
   ],
 };
 
+/**
+ * The default local route: free ComfyUI tools first for stills, edits, clips, and
+ * upscales, falling back to the paid providers above only when ComfyUI is not ready.
+ * It is a doctor profile (`showkick doctor --profile local-comfy`), deliberately not a
+ * build `--provider-profile`: that flag drives the paid-sample lane.
+ */
+export const LOCAL_COMFY_PROFILE_SLUG = "local-comfy";
+
+export const LOCAL_COMFY_ROUTE = {
+  slug: LOCAL_COMFY_PROFILE_SLUG,
+  display_name: "Local ComfyUI (default)",
+  description:
+    "Your own ComfyUI at COMFY_URL (default http://127.0.0.1:8188): Z-Image-Turbo / Qwen-Image stills and edits, Wan 2.2 / LTX-2.5 clips, SeedVR2 + RIFE upscaling. $0 per call.",
+  selected_stack: {
+    image_generation: "comfy_image",
+    image_edit: "comfy_image",
+    image_to_video: "comfy_video",
+    text_to_video: "comfy_text_to_video",
+    upscale: "comfy_upscale",
+  },
+  setup: "showkick setup comfy",
+} as const;
+
 const PROFILES = new Map<ProviderProfileSlug, ProviderProfile>([[PAID_DEMO_PROFILE.slug, PAID_DEMO_PROFILE]]);
 
 export function getProviderProfile(slug: string): ProviderProfile | undefined {

@@ -253,7 +253,10 @@ function registerCommands(program: Command, io: CliIo, options: RegisterCommandO
 
   program
     .command("setup <tool>")
-    .description("run tool native login/install, or setup runtimes")
+    .description("run tool native login/install, setup runtimes, or the guided local ComfyUI setup (setup comfy)")
+    .option("--engines <list>", "setup comfy: comma-separated engines to prepare (default: the hardware tier's Apache-2.0 set)")
+    .option("--skip-models", "setup comfy: skip the model download step")
+    .option("--workspace <path>", "setup comfy: ComfyUI workspace path when `comfy which` cannot find it")
     .action(createSetupHandler(io));
 
   program

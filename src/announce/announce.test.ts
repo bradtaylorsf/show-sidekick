@@ -7,6 +7,7 @@ import {
   AwaitingHuman,
   announceBeforeExecute,
   announceCapabilityExtension,
+  announceLocalRun,
   detectMajorChange,
   enforceMotionGuardrail,
   requireApproval,
@@ -144,6 +145,49 @@ describe("announceBeforeExecute", () => {
       }),
     ).rejects.toBeInstanceOf(AbortedByUser);
     expect(calls).toBe(0);
+  });
+});
+
+describe("announceLocalRun", () => {
+  const block = {
+    tool: "comfy_video",
+    provider: "comfyui",
+    model: "wan2.2-i2v-a14b-q8-gguf-seko-4step",
+    engine: "wan2.2-i2v-a14b",
+    reason: "Generate a 5s clip locally.",
+    sample_or_batch: "sample" as const,
+    endpoint: "http://127.0.0.1:8188",
+    licence: "Apache-2.0 — Permissive; commercial use allowed.",
+  };
+
+  it("states tool, provider, model and $0 before a local run without asking for approval", () => {
+    const writes: string[] = [];
+    announceLocalRun(block, {
+      mode: "interactive",
+      io: {
+        write: (message) => writes.push(message),
+        prompt: () => {
+          throw new Error("must not prompt");
+        },
+      },
+    });
+
+    expect(writes).toEqual([
+      [
+        "Generating via the `comfy_video` tool (provider: comfyui, model: wan2.2-i2v-a14b-q8-gguf-seko-4step, engine: wan2.2-i2v-a14b) on the local ComfyUI at http://127.0.0.1:8188.",
+        "Reason: Generate a 5s clip locally.",
+        "This is the sample run.",
+        "Estimated cost: $0.00 (local; no provider charge).",
+        "Licence: Apache-2.0 — Permissive; commercial use allowed.",
+      ].join("\n"),
+    ]);
+  });
+
+  it("emits an announce event in non-interactive mode", () => {
+    const events: Array<[string, unknown]> = [];
+    announceLocalRun(block, { mode: "non_interactive", io: { event: (event, payload) => events.push([event, payload]) } });
+
+    expect(events).toEqual([["announce", expect.objectContaining({ tool: "comfy_video", estimate_usd: 0, approval: "not_required_local" })]]);
   });
 });
 

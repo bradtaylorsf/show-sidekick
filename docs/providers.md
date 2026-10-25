@@ -140,6 +140,7 @@ Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_*` environment pr
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
+| `comfy_image` | beta | api | comfyui | none | Default local stills and image edits through your own ComfyUI: Z-Image-Turbo text-to-image, Qwen-Image-Edit-2511 edits with up to 3 reference images, Qwen-Image-2.1 (research licence). No provider charge. | $0 / image |
 | `flux_image` | beta | api | bfl | `BFL_API_KEY` | high-quality FLUX prompt-to-image generation with API cost tracking | $0.04 / image |
 | `google_imagen` | beta | api | google | `GOOGLE_APPLICATION_CREDENTIALS` | Google Imagen API generations through Vertex AI with service-account authentication | $0.04 / image |
 | `grok_image` | beta | api | xai | `XAI_API_KEY` | Grok image generations through xAI's OpenAI-compatible image endpoint | $0.07 / image |
@@ -168,6 +169,7 @@ Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_*` environment pr
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
 | `cogvideo_video` | experimental | api | replicate | `REPLICATE_API_TOKEN` | Open-source CogVideoX image-to-video experiments through Replicate. | $0.5 / clip |
+| `comfy_video` | beta | api | comfyui | none | Default local image-to-video and first/last-frame clips through your own ComfyUI: Wan 2.2 I2V-A14B (Q8 GGUF, 4-step), Wan 2.2 TI2V-5B, LTX-2.5 with native audio. No provider charge. | $0 / clip |
 | `hunyuan_video` | experimental | api | replicate | `REPLICATE_API_TOKEN` | Open-source Hunyuan image-to-video experiments through Replicate. | $0.5 / clip |
 | `kling_video` | production | api | kling | `KLING_ACCESS_KEY`, `KLING_SECRET_KEY` | Premium Kling v2.1 Pro direct API image-to-video clips. | $0.3 / clip |
 | `ltx_video_modal` | experimental | api | modal | `MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET`, `MODAL_LTX_URL` | Modal-hosted LTX image-to-video when local GPU capacity is unavailable. | $0.15 / clip |
@@ -278,6 +280,7 @@ Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_*` environment pr
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
+| `comfy_text_to_video` | beta | api | comfyui | none | Default local text-to-video through your own ComfyUI: Wan 2.2 TI2V-5B, or LTX-2.5 with native audio. No provider charge. | $0 / clip |
 | `grok_video` | experimental | api | xai | `XAI_API_KEY` | Grok text-to-video generations through the xAI API. | $0.5 / clip |
 | `veo_video` | beta | api | google | `GOOGLE_API_KEY` | Google Veo text-to-video clips for premium cinematic motion. | $0.5 / second |
 
@@ -314,6 +317,7 @@ Show Sidekick-owned tool configuration uses the `SHOW_SIDEKICK_*` environment pr
 
 | name | status | integration | provider/binary | auth | best_for/blurb | cost |
 |---|---|---|---|---|---|---|
+| `comfy_upscale` | beta | api | comfyui | none | Default local restore-upscale for stills and clips through your own ComfyUI: SeedVR2 3B (fp16) or 7B (Q8 GGUF, quality), plus RIFE 4.7 frame interpolation. Conservative defaults. No provider charge. | $0 / call |
 | `upscale` | beta | library | show-sidekick | none | capability discovery for increasing image or clip resolution | not declared |
 
 ## video_analysis
