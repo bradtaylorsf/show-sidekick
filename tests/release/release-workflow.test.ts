@@ -74,10 +74,10 @@ describe("release workflow", () => {
     expect(pkg.files).toEqual(expect.arrayContaining(["dist", "bundled", "docs", "README.md", "CHANGELOG.md", "LICENSE"]));
     expect(pkg.scripts).toEqual(
       expect.objectContaining({
-        changeset: "pnpm dlx @changesets/cli",
+        changeset: "pnpm dlx @changesets/cli@2.31.1",
         "changeset:gate": "node --import tsx scripts/changeset-pr-gate.ts",
-        "changeset:status": "pnpm dlx @changesets/cli status --since=origin/main",
-        "changeset:version": "pnpm dlx @changesets/cli version",
+        "changeset:status": "pnpm dlx @changesets/cli@2.31.1 status --since=origin/main",
+        "changeset:version": "pnpm dlx @changesets/cli@2.31.1 version",
         "changeset:publish": "pnpm build && npm publish --provenance --access public",
         "release:verify:npm": "node --import tsx scripts/release-npm-version-check.ts",
         "release:smoke:pack": "pnpm build && SHOW_SIDEKICK_PACKED_TARBALL_SMOKE=1 vitest run tests/release/packed-tarball-smoke.test.ts",
