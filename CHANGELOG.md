@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0
+
+### Minor Changes
+
+- bf88f00: Local ComfyUI is now the default route for stills, image edits, video clips, and upscaling. New `comfy_image` (Z-Image-Turbo, Qwen-Image-Edit-2511, Qwen-Image-2.1), `comfy_video` / `comfy_text_to_video` (Wan 2.2 I2V-A14B GGUF, Wan 2.2 TI2V-5B, LTX-2.5 with native audio), and `comfy_upscale` (SeedVR2 3B/7B, RIFE 4.7) tools cost $0, announce before running, and report per-engine readiness with the exact missing node or model file. `registry.select()` prefers zero-cost `local-default` tools once available and falls back to paid providers otherwise. `showkick doctor` now reports the `local-comfy` route first (`--profile local-comfy` for just that), and `showkick setup comfy` is a guided install that detects Apple Silicon vs CUDA, recommends an engine tier, and asks before every install, launch, node pack, and model download (with sizes, source repos, and licences). Apple Silicon defaults are bf16/fp16/GGUF only; fp8 and int8_convrot weights are refused on MPS.
+
+### Patch Changes
+
+- b70b77b: Add all-local production guidance: `docs/local-production.md` plus four agent skills — `blender-animation` (spec-first, idempotent headless bpy, render→critique→fix loop, chunked resumable renders), `blender-5-api` (5.x API pitfalls), `voicebox` (local Qwen3-TTS/Kokoro narration and voice cloning via the Voicebox app), and `local-sound` (commercially safe local SFX and music: Stable Audio Open, ACE-Step 1.5, Freesound CC0, and the licence traps to avoid).
+
 ## 0.3.0
 
 ### Minor Changes
