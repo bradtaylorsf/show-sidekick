@@ -14,6 +14,7 @@ import { recordDecision, type DecisionStoreOptions, type ShowEpisodeTarget } fro
 import { findProjectRoot, parseShowEpisode } from "../../paths/project.js";
 import { Registry, type Capability, type Tool } from "../../registry/index.js";
 import { loadEpisode, loadShow, type LoadedEpisode } from "../../shows/load.js";
+import { transcriptionProviderPin } from "../../tool-support/whisper.js";
 import { defaultIo, type CliIo, type GlobalOptions } from "./stub.js";
 
 export type CuesheetSummary = {
@@ -160,10 +161,22 @@ async function buildAudioCuesheet(input: {
   return { cuesheet, ...(lyricsLineCount === undefined ? {} : { lyricsLineCount }) };
 }
 
-function readTrackPath(episode: LoadedEpisode): string | undefined {
-  const track = episode.inputs.track;
+const AUDIO_EXTENSIONS = new Set([".aac", ".aiff", ".flac", ".m4a", ".mp3", ".ogg", ".wav"]);
 
-  return typeof track === "string" && track.trim() !== "" ? track : undefined;
+/** `inputs.track` (music) or, for pre-recorded voiceover, an audio `inputs.narration`. */
+function readTrackPath(episode: LoadedEpisode): string | undefined {
+  const track = nonEmptyString(episode.inputs.track);
+  if (track !== undefined) {
+    return track;
+  }
+
+  // inputs.narration is also used for narration *scripts* (.txt); only audio counts here.
+  const narration = nonEmptyString(episode.inputs.narration);
+  return narration !== undefined && AUDIO_EXTENSIONS.has(path.extname(narration).toLowerCase()) ? narration : undefined;
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() !== "" ? value : undefined;
 }
 
 function resolveTrackPath(projectRoot: string, trackPath: string): string {
@@ -211,17 +224,29 @@ function looksLikeLyricsPath(value: string): boolean {
 
 async function preflightAudioTools(registry: Registry): Promise<Array<{ capability: Capability; tool: string }>> {
   await registry.refreshAvailability();
+  const pin = transcriptionProviderPin();
+  // Transcription is satisfied by local whisper or, when pinned or as a fallback, an API transcriber.
+  const transcription: Capability[] = pin === "whisper-cpp" ? ["whisper"] : pin !== undefined ? ["transcribe"] : ["whisper", "transcribe"];
 
-  return (["whisper", "beats"] as const).map((capability) => {
-    const candidates = registry.byCapability(capability);
-    const selected = candidates.find((tool) => registry.getAvailability(tool.name)?.available === true);
+  return [transcription, ["beats"] as Capability[]].map((capabilities) => {
+    const candidates = capabilities.flatMap((capability) =>
+      registry.byCapability(capability).filter((tool) => pin === undefined || capability !== "transcribe" || tool.name === pin),
+    );
+    const selected = candidates.find(
+      (tool) => !isProviderSelectionMarker(tool) && registry.getAvailability(tool.name)?.available === true,
+    );
+    const capability = capabilities[0] as Capability;
 
     if (selected === undefined) {
       throw new Error(`audio preflight failed: ${formatUnavailableCapability(capability, candidates, registry)}`);
     }
 
-    return { capability, tool: selected.name };
+    return { capability: selected.capability, tool: selected.name };
   });
+}
+
+function isProviderSelectionMarker(tool: Tool): boolean {
+  return tool.provider === "show-sidekick" && (tool.supports ?? []).includes("provider-selection");
 }
 
 function formatUnavailableCapability(capability: Capability, candidates: Tool[], registry: Registry): string {
@@ -262,9 +287,9 @@ async function deriveVoiceoverCuesheet(projectRoot: string, show: string, episod
     readJsonRecord(path.join(dir, "scene_plan.json")),
     readJsonRecord(path.join(dir, "edit_decisions.json")),
     readJsonRecord(path.join(dir, "render_report.json")),
-  ]).catch((error: unknown) => {
+  ]).catch(() => {
     throw new Error(
-      `episode.inputs.track is missing and no completed voiceover artifacts were found to derive a cuesheet: ${errorMessage(error)}`,
+      `episode has no audio input for \`${BRANDING.primaryCli} cuesheet\`: set inputs.track (music) or inputs.narration (pre-recorded voiceover audio) in shows/${show}/episodes/${episode}.yaml to an audio file. No completed voiceover build was found to derive timing from instead.`,
     );
   });
   const durationS = positiveNumber(renderReport.duration_s) ?? maxSectionEnd(script) ?? maxSceneEnd(scenePlan);
@@ -272,7 +297,7 @@ async function deriveVoiceoverCuesheet(projectRoot: string, show: string, episod
 
   if (durationS === undefined || audioPath === undefined) {
     throw new Error(
-      `episode.inputs.track is missing and completed artifacts do not include render duration plus an audio track for \`${BRANDING.primaryCli} cuesheet\``,
+      `episode has no inputs.track or audio inputs.narration, and completed artifacts do not include render duration plus an audio track for \`${BRANDING.primaryCli} cuesheet\``,
     );
   }
 
@@ -515,8 +540,4 @@ function isRecord(value: unknown): value is RecordValue {
 
 function roundTime(value: number): number {
   return Math.round(value * 1000) / 1000;
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

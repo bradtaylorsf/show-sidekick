@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { watch as fsWatch } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
@@ -11,6 +12,8 @@ import {
   type ResolvedDropMatch,
   type ShowIngestWatchEntry,
 } from "../../shows/ingest.js";
+import { episodeFilePath } from "../../shows/load.js";
+import { writeEpisodeFromDrop } from "../scaffold/from-drop.js";
 import type { CliIo, GlobalOptions } from "./stub.js";
 
 export type WatchEvent = {
@@ -38,6 +41,15 @@ type DropDetectedEvent = {
   suggested_command: string;
 };
 
+type WatchOptions = GlobalOptions & {
+  /** Write the episode YAML for each new drop instead of only suggesting `import`. */
+  import?: boolean;
+};
+
+type WatchImportEvent =
+  | { event: "episode_imported"; show: string; episode: string; pipeline: string; path: string; source: string }
+  | { event: "episode_exists"; show: string; episode: string; path: string; source: string };
+
 type WatchIdleEvent = {
   event: "watch_idle";
   reason: "no_ingest_watch_entries";
@@ -46,7 +58,7 @@ type WatchIdleEvent = {
 export function createWatchHandler(io: CliIo, deps: WatchDeps = {}) {
   return async (...actionArgs: unknown[]): Promise<void> => {
     const command = actionArgs.at(-1) as Command;
-    const options = command.optsWithGlobals<GlobalOptions>();
+    const options = command.optsWithGlobals<WatchOptions>();
     const cwd = deps.cwd?.() ?? process.cwd();
     const projectRoot = findProjectRoot(cwd);
     const entries = await loadAllShowIngest(projectRoot);
@@ -90,7 +102,7 @@ const defaultWatch: WatchFactory = (rootPath, options) =>
 
 async function watchRootForDrops(input: {
   io: CliIo;
-  options: GlobalOptions;
+  options: WatchOptions;
   projectRoot: string;
   watch: WatchFactory;
   watchRoot: string;
@@ -109,6 +121,11 @@ async function watchRootForDrops(input: {
 
     const match = await resolveDropMatch(eventPath, input.watchEntries);
     if (!match || wasRecentlySeen(match.matchedFilePath, input.seen, input.now())) {
+      continue;
+    }
+
+    if (input.options.import === true && match.watchEntry.slug_from !== "prompt") {
+      await importDrop(input.io, input.options, input.projectRoot, match);
       continue;
     }
 
@@ -140,6 +157,36 @@ function emitDrop(
   }
 
   io.stdout.write(`${suggestedCommand}\n`);
+}
+
+async function importDrop(
+  io: CliIo,
+  options: WatchOptions,
+  projectRoot: string,
+  match: ResolvedDropMatch,
+): Promise<void> {
+  const slug = deriveSlug(match.matchedFilePath, match.watchEntry);
+  const source = projectRelativePath(projectRoot, match.matchedFilePath);
+  const episodeFile = episodeFilePath(match.show, slug);
+  let event: WatchImportEvent;
+
+  if (existsSync(episodeFile)) {
+    event = { event: "episode_exists", show: match.show.slug, episode: slug, path: episodeFile, source };
+  } else {
+    const written = await writeEpisodeFromDrop(match.show, slug, match);
+    event = { event: "episode_imported", show: match.show.slug, episode: slug, pipeline: written.pipeline, path: written.path, source };
+  }
+
+  if (options.json) {
+    io.stdout.write(`${JSON.stringify(event)}\n`);
+    return;
+  }
+
+  io.stdout.write(
+    event.event === "episode_imported"
+      ? `watch: imported ${source} -> ${event.path}; next: ${BRANDING.primaryCli} build ${match.show.slug}/${slug}\n`
+      : `watch: ${match.show.slug}/${slug} already exists (${event.path}); skipped ${source}\n`,
+  );
 }
 
 function emitIdle(io: CliIo, options: GlobalOptions): void {
