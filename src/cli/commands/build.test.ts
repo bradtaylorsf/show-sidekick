@@ -171,6 +171,79 @@ describe("build command", () => {
     expect(output().stderr).toContain("sample unsupported");
   });
 
+  it("fails fast with guidance when a full build has no agent and stdin is a terminal", async () => {
+    const root = await scratchProject();
+    process.chdir(root);
+
+    const { program, output } = captureProgram({
+      registryFactory: () => new Registry({ tools: [] }),
+      stdin: Object.assign(emptyStream(), { isTTY: true }),
+      env: {},
+    });
+
+    await expect(program.parseAsync(["node", "predit", "build", "show/episode"], { from: "node" })).rejects.toMatchObject({
+      exitCode: 2,
+      code: "show-sidekick.no_agent_attached",
+    });
+    expect(output().stderr).toContain("pipeline 'framework-smoke' is agent-orchestrated");
+    expect(output().stderr).toContain("--agent");
+    expect(output().stderr).toContain("--sample");
+  });
+
+  it("replaces the raw stream-ended error when stdin closes before the agent reports", async () => {
+    const root = await scratchProject();
+    process.chdir(root);
+
+    const { program, output } = captureProgram({
+      registryFactory: () => new Registry({ tools: [] }),
+      stdin: emptyStream(),
+      env: {},
+    });
+
+    await program.parseAsync(["node", "predit", "--json", "build", "show/episode", "--non-interactive"], { from: "node" });
+
+    expect(output().stderr).toContain("stdin closed before the agent reported a stage_completed event");
+    const finished = output()
+      .stdout.trim()
+      .split(/\r?\n/u)
+      .map((line) => JSON.parse(line) as { event: string; status?: string })
+      .at(-1);
+    expect(finished).toMatchObject({ event: "build_finished", status: "failed" });
+  });
+
+  it("runs every stage through the --agent command and records the run in checkpoints", async () => {
+    const root = await scratchProject();
+    process.chdir(root);
+    const agent = path.join(root, "agent.cjs");
+    await writeFile(
+      agent,
+      `
+      const stage = process.env.SHOWKICK_STAGE;
+      const artifacts = ${JSON.stringify({ research: fixtures.research?.artifact, script: fixtures.script?.artifact })};
+      console.log(JSON.stringify({
+        event: "stage_completed",
+        stage,
+        timestamp: "2026-05-12T15:42:00.000Z",
+        payload: { artifact: artifacts[stage], cost_used: { stage_cost_usd: 0, total_so_far_usd: 0, budget_remaining_usd: 3 }, decisions: [] },
+      }));
+      `,
+      "utf8",
+    );
+
+    const { program, output } = captureProgram({ registryFactory: () => new Registry({ tools: [] }), env: {} });
+    await program.parseAsync(
+      ["node", "predit", "--json", "build", "show/episode", "--non-interactive", "--agent", `node ${agent}`],
+      { from: "node" },
+    );
+
+    const events = output()
+      .stdout.trim()
+      .split(/\r?\n/u)
+      .map((line) => JSON.parse(line) as { event: string; stage?: string; status?: string });
+    expect(events.filter((event) => event.event === "stage_started").map((event) => event.stage)).toEqual(["research", "script"]);
+    expect(events.at(-1)).toMatchObject({ event: "build_finished", status: "completed" });
+  });
+
   it("rejects stage flags that are not declared by the pipeline", async () => {
     const root = await scratchProject();
     process.chdir(root);
@@ -731,4 +804,8 @@ function validPlaybookYaml(): string {
     "  - keep typography readable",
     "",
   ].join("\n");
+}
+
+async function* emptyStream(): AsyncGenerator<string> {
+  // Simulates stdin reaching EOF without any agent events.
 }

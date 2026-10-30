@@ -100,6 +100,21 @@ showkick status                            # all episodes under the current show
 - **Default: interactive.** `showkick build` prompts inline at each `human_approval: required` checkpoint with `(approve | revise | abort)`.
 - **`--non-interactive`** (or `CI=true`): the command pauses at the first required approval and exits with `status: awaiting_human`. Advance with `showkick approve` or loop with `showkick revise`. This is the mode agents (e.g. Claude Code) drive Show Sidekick in.
 
+## Who runs the stages
+
+A full (non-`--sample`) build of an agent-orchestrated pipeline (`orchestration.mode: executive-producer`) needs an agent to do each stage's work. There are two ways to supply one:
+
+- **Attached agent (stdio).** The driving agent runs `showkick build … --json` and reads `stage_started` NDJSON events from stdout, then writes a `stage_completed` (or `stage_failed`) event to the build's stdin. If stdin is a terminal, the build exits `2` at once with `no_agent_attached` guidance. If stdin closes before the agent reports, the stage fails with the same guidance instead of a raw stream error.
+- **Headless agent (`--agent "<command>"`, or `SHOW_SIDEKICK_AGENT`).** For each stage the harness spawns the command through the shell in the project root, with a fresh process per stage. It writes a stage brief to the process's stdin: the stage definition, the director skill path, the prior artifacts directory, budget, revision notes, and the reporting contract. The process reports one `stage_completed` / `stage_failed` JSON line, either as the last matching line of stdout (other output is ignored) or written to the file named in `SHOWKICK_STAGE_RESULT_FILE`. The env also carries `SHOWKICK_STAGE`, `SHOWKICK_TARGET`, and `SHOWKICK_PROJECT_ROOT`. `--agent-timeout <minutes>` caps each stage (default: the pipeline's `max_wall_time_minutes`); on timeout the agent's process group is killed and the stage fails with the tail of its output.
+
+Combine `--agent` with `--review-gate final --non-interactive` to run a watched track to a rough cut unattended and stop at a single review gate (see [`12-checkpoint-protocol.md`](12-checkpoint-protocol.md#deferred-review---review-gate-final)):
+
+```bash
+showkick build the-chaos/01-house-always-buys \
+  --agent "claude -p --permission-mode acceptEdits" \
+  --review-gate final --non-interactive --budget 6
+```
+
 ## Reference-Driven Builds
 
 `showkick build <show>/<episode> --reference <url-or-path>` analyzes a reference video before pipeline selection and before the Runner starts. When the flag is omitted, `inputs.reference` in `episode.yaml` is used if present. URLs are detected with `new URL()` for `http:`, `https:`, and `file:` protocols; non-URLs resolve first against cwd, then against `<project>/inputs/`, then against the legacy `<project>/music_library/` fallback.

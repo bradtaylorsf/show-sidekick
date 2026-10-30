@@ -19,6 +19,7 @@ import {
   type RunnerOptions,
   type RunnerResult,
 } from "../../harness/index.js";
+import { createCommandAgentDispatcher } from "../../harness/command-agent.js";
 import { createPaidSampleDispatcher } from "../../harness/paid-sample.js";
 import { createStarterSampleDispatcher } from "../../harness/starter-sample.js";
 import { resolve as resolveProjectResource } from "../../paths/project.js";
@@ -70,6 +71,9 @@ export type BuildHandlerOptions = {
     runOptions: ReturnType<typeof parseStageRunOptions>;
     now?: () => Date;
   }) => Dispatcher | Promise<Dispatcher>;
+  /** Overrides stdin detection for the attached-agent check; defaults to process.stdin. */
+  stdin?: { isTTY?: boolean } & AsyncIterable<string | Uint8Array>;
+  env?: NodeJS.ProcessEnv;
   reviewer?: RunnerOptions["reviewer"];
   prompt?: RunnerOptions["prompt"];
   playbookResolver?: (loaded: LoadedRunTarget) => unknown | Promise<unknown>;
@@ -108,6 +112,8 @@ export function createBuildHandler(io: CliIo, handlerOptions: BuildHandlerOption
       options,
       runOptions,
       now: handlerOptions.now,
+      stdin: handlerOptions.stdin,
+      env: handlerOptions.env,
     });
     const playbook = await (handlerOptions.playbookResolver ?? resolvePlaybook)(loaded);
     const prompt =
@@ -190,6 +196,8 @@ function defaultDispatcherFactory(input: {
   options: StageFlagOptions;
   runOptions: ReturnType<typeof parseStageRunOptions>;
   now?: () => Date;
+  stdin?: { isTTY?: boolean } & AsyncIterable<string | Uint8Array>;
+  env?: NodeJS.ProcessEnv;
 }): Dispatcher {
   if (input.runOptions.sample === true && input.runOptions.provider_profile !== undefined && sampleSupportIncludes(input.loaded, "paid")) {
     return createPaidSampleDispatcher({
@@ -202,16 +210,71 @@ function defaultDispatcherFactory(input: {
     return createStarterSampleDispatcher();
   }
 
-  const waitForStageEvent = createStageEventWaiter(process.stdin);
+  const emit = (event: unknown): void => {
+    input.io.stdout.write(`${JSON.stringify(event)}\n`);
+  };
+  const agentCommand = resolveAgentCommand(input.options, input.env ?? process.env);
+  if (agentCommand !== undefined) {
+    return createCommandAgentDispatcher({
+      command: agentCommand,
+      projectRoot: input.loaded.projectRoot,
+      target: `${input.loaded.showSlug}/${input.loaded.episodeSlug}`,
+      timeoutMs: agentTimeoutMs(input.options, input.loaded),
+      now: input.now,
+      emit,
+    });
+  }
+
+  const stdin = input.stdin ?? process.stdin;
+  if (stdin.isTTY === true) {
+    throw noAgentAttached(input.io, input.loaded, "stdin is a terminal, so no agent is attached to report stage results");
+  }
+
+  const waitForStageEvent = createStageEventWaiter(stdin);
   return createExternalAgentDispatcher({
     now: input.now,
-    emit(event) {
-      input.io.stdout.write(`${JSON.stringify(event)}\n`);
-    },
-    wait(predicate) {
-      return waitForStageEvent(predicate);
+    emit,
+    async wait(predicate) {
+      try {
+        return await waitForStageEvent(predicate);
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith("stream ended before")) {
+          throw noAgentAttached(input.io, input.loaded, "stdin closed before the agent reported a stage_completed event");
+        }
+        throw error;
+      }
     },
   });
+}
+
+export const AGENT_ENV_VAR = `${BRANDING.envPrefix}AGENT`;
+
+function resolveAgentCommand(options: StageFlagOptions, env: NodeJS.ProcessEnv): string | undefined {
+  const command = (options.agent ?? env[AGENT_ENV_VAR])?.trim();
+  return command === undefined || command === "" ? undefined : command;
+}
+
+function agentTimeoutMs(options: StageFlagOptions, loaded: LoadedRunTarget): number {
+  const minutes =
+    options.agentTimeout === undefined
+      ? loaded.pipeline.orchestration.max_wall_time_minutes
+      : Number(options.agentTimeout);
+  if (!Number.isFinite(minutes) || minutes <= 0) {
+    throw new Error(`--agent-timeout must be a positive number of minutes, got '${options.agentTimeout}'`);
+  }
+
+  return minutes * 60_000;
+}
+
+function noAgentAttached(io: CliIo, loaded: LoadedRunTarget, reason: string): CommanderError {
+  const mode = loaded.pipeline.orchestration.mode;
+  const message = [
+    `build: pipeline '${loaded.pipelineName}' is agent-orchestrated (orchestration.mode=${mode}) and ${reason}.`,
+    `Run unattended with --agent "<command>" (or ${AGENT_ENV_VAR}), e.g. --agent "claude -p --permission-mode acceptEdits";`,
+    "pipe a driving agent's NDJSON into stdin; or run --sample for the built-in sample dispatcher.",
+  ].join("\n");
+  io.stderr.write(`${message}\n`);
+  return new CommanderError(2, `${BRANDING.packageName}.no_agent_attached`, message);
 }
 
 function ensureSampleSupport(input: {

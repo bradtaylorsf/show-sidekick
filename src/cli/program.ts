@@ -176,6 +176,9 @@ function registerCommands(program: Command, io: CliIo, options: RegisterCommandO
     .option("--reference <url-or-path>", "analyze a reference video URL or local file before running")
     .option("--provider-profile <name>", "record a named provider profile selection for this run")
     .option("--non-interactive", "pause at required approvals and exit")
+    .option("--agent <command>", "run each stage by spawning this headless agent command (or set SHOW_SIDEKICK_AGENT)")
+    .option("--agent-timeout <minutes>", "per-stage timeout for --agent (default: pipeline max_wall_time_minutes)")
+    .option("--review-gate <each|final>", "pause at every required approval (each) or only after the final stage (final)")
     .action(createBuildHandler(io, options.build));
 
   program

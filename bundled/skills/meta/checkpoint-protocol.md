@@ -119,7 +119,7 @@ Sample checkpoints are always `awaiting_human`. They include sample clip path, s
 ## Key Principles
 
 1. Always checkpoint completed work.
-2. Never skip required approval on creative stages.
+2. Never skip required approval on creative stages. `--review-gate final` defers it to the final stage (logged, and halted by any critical finding); it never removes it.
 3. Include cost snapshots.
 4. Resume from the latest valid checkpoint, not from scratch.
 5. Surface reviewer findings instead of hiding them.

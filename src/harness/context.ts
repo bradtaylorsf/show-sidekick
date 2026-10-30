@@ -14,6 +14,8 @@ export type StageRunOptions = {
   only?: string;
   cost_drift_threshold?: number;
   nonInteractive?: boolean;
+  /** `each` (default) pauses at every required approval; `final` defers all approval to the last stage. */
+  review_gate?: "each" | "final";
 };
 
 export type StageContext = {
