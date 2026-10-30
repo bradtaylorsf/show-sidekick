@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+### Minor Changes
+
+- 1020580: Fix the cuesheet audio step: whisper-cli no longer gets a bogus `--print-progress false` argument, `WHISPER_MODEL` (with `~`/`$HOME`) reaches whisper-cli as a model file path, bare model names resolve to `ggml-<name>.bin` in the whisper cache, and `whisper-cpp` / `WHISPER_CLI` are probed besides `whisper-cli`. Local whisper.cpp stays the default transcriber even when `ELEVENLABS_API_KEY` is set; a new `TRANSCRIPTION_PROVIDER` setting pins whisper-cpp or ElevenLabs Scribe, and Scribe only ever receives `scribe_*` model ids. `showkick doctor` now checks the whisper binary and model. Relative `inputs.*` paths resolve from the episode YAML's folder first (then the project root), an audio `inputs.narration` works as the cuesheet input, `showkick build` creates the episode from a matching `ingest.watch` drop when its YAML is missing, and `showkick watch --import` writes episodes for new drops.
+- 3b8ab66: Full builds can now run unattended. `showkick build --agent "<command>"` (or `SHOW_SIDEKICK_AGENT`) spawns a headless agent for each stage, and `--review-gate final` defers required approvals to a single review after the last stage. Each deferred approval is logged, and any critical reviewer finding still halts the run. A full build with no agent attached now fails fast with guidance instead of `stream ended before a matching stage event was emitted` (#298).
+
 ## 0.4.0
 
 ### Minor Changes
@@ -15,7 +22,6 @@
 ### Minor Changes
 
 - d66c89a: Add Brave Search API tools for web research and image asset download (#300)
-
   - New `brave_search` tool (`web_search` capability): API-backed web search for episode research with titled, linked, snippeted results, freshness/country/safesearch controls, and $0.005/call cost metadata. Auth via `BRAVE_SEARCH_API_KEY`.
   - New `brave_image_search` tool (`stock_image` capability): searches the whole web for topical imagery alongside the stock providers and participates in `stock_cross_search`. Results carry dimensions and an attribution block (source page URL, source domain, and an "Unknown license — verify before publication" flag); `download_top` fetches the top result and returns its `image_path`.
   - New `headline-slideshow` test-only bundled pipeline with four director skills — research (brave_search) → assets (brave_image_search) → edit → compose — proving both tools end to end with a silent, ffprobe-validated 1080p slideshow.
