@@ -12,6 +12,8 @@ import { createImportHandler } from "./commands/import.js";
 import { lsDecisions } from "./commands/ls-decisions.js";
 import { createLsHandler } from "./commands/ls.js";
 import { createNewHandlers } from "./commands/new.js";
+import { createQueueHandler } from "./commands/queue.js";
+import { createRejectHandler } from "./commands/reject.js";
 import { createResumeHandler } from "./commands/resume.js";
 import { createReviseHandler } from "./commands/revise.js";
 import { createSetupHandler } from "./commands/setup.js";
@@ -41,6 +43,8 @@ const COMMAND_NAMES = [
   "status",
   "approve",
   "revise",
+  "reject",
+  "queue",
   "ls",
   "show",
   "export",
@@ -200,12 +204,27 @@ function registerCommands(program: Command, io: CliIo, options: RegisterCommandO
     .command("approve <target>")
     .description("advance past awaiting_human")
     .option("--force <reason>", "force-approve a failed final review and log an audited downgrade approval")
+    .option("--build <id>", "refuse unless the current cut is this build (from showkick queue)")
     .action(createApproveHandler(io));
 
   program
     .command("revise <target> <note>")
     .description("loop the current stage with a note")
+    .option("--stage <slug>", "send the episode back to an earlier stage and rerun from there")
+    .option("--build <id>", "refuse unless the current cut is this build (from showkick queue)")
     .action(createReviseHandler(io));
+
+  program
+    .command("reject <target> <note>")
+    .description("reject an episode waiting on review")
+    .option("--build <id>", "refuse unless the current cut is this build (from showkick queue)")
+    .action(createRejectHandler(io));
+
+  program
+    .command("queue [target]")
+    .description("list finished cuts waiting on review")
+    .option("--all", "include approved, rejected, and in-progress episodes")
+    .action(createQueueHandler(io));
 
   program
     .command("ls <kind> [arg]")

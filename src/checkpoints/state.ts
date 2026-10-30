@@ -32,6 +32,15 @@ export const StateSchema = z
         last_cost_entries: z.array(z.unknown()).default([]),
       })
       .optional(),
+    review: z
+      .object({
+        decision: z.enum(["approved", "changes", "rejected"]),
+        at: z.string(),
+        build: z.string().nullable(),
+        stage: z.string().optional(),
+        note: z.string().optional(),
+      })
+      .optional(),
     sample: z
       .object({
         latest_version: z.number().int().nonnegative().optional(),
