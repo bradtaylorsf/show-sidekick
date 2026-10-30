@@ -46,6 +46,10 @@ describe("release workflow", () => {
     expect(runText).toContain("Create this historical GitHub Release manually so the tag can target the package commit exactly.");
     expect(runText).toContain("npm has not exposed show-sidekick@$VERSION yet; retrying");
     expect(runText).toContain("npm view \"show-sidekick@$VERSION\" version --json");
+    expect(runText).toContain("MAX_ATTEMPTS=40");
+    expect(runText).toContain("--prefer-online");
+    const gateText = await readFile(path.join(repoRoot, "scripts", "changeset-pr-gate.ts"), "utf8");
+    expect(gateText).toContain('"@changesets/cli@2.31.1"');
     expect(runText).toContain("pnpm release:verify:npm --expect-published");
     expect(runText).toContain("gh release create \"$TAG\" --target \"$VERSION_COMMIT\"");
     expect(runText).toContain("gh release edit \"$TAG\" --title \"$TAG\"");

@@ -115,9 +115,16 @@ async function runGate(options: {
   readonly changesetStatusExitCode: number;
   readonly eventPath?: string;
 }): Promise<Awaited<ReturnType<typeof runChangesetPrGate>>> {
+  // Default to an unlabeled event so CI's own GITHUB_EVENT_PATH (which may carry no-release) never leaks in.
+  let eventPath = options.eventPath;
+  if (eventPath === undefined) {
+    eventPath = path.join(options.repoRoot, "unlabeled-event.json");
+    await writeFile(eventPath, JSON.stringify({ pull_request: { base: { ref: "main" }, labels: [] } }), "utf8");
+  }
+
   const gateOptions: ChangesetPrGateOptions = {
     argv: ["--since=origin/main"],
-    eventPath: options.eventPath,
+    eventPath,
     repoRoot: options.repoRoot,
     write: () => undefined,
     writeError: () => undefined,
