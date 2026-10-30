@@ -29,6 +29,7 @@ import { buildProviderProfileDecision, getProviderProfile, providerProfileNames 
 import { Registry } from "../../registry/index.js";
 import { deepMerge } from "../../shows/deep-merge.js";
 import { PlaybookSchema } from "../../shows/playbook.js";
+import type { MaterializedEpisode } from "../scaffold/from-drop.js";
 import type { CliIo, GlobalOptions } from "./stub.js";
 import {
   loadRunTargetInput,
@@ -84,7 +85,10 @@ export function createBuildHandler(io: CliIo, handlerOptions: BuildHandlerOption
   return async (target: string, ...actionArgs: unknown[]): Promise<void> => {
     const command = actionArgs.at(-1) as Command;
     const options = command.optsWithGlobals<GlobalOptions>() as StageFlagOptions;
-    const input = await loadRunTargetInput(target);
+    const input = await loadRunTargetInput(target, {
+      materializeFromIngest: true,
+      onMaterialized: (episode) => emitEpisodeMaterialized(io, options.json === true, target, episode),
+    });
     const registry = await (handlerOptions.registryFactory ?? defaultRegistryFactory)(input);
     const referenceSource = resolveReferenceSource(referenceValue(options, input), {
       projectRoot: input.projectRoot,
@@ -466,4 +470,15 @@ function emitBuildFinished(
 
   const lastStage = result.lastStage ? ` last_stage=${result.lastStage}` : "";
   io.stdout.write(`build: ${result.status} for ${loaded.showSlug}/${loaded.episodeSlug}${lastStage}\n`);
+}
+
+function emitEpisodeMaterialized(io: CliIo, json: boolean, target: string, episode: MaterializedEpisode): void {
+  if (json) {
+    io.stdout.write(
+      `${JSON.stringify({ event: "episode_materialized", target, path: episode.path, source: episode.source, pipeline: episode.pipeline, inputs: episode.inputs })}\n`,
+    );
+    return;
+  }
+
+  io.stderr.write(`build: created ${episode.path} from watched drop ${episode.source}\n`);
 }

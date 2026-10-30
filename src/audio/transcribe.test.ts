@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineTool, Registry, type Availability, type Tool } from "../registry/index.js";
 import { transcribe } from "./transcribe.js";
 import type { AudioTrack, Segment } from "./types.js";
@@ -32,6 +32,10 @@ const toolOutput = z.object({
       ),
     }),
   ),
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("transcribe", () => {
@@ -192,6 +196,154 @@ describe("transcribe", () => {
         ]),
       }),
     );
+  });
+
+  it("keeps local whisper-cpp when an ElevenLabs key makes Scribe available but nothing prefers it", async () => {
+    const whisperCalls: ToolCall[] = [];
+    const scribeCalls: ToolCall[] = [];
+    const events: Array<{ name: string; payload?: unknown }> = [];
+    const registry = new Registry({
+      tools: [
+        transcriptionTool("elevenlabs-scribe", "transcribe", scribeCalls, [segment("scribe", 0.99)]),
+        transcriptionTool("whisper-cpp", "whisper", whisperCalls, [segment("local narration", 0.9)]),
+      ],
+    });
+
+    const result = await transcribe(track(), { registry, logger: captureLogger(events) });
+
+    expect(scribeCalls).toHaveLength(0);
+    expect(whisperCalls).toEqual([{ audio_path: "/tmp/audio.wav", model: "medium.en" }]);
+    expect(result.segments[0]?.text).toBe("local narration");
+    expect(events).toEqual([]);
+  });
+
+  it("honors TRANSCRIPTION_PROVIDER=elevenlabs-scribe and never forwards a whisper model name", async () => {
+    vi.stubEnv("TRANSCRIPTION_PROVIDER", "elevenlabs-scribe");
+    vi.stubEnv("WHISPER_MODEL", "/models/ggml-medium.en.bin");
+    const whisperCalls: ToolCall[] = [];
+    const scribeCalls: ToolCall[] = [];
+    const events: Array<{ name: string; payload?: unknown }> = [];
+    const decisions: Array<{ reason?: string }> = [];
+    const registry = new Registry({
+      tools: [
+        transcriptionTool("whisper-cpp", "whisper", whisperCalls, [segment("local", 0.9)]),
+        transcriptionTool("elevenlabs-scribe", "transcribe", scribeCalls, [segment("♪ la la la", 0.99)]),
+      ],
+    });
+
+    await transcribe(track(), {
+      registry,
+      model: "medium.en",
+      logger: captureLogger(events),
+      recordDecision: async (entry) => {
+        decisions.push(entry);
+      },
+    });
+
+    expect(whisperCalls).toHaveLength(0);
+    expect(scribeCalls).toEqual([{ audio_path: "/tmp/audio.wav" }]);
+    expect(events[0]).toMatchObject({
+      name: "provider_selection",
+      payload: { picked: "elevenlabs-scribe", pinned: "elevenlabs-scribe" },
+    });
+    expect(decisions[0]?.reason).toBe("elevenlabs-scribe selected because TRANSCRIPTION_PROVIDER=elevenlabs-scribe.");
+    expect(JSON.stringify(events)).not.toContain("sung-vocal");
+  });
+
+  it("honors TRANSCRIPTION_PROVIDER=whisper-cpp over a caller preference for Scribe", async () => {
+    vi.stubEnv("TRANSCRIPTION_PROVIDER", "whisper-cpp");
+    const whisperCalls: ToolCall[] = [];
+    const scribeCalls: ToolCall[] = [];
+    const registry = new Registry({
+      tools: [
+        transcriptionTool("elevenlabs-scribe", "transcribe", scribeCalls, [segment("scribe", 0.99)]),
+        transcriptionTool("whisper-cpp", "whisper", whisperCalls, [segment("local", 0.9)]),
+      ],
+    });
+
+    await transcribe(track(), { registry, prefer: ["elevenlabs-scribe"], logger: captureLogger([]) });
+
+    expect(scribeCalls).toHaveLength(0);
+    expect(whisperCalls).toHaveLength(1);
+  });
+
+  it("fails clearly when the pinned provider is unavailable", async () => {
+    vi.stubEnv("TRANSCRIPTION_PROVIDER", "scribe");
+    const registry = new Registry({
+      tools: [
+        transcriptionTool("elevenlabs-scribe", "transcribe", [], [segment("scribe", 0.99)], {
+          available: false,
+          reason: "missing env: ELEVENLABS_API_KEY",
+          fix: "env",
+        }),
+        transcriptionTool("whisper-cpp", "whisper", [], [segment("local", 0.9)]),
+      ],
+    });
+
+    await expect(transcribe(track(), { registry, logger: captureLogger([]) })).rejects.toThrow(
+      "TRANSCRIPTION_PROVIDER=elevenlabs-scribe but elevenlabs-scribe is not available",
+    );
+  });
+
+  it("falls back to Scribe only when local whisper-cpp is unavailable, with a matching reason", async () => {
+    const scribeCalls: ToolCall[] = [];
+    const decisions: Array<{ reason?: string }> = [];
+    const registry = new Registry({
+      tools: [
+        transcriptionTool("whisper-cpp", "whisper", [], [segment("local", 0.9)], {
+          available: false,
+          reason: "binary not on PATH: whisper-cli or whisper-cpp",
+          fix: "install",
+        }),
+        transcriptionTool("elevenlabs-scribe", "transcribe", scribeCalls, [segment("scribe", 0.99)]),
+      ],
+    });
+
+    await transcribe(track(), {
+      registry,
+      logger: captureLogger([]),
+      recordDecision: async (entry) => {
+        decisions.push(entry);
+      },
+    });
+
+    expect(scribeCalls).toEqual([{ audio_path: "/tmp/audio.wav" }]);
+    expect(decisions[0]?.reason).toBe("elevenlabs-scribe selected because local whisper-cpp is unavailable.");
+  });
+
+  it("lets the whisper tool resolve WHISPER_MODEL instead of forcing medium.en", async () => {
+    vi.stubEnv("WHISPER_MODEL", "/models/ggml-base.en.bin");
+    const calls: ToolCall[] = [];
+    const registry = new Registry({
+      tools: [transcriptionTool("whisper-cpp", "whisper", calls, [segment("hello", 0.96)])],
+    });
+
+    await transcribe(track(), { registry });
+
+    expect(calls).toEqual([{ audio_path: "/tmp/audio.wav" }]);
+  });
+
+  it("keeps the first transcript when the large-v3 retry cannot run", async () => {
+    const calls: ToolCall[] = [];
+    const warnings: string[] = [];
+    let attempt = 0;
+    const flaky = transcriptionTool("whisper-cpp", "whisper", calls, [segment("♪ la la clean", 0.91)]);
+    const execute = flaky.execute.bind(flaky);
+    flaky.execute = async (params, ctx) => {
+      attempt += 1;
+      if (attempt === 2) {
+        throw new Error("whisper model 'large-v3' not found");
+      }
+      return execute(params, ctx);
+    };
+
+    const result = await transcribe(track(), {
+      registry: new Registry({ tools: [flaky] }),
+      logger: { ...captureLogger([]), warn: (message: string) => warnings.push(message) },
+    });
+
+    expect(result.segments[0]?.text).toBe("♪ la la clean");
+    expect(warnings[0]).toContain("large-v3");
   });
 
   it("skips provider-selection markers when selecting a concrete transcriber", async () => {

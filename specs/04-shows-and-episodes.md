@@ -173,6 +173,10 @@ cast: [host-mc, ambient-crowd]
 tags: [news-song, ps2, political-rap]
 ```
 
+Relative file paths under `inputs.*` resolve against the episode YAML's own folder first, then against the project root. The project-root base is the original one (and what `showkick import` writes), so existing episodes keep working; a path that exists under both resolves to the episode-folder copy. Absolute paths are used as written. A missing file error names the value and every base it tried.
+
+When `shows/<show>/episodes/<episode>.yaml` does not exist, `showkick build <show>/<episode>` looks for a file under the show's `ingest.watch[]` roots that matches its `match` glob and derives the same slug via `slug_from`; when one is found it writes the episode exactly as `showkick import` would and reports `episode_materialized`. Otherwise the error names the `showkick new episode` and `showkick import` commands. `showkick watch --import` writes the episode for each new drop instead of only printing the suggested import.
+
 `inputs.reference` is optional. When present, `showkick build` treats it the same as `--reference`: a URL is parsed with `new URL()`, while local paths resolve against cwd, then `<project>/inputs/`, then the legacy `<project>/music_library/` fallback. The resulting `video_analysis_brief` is saved under `projects/<show>/<episode>/artifacts/` and supplied to downstream stages and reviewer checks. Reference analysis happens before pipeline selection; when `episode.pipeline` is omitted, the brief can steer the run from the show default to a declared reference-capable pipeline. An explicit `episode.pipeline` remains authoritative.
 
 ## Resolution order

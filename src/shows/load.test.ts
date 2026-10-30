@@ -121,9 +121,66 @@ describe("show and episode loaders", () => {
       track: "music_library/song/missing.mp3",
     });
     const show = await loadShow(root, "music-videos");
-    const expectedPath = path.join(root, "music_library", "song", "missing.mp3");
+    const fromEpisode = path.join(show.rootDir, "episodes", "music_library", "song", "missing.mp3");
+    const fromRoot = path.join(root, "music_library", "song", "missing.mp3");
 
-    await expect(loadEpisode(show, "pilot")).rejects.toThrow(`inputs.track: file not found at ${expectedPath}`);
+    const error = await loadEpisode(show, "pilot").catch((caught: unknown) => caught as Error);
+
+    expect(error.message).toContain("inputs.track: file not found for 'music_library/song/missing.mp3'");
+    expect(error.message).toContain(`${fromEpisode} (relative to the episode file's folder, ${path.join(show.rootDir, "episodes")})`);
+    expect(error.message).toContain(`${fromRoot} (relative to the project root, ${root})`);
+  });
+
+  it("resolves ../ input paths relative to the episode YAML's folder", async () => {
+    const root = await scratchProject();
+    await writeShow(root, "docs");
+    const inputPath = path.join(root, "episodes", "ep01", "script.md");
+    await mkdir(path.dirname(inputPath), { recursive: true });
+    await writeFile(inputPath, "# script", "utf8");
+    await writeEpisode(root, "docs", "ep01", { script: "../../../episodes/ep01/script.md" });
+
+    const episode = await loadEpisode(await loadShow(root, "docs"), "ep01");
+
+    expect(episode.inputs.script).toBe(inputPath);
+  });
+
+  it("prefers the episode folder over the project root when both exist", async () => {
+    const root = await scratchProject();
+    const showDir = await writeShow(root, "docs");
+    const besideEpisode = path.join(showDir, "episodes", "inputs", "track.wav");
+    const atRoot = path.join(root, "inputs", "track.wav");
+    for (const file of [besideEpisode, atRoot]) {
+      await mkdir(path.dirname(file), { recursive: true });
+      await writeFile(file, "audio", "utf8");
+    }
+    await writeEpisode(root, "docs", "ep02", { track: "inputs/track.wav" });
+
+    const episode = await loadEpisode(await loadShow(root, "docs"), "ep02");
+
+    expect(episode.inputs.track).toBe(besideEpisode);
+  });
+
+  it("keeps absolute input paths as written", async () => {
+    const root = await scratchProject();
+    await writeShow(root, "docs");
+    const inputPath = path.join(root, "elsewhere", "narration.wav");
+    await mkdir(path.dirname(inputPath), { recursive: true });
+    await writeFile(inputPath, "audio", "utf8");
+    await writeEpisode(root, "docs", "ep03", { narration: inputPath });
+
+    const episode = await loadEpisode(await loadShow(root, "docs"), "ep03");
+
+    expect(episode.inputs.narration).toBe(inputPath);
+  });
+
+  it("names the create commands when an episode file is missing", async () => {
+    const root = await scratchProject();
+    await writeShow(root, "music-videos");
+    const show = await loadShow(root, "music-videos");
+
+    await expect(loadEpisode(show, "new-song")).rejects.toThrow(
+      "showkick import <path> --as music-videos/new-song",
+    );
   });
 });
 

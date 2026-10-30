@@ -133,6 +133,20 @@ const anchors = await audio.alignScenes(scenePlan, cuesheet, {
 
 Alternate backends are available via the registry (e.g. ElevenLabs Scribe for transcription, librosa for beats) and selectable via `registry.select(cap, { prefer: ['elevenlabs-scribe'] })`.
 
+### Transcription provider selection
+
+Local whisper.cpp is the default transcriber. Another provider is used only when:
+
+1. `TRANSCRIPTION_PROVIDER` pins it (`whisper-cpp`, `elevenlabs-scribe`, or `auto`); a pinned provider that is unavailable is an error, never a silent switch.
+2. The caller prefers it (`prefer: ['elevenlabs-scribe']`).
+3. whisper.cpp is unavailable, in which case an available API transcriber is the fallback.
+
+Having an API key for another capability (for example `ELEVENLABS_API_KEY` for TTS) never changes the transcription provider on its own. Whisper model names (`medium.en`, `large-v3`, `WHISPER_MODEL` paths) are only passed to whisper.cpp; Scribe always receives a `scribe_*` model id. The `provider_selection` event names the actual reason (pin, preference, or whisper unavailable).
+
+### whisper.cpp model and binary
+
+`WHISPER_MODEL` (project `.env`) is a ggml model file path; `~`, `$HOME`, and `${VAR}` are expanded and relative paths resolve from the project root. A bare model name such as `medium.en` or `large-v3` resolves to `ggml-<name>.bin` next to `WHISPER_MODEL`, then in `~/.cache/whisper/` and `~/.cache/whisper.cpp/`. With `WHISPER_MODEL` unset the default is `medium.en` (`medium` for non-English). The music-heavy retry with `large-v3` keeps the first transcript when that model is not installed. The binary is `WHISPER_CLI` when set, otherwise `whisper-cli`, then `whisper-cpp`. whisper-cli is invoked with `--output-json-full` and no value after boolean flags; its BPE tokens are merged into words. `showkick doctor` preflights the binary, the model file, and the `TRANSCRIPTION_PROVIDER` pin.
+
 ## Alignment defaults
 
 | Pipeline style | `snap_to` defaults |
@@ -153,7 +167,7 @@ For audio-led pipelines, building the cuesheet is its own stage (`cuesheet` in t
 - Reusable artifact — re-running scene planning doesn't re-transcribe or re-detect beats.
 - Cacheable — `projects/<show>/<episode>/cuesheet.json` persists across runs.
 
-For track + lyrics episodes, `showkick cuesheet <show>/<episode>` writes the full timing set: `cuesheet.json`, `audio_energy.json`, and `lyrics_aligned.json`. The lyric alignment is built from canonical episode lyrics and transcript words, then `lyrics_alignment_overrides.json` is applied if present.
+The cuesheet audio comes from `inputs.track`, or for pre-recorded voiceover from `inputs.narration` when it is an audio file (a `.txt` narration script is not audio). For track + lyrics episodes, `showkick cuesheet <show>/<episode>` writes the full timing set: `cuesheet.json`, `audio_energy.json`, and `lyrics_aligned.json`. The lyric alignment is built from canonical episode lyrics and transcript words, then `lyrics_alignment_overrides.json` is applied if present.
 
 **`cuesheet` stage vs `audio_sync: build` attribute.** The `cuesheet` stage is one *implementation* of `audio_sync: build`. A pipeline may instead build the cuesheet inside its `script` or `scene_plan` stage by setting that stage's `audio_sync: build`. Only one stage per pipeline may declare `audio_sync: build` (see `specs/05-pipelines.md` → validation rules). The canonical `cuesheet` stage is the recommended pattern; embedding the build into another stage is a workflow optimization that some pipelines may choose.
 

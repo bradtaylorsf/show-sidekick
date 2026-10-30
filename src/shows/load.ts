@@ -1,5 +1,6 @@
 import { access } from "node:fs/promises";
 import path from "node:path";
+import { BRANDING } from "../branding.js";
 import { loadYaml } from "../config/loader.js";
 import { projectPaths } from "../paths/project.js";
 import { EpisodeSchema, type Episode } from "./episode.js";
@@ -43,21 +44,38 @@ export async function loadShow(projectRoot: string, slug: string): Promise<Loade
 }
 
 export async function loadEpisode(show: LoadedShow, slug: string): Promise<LoadedEpisode> {
-  const episodesRoot = path.join(show.rootDir, "episodes");
-  const filePath = path.join(episodesRoot, `${slug}.yaml`);
-  ensureInside(filePath, episodesRoot, slug);
+  const filePath = episodeFilePath(show, slug);
+
+  if (!(await exists(filePath))) {
+    throw new Error(
+      `no episode '${slug}' in show '${show.slug}': ${filePath} not found. Create it with \`${BRANDING.primaryCli} new episode ${show.slug} ${slug} --from <track-or-folder>\` or \`${BRANDING.primaryCli} import <path> --as ${show.slug}/${slug}\``,
+    );
+  }
 
   const episode = (await loadYaml(filePath, EpisodeSchema)) as Episode;
 
   return {
     ...episode,
     filePath,
-    inputs: await resolveEpisodeInputs(show.projectRoot, episode.inputs),
+    inputs: await resolveEpisodeInputs(show.projectRoot, path.dirname(filePath), episode.inputs),
   };
 }
 
+export function episodeFilePath(show: LoadedShow, slug: string): string {
+  const episodesRoot = path.join(show.rootDir, "episodes");
+  const filePath = path.join(episodesRoot, `${slug}.yaml`);
+  ensureInside(filePath, episodesRoot, slug);
+  return filePath;
+}
+
+/**
+ * Relative `inputs.*` paths resolve against the episode YAML's own folder first,
+ * then against the project root (the original base, which existing episodes and
+ * `showkick import` use).
+ */
 async function resolveEpisodeInputs(
   projectRoot: string,
+  episodeDir: string,
   inputs: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   const resolved: Record<string, unknown> = {};
@@ -69,15 +87,7 @@ async function resolveEpisodeInputs(
     }
 
     if (typeof value === "string" && looksLikeFilePath(value)) {
-      const absolutePath = path.resolve(projectRoot, value);
-
-      try {
-        await access(absolutePath);
-      } catch {
-        throw new Error(`inputs.${key}: file not found at ${absolutePath}`);
-      }
-
-      resolved[key] = absolutePath;
+      resolved[key] = await resolveInputPath(key, value, projectRoot, episodeDir);
       continue;
     }
 
@@ -85,6 +95,39 @@ async function resolveEpisodeInputs(
   }
 
   return resolved;
+}
+
+async function resolveInputPath(key: string, value: string, projectRoot: string, episodeDir: string): Promise<string> {
+  if (path.isAbsolute(value) || looksLikeWindowsAbsolutePath(value)) {
+    const absolutePath = path.resolve(value);
+    if (!(await exists(absolutePath))) {
+      throw new Error(`inputs.${key}: file not found at ${absolutePath}`);
+    }
+    return absolutePath;
+  }
+
+  const candidates = [
+    { base: "the episode file's folder", dir: episodeDir, path: path.resolve(episodeDir, value) },
+    { base: "the project root", dir: projectRoot, path: path.resolve(projectRoot, value) },
+  ];
+
+  for (const candidate of candidates) {
+    if (await exists(candidate.path)) {
+      return candidate.path;
+    }
+  }
+
+  const tried = candidates.map((candidate) => `${candidate.path} (relative to ${candidate.base}, ${candidate.dir})`).join(" or ");
+  throw new Error(`inputs.${key}: file not found for '${value}'; tried ${tried}`);
+}
+
+async function exists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function looksLikeFilePath(value: string): boolean {

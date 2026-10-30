@@ -62,7 +62,7 @@ showkick export <show>/<episode> --target premiere --overwrite
 
 # Ingest
 showkick import <path> --as <show>/<episode>     # scaffold an episode from a dropped folder
-showkick watch                                    # detect drops and suggest imports
+showkick watch [--import]                         # detect drops and suggest (or run) imports
 
 # Tooling
 showkick setup <tool>                      # shell out to the tool's native login/install
@@ -150,7 +150,7 @@ The matrix records CLI path/version, provider profile, env availability, workdir
 
 `showkick import <path> --as <show>/<episode>` resolves `<path>` as either a dropped file or a folder containing a matching dropped file. It matches the path against the target show's `ingest.watch[]`, uses the matched watch entry's `pipeline`, derives sibling inputs, and writes `shows/<show>/episodes/<episode>.yaml`. It refuses to overwrite an existing episode file.
 
-`showkick watch` loads every show's `ingest.watch[]`, watches the declared paths recursively, and prints a suggested `showkick import <path> --as <show>/<derived-episode>` command when a drop matches. Watch suggestions are emitted within two seconds of the filesystem event.
+`showkick watch` loads every show's `ingest.watch[]`, watches the declared paths recursively, and prints a suggested `showkick import <path> --as <show>/<derived-episode>` command when a drop matches. Watch suggestions are emitted within two seconds of the filesystem event. With `--import`, watch writes `shows/<show>/episodes/<episode>.yaml` for each new drop (emitting `episode_imported`) and skips drops whose episode already exists (`episode_exists`); `slug_from: prompt` drops still only print the suggestion.
 
 ## Addressing — `<show>/<episode>`
 
