@@ -2,7 +2,10 @@ import type { Command } from "commander";
 import { describe, expect, it, vi } from "vitest";
 import { Registry, defineTool, type Availability, type Integration } from "../../registry/index.js";
 import { fakeComfy, installedModels } from "../../comfy/__fixtures__/fake-comfy.js";
-import { checkLocalComfy, createDoctorHandler, type DoctorRow } from "./doctor.js";
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { checkLocalAudio, checkLocalComfy, createDoctorHandler, type DoctorRow } from "./doctor.js";
 import { z } from "zod";
 
 function captureIo() {
@@ -178,4 +181,66 @@ function paidDemoRegistry(): Registry {
         }),
     ),
   });
+}
+
+describe("checkLocalAudio", () => {
+  it("flags a WHISPER_MODEL path that does not exist", async () => {
+    const dir = binDir();
+    const rows = await checkLocalAudio({ PATH: `${dir}:/usr/bin:/bin`, HOME: dir, WHISPER_MODEL: "$HOME/.cache/whisper/ggml-base.en.bin" }, dir);
+
+    expect(rows.map((row) => [row.check, row.status])).toEqual([
+      ["transcription provider", "ok"],
+      ["whisper-cli", "ok"],
+      ["whisper model", "missing"],
+    ]);
+    expect(rows[2]?.reason).toContain(join(dir, ".cache", "whisper", "ggml-base.en.bin"));
+    expect(rows[2]?.setup).toContain("WHISPER_MODEL");
+  });
+
+  it("passes when whisper-cli and the configured model file are present", async () => {
+    const dir = binDir();
+    mkdirSync(join(dir, ".cache", "whisper"), { recursive: true });
+    writeFileSync(join(dir, ".cache", "whisper", "ggml-base.en.bin"), "ggml");
+
+    const rows = await checkLocalAudio({ PATH: `${dir}:/usr/bin:/bin`, HOME: dir, WHISPER_MODEL: "~/.cache/whisper/ggml-base.en.bin" }, dir);
+
+    expect(rows.every((row) => row.status === "ok")).toBe(true);
+    expect(rows[2]?.description).toBe(`whisper model: ${join(dir, ".cache", "whisper", "ggml-base.en.bin")}`);
+  });
+
+  it("checks the ElevenLabs key instead of whisper when Scribe is pinned, and rejects unknown pins", async () => {
+    const scribe = await checkLocalAudio({ TRANSCRIPTION_PROVIDER: "elevenlabs-scribe", ELEVENLABS_API_KEY: "" }, "/tmp");
+    expect(scribe.map((row) => [row.check, row.status])).toEqual([
+      ["transcription provider", "ok"],
+      ["ELEVENLABS_API_KEY", "missing"],
+    ]);
+
+    const unknown = await checkLocalAudio({ TRANSCRIPTION_PROVIDER: "deepgram", PATH: "/nonexistent" }, "/tmp");
+    expect(unknown[0]).toMatchObject({ check: "transcription provider", status: "missing" });
+    expect(unknown[0]?.reason).toContain("TRANSCRIPTION_PROVIDER=deepgram");
+  });
+
+  it("prints a local audio section in the default doctor run", async () => {
+    const capture = captureIo();
+    const registry = paidDemoRegistry();
+
+    await createDoctorHandler(capture.io, {
+      createRegistry: async () => registry,
+      probeIntegration: async () => ({ available: true }),
+      localAudio: async () => [
+        { event: "doctor", profile: "local-audio", check: "whisper model", description: "ggml model", status: "missing", reason: "whisper model file not found", setup: "set WHISPER_MODEL", tools: ["whisper-cpp"] },
+      ],
+    })(command());
+
+    expect(capture.stdout()).toContain("doctor: local audio (cuesheet transcription)");
+    expect(capture.stdout()).toContain("missing whisper model - ggml model");
+  });
+});
+
+function binDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), "predit-doctor-audio-"));
+  const binary = join(dir, "whisper-cli");
+  writeFileSync(binary, "#!/bin/sh\nexit 0\n");
+  chmodSync(binary, 0o755);
+  return dir;
 }

@@ -4,6 +4,7 @@ import { loadPipeline } from "../../pipelines/load.js";
 import type { Pipeline } from "../../pipelines/manifest.js";
 import { findProjectRoot, parseShowEpisode } from "../../paths/project.js";
 import { assertEpisodeAgainstShow, loadEpisode, loadShow, type LoadedEpisode, type LoadedShow } from "../../shows/index.js";
+import { materializeEpisodeFromIngest, type MaterializedEpisode } from "../scaffold/from-drop.js";
 import type { GlobalOptions } from "./stub.js";
 
 export type LoadedRunTargetInput = {
@@ -39,10 +40,22 @@ export type StageFlagOptions = GlobalOptions & {
   agentTimeout?: string;
 };
 
-export async function loadRunTargetInput(target: string): Promise<LoadedRunTargetInput> {
+export type RunTargetLoadOptions = {
+  /** Write `episodes/<slug>.yaml` from a matching `ingest.watch` drop when it is missing. */
+  materializeFromIngest?: boolean;
+  onMaterialized?: (episode: MaterializedEpisode) => void;
+};
+
+export async function loadRunTargetInput(target: string, options: RunTargetLoadOptions = {}): Promise<LoadedRunTargetInput> {
   const projectRoot = findProjectRoot();
   const { show: showSlug, episode: episodeSlug } = parseShowEpisode(target, projectRoot);
   const show = await loadShow(projectRoot, showSlug);
+  if (options.materializeFromIngest === true) {
+    const materialized = await materializeEpisodeFromIngest(show, episodeSlug);
+    if (materialized !== null) {
+      options.onMaterialized?.(materialized);
+    }
+  }
   const episode = await loadEpisode(show, episodeSlug);
   assertEpisodeAgainstShow(episode, show);
 

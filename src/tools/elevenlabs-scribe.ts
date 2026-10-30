@@ -55,7 +55,7 @@ export default defineTool({
     const body = new FormData();
 
     body.set("file", new Blob([audioBytes]), basename(audioPath));
-    body.set("model_id", input.model ?? DEFAULT_MODEL);
+    body.set("model_id", scribeModelId(input.model));
     if (input.language) {
       body.set("language_code", input.language);
     }
@@ -73,6 +73,11 @@ export default defineTool({
     return outputSchema.parse(normalizeScribeResponse(await response.json()));
   },
 });
+
+/** Only `scribe_*` ids reach the API; a whisper model name (medium.en, a ggml path) falls back to the default. */
+export function scribeModelId(model: string | undefined): string {
+  return model !== undefined && /^scribe_/u.test(model) ? model : DEFAULT_MODEL;
+}
 
 export function normalizeScribeResponse(payload: unknown): { segments: Segment[] } {
   const explicitSegments = readArray(payload, "segments");

@@ -3,6 +3,7 @@ import type { Registry, Tool, ToolContext, ToolLogger } from "../registry/index.
 import { NoToolAvailable } from "../registry/index.js";
 import * as defaultLogger from "../log/logger.js";
 import whisperCpp from "../tools/whisper-cpp.js";
+import { configuredWhisperModel, transcriptionProviderPin, TRANSCRIPTION_PROVIDER_ENV } from "../tool-support/whisper.js";
 import type { AudioTrack, Segment } from "./types.js";
 
 export interface TranscribeOptions {
@@ -39,30 +40,49 @@ const LARGE_RETRY_MODEL = "large-v3";
 
 export async function transcribe(track: AudioTrack, options: TranscribeOptions = {}): Promise<Transcription> {
   const logger = options.logger ?? defaultLogger;
-  const initialModel = options.model ?? defaultModelForLanguage(options.language);
   const ctx: ToolContext = {
     projectRoot: options.projectRoot ?? process.cwd(),
     logger,
   };
-  const tool = await selectTranscriptionTool(options);
-  await recordScribeProviderSelection(tool, options, logger);
+  const selection = await selectTranscriptionTool(options);
+  const tool = selection.tool;
+  await recordProviderSelection(selection, options, logger);
+
+  if (!isLocalWhisper(tool)) {
+    // Whisper model names (medium.en, large-v3, WHISPER_MODEL paths) mean nothing to other providers.
+    const model = options.model !== undefined && !looksLikeWhisperModel(options.model) ? options.model : undefined;
+    return summarize(await runTool(tool, track, options, model, ctx));
+  }
+
+  // With WHISPER_MODEL set the tool resolves it; otherwise pick the language default.
+  const initialModel = options.model ?? (configuredWhisperModel() === undefined ? defaultModelForLanguage(options.language) : undefined);
+  const initialLabel = initialModel ?? configuredWhisperModel() ?? "default";
   const initial = await runTool(tool, track, options, initialModel, ctx);
   const retry = shouldRetryWithLarge(initial.segments);
 
   if (retry.shouldRetry && initialModel !== LARGE_RETRY_MODEL) {
-    const decision = buildRetryDecision(tool, initialModel, retry, options);
+    let retried: TranscribeToolOutput;
+    try {
+      retried = await runTool(tool, track, options, LARGE_RETRY_MODEL, ctx);
+    } catch (error) {
+      // A missing large-v3 model should not throw away a usable first pass.
+      logger.warn(
+        `transcription retry with ${LARGE_RETRY_MODEL} failed; keeping the ${initialLabel} transcript: ${errorMessage(error)}`,
+      );
+      return summarize(initial);
+    }
 
     logger.event("provider_selection", {
       picked: LARGE_RETRY_MODEL,
       reason: retry.reason,
-      initial: initialModel,
+      initial: initialLabel,
       ratio: retry.ratio,
       music_symbol_ratio: retry.musicSymbolRatio,
       garbled_ratio: retry.garbledRatio,
     });
-    await options.recordDecision?.(decision);
+    await options.recordDecision?.(buildRetryDecision(tool, initialLabel, retry, options));
 
-    return summarize(await runTool(tool, track, options, LARGE_RETRY_MODEL, ctx));
+    return summarize(retried);
   }
 
   return summarize(initial);
@@ -72,17 +92,76 @@ function defaultModelForLanguage(language: string | undefined): string {
   return language === undefined || /^en(?:-|$)/iu.test(language) ? "medium.en" : "medium";
 }
 
-async function selectTranscriptionTool(options: TranscribeOptions): Promise<Tool<TranscribeToolInput, TranscribeToolOutput>> {
+type SelectionWhy = "default" | "pinned" | "preferred" | "fallback";
+
+type TranscriptionSelection = {
+  tool: Tool<TranscribeToolInput, TranscribeToolOutput>;
+  why: SelectionWhy;
+  pin?: string;
+  preferred?: string[];
+  /** Why the local whisper path was skipped, when it was. */
+  whisperUnavailable?: string;
+};
+
+const ALTERNATIVE_CAPABILITIES = ["transcribe", "transcriber", "asr"];
+const WHISPER_PREFERENCES = new Set(["whisper", "whisper-cpp", "transcriber", "transcribe", "asr"]);
+
+/**
+ * Local whisper.cpp is the default (specs/07-audio-subsystem.md). Another provider is
+ * used only when TRANSCRIPTION_PROVIDER pins it, the caller prefers it, or whisper is
+ * unavailable. Having an API key for some other capability never switches providers.
+ */
+async function selectTranscriptionTool(options: TranscribeOptions): Promise<TranscriptionSelection> {
   if (!options.registry) {
-    return whisperCpp;
+    return { tool: whisperCpp, why: "default" };
   }
 
-  const alternative = await selectFirstAvailable(options.registry, ["transcribe", "transcriber", "asr"], options.prefer);
-  if (alternative) {
-    return alternative;
+  const registry = options.registry;
+  const pin = transcriptionProviderPin();
+
+  if (pin === "whisper-cpp") {
+    return { tool: await selectWhisper(registry, [pin]), why: "pinned", pin };
   }
 
-  return (await options.registry.select("whisper", { prefer: options.prefer })) as Tool<TranscribeToolInput, TranscribeToolOutput>;
+  if (pin !== undefined) {
+    const pinned = await selectFirstAvailable(registry, ALTERNATIVE_CAPABILITIES, [pin]);
+    if (pinned === undefined || pinned.name !== pin) {
+      throw new Error(
+        `${TRANSCRIPTION_PROVIDER_ENV}=${pin} but ${pin} is not available; check its API key or unset ${TRANSCRIPTION_PROVIDER_ENV} to use local whisper-cpp`,
+      );
+    }
+    return { tool: pinned, why: "pinned", pin };
+  }
+
+  const preferred = options.prefer?.filter((name) => !WHISPER_PREFERENCES.has(name)) ?? [];
+  if (preferred.length > 0) {
+    const alternative = await selectFirstAvailable(registry, ALTERNATIVE_CAPABILITIES, options.prefer);
+    if (alternative) {
+      return { tool: alternative, why: "preferred", preferred };
+    }
+    return { tool: await selectWhisper(registry, options.prefer), why: "default", preferred };
+  }
+
+  try {
+    return { tool: await selectWhisper(registry, options.prefer), why: "default" };
+  } catch (error) {
+    if (!(error instanceof NoToolAvailable)) {
+      throw error;
+    }
+
+    const alternative = await selectFirstAvailable(registry, ALTERNATIVE_CAPABILITIES, options.prefer);
+    if (!alternative) {
+      throw error;
+    }
+    return { tool: alternative, why: "fallback", whisperUnavailable: error.message };
+  }
+}
+
+async function selectWhisper(
+  registry: Pick<Registry, "select">,
+  prefer: string[] | undefined,
+): Promise<Tool<TranscribeToolInput, TranscribeToolOutput>> {
+  return (await registry.select("whisper", { prefer })) as Tool<TranscribeToolInput, TranscribeToolOutput>;
 }
 
 async function selectFirstAvailable(
@@ -108,6 +187,18 @@ async function selectFirstAvailable(
   return undefined;
 }
 
+function isLocalWhisper(tool: Tool): boolean {
+  return tool.capability === "whisper";
+}
+
+function looksLikeWhisperModel(model: string): boolean {
+  return /^(?:tiny|base|small|medium|large)(?:[.-]|$)/iu.test(model) || model.endsWith(".bin") || model.includes("/");
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 function isProviderSelectionMarker(tool: Tool): boolean {
   return tool.provider === "show-sidekick" && (tool.supports ?? []).includes("provider-selection");
 }
@@ -116,14 +207,14 @@ async function runTool(
   tool: Tool<TranscribeToolInput, TranscribeToolOutput>,
   track: AudioTrack,
   options: TranscribeOptions,
-  model: string,
+  model: string | undefined,
   ctx: ToolContext,
 ): Promise<TranscribeToolOutput> {
   return tool.execute(
     {
       audio_path: track.path,
       ...(options.language === undefined ? {} : { language: options.language }),
-      model,
+      ...(model === undefined ? {} : { model }),
     },
     ctx,
   );
@@ -242,33 +333,31 @@ function buildRetryDecision(
   };
 }
 
-async function recordScribeProviderSelection(
-  tool: Tool<TranscribeToolInput, TranscribeToolOutput>,
+async function recordProviderSelection(
+  selection: TranscriptionSelection,
   options: TranscribeOptions,
   logger: ToolLogger,
 ): Promise<void> {
-  const preferScribe = options.prefer?.includes("elevenlabs-scribe") === true;
-  if (tool.name !== "elevenlabs-scribe" && !preferScribe) {
+  if (selection.why === "default" && (selection.preferred?.length ?? 0) === 0) {
     return;
   }
 
-  const decision = buildScribeProviderDecision(tool, options, preferScribe);
+  const decision = buildProviderDecision(selection, options);
   logger.event("provider_selection", {
     picked: decision.picked,
     reason: decision.reason,
-    preferred: preferScribe ? "elevenlabs-scribe" : undefined,
+    preferred: selection.preferred?.[0],
+    pinned: selection.pin,
   });
   await options.recordDecision?.(decision);
 }
 
-function buildScribeProviderDecision(
-  tool: Tool<TranscribeToolInput, TranscribeToolOutput>,
-  options: TranscribeOptions,
-  preferScribe: boolean,
-): DecisionEntry {
+function buildProviderDecision(selection: TranscriptionSelection, options: TranscribeOptions): DecisionEntry {
   const timestamp = options.decisionTimestamp ?? new Date().toISOString();
+  const tool = selection.tool;
   const picked = tool.name;
-  const scribePicked = tool.name === "elevenlabs-scribe";
+  const passedOver = selection.preferred?.[0] ?? (isLocalWhisper(tool) ? "elevenlabs-scribe" : "whisper-cpp");
+  const reason = providerReason(selection);
 
   return {
     id: `transcription_provider-${safeTimestamp(timestamp)}`,
@@ -279,39 +368,43 @@ function buildScribeProviderDecision(
       capability: "transcribe",
       provider: tool.provider,
     },
-    options_considered: scribePicked
-      ? [
-          {
-            label: "elevenlabs-scribe",
-            rejected_because: null,
-            notes: "preferred Scribe provider is available for music-heavy transcription",
-          },
-          {
-            label: "whisper-cpp",
-            rejected_because: "Scribe selected for sung-vocal word timing",
-          },
-        ]
-      : [
-          {
-            label: "elevenlabs-scribe",
-            rejected_because: preferScribe
-              ? "preferred Scribe provider was unavailable or not selected by the registry"
-              : "Scribe provider was not selected by the registry",
-          },
-          {
-            label: picked,
-            rejected_because: null,
-            notes: "fallback transcription provider selected",
-          },
-        ],
+    options_considered: [
+      {
+        label: picked,
+        rejected_because: null,
+        notes: reason,
+      },
+      {
+        label: passedOver,
+        rejected_because:
+          selection.why === "default"
+            ? `preferred ${passedOver} was unavailable or not selected by the registry`
+            : selection.why === "fallback"
+              ? `local whisper-cpp unavailable: ${selection.whisperUnavailable ?? "not available"}`
+              : `${picked} was ${selection.why}`,
+      },
+    ],
     picked,
-    reason: scribePicked
-      ? "ElevenLabs Scribe selected for word-level sung-vocal transcription."
-      : `Fell back to ${picked} because ElevenLabs Scribe was unavailable or not selected.`,
-    confidence: scribePicked ? 0.9 : 0.75,
+    reason,
+    confidence: selection.why === "default" || selection.why === "fallback" ? 0.75 : 0.9,
     user_visible: true,
     supersedes: null,
   };
+}
+
+function providerReason(selection: TranscriptionSelection): string {
+  const name = selection.tool.name;
+
+  switch (selection.why) {
+    case "pinned":
+      return `${name} selected because ${TRANSCRIPTION_PROVIDER_ENV}=${selection.pin}.`;
+    case "preferred":
+      return `${name} selected because the caller preferred it (${selection.preferred?.join(", ")}).`;
+    case "fallback":
+      return `${name} selected because local whisper-cpp is unavailable.`;
+    case "default":
+      return `Fell back to ${name} because preferred ${selection.preferred?.join(", ") ?? "provider"} was unavailable or not selected.`;
+  }
 }
 
 function confidenceFromRetryRatio(ratio: number): number {

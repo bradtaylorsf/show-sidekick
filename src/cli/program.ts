@@ -251,7 +251,8 @@ function registerCommands(program: Command, io: CliIo, options: RegisterCommandO
 
   program
     .command("watch")
-    .description("detect drops and suggest imports")
+    .description("detect drops and suggest imports (--import writes the episode for each new drop)")
+    .option("--import", "create episodes/<slug>.yaml for each new drop instead of only suggesting the import command")
     .action(createWatchHandler(io));
 
   program

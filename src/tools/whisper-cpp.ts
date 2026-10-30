@@ -5,9 +5,10 @@ import { basename, extname, join } from "node:path";
 import { z } from "zod";
 import type { Segment, Word } from "../audio/types.js";
 import { defineTool } from "../registry/index.js";
+import { findWhisperCli, resolveWhisperModel, whisperCliCandidates } from "../tool-support/whisper.js";
 
 const WHISPER_CPP_INSTALL =
-  "brew install whisper-cpp (macOS) or build from https://github.com/ggerganov/whisper.cpp; ensure whisper-cli is on PATH and provide a model via WHISPER_MODEL or ~/.cache/whisper";
+  "brew install whisper-cpp (macOS) or build from https://github.com/ggerganov/whisper.cpp; ensure whisper-cli is on PATH (or set WHISPER_CLI) and provide a model via WHISPER_MODEL or ~/.cache/whisper";
 
 const wordSchema = z.object({
   text: z.string(),
@@ -43,7 +44,25 @@ export default defineTool({
       }),
     ),
   }),
-  async execute(params) {
+  async isAvailable(ctx) {
+    const binary = await findWhisperCli();
+    if (binary === undefined) {
+      return { available: false, reason: `binary not on PATH: ${whisperCliCandidates().join(" or ")}`, fix: "install" };
+    }
+
+    const model = resolveWhisperModel(undefined, { projectRoot: ctx?.projectRoot });
+    if (!model.ok) {
+      return { available: false, reason: model.reason, fix: "env" };
+    }
+
+    return { available: true };
+  },
+  async execute(params, ctx) {
+    const model = resolveWhisperModel(params.model, { projectRoot: ctx.projectRoot });
+    if (!model.ok) {
+      throw new Error(model.reason);
+    }
+
     const tempDir = await mkdtemp(join(tmpdir(), "show-sidekick-whisper-"));
     const extension = extname(params.audio_path);
     const tempAudioPath = join(tempDir, `input${extension || ".audio"}`);
@@ -51,7 +70,10 @@ export default defineTool({
 
     try {
       await copyFile(params.audio_path, tempAudioPath);
-      await runWhisperCli(buildWhisperArgs(params, tempAudioPath, outputBase), params.audio_path);
+      await runWhisperCli(
+        buildWhisperArgs({ ...params, model: model.path }, tempAudioPath, outputBase),
+        params.audio_path,
+      );
       const json = await readWhisperJson([`${outputBase}.json`, `${tempAudioPath}.json`, join(tempDir, `${basename(tempAudioPath, extension)}.json`)]);
 
       return parseWhisperJson(json);
@@ -70,21 +92,13 @@ type WhisperInput = {
 const WHISPER_MAX_BUFFER = 16 * 1024 * 1024;
 const WHISPER_TIMEOUT_MS = 10 * 60_000;
 
-function buildWhisperArgs(params: WhisperInput, audioPath: string, outputBase: string): string[] {
-  const args = [
-    "--file",
-    audioPath,
-    "--output-json-full",
-    "--output-words",
-    "--print-progress",
-    "false",
-    "--output-file",
-    outputBase,
-  ];
-
-  if (params.model) {
-    args.unshift("--model", params.model);
-  }
+/**
+ * argv for whisper-cli. Boolean flags take no value in whisper.cpp: a trailing
+ * `false` is parsed as a second input file. `--output-json-full` carries the
+ * token timings the parser reads; `--output-words` (a karaoke script) is not needed.
+ */
+export function buildWhisperArgs(params: WhisperInput & { model: string }, audioPath: string, outputBase: string): string[] {
+  const args = ["--model", params.model, "--file", audioPath, "--output-json-full", "--output-file", outputBase];
 
   if (params.language) {
     args.push("--language", params.language);
@@ -93,24 +107,38 @@ function buildWhisperArgs(params: WhisperInput, audioPath: string, outputBase: s
   return args;
 }
 
-function runWhisperCli(args: string[], sourceAudioPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
+async function runWhisperCli(args: string[], sourceAudioPath: string): Promise<void> {
+  const candidates = whisperCliCandidates();
+
+  for (const binary of candidates) {
+    const result = await execWhisperCli(binary, args);
+    if (result.ok) {
+      return;
+    }
+
+    if (isMissingBinary(result.error)) {
+      continue;
+    }
+
+    throw new Error(
+      `${binary} failed for ${sourceAudioPath}: ${result.error.message}${result.stderr ? `\n${result.stderr}` : ""}`,
+    );
+  }
+
+  throw new Error(`whisper-cli binary not on PATH (tried ${candidates.join(", ")}). Install: ${WHISPER_CPP_INSTALL}`);
+}
+
+function execWhisperCli(
+  binary: string,
+  args: string[],
+): Promise<{ ok: true } | { ok: false; error: Error; stderr: string }> {
+  return new Promise((resolve) => {
     execFile(
-      "whisper-cli",
+      binary,
       args,
       { encoding: "utf8", maxBuffer: WHISPER_MAX_BUFFER, timeout: WHISPER_TIMEOUT_MS },
       (error, _stdout, stderr) => {
-        if (error) {
-          if (isMissingBinary(error)) {
-            reject(new Error(`whisper-cli binary not on PATH. Install: ${WHISPER_CPP_INSTALL}`));
-            return;
-          }
-
-          reject(new Error(`whisper-cli failed for ${sourceAudioPath}: ${error.message}${stderr ? `\n${stderr}` : ""}`));
-          return;
-        }
-
-        resolve();
+        resolve(error ? { ok: false, error, stderr } : { ok: true });
       },
     );
   });
@@ -146,8 +174,10 @@ function normalizeSegment(raw: unknown): Segment | undefined {
     return undefined;
   }
 
-  const rawWords = readArray(raw, "words") ?? readArray(raw, "tokens") ?? [];
-  const words = rawWords.map((word) => normalizeWord(word, raw)).filter((word): word is Word => word !== undefined);
+  const explicitWords = readArray(raw, "words");
+  const words = explicitWords
+    ? explicitWords.map((word) => normalizeWord(word, raw)).filter((word): word is Word => word !== undefined)
+    : mergeSubwordTokens(readArray(raw, "tokens") ?? [], raw);
   const start_s = readTime(raw, "start_s", "start", "from") ?? readNestedTime(raw, "offsets", "from", 1000) ?? readNestedTime(raw, "timestamps", "from");
   const end_s = readTime(raw, "end_s", "end", "to") ?? readNestedTime(raw, "offsets", "to", 1000) ?? readNestedTime(raw, "timestamps", "to");
   const text = readString(raw, "text") ?? words.map((word) => word.text).join(" ");
@@ -160,6 +190,34 @@ function normalizeSegment(raw: unknown): Segment | undefined {
     text: text.trim(),
     words,
   };
+}
+
+/**
+ * whisper.cpp `--output-json-full` tokens are BPE pieces (" Hel", "lo", ","), not words.
+ * A piece without leading whitespace continues the previous word.
+ */
+function mergeSubwordTokens(rawTokens: unknown[], parentSegment: Record<string, unknown>): Word[] {
+  const words: Word[] = [];
+
+  for (const rawToken of rawTokens) {
+    const token = normalizeWord(rawToken, parentSegment);
+    if (token === undefined) {
+      continue;
+    }
+
+    const rawText = isRecord(rawToken) ? (readString(rawToken, "text") ?? readString(rawToken, "word") ?? "") : "";
+    const previous = words.at(-1);
+    if (previous !== undefined && rawText !== "" && !/^\s/u.test(rawText)) {
+      previous.text += token.text;
+      previous.end_s = Math.max(previous.end_s, token.end_s);
+      previous.confidence = Math.min(previous.confidence, token.confidence);
+      continue;
+    }
+
+    words.push(token);
+  }
+
+  return words;
 }
 
 function normalizeWord(raw: unknown, parentSegment: Record<string, unknown>): Word | undefined {

@@ -1,5 +1,8 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import scribe, { normalizeScribeResponse } from "./elevenlabs-scribe.js";
+import scribe, { normalizeScribeResponse, scribeModelId } from "./elevenlabs-scribe.js";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -16,6 +19,33 @@ describe("elevenlabs-scribe", () => {
 
     vi.stubEnv("ELEVENLABS_API_KEY", "test-key");
     await expect(scribe.isAvailable()).resolves.toEqual({ available: true });
+  });
+
+  it("never sends a whisper model name as the Scribe model_id", async () => {
+    vi.stubEnv("ELEVENLABS_API_KEY", "test-key");
+    vi.stubEnv("WHISPER_MODEL", "/models/ggml-medium.en.bin");
+    const dir = mkdtempSync(join(tmpdir(), "predit-scribe-"));
+    const audioPath = join(dir, "track.wav");
+    writeFileSync(audioPath, "fake audio");
+    const sent: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: { body: FormData }) => {
+        sent.push(String(init.body.get("model_id")));
+        return new Response(JSON.stringify({ words: [] }), { status: 200 });
+      }),
+    );
+
+    try {
+      for (const model of [undefined, "medium.en", "large-v3", "/models/ggml-medium.en.bin", "scribe_v1"]) {
+        await scribe.execute({ audio_path: audioPath, ...(model ? { model } : {}) }, { projectRoot: dir, logger: silentLogger() });
+      }
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    expect(sent).toEqual(["scribe_v2", "scribe_v2", "scribe_v2", "scribe_v2", "scribe_v1"]);
+    expect(scribeModelId("medium.en")).toBe("scribe_v2");
   });
 
   it("normalizes root-level Scribe words into word-level segments", () => {
@@ -76,3 +106,7 @@ describe("elevenlabs-scribe", () => {
     ]);
   });
 });
+
+function silentLogger() {
+  return { info() {}, warn() {}, error() {}, debug() {}, event() {} };
+}

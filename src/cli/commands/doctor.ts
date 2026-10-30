@@ -11,7 +11,16 @@ import {
   providerProfileNames,
   type ProviderProfile,
 } from "../../providers/profiles.js";
+import { findProjectRoot } from "../../paths/project.js";
 import { probe, Registry, type Availability, type Integration } from "../../registry/index.js";
+import {
+  findWhisperCli,
+  resolveWhisperModel,
+  transcriptionProviderPin,
+  whisperCliCandidates,
+  WHISPER_MODEL_HELP,
+  type TranscriptionProviderPin,
+} from "../../tool-support/whisper.js";
 import type { CliIo, GlobalOptions } from "./stub.js";
 
 export type DoctorDeps = {
@@ -19,6 +28,8 @@ export type DoctorDeps = {
   probeIntegration: (integration: Integration) => Promise<Availability>;
   /** Local ComfyUI checks. When absent, doctor reports only the provider profile. */
   localComfy?: () => Promise<DoctorRow[]>;
+  /** Cuesheet transcription checks (whisper-cli, whisper model, provider pin). */
+  localAudio?: () => Promise<DoctorRow[]>;
 };
 
 type DoctorOptions = GlobalOptions & {
@@ -42,7 +53,18 @@ const defaultDeps: DoctorDeps = {
   createRegistry: createDefaultRegistry,
   probeIntegration: (integration) => probe(integration),
   localComfy: () => checkLocalComfy(new ComfyClient(), (integration) => probe(integration)),
+  localAudio: () => checkLocalAudio(process.env, projectRootOrCwd()),
 };
+
+export const LOCAL_AUDIO_SLUG = "local-audio";
+
+function projectRootOrCwd(): string {
+  try {
+    return findProjectRoot();
+  } catch {
+    return process.cwd();
+  }
+}
 
 export function createDoctorHandler(io: CliIo, deps: DoctorDeps = defaultDeps) {
   return async (...actionArgs: unknown[]): Promise<void> => {
@@ -54,11 +76,13 @@ export function createDoctorHandler(io: CliIo, deps: DoctorDeps = defaultDeps) {
     }
 
     const localRows = includeLocal && deps.localComfy !== undefined ? await deps.localComfy() : [];
+    const includeAudio = deps.localAudio !== undefined && options.profile === undefined;
+    const audioRows = includeAudio && deps.localAudio !== undefined ? await deps.localAudio() : [];
     const profile = localOnly ? undefined : resolveProfile(options.profile);
     const rows = profile === undefined ? [] : await checkProfile(profile, await deps.createRegistry(), deps);
 
     if (options.json === true) {
-      for (const row of [...localRows, ...rows]) {
+      for (const row of [...localRows, ...audioRows, ...rows]) {
         io.stdout.write(`${JSON.stringify(row)}\n`);
       }
       return;
@@ -66,6 +90,12 @@ export function createDoctorHandler(io: CliIo, deps: DoctorDeps = defaultDeps) {
 
     if (includeLocal) {
       io.stdout.write(formatLocalHuman(localRows));
+      if (includeAudio || profile !== undefined) {
+        io.stdout.write("\n");
+      }
+    }
+    if (includeAudio) {
+      io.stdout.write(formatRows("doctor: local audio (cuesheet transcription)", "whisper.cpp word timing for track and narration cuesheets.", audioRows));
       if (profile !== undefined) {
         io.stdout.write("\n");
       }
@@ -196,6 +226,91 @@ export async function checkLocalComfy(
   }
 
   return rows;
+}
+
+/**
+ * Preflights what `showkick cuesheet` needs to transcribe: a whisper.cpp binary, a
+ * model file it can open (WHISPER_MODEL or the cache default), and a valid
+ * TRANSCRIPTION_PROVIDER pin.
+ */
+export async function checkLocalAudio(
+  env: Record<string, string | undefined> = process.env,
+  projectRoot: string = process.cwd(),
+): Promise<DoctorRow[]> {
+  const row = (check: string, description: string, ok: boolean, extra: { reason?: string; setup?: string; tools: string[] }): DoctorRow => ({
+    event: "doctor",
+    profile: LOCAL_AUDIO_SLUG,
+    check,
+    description,
+    status: ok ? "ok" : "missing",
+    ...(ok ? {} : { reason: extra.reason, setup: extra.setup }),
+    tools: extra.tools,
+  });
+
+  let pin: TranscriptionProviderPin | undefined;
+  let pinError: string | undefined;
+  try {
+    pin = transcriptionProviderPin(env);
+  } catch (error) {
+    pinError = error instanceof Error ? error.message : String(error);
+  }
+
+  const rows: DoctorRow[] = [
+    row(
+      "transcription provider",
+      pin === undefined ? "local whisper-cpp (default); set TRANSCRIPTION_PROVIDER to pin another" : `pinned to ${pin} by TRANSCRIPTION_PROVIDER`,
+      pinError === undefined,
+      { reason: pinError, setup: "Set TRANSCRIPTION_PROVIDER to whisper-cpp, elevenlabs-scribe, or auto.", tools: ["whisper-cpp", "elevenlabs-scribe"] },
+    ),
+  ];
+
+  if (pin === "elevenlabs-scribe") {
+    const hasKey = (env.ELEVENLABS_API_KEY ?? "").trim() !== "";
+    rows.push(
+      row("ELEVENLABS_API_KEY", "ElevenLabs Scribe transcription", hasKey, {
+        reason: "missing env: ELEVENLABS_API_KEY",
+        setup: "Set ELEVENLABS_API_KEY, or unset TRANSCRIPTION_PROVIDER to use local whisper-cpp.",
+        tools: ["elevenlabs-scribe"],
+      }),
+    );
+    return rows;
+  }
+
+  const binary = await findWhisperCli(env);
+  rows.push(
+    row("whisper-cli", binary === undefined ? "whisper.cpp binary on PATH" : `whisper.cpp binary: ${binary}`, binary !== undefined, {
+      reason: `binary not on PATH: ${whisperCliCandidates(env).join(" or ")}`,
+      setup: "brew install whisper-cpp (macOS), or set WHISPER_CLI to the whisper.cpp binary.",
+      tools: ["whisper-cpp"],
+    }),
+  );
+
+  const model = resolveWhisperModel(undefined, { env, projectRoot });
+  rows.push(
+    row("whisper model", model.ok ? `whisper model: ${model.path}` : "ggml model file whisper-cli can open", model.ok, {
+      reason: model.ok ? undefined : model.reason,
+      setup: WHISPER_MODEL_HELP,
+      tools: ["whisper-cpp"],
+    }),
+  );
+
+  return rows;
+}
+
+function formatRows(title: string, description: string, rows: DoctorRow[]): string {
+  const lines = [title, description, ""];
+
+  for (const row of rows) {
+    lines.push(`${row.status} ${row.check} - ${row.description}`);
+    if (row.reason !== undefined) {
+      lines.push(`  reason: ${row.reason}`);
+    }
+    if (row.setup !== undefined) {
+      lines.push(`  setup: ${row.setup}`);
+    }
+  }
+
+  return `${lines.join("\n")}\n`;
 }
 
 function formatLocalHuman(rows: DoctorRow[]): string {

@@ -10,7 +10,7 @@ import type { DecisionEntry } from "../../artifacts/decision-log.js";
 import type { LyricsAlignmentOverrides } from "../../artifacts/lyrics-alignment-overrides.js";
 import type { LyricsAligned } from "../../artifacts/lyrics-aligned.js";
 import { applyManualCorrections, canonicalLyricsFromEpisodeInputs } from "../../audio/lyrics-align.js";
-import { defineTool, Registry } from "../../registry/index.js";
+import { defineTool, Registry, type Availability } from "../../registry/index.js";
 import type { Episode } from "../../shows/episode.js";
 import type { LoadedEpisode, LoadedShow } from "../../shows/load.js";
 import { createCuesheetHandler, type CuesheetDeps } from "./cuesheet.js";
@@ -18,6 +18,7 @@ import { createCuesheetHandler, type CuesheetDeps } from "./cuesheet.js";
 let scratchDirs: string[] = [];
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await Promise.all(scratchDirs.map((dir) => rm(dir, { recursive: true, force: true })));
   scratchDirs = [];
 });
@@ -75,9 +76,75 @@ describe("createCuesheetHandler", () => {
     const io = captureIo();
     const handler = createCuesheetHandler(io, depsForEpisode(episode({})));
 
-    await expect(handler("show/episode", command())).rejects.toThrow(
-      "episode.inputs.track is missing and no completed voiceover artifacts were found to derive a cuesheet",
+    const error = await handler("show/episode", command()).catch((caught: unknown) => caught as Error);
+
+    expect(error.message).toContain("set inputs.track (music) or inputs.narration");
+    expect(error.message).toContain("shows/show/episodes/episode.yaml");
+    expect(error.message).not.toContain("ENOENT");
+    expect(error.message).not.toContain("script.json");
+  });
+
+  it("uses an audio inputs.narration when inputs.track is absent", async () => {
+    const deps = depsForEpisode(episode({ narration: "/project/inputs/ep/narration.wav" }));
+    const handler = createCuesheetHandler(captureIo(), deps);
+
+    await handler("show/episode", command());
+
+    expect(deps.buildCuesheet).toHaveBeenCalledWith("/project/inputs/ep/narration.wav", expect.any(Object));
+  });
+
+  it("does not treat a narration script as audio", async () => {
+    const deps = depsForEpisode(episode({ narration: "/project/inputs/ep/narration.txt" }));
+    const handler = createCuesheetHandler(captureIo(), deps);
+
+    await expect(handler("show/episode", command())).rejects.toThrow("set inputs.track (music) or inputs.narration");
+    expect(deps.buildCuesheet).not.toHaveBeenCalled();
+  });
+
+  it("fails preflight when only the whisper selection marker is available", async () => {
+    const deps = depsForEpisode(episode({ track: "/absolute/audio.wav" }));
+    deps.createRegistry = vi.fn(
+      async () =>
+        new Registry({
+          tools: [
+            fakeTool("whisper-cpp", "whisper", { available: false, reason: "binary not on PATH: whisper-cli or whisper-cpp", fix: "install" }),
+            markerTool("whisper", "whisper"),
+            fakeTool("aubio", "beats"),
+          ],
+        }),
     );
+    const handler = createCuesheetHandler(captureIo(), deps);
+
+    await expect(handler("show/episode", command())).rejects.toThrow(
+      /audio preflight failed: .*whisper-cpp: binary not on PATH: whisper-cli or whisper-cpp/u,
+    );
+    expect(deps.buildCuesheet).not.toHaveBeenCalled();
+  });
+
+  it("passes preflight with Scribe when TRANSCRIPTION_PROVIDER pins it", async () => {
+    vi.stubEnv("TRANSCRIPTION_PROVIDER", "elevenlabs-scribe");
+    const io = captureIo();
+    const deps = depsForEpisode(episode({ track: "/absolute/audio.wav" }));
+    deps.createRegistry = vi.fn(
+      async () =>
+        new Registry({
+          tools: [
+            fakeTool("whisper-cpp", "whisper", { available: false, reason: "binary not on PATH: whisper-cli", fix: "install" }),
+            fakeTool("elevenlabs-scribe", "transcribe"),
+            fakeTool("aubio", "beats"),
+          ],
+        }),
+    );
+
+    await createCuesheetHandler(io, deps)("show/episode", command({ json: true }));
+
+    expect(JSON.parse(io.stdoutText().split("\n")[0] ?? "{}")).toMatchObject({
+      event: "audio_preflight",
+      tools: [
+        { capability: "transcribe", tool: "elevenlabs-scribe" },
+        { capability: "beats", tool: "aubio" },
+      ],
+    });
   });
 
   it("records provider-selection decisions emitted while building the cuesheet", async () => {
@@ -368,7 +435,7 @@ function registry(): Registry {
   });
 }
 
-function fakeTool(name: string, capability: string) {
+function fakeTool(name: string, capability: string, availability: Availability = { available: true }) {
   return defineTool({
     name,
     capability,
@@ -376,6 +443,26 @@ function fakeTool(name: string, capability: string) {
     status: "production",
     integration: { kind: "binary", binary: name, install: `install ${name}` },
     best_for: "test tool",
+    input: z.object({}),
+    output: z.object({}),
+    async isAvailable() {
+      return availability;
+    },
+    async execute() {
+      return {};
+    },
+  });
+}
+
+function markerTool(name: string, capability: string) {
+  return defineTool({
+    name,
+    capability,
+    provider: "show-sidekick",
+    status: "beta",
+    integration: { kind: "library", package: "show-sidekick", install: "bundled" },
+    best_for: "marker",
+    supports: ["provider-selection"],
     input: z.object({}),
     output: z.object({}),
     async isAvailable() {

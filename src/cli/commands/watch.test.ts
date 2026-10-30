@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -71,6 +71,30 @@ describe("watch command", () => {
       path: "music_library/news-song-drops/pilot/track.mp3",
       suggested_command: `${BRANDING.primaryCli} import music_library/news-song-drops/pilot/track.mp3 --as news-lab/pilot`,
     });
+  });
+
+  it("writes the episode for a new drop with --import and skips an existing one", async () => {
+    const root = await scratchProject();
+    await writeShow(root, "news-lab");
+    await writeDropFixture(root);
+    process.chdir(root);
+    const { io, output } = captureIo();
+    const watch: WatchFactory = async function* () {
+      yield { eventType: "rename", filename: path.join("pilot", "track.mp3") };
+    };
+
+    await createWatchHandler(io, { watch, now: () => 0 })(command({ json: true, import: true }));
+    await createWatchHandler(io, { watch, now: () => 0 })(command({ json: true, import: true }));
+
+    const events = output().stdout.trim().split("\n").map((line) => JSON.parse(line) as Record<string, unknown>);
+    const episodeFile = path.join(root, "shows", "news-lab", "episodes", "pilot.yaml");
+    expect(events).toEqual([
+      expect.objectContaining({ event: "episode_imported", show: "news-lab", episode: "pilot", path: episodeFile }),
+      expect.objectContaining({ event: "episode_exists", episode: "pilot", path: episodeFile }),
+    ]);
+    const yaml = await readFile(episodeFile, "utf8");
+    expect(yaml).toContain("pipeline: news-song");
+    expect(yaml).toContain("track: music_library/news-song-drops/pilot/track.mp3");
   });
 
   it("exits cleanly when no shows configure ingest watches", async () => {
