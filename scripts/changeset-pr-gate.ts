@@ -53,7 +53,7 @@ export async function runChangesetPrGate(options: ChangesetPrGateOptions = {}): 
     return result;
   }
 
-  const status = await runCommand("pnpm", ["dlx", "@changesets/cli", "status", `--since=${since}`]);
+  const status = await runCommand("pnpm", ["dlx", "@changesets/cli@2.31.1", "status", `--since=${since}`]);
   if (status.exitCode === 0) {
     const result = pass("changeset status passed");
     write(`${result.reason}\n`);
