@@ -34,6 +34,9 @@ export type StageFlagOptions = GlobalOptions & {
   reference?: string;
   providerProfile?: string;
   nonInteractive?: boolean;
+  reviewGate?: string;
+  agent?: string;
+  agentTimeout?: string;
 };
 
 export async function loadRunTargetInput(target: string): Promise<LoadedRunTargetInput> {
@@ -150,7 +153,19 @@ export function parseStageRunOptions(options: StageFlagOptions, loaded: LoadedRu
     budget_usd: budgetUsd,
     cost_drift_threshold: costDriftThreshold,
     nonInteractive: options.nonInteractive === true,
+    review_gate: parseReviewGate(options.reviewGate),
   };
+}
+
+function parseReviewGate(value: string | undefined): StageRunOptions["review_gate"] {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === "each" || value === "final") {
+    return value;
+  }
+
+  throw new Error(`--review-gate must be 'each' or 'final', got '${value}'`);
 }
 
 function validateStageFlag(flag: "from" | "to" | "only", value: string | undefined, pipeline: Pipeline): void {

@@ -73,6 +73,18 @@ At the start of any `showkick build` or `showkick resume` invocation, the harnes
 
 Explicit stage slices (`showkick build --from <stage>`, `--only <stage>`, or `--to <stage>`) still honor existing checkpoints inside the slice. A `completed` checkpoint is reused as the stage artifact and the runner advances; an `awaiting_human` checkpoint presents the approval gate. Failed checkpoints may be rerun by targeting that stage, while intentional reruns of completed creative stages should go through `showkick revise` so the revision note is audited.
 
+## Deferred review (`--review-gate final`)
+
+`showkick build --review-gate final` is the unattended mode: the human reviews once, after the whole cut exists, instead of at every creative stage. The default is `--review-gate each`, which is the behavior described above.
+
+Under `final`:
+
+- A stage with `human_approval: required` writes a `completed` checkpoint instead of `awaiting_human` and the run continues, **unless** its final review still carries a critical finding — then the checkpoint is `awaiting_human` and the run halts there exactly as under `each`.
+- Each auto-approval is recorded in the decision log as a `downgrade_approval` entry with `picked: auto_approve_until_final_review`, so the deferral is audited per stage.
+- The last stage in the pipeline manifest always writes `awaiting_human`, whatever its `human_approval` says, so the build ends at a review gate. Advance it with `showkick approve`, or send it back with `showkick revise`.
+- Sample runs and over-budget halts behave as under `each`. Sample-first gates on proposal stages are unchanged and still halt.
+- When `--to` stops the run before the last stage, no final gate is presented.
+
 ## Human approval presentation
 
 When a stage's `human_approval` is `required` (or `optional` in interactive mode), the harness prepares a presentation block and either prompts inline (interactive) or exits awaiting `showkick approve` / `showkick revise` (non-interactive).
@@ -135,7 +147,7 @@ The runner uses `sample.latest_version` instead of scanning the checkpoint direc
 ## Key principles
 
 1. **Always checkpoint completed work.** Even stages with `human_approval: never` produce a checkpoint, so resume works after a crash. The cost of an extra JSON file is zero; the cost of redoing work is high.
-2. **Never skip approval on creative stages.** The pipeline manifest declares which stages are creative (`human_approval: required`); the harness enforces it. Idea, script, and scene-plan are typically required.
+2. **Never skip approval on creative stages.** The pipeline manifest declares which stages are creative (`human_approval: required`); the harness enforces it. Idea, script, and scene-plan are typically required. The one sanctioned exception is *deferral*, not skipping: `showkick build --review-gate final` (see below) auto-approves required gates only when the reviewer left no critical findings, logs each one, and still stops for the human at the final stage.
 3. **Include cost snapshots on every checkpoint.** Approval is meaningless without the cost picture.
 4. **Resume is the whole point.** If compose crashes, the user restarts and picks up at compose — not at idea. Designing for resume from day one keeps the harness honest about state.
 5. **Be transparent in approval requests.** Don't bury the findings. The reviewer's job is to be the agent's adversarial conscience; the presentation's job is to surface that conscience to the human.

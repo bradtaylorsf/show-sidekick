@@ -887,6 +887,85 @@ describe("Runner", () => {
     expect(output.stdout()).toContain("Projected remaining: $3.00 full / $0.50 sample.");
   });
 
+  it("auto-approves required gates and pauses only after the final stage with --review-gate final", async () => {
+    const root = await scratchProject();
+    const pipeline = pipelineManifest([
+      stage("idea", { human_approval: "required" }),
+      stage("script", { human_approval: "required" }),
+      stage("compose", { human_approval: "optional" }),
+    ]);
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+    const dispatched: string[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: scriptedDispatcher(dispatched, {
+        idea: stageResult({ idea: true }, 0),
+        script: stageResult({ script: true }, 0),
+        compose: stageResult({ cut: true }, 0),
+      }),
+      reviewer: passReviewer,
+      runOptions: { sample: false, nonInteractive: true, review_gate: "final" },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(dispatched).toEqual(["idea", "script", "compose"]);
+    expect(result.status).toBe("awaiting_human");
+    expect(result.lastStage).toBe("compose");
+    await expect(readCheckpoint(root, "show", "episode", "idea")).resolves.toMatchObject({ status: "completed" });
+    await expect(readCheckpoint(root, "show", "episode", "script")).resolves.toMatchObject({ status: "completed" });
+    await expect(readCheckpoint(root, "show", "episode", "compose")).resolves.toMatchObject({ status: "awaiting_human" });
+    const decisions = await readDecisionLog({ show: "show", episode: "episode" }, { root });
+    expect(decisions.map((decision) => [decision.stage, decision.category, decision.picked])).toEqual([
+      ["idea", "downgrade_approval", "auto_approve_until_final_review"],
+      ["script", "downgrade_approval", "auto_approve_until_final_review"],
+    ]);
+  });
+
+  it("halts at a required gate under --review-gate final when the reviewer leaves critical findings", async () => {
+    const root = await scratchProject();
+    const pipeline = pipelineManifest([
+      stage("idea", { human_approval: "required" }),
+      stage("compose", { human_approval: "optional" }),
+    ]);
+    const show = loadedShow(root, "demo");
+    const episode = loadedEpisode(show, "demo");
+    const dispatched: string[] = [];
+
+    const result = await Runner.run({
+      projectRoot: root,
+      show,
+      episode,
+      pipeline,
+      pipelineName: "demo",
+      registry: new Registry({ tools: [] }),
+      dispatcher: scriptedDispatcher(dispatched, {
+        idea: stageResult({ idea: true }, 0),
+        compose: stageResult({ cut: true }, 0),
+      }),
+      // pass_with_warnings that still carries a critical finding, e.g. after the revision limit.
+      reviewer: (stageSlug, _artifact, ctx) =>
+        stageSlug === "idea"
+          ? { ...review("revise", ctx.round ?? 0), decision: "pass_with_warnings" }
+          : review("pass", ctx.round ?? 0),
+      runOptions: { sample: false, nonInteractive: true, review_gate: "final" },
+      io: captureIo().io,
+      now: fixedNow,
+    });
+
+    expect(result.status).toBe("awaiting_human");
+    expect(result.lastStage).toBe("idea");
+    expect(dispatched).not.toContain("compose");
+    await expect(readDecisionLog({ show: "show", episode: "episode" }, { root })).resolves.toEqual([]);
+  });
+
   it("halts sample-first proposal reviews by writing sample_v1", async () => {
     const root = await scratchProject();
     const pipeline = sampleFirstPipeline();

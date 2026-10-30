@@ -638,7 +638,7 @@ async function runStage(input: {
 
     const totalCostUsd = roundUsd(input.cumulativeCost + stageCostUsd);
     const overBudget = totalCostUsd > input.budget;
-    const status = checkpointStatusForStage(opts, stage, overBudget);
+    const status = checkpointStatusForStage(opts, stage, overBudget, review);
     const checkpoint = checkpointForStage({
       stage,
       status,
@@ -653,6 +653,17 @@ async function runStage(input: {
       now,
     });
     const stageDecisions = [...toolPolicyDecisions, ...(await recordStageDecisions(opts, result.decisions))];
+    if (isAutoApprovedGate(opts, stage, status, overBudget)) {
+      stageDecisions.push(
+        ...(await recordStageDecisions(opts, [
+          buildAutoApprovalDecision({
+            stage: stage.slug,
+            finalStage: opts.pipeline.stages.at(-1)?.slug ?? stage.slug,
+            timestamp: now().toISOString(),
+          }),
+        ])),
+      );
+    }
 
     await writeCompletedCheckpointAndState(opts, checkpoint, totalCostUsd, input.revisionNotes);
 
@@ -1649,12 +1660,66 @@ async function checkpointStatusMap(opts: RunnerOptions): Promise<CheckpointStatu
   return statuses;
 }
 
-function checkpointStatusForStage(opts: RunnerOptions, stage: Stage, overBudget: boolean): CheckpointStatus {
-  if (overBudget || opts.runOptions.sample === true || stage.human_approval !== "required") {
+function checkpointStatusForStage(opts: RunnerOptions, stage: Stage, overBudget: boolean, review?: Review): CheckpointStatus {
+  if (overBudget || opts.runOptions.sample === true) {
     return "completed";
   }
 
-  return "awaiting_human";
+  if (opts.runOptions.review_gate === "final") {
+    if (isFinalPipelineStage(opts, stage)) {
+      return "awaiting_human";
+    }
+    // A required gate is only auto-approved when the reviewer left no critical findings.
+    return stage.human_approval === "required" && hasCriticalFindings(review) ? "awaiting_human" : "completed";
+  }
+
+  return stage.human_approval === "required" ? "awaiting_human" : "completed";
+}
+
+function hasCriticalFindings(review: Review | undefined): boolean {
+  return review?.findings.some((finding) => finding.severity === "critical") === true;
+}
+
+function isFinalPipelineStage(opts: RunnerOptions, stage: Stage): boolean {
+  return opts.pipeline.stages.at(-1)?.slug === stage.slug;
+}
+
+function isAutoApprovedGate(opts: RunnerOptions, stage: Stage, status: CheckpointStatus, overBudget: boolean): boolean {
+  return (
+    opts.runOptions.review_gate === "final" &&
+    opts.runOptions.sample !== true &&
+    !overBudget &&
+    status === "completed" &&
+    stage.human_approval === "required"
+  );
+}
+
+function buildAutoApprovalDecision(input: { stage: string; finalStage: string; timestamp: string }): DecisionEntry {
+  const suffix = input.timestamp.replace(/[^0-9A-Z]/gu, "");
+
+  return {
+    id: `auto-approval-${input.stage}-${suffix}`,
+    stage: input.stage,
+    timestamp: input.timestamp,
+    category: "downgrade_approval",
+    options_considered: [
+      {
+        label: "pause_for_human_approval",
+        rejected_because: "Build ran with --review-gate final; the human reviews once after the final stage.",
+        notes: "Default per-stage approval gate (--review-gate each).",
+      },
+      {
+        label: "auto_approve_until_final_review",
+        rejected_because: null,
+        notes: `Human approval deferred to the '${input.finalStage}' review gate.`,
+      },
+    ],
+    picked: "auto_approve_until_final_review",
+    reason: `Required approval for '${input.stage}' auto-approved by --review-gate final; the human reviews the full cut at '${input.finalStage}'.`,
+    confidence: 0.6,
+    user_visible: true,
+    supersedes: null,
+  };
 }
 
 function buildApprovalContext(
