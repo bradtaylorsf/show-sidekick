@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import { FinalReviewSchema } from "../../artifacts/final-review.js";
 import { getNextStage, readCheckpoint, updateState, writeCheckpoint } from "../../checkpoints/index.js";
 import { recordDecision } from "../../decisions/store.js";
+import { assertBuild } from "../../queue/queue.js";
 import { buildForceApprovalDecision } from "../../review/final-review.js";
 import type { CliIo, GlobalOptions } from "./stub.js";
 import { loadRunTarget } from "./run-target.js";
@@ -13,6 +14,7 @@ type ApproveEvent = {
   show: string;
   episode: string;
   stage: string;
+  build?: string | null;
 };
 
 type ForceApproveEvent = ApproveEvent & {
@@ -22,6 +24,7 @@ type ForceApproveEvent = ApproveEvent & {
 
 type ApproveOptions = GlobalOptions & {
   force?: string;
+  build?: string;
 };
 
 export function createApproveHandler(io: CliIo) {
@@ -40,6 +43,8 @@ export function createApproveHandler(io: CliIo) {
       throw new Error(`no awaiting_human checkpoint to approve for ${target}`);
     }
 
+    const build = await assertBuild(loaded.projectRoot, loaded.showSlug, loaded.episodeSlug, loaded.pipeline, options.build);
+    const isFinalGate = loaded.pipeline.stages.at(-1)?.slug === next.stage.slug;
     const timestamp = new Date().toISOString();
     const checkpoint = await readCheckpoint(loaded.projectRoot, loaded.showSlug, loaded.episodeSlug, next.stage.slug);
     await writeCheckpoint(loaded.projectRoot, loaded.showSlug, loaded.episodeSlug, next.stage.slug, {
@@ -52,6 +57,7 @@ export function createApproveHandler(io: CliIo) {
       current_stage: next.stage.slug,
       last_status: "completed",
       last_checkpoint_at: timestamp,
+      ...(isFinalGate ? { review: { decision: "approved" as const, at: timestamp, build, stage: next.stage.slug } } : {}),
     });
 
     if (options.json) {
@@ -62,6 +68,7 @@ export function createApproveHandler(io: CliIo) {
         show: loaded.showSlug,
         episode: loaded.episodeSlug,
         stage: next.stage.slug,
+        ...(isFinalGate ? { build } : {}),
       };
       io.stdout.write(`${JSON.stringify(event)}\n`);
       return;

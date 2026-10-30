@@ -46,6 +46,9 @@ showkick status [<show>[/<episode>]]       # state + cost + last decision
 showkick approve <show>/<episode>          # advance past awaiting_human
 showkick approve <show>/<episode> --force "<reason>"  # audited force-approval for failed final_review
 showkick revise <show>/<episode> "<note>"  # loop the current stage with note
+showkick revise <show>/<episode> "<note>" --stage <slug>  # send a blocked episode back to an earlier stage
+showkick reject <show>/<episode> "<note>"  # reject an episode waiting on review
+showkick queue [<show>[/<episode>]] [--all]  # finished cuts waiting on review (see 12-checkpoint-protocol.md)
 
 # Inspect
 showkick ls shows | episodes <show> | pipelines | playbooks | starters | tools | decisions <show>/<episode>

@@ -85,6 +85,29 @@ Under `final`:
 - Sample runs and over-budget halts behave as under `each`. Sample-first gates on proposal stages are unchanged and still halt.
 - When `--to` stops the run before the last stage, no final gate is presented.
 
+## Review queue
+
+`showkick queue` lists every episode a human has to act on, across shows, oldest first: a cut waiting at the final gate (`review`), a run halted at an earlier stage by a critical finding (`needs_attention`), and a failed run (`failed`). `--all` adds `approved`, `rejected` and `in_progress` episodes. It is read-only and derives everything from checkpoints, `state.json`, and the decision log.
+
+With `--json`, each line is a `review_queue_item`:
+
+| Field | Meaning |
+|---|---|
+| `target`, `show`, `episode`, `title`, `pipeline` | Which episode |
+| `status`, `stage` | Queue status (above) and the stage it is blocked at |
+| `video` | The final stage's render: `path`, `exists`, `build`, `duration_s`. `build` is the first 8 hex of the file's md5. Null before a render exists. |
+| `final_review` | `final_review.status` from the final stage's artifact, when present |
+| `creative` | One entry per `human_approval: required` stage: its checkpoint status, whether `--review-gate final` auto-approved it, and a few summary lines from its artifact |
+| `findings` | Reviewer counts summed over all stages, and the open findings (critical first) |
+| `cost_usd` | Cost so far |
+| `review` | The last human decision recorded in `state.json`, or null |
+
+Decisions are pinned to the cut the human watched. `showkick approve`, `revise`, and `reject` accept `--build <id>` and refuse when the current cut has a different build id, so a decision made on a phone never lands on a newer render.
+
+- **Approve** at the final gate also writes `state.review = {decision: "approved", at, build, stage}`.
+- **Notes** use `showkick revise <target> "<note>" --stage <slug>`. The stage must be at or before the blocked stage. That stage's checkpoint and every later one move to `checkpoints/superseded/<timestamp>/` (nothing is deleted), the note is appended to `revision_notes[<slug>]`, and the next `showkick build` reruns from that stage with fresh downstream artifacts. From the final gate this writes `state.review.decision = "changes"`.
+- **Reject** (`showkick reject <target> "<note>"`) requires an `awaiting_human` or `failed` checkpoint and writes `state.review.decision = "rejected"` with the note. The episode leaves the default queue.
+
 ## Human approval presentation
 
 When a stage's `human_approval` is `required` (or `optional` in interactive mode), the harness prepares a presentation block and either prompts inline (interactive) or exits awaiting `showkick approve` / `showkick revise` (non-interactive).
