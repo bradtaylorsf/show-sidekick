@@ -85,6 +85,7 @@ const agentSkills = [
   "setup-api-key",
   "sound-effects",
   "speech-to-text",
+  "suno-mcp",
   "svg-character-animation",
   "synthetic-screen-recording",
   "tailwind-design-system",
