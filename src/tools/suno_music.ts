@@ -6,6 +6,10 @@ const DEFAULT_MODEL = "suno-v3.5";
 const ENDPOINT = "https://api.suno.ai/v1/generate";
 
 /**
+ * Targets Suno's developer REST API, which is a closed partner beta (platform.suno.com) as of October 2026.
+ * For most users the supported route is Suno's official MCP server attached to the stage agent; see
+ * bundled/skills/agents/suno-mcp.md and docs/suno-mcp.md.
+ *
  * If SUNO_API_KEY is unavailable, the documented fallback is to drop tracks into `inputs/show-slug/episode-slug/` and select them via the music-plan skill.
  */
 export default defineTool({
